@@ -1,0 +1,25 @@
+name: Feature request
+description: An idea or a problem gtdpara could solve better
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome. gtdpara is a hobby project with a clear philosophy (plain files, calm on e-ink,
+        keeping your word clean), so not every idea will be built, but every one is read.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem do you want to solve?
+      description: Describe the situation in your own workflow, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you handle it today?
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea (optional)
+      description: Sketches or photos of a handwritten mockup are great.

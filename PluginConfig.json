@@ -1,0 +1,15 @@
+{
+  "name": "GtdPara",
+  "desc": "A filesystem-first PARA + GTD workspace: tasks, meetings, and notes filed as plain text you can read and edit anywhere.",
+  "iconPath": "assets/icon.png",
+  "versionName": "0.0.1",
+  "versionCode": "0",
+  "pluginID": "ndx27q77pojfqh6l",
+  "pluginKey": "gtdpara",
+  "jsMainPath": "index",
+  "uses-permissions": [
+    "plugin.permission.FILE:READ",
+    "plugin.permission.FILE:WRITE",
+    "plugin.permission.INTERNET"
+  ]
+}

@@ -1,0 +1,523 @@
+/**
+ * The disposable cross-project cache (design-overview.md §4) - now covering
+ * both halves the design doc describes: which Project/Area folders exist
+ * (previously storage/folderIndex.ts, now folded in here), AND each one's
+ * own parsed Tasks/Meetings (previously read fresh, per item, every time a
+ * screen opened it - the part that "will get slow" as the number of
+ * Projects/Areas grows, since Home and Daily each read every file on every
+ * open).
+ *
+ * Kept current the two ways the design doc calls for:
+ *
+ * 1. A full rebuild (rebuildCache) - rereads every project.txt/area.txt
+ *    from scratch. Triggered automatically in the background when the
+ *    plugin opens or is brought back to the foreground (App.tsx), and on
+ *    demand via a manual "🔄 Rebuild cache" action (Home). This is what
+ *    picks up a change made outside the plugin (Obsidian, a synced edit),
+ *    or a folder added/renamed/removed since the last build.
+ * 2. Write-through (updateItemTasks/updateItemMeetings) - every
+ *    plugin-initiated save (adding/toggling/cancelling a task or meeting,
+ *    linking a note) updates its item's cache entry in the very same
+ *    operation that writes the file, so every other screen (Daily, or
+ *    re-opening the same item later) sees the change immediately without
+ *    needing a rebuild.
+ *
+ * 3. Change notification (subscribeCache/getCacheVersion, 2026-09-20,
+ *    docs/dev/technical-design-cache-subscription-and-shared-add-path.md §A) -
+ *    write-through mutates cache items IN PLACE (the very same array and item
+ *    objects a screen already holds), so a screen's `setItems(cache.items)`
+ *    was a same-reference no-op and React never re-rendered (Week view did
+ *    not show meetings filed to a Project/Area until something else
+ *    re-rendered it). Every mutation below now bumps a version and notifies
+ *    subscribers; ui/useCachedItems.ts turns that into a re-render plus a
+ *    fresh array identity per change, so no screen has to remember a manual
+ *    refresh step.
+ *
+ * Still fully disposable: rebuildCache always reproduces the cache
+ * correctly from the files, which remain the only real data - this is a
+ * responsiveness layer on top, never a second source of truth. A single
+ * item that isn't in the cache yet (ensureItemCached) is loaded on demand
+ * rather than forcing a full rebuild just to open one Project/Area.
+ *
+ * Resources/Archive stay unscanned, same as the folder-index-only version
+ * before it - they're hidden from Home for now (a prior, explicit decision,
+ * not an oversight of this change).
+ */
+import {ExistingAbbrev, generateDefaultAbbrev} from '../domain/abbrev';
+import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
+import {FrontMatterFields} from '../domain/markdown';
+import {ItemStatus, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
+import {listFolderEntries} from '../supernote/fileSystem';
+import {ensureFileReadPermission} from '../supernote/pluginPermissions';
+import {log, logError} from '../utils/log';
+import {perfEnd, perfMark, perfStart} from '../utils/perf';
+import {loadProjectFile, saveFrontMatter} from './projectFile';
+
+export interface CachedItem {
+  kind: 'project' | 'area';
+  name: string;
+  path: string;
+  rawContent: string;
+  tasks: Task[];
+  meetings: Meeting[];
+  taskExtraLines: string[];
+  meetingExtraLines: string[];
+  /** From the `## Scope` span (docs/dev/technical-design-item-scope.md) - see storage/projectFile.ts's ProjectFileState doc comment. '' until a scope is set, even though the heading itself is scaffolded from item creation. */
+  scope: string;
+  /** From the `## Weekly Goals` span (docs/dev/technical-design-weekly-goals.md) - see storage/projectFile.ts's ProjectFileState doc comment. */
+  weeklyGoals: WeeklyGoal[];
+  weeklyGoalsExtraLines: string[];
+  /** From the `## Monthly Goals` span (docs/dev/technical-design-monthly-view.md §2.2). */
+  monthlyGoals: MonthlyGoal[];
+  monthlyGoalsExtraLines: string[];
+  /** From the frontmatter block - see domain/markdown.ts's parseFrontMatter, storage/focusSlots.ts and storage/statusControl.ts. */
+  status: ItemStatus;
+  dailyFocus: boolean;
+  weeklyFocus: boolean;
+  monthlyFocus: boolean;
+  /** Which Resources subfolder this item's Files pane defaults its "Resources" root to, or null - see technical-design-linked-files.md §3.1. */
+  defaultResourceFolder: string | null;
+  /** The Area this Project supports, by bare folder name, or null - Projects only, always null for Areas (technical-design-project-area-assignment.md §2). */
+  area: string | null;
+  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - filled in for every item by the one-time migration `doRebuildCache` runs below, so in practice this is only ever null for an item this session hasn't rebuilt the cache since the feature shipped, or one whose migration write failed and will retry on the next rebuild. */
+  abbrev: string | null;
+  frontMatterExtraLines: string[];
+  /** Set when this item's own file failed to load during the last rebuild - the item still shows (the folder itself was found fine) but with empty tasks/meetings until a rebuild succeeds. */
+  loadError?: string;
+}
+
+export interface DataCache {
+  scannedAt: number;
+  paths: ResolvedParaPaths;
+  items: CachedItem[];
+}
+
+let cached: DataCache | null = null;
+/** De-dupes concurrent rebuilds - see rebuildCache's own doc comment. */
+let rebuildInFlight: Promise<DataCache> | null = null;
+
+/** Bumped by every mutation below - see the module doc comment's change-notification note. */
+let cacheVersion = 0;
+const cacheListeners = new Set<() => void>();
+
+/** Registers `listener` to be called after every cache mutation (rebuild, write-through, add/remove item). Returns the unsubscribe function. */
+export function subscribeCache(listener: () => void): () => void {
+  cacheListeners.add(listener);
+  return () => {
+    cacheListeners.delete(listener);
+  };
+}
+
+/** Monotonic counter, +1 per mutation - ui/useCachedItems.ts compares it to know whether to hand out a fresh items array. */
+export function getCacheVersion(): number {
+  return cacheVersion;
+}
+
+function notifyCacheChanged(): void {
+  cacheVersion += 1;
+  perfMark('cache:notify', {listeners: cacheListeners.size});
+  // Copy first: a listener may unsubscribe (component unmount) while we iterate.
+  Array.from(cacheListeners).forEach(listener => listener());
+}
+
+export function getCachedData(): DataCache | null {
+  return cached;
+}
+
+export function clearCachedData(): void {
+  cached = null;
+  notifyCacheChanged();
+}
+
+export function findCachedItem(path: string): CachedItem | undefined {
+  return cached?.items.find(item => item.path === path);
+}
+
+const SCAN_TIMEOUT_MS = 20000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function loadOneItem(kind: 'project' | 'area', name: string, path: string): Promise<CachedItem> {
+  try {
+    const file = await loadProjectFile(kind, path);
+    return {kind, name, path, ...file};
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    logError('dataCache: item load failed', path, message);
+    return {
+      kind,
+      name,
+      path,
+      rawContent: '',
+      tasks: [],
+      meetings: [],
+      taskExtraLines: [],
+      meetingExtraLines: [],
+      scope: '',
+      weeklyGoals: [],
+      weeklyGoalsExtraLines: [],
+      monthlyGoals: [],
+      monthlyGoalsExtraLines: [],
+      status: 'active',
+      dailyFocus: false,
+      weeklyFocus: false,
+      monthlyFocus: false,
+      defaultResourceFolder: null,
+      area: null,
+      abbrev: null,
+      frontMatterExtraLines: [],
+      loadError: message,
+    };
+  }
+}
+
+/**
+ * ONE-TIME MIGRATION (2026-09-14, docs/dev/technical-design-project-area-
+ * abbreviations.md) - fills in a generated `abbrev` for every item that
+ * doesn't have one yet, every time the cache does a full rebuild (which
+ * already runs automatically on every plugin open/foreground - App.tsx's
+ * `reorient` - so real items pick one up on their own shortly after this
+ * ships, no separate action needed). Idempotent: only touches items with
+ * `abbrev === null`, so running it again after everything already has one
+ * is a fast no-op scan. Tilman's call (2026-09-14 chat) was "one time pass
+ * ... then we can remove that again": once every real Project/Area has
+ * picked one up (spot-check, or a rebuild with nothing left to fill),
+ * DELETE this function and its one call site in doRebuildCache below - the
+ * `abbrev` field stays, this is just the backfill for items that predate it.
+ *
+ * Processes items in the order doRebuildCache already produced them
+ * (folder-scan order), reserving each freshly generated value into
+ * `existing` immediately so two items migrated in the same pass can never
+ * collide with each other, not just with already-set abbrevs.
+ */
+async function migrateMissingAbbrevs(items: CachedItem[]): Promise<void> {
+  const existing: ExistingAbbrev[] = items
+    .filter((i): i is CachedItem & {abbrev: string} => i.abbrev !== null)
+    .map(i => ({value: i.abbrev, itemName: i.name}));
+
+  for (const item of items) {
+    if (item.abbrev !== null || item.loadError) continue;
+    const generated = generateDefaultAbbrev(item.name, existing);
+    existing.push({value: generated, itemName: item.name});
+    try {
+      const rawContent = await saveFrontMatter(item.kind, item.path, item.rawContent, {
+        ...frontMatterOf(item),
+        abbrev: generated,
+      });
+      // Same object the cache already holds a reference to (see
+      // doRebuildCache: `next.items` and this function's `items` param are
+      // the same array) - mutating in place is enough, no separate
+      // updateItemFrontMatter call needed.
+      item.rawContent = rawContent;
+      item.abbrev = generated;
+    } catch (e) {
+      logError('migrateMissingAbbrevs: failed for', item.path, e instanceof Error ? e.message : String(e));
+      // Left null - picked up again on the next rebuild.
+    }
+  }
+  // Items were mutated in place above (abbrev + rawContent) - tell subscribers.
+  notifyCacheChanged();
+}
+
+/**
+ * Assigns a freshly generated default abbrev to `item` if it doesn't have
+ * one yet, and writes it through immediately (file + cache) - same
+ * generate-then-saveFrontMatter shape migrateMissingAbbrevs above uses for
+ * the backfill pass, but for exactly one item. storage/createItem.ts calls
+ * this right after creating a brand-new Project/Area, so it shows a real
+ * abbreviation immediately rather than waiting for the next full rebuild to
+ * pick it up (migrateMissingAbbrevs only ever runs inside doRebuildCache
+ * below). No-op if `item.abbrev` is already set - defensive, since a fresh
+ * item never has one yet, but keeps this safe to call unconditionally.
+ *
+ * `existing` is read from whatever cache is currently warm (excluding
+ * `item` itself, in case it's already been pushed into `cached.items` by
+ * ensureItemCached by the time this runs) - an empty list, same as
+ * migrateMissingAbbrevs starting from scratch, if no cache exists yet.
+ */
+export async function assignDefaultAbbrevIfMissing(item: CachedItem): Promise<void> {
+  if (item.abbrev !== null) return;
+  const existing: ExistingAbbrev[] = (cached?.items ?? [])
+    .filter((i): i is CachedItem & {abbrev: string} => i.path !== item.path && i.abbrev !== null)
+    .map(i => ({value: i.abbrev, itemName: i.name}));
+  const generated = generateDefaultAbbrev(item.name, existing);
+  try {
+    const rawContent = await saveFrontMatter(item.kind, item.path, item.rawContent, {
+      ...frontMatterOf(item),
+      abbrev: generated,
+    });
+    item.rawContent = rawContent;
+    item.abbrev = generated;
+    notifyCacheChanged();
+  } catch (e) {
+    logError('assignDefaultAbbrevIfMissing: failed for', item.path, e instanceof Error ? e.message : String(e));
+    // Left null - migrateMissingAbbrevs picks it up on the next rebuild.
+  }
+}
+
+/**
+ * Full rebuild: scans the Projects and Areas folders, then loads every
+ * item's own data file (in parallel). Replaces the entire cache on success
+ * - a partial failure on one item doesn't fail the rebuild, it's recorded
+ * on that item's `loadError` instead (see loadOneItem).
+ *
+ * De-duped (2026-09-11, Tilman: entering Review right after opening the
+ * plugin felt like "overload" and slowed things down): App.tsx's `reorient`
+ * already kicks off a background rebuild on every plugin open/foreground,
+ * and separately, most screens' own `load()` falls back to `await
+ * rebuildCache(...)` themselves when they find no cache yet
+ * (DailyView/InboxScreen/ReviewScreen/CaptureScreen) - landing on any of
+ * those screens before reorient's own background rebuild finishes used to
+ * fire a second, fully redundant full-vault scan racing the first one, each
+ * paying the same disk-I/O cost independently. A caller that arrives while
+ * one's already running now gets that same in-flight promise back instead
+ * of starting its own - same pattern as storage/googleCalendarCache.ts's
+ * `refreshGoogleCalendar` / supernote/pluginPermissions.ts's `pending` map.
+ * A `settings` argument arriving while another call's rebuild is already in
+ * flight is silently ignored in favor of whichever settings started that
+ * rebuild - accepted the same way in those other two call sites, since two
+ * rebuild requests landing within milliseconds of each other essentially
+ * never disagree on settings in practice.
+ */
+export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
+  if (rebuildInFlight) {
+    perfMark('cache:rebuildJoined');
+    return rebuildInFlight;
+  }
+  const perfToken = perfStart();
+  rebuildInFlight = doRebuildCache(settings).finally(() => {
+    rebuildInFlight = null;
+    perfEnd('cache:rebuild', perfToken);
+  });
+  return rebuildInFlight;
+}
+
+async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
+  log('rebuildCache: start');
+
+  const granted = await ensureFileReadPermission();
+  if (!granted) {
+    throw new Error('File read permission was not granted.');
+  }
+
+  const paths = resolvePaths(settings);
+
+  const [projectEntries, areaEntries] = await Promise.all([
+    withTimeout(listFolderEntries(paths.projects), SCAN_TIMEOUT_MS, `scanning projects (${paths.projects})`),
+    withTimeout(listFolderEntries(paths.areas), SCAN_TIMEOUT_MS, `scanning areas (${paths.areas})`),
+  ]);
+
+  const folderItems: Array<{kind: 'project' | 'area'; name: string; path: string}> = [
+    ...projectEntries.filter(e => e.isFolder).map(e => ({kind: 'project' as const, name: e.name, path: e.path})),
+    ...areaEntries.filter(e => e.isFolder).map(e => ({kind: 'area' as const, name: e.name, path: e.path})),
+  ];
+
+  const perfItems = perfStart();
+  const items = await Promise.all(folderItems.map(({kind, name, path}) => loadOneItem(kind, name, path)));
+  perfEnd('cache:loadItems', perfItems, {items: items.length});
+
+  const next: DataCache = {scannedAt: Date.now(), paths, items};
+  cached = next;
+  perfMark('cache:replaced', {items: items.length});
+  notifyCacheChanged();
+  // ONE-TIME MIGRATION - see migrateMissingAbbrevs's own doc comment; safe
+  // to delete this call (and that function) once every real item has an
+  // abbrev.
+  await migrateMissingAbbrevs(items);
+  log('rebuildCache: done', `${items.length} items`);
+  return next;
+}
+
+/**
+ * Returns this item from the cache if it's already there; otherwise loads
+ * just this one item's file and, if a cache already exists, adds it in
+ * (so it's visible cache-wide from then on) rather than forcing a full
+ * rebuild to open a single Project/Area. If no cache exists at all yet
+ * (rebuildCache has never completed), the loaded item is still returned for
+ * this one call, just not stored anywhere - the next rebuild picks it up
+ * properly.
+ */
+export async function ensureItemCached(
+  kind: 'project' | 'area',
+  name: string,
+  path: string,
+): Promise<CachedItem> {
+  const existing = findCachedItem(path);
+  if (existing) {
+    perfMark('cache:itemHit', {path});
+    return existing;
+  }
+
+  const item = await loadOneItem(kind, name, path);
+  if (cached) {
+    cached.items.push(item);
+    notifyCacheChanged();
+  }
+  return item;
+}
+
+/** Write-through after saving an item's Tasks span - see the module doc comment. No-op if this item isn't (yet) in the cache. */
+export function updateItemTasks(
+  path: string,
+  rawContent: string,
+  tasks: Task[],
+  taskExtraLines: string[],
+): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.tasks = tasks;
+  item.taskExtraLines = taskExtraLines;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/** Write-through after saving an item's Meetings span - see updateItemTasks. */
+export function updateItemMeetings(
+  path: string,
+  rawContent: string,
+  meetings: Meeting[],
+  meetingExtraLines: string[],
+): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.meetings = meetings;
+  item.meetingExtraLines = meetingExtraLines;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/** Write-through after saving an item's Scope span - see updateItemTasks. */
+export function updateItemScope(path: string, rawContent: string, scope: string): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.scope = scope;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/** Write-through after saving an item's Weekly Goals span - see updateItemTasks. */
+export function updateItemWeeklyGoals(
+  path: string,
+  rawContent: string,
+  weeklyGoals: WeeklyGoal[],
+  weeklyGoalsExtraLines: string[],
+): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.weeklyGoals = weeklyGoals;
+  item.weeklyGoalsExtraLines = weeklyGoalsExtraLines;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/** Write-through after saving an item's Monthly Goals span - see updateItemTasks. */
+export function updateItemMonthlyGoals(
+  path: string,
+  rawContent: string,
+  monthlyGoals: MonthlyGoal[],
+  monthlyGoalsExtraLines: string[],
+): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.monthlyGoals = monthlyGoals;
+  item.monthlyGoalsExtraLines = monthlyGoalsExtraLines;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/**
+ * Write-through for a save that changed ONLY a section no cached field is
+ * parsed from (the close-out plan's `## Close-out` section - docs/technical-
+ * design-project-close-out.md §4.2). Every other save builds on
+ * `item.rawContent`, so skipping this would make the next task/meeting save
+ * silently write the old section back.
+ */
+export function updateItemRawContent(path: string, rawContent: string): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  notifyCacheChanged();
+}
+
+/** The flat frontmatter fields `CachedItem`/`ProjectFileState` carry - what `frontMatterOf` reads. */
+export type FrontMatterSource = Pick<
+  CachedItem,
+  | 'status'
+  | 'dailyFocus'
+  | 'weeklyFocus'
+  | 'monthlyFocus'
+  | 'defaultResourceFolder'
+  | 'area'
+  | 'abbrev'
+  | 'frontMatterExtraLines'
+>;
+
+/**
+ * An item's current frontmatter as one `FrontMatterFields` object
+ * (docs/dev/technical-design-monthly-view.md §2.1) - the ONE place that knows
+ * which flat item fields make up the frontmatter. Every save builds
+ * `{...frontMatterOf(item), <changed field>}`, so a field a call site
+ * doesn't touch is always carried through unchanged.
+ */
+export function frontMatterOf(item: FrontMatterSource): FrontMatterFields {
+  return {
+    status: item.status,
+    dailyFocus: item.dailyFocus,
+    weeklyFocus: item.weeklyFocus,
+    monthlyFocus: item.monthlyFocus,
+    defaultResourceFolder: item.defaultResourceFolder,
+    area: item.area,
+    abbrev: item.abbrev,
+    extraLines: item.frontMatterExtraLines,
+  };
+}
+
+/** Write-through after saving an item's frontmatter - see updateItemTasks. Takes the exact `fm` object that was just saved (see frontMatterOf). */
+export function updateItemFrontMatter(path: string, rawContent: string, fm: FrontMatterFields): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.status = fm.status;
+  item.dailyFocus = fm.dailyFocus;
+  item.weeklyFocus = fm.weeklyFocus;
+  item.monthlyFocus = fm.monthlyFocus;
+  item.frontMatterExtraLines = fm.extraLines;
+  item.defaultResourceFolder = fm.defaultResourceFolder;
+  item.area = fm.area;
+  item.abbrev = fm.abbrev;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/**
+ * Drops `path` from the cache entirely - used after storage/archive.ts
+ * moves an item's folder out of Projects/Areas, since it's no longer under
+ * either root and every other write-through here assumes the item stays
+ * put. No-op if there's no cache yet or the item isn't in it.
+ */
+export function removeCachedItem(path: string): void {
+  if (!cached) return;
+  cached.items = cached.items.filter(item => item.path !== path);
+  notifyCacheChanged();
+}

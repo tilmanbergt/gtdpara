@@ -1,0 +1,76 @@
+name: Bug report
+description: Something in gtdpara doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The more exact the steps, the faster it can be fixed.
+        Please look through logs and debug info for private content before pasting them.
+  - type: input
+    id: version
+    attributes:
+      label: gtdpara version
+      description: Shown in Settings → About, e.g. "0.1.0 (build 42, a1b2c3d)"
+      placeholder: 0.1.0 (build 42, a1b2c3d)
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      options:
+        - A5 X
+        - A6 X
+        - A5 X2 (Manta)
+        - A6 X2 (Nomad)
+        - Other (write in the description)
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: Supernote Settings → About
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Daily
+        2. Tap ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Photos of the screen are very welcome.
+    validations:
+      required: true
+  - type: checkboxes
+    id: experimental
+    attributes:
+      label: Experimental features switched on (Settings → Advanced)
+      options:
+        - label: Google Calendar
+        - label: Gmail
+  - type: textarea
+    id: debuginfo
+    attributes:
+      label: Debug bundle
+      description: Settings → About → "Export debug bundle" saves a .txt to EXPORT/gtdpara/debug. Please look through it, then drag it here (or paste its first lines).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Other attachments
+      description: Photos of the screen, or gtdpara-log.txt from EXPORT/gtdpara/debug if Debug logging was on. If the problem also happens in the demo space (Settings → Advanced → Create demo space), say so - then it can be reproduced exactly.
