@@ -4,24 +4,40 @@
 text in your own Projects / Areas / Resources / Archive folders, so you can read and edit them
 anywhere, with or without the plugin.
 
-> Status: hobby project, first public release in preparation (0.1.0). Expect rough edges.
+> Status: hobby project, first public release (0.1.0). Expect rough edges.
 > Issues and ideas are welcome.
 
-<!-- Screenshots: Daily, Project, Review (docs/user/images/) — coming with 0.1.0 -->
+<table>
+<tr><td align="center"><img src="docs/user/images/20260930_Daily.png" width="260" alt="Daily"><br><sub>Daily</sub></td><td align="center"><img src="docs/user/images/20260930_Week.png" width="260" alt="Week"><br><sub>Week</sub></td><td align="center"><img src="docs/user/images/20260930_Current%20Project.png" width="260" alt="A project (Current tab)"><br><sub>A project (Current tab)</sub></td></tr>
+<tr><td align="center"><img src="docs/user/images/20260930_Inbox%20Quick%20Add.png" width="260" alt="Inbox and Quick Add"><br><sub>Inbox and Quick Add</sub></td><td align="center"><img src="docs/user/images/20260930_Review.png" width="260" alt="Weekly Review"><br><sub>Weekly Review</sub></td><td align="center"><img src="docs/user/images/20260930_Help%20Settings.png" width="260" alt="In-app help"><br><sub>In-app help</sub></td></tr>
+</table>
+
+<sub>Screenshots from the built-in demo space on a Supernote A5 X.</sub>
 
 ## Why gtdpara
 
-- **Your files, not a database.** Every Project and Area is a folder. Its todos and meetings live
-  in a small plain-text file inside it (`project.txt` / `area.txt`). Nothing is locked into the
-  plugin; any text editor can open it.
-- **GTD and PARA, made for e-ink and handwriting.** Capture with the lasso, file into a
-  Project/Area, review weekly. Screens are paged instead of scrolled, with no notifications and
-  no timers.
-- **Keep your word clean.** gtdpara is built around a simple idea from Erhard and Jensen's work on
-  integrity: say clearly what you are on the hook for, then keep it or consciously renegotiate
-  it. `#next`, focus and `#now` exist to make that visible, not to pile up more to do.
+- **Your files, no lock-in.** Every Project and Area is a folder. Its todos and meetings live
+  in a small plain-text file inside it (`project.txt` / `area.txt`). Any text editor can open it,
+  and if you stop using gtdpara, your folders, notes and lists are still there.
+- **Calm and made for e-ink.** Only what matters today on Daily, only your `#now` todos in focus
+  mode. Screens are paged instead of scrolled; no notifications, no timers, no streaks.
+- **Built on what the Supernote already does.** Handwritten notes for todos and meetings,
+  backgrounds from your own templates, keywords for the Supernote's keyword search, links to
+  notes and files, and the lasso to turn handwriting into a todo or meeting.
+- **The whole life of a project.** Create it, work through it, mark it done, then close it out:
+  check nothing is left open, move results to the area or Resources, and turn all its notes into
+  one PDF with a table of contents - a record you can keep and read away from the Supernote.
+  Then it moves into the Archive, sorted by year.
+- **Keep your word clean.** Inspired by Werner Erhard's and Michael Jensen's work on integrity,
+  in particular [Creating Leaders: An Ontological/Phenomenological Model](https://papers.ssrn.com/abstract=1681682)
+  (with Kari Granger) and its four foundations of being a leader: integrity, authenticity, being
+  committed to something bigger than oneself, and being cause in the matter. Say clearly what
+  you are on the hook for, then keep it or consciously renegotiate it. `#next`, focus and `#now`
+  exist to make that visible, not to pile up more to do.
 - **Room for rest.** Nothing auto-suggests the next task. The gap after finishing something is
   yours.
+
+More in [Why gtdpara works this way](docs/user/philosophy.md).
 
 ## Features at a glance
 
