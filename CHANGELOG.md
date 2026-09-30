@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-09-30
+
 First public release.
 
 ### New
