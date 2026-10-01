@@ -56,7 +56,7 @@ export default function PdfStep({ctx, busy, run, onCreate, onCancel, onOpen, onT
         <View style={[co.boxLight, {borderColor, marginTop: 16}]}>
           <Text style={[co.small, co.muted, {color: textColor}]}>Written to (moves into the archive in step 5)</Text>
           <Text style={[co.path, {color: textColor}]}>{ctx.display(ctx.workingPdfPath)}</Text>
-          <Text style={[co.small, co.muted, {color: textColor}]}>Written as a .part file and renamed when finished - a cancelled run leaves nothing half-done. Keep gtdpara open until it's done.</Text>
+          <Text style={[co.small, co.muted, {color: textColor}]}>Built in gtdpara's private folder and copied here only when finished - a cancelled run writes nothing. Keep gtdpara open until it's done.</Text>
         </View>
         <View style={co.row}>
           <PillButton label="Cancel" size="large" onPress={onCancel} textColor={textColor} borderColor={borderColor} />

@@ -4,6 +4,7 @@ import {perfEnd, perfStart} from '../utils/perf';
 
 export const FILE_READ_PERMISSION = 'plugin.permission.FILE:READ';
 export const FILE_WRITE_PERMISSION = 'plugin.permission.FILE:WRITE';
+export const FILE_DELETE_PERMISSION = 'plugin.permission.FILE:DELETE';
 export const INTERNET_PERMISSION = 'plugin.permission.INTERNET';
 
 type PermissionAwareManager = typeof PluginManager & {
@@ -118,18 +119,24 @@ export function ensureFileWritePermission(): Promise<boolean> {
 }
 
 /**
- * The Google Calendar feature's one network-touching operation
- * (storage/googleCalendarCache.ts's refreshGoogleCalendar) calls this
- * immediately before its fetch - never eagerly, never from Settings just
- * because a URL was typed in. Confirmed against a real, already-shipping
- * sibling plugin (SNFolio) that this permission name and this
- * call-immediately-before-the-real-operation timing both work as expected
- * on-device; ported here rather than re-derived, reusing this file's own
- * ensurePluginPermission/withTimeout machinery unchanged.
+ * FILE:DELETE, requested only AFTER the user confirmed a delete in the UI
+ * (docs/dev/technical-design-inkhub-submission.md §3.4) - so `description`
+ * names exactly what is about to be deleted, e.g. "Delete the empty folder
+ * 2 Areas/Health after moving it to the Archive." Never requested eagerly.
  */
-export function ensureInternetPermission(): Promise<boolean> {
-  return ensurePluginPermission(
-    INTERNET_PERMISSION,
-    'Allow GtdPara to fetch your linked Google Calendar.',
-  );
+export function ensureFileDeletePermission(description: string): Promise<boolean> {
+  return ensurePluginPermission(FILE_DELETE_PERMISSION, description);
+}
+
+/**
+ * The network-touching operations - Google Calendar's ICS fetch
+ * (storage/googleCalendarCache.ts) and the Gmail IMAP calls
+ * (storage/gmailImapNative.ts) - call this immediately before connecting,
+ * never eagerly and never from Settings just because a URL was typed in.
+ * Both integrations are opt-in (Settings -> Advanced, off by default).
+ */
+export function ensureInternetPermission(
+  description = 'Allow GtdPara to connect to Google Calendar or Gmail - only when you tap Load or Refresh.',
+): Promise<boolean> {
+  return ensurePluginPermission(INTERNET_PERMISSION, description);
 }

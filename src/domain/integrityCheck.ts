@@ -450,10 +450,11 @@ export function checkLegacyInboxLeftovers(rootEntries: ListedEntry[], base: stri
       entityLabel: leftovers.join(', '),
       notePath: '',
       message:
-        `Left in the base folder from the old Inbox location: ${leftovers.join(', ')}. The move to ` +
+        `Left in the base folder from the old Inbox location: ${leftovers.join(', ')}. Either the move to ` +
         `"${inboxFolder}" did not finish or was blocked (an Area with the same name, or the same file ` +
-        `name in both places). Move these by hand, or choose another Inbox folder name in Settings → ` +
-        `Folders and restart gtdpara.`,
+        `name in both places) - then move these by hand, or choose another Inbox folder name in Settings → ` +
+        `Folders and restart gtdpara. Or the move finished and only an empty folder was left behind ` +
+        `(gtdpara never deletes folders on its own) - then you can delete it in the file manager.`,
     },
   ];
 }

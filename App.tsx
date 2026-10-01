@@ -48,6 +48,8 @@ import {
   getCurrentNotePath,
   rememberLaunchNotePath,
   appendDebugLogFile,
+  deleteTempTree,
+  getPrivateTempDir,
   setOpenPathObserver,
   writePerfTraceFile,
 } from './src/supernote/fileSystem';
@@ -215,6 +217,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   useEffect(() => {
     setHelpPage(null);
   }, [activeTab]);
+  // Leftovers of an interrupted PDF export live only in the plugin's private
+  // temp folder (docs/dev/technical-design-inkhub-submission.md §3.2) - clear
+  // them once per start. Best-effort: older native builds lack the call.
+  useEffect(() => {
+    getPrivateTempDir()
+      .then(dir => deleteTempTree(dir))
+      .catch(e => log('App: private temp clean-up skipped', e instanceof Error ? e.message : String(e)));
+  }, []);
 
   // Re-checks the current note's Project/Area and jumps straight there - on
   // initial mount, AND every time our own sidebar button is pressed again.

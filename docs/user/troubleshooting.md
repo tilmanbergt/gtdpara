@@ -8,6 +8,19 @@
 - **A note link or linked file is broken**: run **Run Integrity Check** in Settings → Advanced. It writes a report to `EXPORT/gtdpara/debug`.
 - **Creating a note fails when gtdpara was opened from a PDF or document**: the Supernote only lets plugins create notes when they were opened from a note. Open gtdpara from any note and create the note there. This is a limit of the Supernote, not of gtdpara.
 - **The calendar or Gmail doesn't load**: check the network connection and the settings; the error message tells you whether it is the network, the login or something else.
+- **"Permission was not granted"**: see the next section.
+
+## Permission prompts
+
+The Supernote asks you before gtdpara may use a permission, each time right before the first action that needs it:
+
+- **Read files** and **Write files**: for your PARA folders and for `EXPORT/gtdpara` (profiles, debug files). Without them gtdpara can't load or save anything.
+- **Delete files**: only after you confirmed a delete in gtdpara, for example the empty folder left behind when you archive an area into an Archive folder that already exists. gtdpara never deletes your notes or files.
+- **Internet**: only for the optional Google Calendar and Gmail integrations, when you tap Load or Refresh.
+
+**Allow this time only** lasts until gtdpara is closed; **Always allow** is remembered. If you chose **Don't allow**, nothing is changed and gtdpara tells you so; the Supernote then sends further requests to its system settings, where you can allow it again.
+
+gtdpara also tells you whenever it changes files: before a move, an overwrite or a delete it shows what will happen, and afterwards what was done.
 
 ## Reporting a problem
 

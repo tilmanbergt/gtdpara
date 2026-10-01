@@ -1225,7 +1225,7 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
       const summary = await runIntegrityCheck(values);
       setIntegrityResult(
         summary.findings.length === 0
-          ? {kind: 'success', text: `Integrity Check: no issues found (${summary.itemsScanned} items scanned).`}
+          ? {kind: 'success', text: `Integrity Check: no issues found (${summary.itemsScanned} items scanned) - report saved as ${summary.reportFileName} in EXPORT/gtdpara/debug.`}
           : {
               kind: 'warning',
               text: `Integrity Check: ${summary.findings.length} issue(s) in ${summary.itemsScanned} items - see ${summary.reportFileName} in EXPORT/gtdpara/debug.`,

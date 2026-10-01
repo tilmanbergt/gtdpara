@@ -1,7 +1,7 @@
 import {NativeModules} from 'react-native';
 import {PluginCommAPI, PluginFileAPI} from 'sn-plugin-lib';
-import {ensureFileReadPermission, ensureFileWritePermission} from './pluginPermissions';
-import {log, logError} from '../utils/log';
+import {ensureFileDeletePermission, ensureFileReadPermission, ensureFileWritePermission} from './pluginPermissions';
+import {log, logError, logWarn} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
 
 export interface FolderEntry {
@@ -197,6 +197,10 @@ interface GtdParaFileNativeModule {
   moveFile(fromPath: string, toPath: string): Promise<boolean>;
   moveFolderMerge(fromPath: string, toPath: string): Promise<boolean>;
   deleteTempTree(path: string): Promise<boolean>;
+  /** Added 2026-10-01 (InkHub compliance); missing on older native builds. */
+  getPrivateTempDir?(): Promise<string>;
+  /** Added 2026-10-01: deletes an EMPTY folder only. */
+  deleteEmptyFolder?(path: string): Promise<boolean>;
   writeBinaryFile(path: string, base64Content: string): Promise<boolean>;
   /** Added 2026-09-30 (debug-log sink); missing on older native builds. */
   appendTextFile?(path: string, content: string, maxBytes: number): Promise<number>;
@@ -214,6 +218,10 @@ export async function listFolderEntries(folderPath: string): Promise<FolderEntry
   if (!GtdParaFile) {
     logError('listFolderEntries: GtdParaFile native module is not registered');
     throw new Error('GtdParaFile native module is not available on this build.');
+  }
+  if (!(await ensureFileReadPermission())) {
+    logError('listFolderEntries: file read permission not granted', folderPath);
+    throw new Error('File read permission was not granted.');
   }
   log('listFolderEntries: start', folderPath);
   const perfToken = perfStart();
@@ -525,13 +533,27 @@ export async function moveFolderMerge(fromPath: string, toPath: string): Promise
   }
 }
 
-/** Folder name of gtdpara's temp area under the base root. Dot-prefixed, so listFolderEntries never shows it. */
-export const TEMP_FOLDER_NAME = '.gtdpara_tmp';
+let privateTempDir: string | null = null;
 
 /**
- * Recursively deletes a folder inside gtdpara's temp area (`<base>/.gtdpara_tmp/...`).
- * The native side refuses any path that doesn't contain "/.gtdpara_tmp/",
- * so this can never reach user files. Never throws - leftover temp files are
+ * gtdpara's temp folder inside the plugin's PRIVATE folder
+ * (`.../files/plugins/<pluginID>/tmp`) - exempt from every plugin
+ * permission and never visible in the user's file manager
+ * (docs/dev/technical-design-inkhub-submission.md §3.2). Rendered PDF pages
+ * live here, never under Note.
+ */
+export async function getPrivateTempDir(): Promise<string> {
+  if (privateTempDir) return privateTempDir;
+  if (!GtdParaFile?.getPrivateTempDir) throw new Error('getPrivateTempDir is not available on this build.');
+  privateTempDir = await GtdParaFile.getPrivateTempDir();
+  log('getPrivateTempDir:', privateTempDir);
+  return privateTempDir;
+}
+
+/**
+ * Recursively deletes a folder inside gtdpara's PRIVATE temp folder. The
+ * native side refuses any path outside it, so this can never reach user
+ * files and needs no permission. Never throws - leftover temp files are
  * harmless and must not turn into a user-facing failure.
  */
 export async function deleteTempTree(path: string): Promise<void> {
@@ -540,6 +562,35 @@ export async function deleteTempTree(path: string): Promise<void> {
     await GtdParaFile.deleteTempTree(path);
   } catch (e) {
     logError('deleteTempTree: failed', path, e instanceof Error ? e.message : String(e));
+  }
+}
+
+/**
+ * Deletes an EMPTY folder in shared storage. Only call this after the user
+ * confirmed it (storage/deletions.ts's deleteEmptyFoldersConfirmed does
+ * both): it requests FILE:DELETE with `reason` - a text naming what will be
+ * deleted - and the native side refuses anything that isn't an empty folder.
+ * Returns false (and logs) when the permission is refused or the folder is
+ * not empty; throws only when the native call itself fails.
+ */
+export async function deleteEmptyFolder(path: string, reason: string): Promise<boolean> {
+  if (!GtdParaFile?.deleteEmptyFolder) throw new Error('deleteEmptyFolder is not available on this build.');
+  if (!(await ensureFileDeletePermission(reason))) {
+    log('deleteEmptyFolder: delete permission not granted, folder kept', path);
+    return false;
+  }
+  try {
+    await GtdParaFile.deleteEmptyFolder(path);
+    log('deleteEmptyFolder: done', path);
+    return true;
+  } catch (e) {
+    const code = (e as {code?: string} | null)?.code;
+    if (code === 'E_NOT_EMPTY') {
+      logWarn('deleteEmptyFolder: folder is not empty, kept', path);
+      return false;
+    }
+    logError('deleteEmptyFolder: failed', path, e instanceof Error ? e.message : String(e));
+    throw e;
   }
 }
 
@@ -562,45 +613,29 @@ export async function getNoteSystemTemplates(): Promise<NoteTemplate[]> {
   }
 }
 
-// Per-JS-process identifiers so entries from the same app session can be
-// correlated (e.g. "was this the 1st or 5th logged call since this process
-// started", "how many ms after cold start") purely from the FILENAME - no
-// need to open every file to reconstruct the timeline. `debugAttemptSeq` is
-// shared across every event type recordDebugLogEntry logs (createNote, and
-// since 2026-09-22 the shared-note page-engine calls too), so it also
-// answers "in what order did these different kinds of call happen relative
-// to each other" - not just "the Nth of this one event". A fresh id/counter
-// each time this module is loaded (i.e. each PluginHost process), same
-// lifetime as the createNote gate's own apparent state.
+// Per-JS-process identifiers so host-call log lines from the same app session
+// can be correlated ("was this the 1st or 5th logged call since this process
+// started", "how many ms after cold start"). A fresh id/counter each time this
+// module is loaded (i.e. each PluginHost process).
 const DEBUG_SESSION_ID = Math.random().toString(36).slice(2, 8);
 const DEBUG_SESSION_START_MS = Date.now();
 let debugAttemptSeq = 0;
 
 /**
- * Writes ONE small plain-text file per logged event (success AND failure -
- * comparing the two is the whole point, per the "log the context on every
- * attempt" suggestion from the Supernote plugin-dev community) to
- * DEBUG_LOG_FOLDER. Deliberately one file per event rather than appending
- * to a single growing log: GtdParaFile.writeTextFile only overwrites whole
- * files, so appending would mean read-modify-write on an ever-larger file
- * on every single call - slower over time and one bad write could corrupt
- * every earlier entry. One-file-per-event is O(1) per write regardless of
- * history, and the file LISTING itself (sorted by name) is already a
- * readable pass/fail timeline without opening anything. Never throws -
- * failing to write a diagnostic must never turn into a user-facing
- * failure, so every error here is swallowed after being logged.
+ * Logs one host-API call (openPath, createNote, getElements, insertElements
+ * and the shared-note page engine) with its result, timing and launch
+ * context - success AND failure, since comparing the two is the point
+ * (built during the DOC-vs-NOTE createNote investigation,
+ * bugfix_createnote_blocked; generalized 2026-09-22).
  *
- * Generalized (2026-09-22, docs/dev/technical-design-shared-note-pages.md
- * §4/§12 Slice 4) from the createNote-only version built during the
- * DOC-vs-NOTE investigation (bugfix_createnote_blocked) - `event` picks the
- * filename/log-line name, `fields` carries whatever's specific to that call
- * (in the order given), and every other line (session/seq/timing, launch
- * context) stays identical across every event so entries from different
- * calls in the same session can still be correlated purely by filename.
- * `durationMs` (new here, "timing" per §4's "attempt + success/failure +
- * timing" requirement) times the wrapped host-API call itself - useful on
- * its own for §10 risk #3 (`getKeyWords` cost over a large page count)
- * without a separate stopwatch at that call site.
+ * Until 2026-10-01 this wrote one small file per call into
+ * EXPORT/gtdpara/debug - silently, on every call, whether or not the user
+ * had asked for any diagnostics. That is exactly the kind of unannounced
+ * file activity the InkHub review (and our own transparency rule,
+ * docs/dev/technical-design-inkhub-submission.md §3.8) rules out, so it is
+ * now ONE log line through utils/log.ts: always in the in-memory ring buffer
+ * (debug bundle), and in the log file only while the user has switched on
+ * Debug logging. Never throws.
  */
 export async function recordDebugLogEntry(
   event: string,
@@ -608,53 +643,22 @@ export async function recordDebugLogEntry(
   durationMs: number,
   fields: Record<string, string | number | boolean | undefined>,
 ): Promise<void> {
-  if (!GtdParaFile) return;
   debugAttemptSeq += 1;
-  const seq = String(debugAttemptSeq).padStart(3, '0');
-  const status = ok ? 'OK' : 'FAIL';
-  // Status is in the filename on purpose - skimming the folder listing
-  // already shows the pass/fail pattern without opening a single file.
-  const fileName = `${DEBUG_SESSION_ID}-${seq}-${event}-${status}.txt`;
-  // What rememberLaunchNotePath (called by App.tsx's reorient(), on cold
-  // start and on every sidebar-button press) last captured - the file the
-  // plugin was opened from. Its extension (.note vs .pdf vs anything else)
-  // is the closest thing to "which host app resolved this call" we can get
-  // from JS: the SDK exposes no direct getter for the package name
-  // HostCommImpl logs natively (com.supernote.document in every failing
-  // case seen so far) - there is no PluginManager/PluginCommAPI/
-  // PluginFileAPI method that returns it (checked against this SDK
-  // version's full typed surface). If Ratta ever adds one, wire it in here
-  // too; until then, launchNotePath's extension is the practical proxy for
-  // the community's "does this correlate with NOTE vs. DOC context" theory.
+  // What rememberLaunchNotePath (App.tsx's reorient(), on cold start and on
+  // every sidebar-button press) last captured - the file the plugin was
+  // opened from. Its extension (.note vs .pdf) is the closest proxy JS has
+  // for "which host app resolved this call" (NOTE vs. DOC context).
   const launch = getRememberedLaunchNotePath();
   const coldStart = getRememberedColdStartNotePath();
-  const lines = [
-    `event: ${event}`,
-    `result: ${status}`,
-    `timestamp: ${new Date().toISOString()}`,
-    `sessionId: ${DEBUG_SESSION_ID}`,
-    `attemptSeq: ${debugAttemptSeq}`,
-    `msSinceSessionStart: ${Date.now() - DEBUG_SESSION_START_MS}`,
-    `durationMs: ${durationMs}`,
-    ...Object.entries(fields).map(([key, value]) => `${key}: ${value ?? ''}`),
-    `launchNotePath: ${launch ? launch.path ?? '(none - launched from Home)' : '(not captured this session)'}`,
-    `launchNotePathAgeMs: ${launch ? Date.now() - launch.capturedAt : ''}`,
-    // The file open at cold start specifically (never overwritten by later
-    // reopens within the same session) - distinct from launchNotePath above,
-    // which reflects the most recent reopen. Same value as launchNotePath on
-    // attempt 1 of a session; can diverge once the plugin's been reopened
-    // from a different note/PDF/Home since.
-    `coldStartNotePath: ${coldStart ? coldStart.path ?? '(none - launched from Home)' : '(not captured this session)'}`,
-    `coldStartNotePathAgeMs: ${coldStart ? Date.now() - coldStart.capturedAt : ''}`,
-    // Still not capturable from JS - see the comment on `launch` above.
-    'hostPackageName: (not exposed to JS by this SDK version - see adb logcat\'s HostCommImpl line if the computer is connected)',
-  ];
-  try {
-    await GtdParaFile.ensureFolder(DEBUG_LOG_FOLDER);
-    await GtdParaFile.writeTextFile(`${DEBUG_LOG_FOLDER}/${fileName}`, lines.join('\n'));
-  } catch (e) {
-    logError('recordDebugLogEntry: failed to write debug log entry', event, e instanceof Error ? e.message : String(e));
-  }
+  const detail = Object.entries(fields)
+    .map(([key, value]) => `${key}=${value ?? ''}`)
+    .join(' ');
+  const context =
+    `session=${DEBUG_SESSION_ID} seq=${debugAttemptSeq} sinceStartMs=${Date.now() - DEBUG_SESSION_START_MS}` +
+    ` launch=${launch ? launch.path ?? '(Home)' : '(not captured)'}` +
+    ` coldStart=${coldStart ? coldStart.path ?? '(Home)' : '(not captured)'}`;
+  if (ok) log(`hostCall: ${event} OK`, `${durationMs}ms`, detail, context);
+  else logWarn(`hostCall: ${event} FAIL`, `${durationMs}ms`, detail, context);
 }
 
 /** Where utils/perf.ts's trace files land (docs/dev/technical-design-perf-tracing.md §4). */
@@ -671,6 +675,7 @@ let perfFolderEnsured = false;
  */
 export async function writePerfTraceFile(fileName: string, content: string): Promise<void> {
   if (!GtdParaFile) throw new Error('GtdParaFile native module is not available on this build.');
+  if (!(await ensureFileWritePermission())) throw new Error('File write permission was not granted.');
   if (!perfFolderEnsured) {
     await GtdParaFile.ensureFolder(PERF_LOG_FOLDER);
     perfFolderEnsured = true;
@@ -1160,6 +1165,8 @@ export async function deleteElements(path: string, page: number, numsInPage: num
  */
 export async function appendDebugLogFile(fileName: string, content: string, maxBytes: number): Promise<number> {
   if (!GtdParaFile?.appendTextFile) throw new Error('appendTextFile is not available on this build.');
+  // A refusal throws, and utils/logSink.ts then stops file logging for the session.
+  if (!(await ensureFileWritePermission())) throw new Error('File write permission was not granted.');
   return GtdParaFile.appendTextFile(`${DEBUG_LOG_FOLDER}/${fileName}`, content, maxBytes);
 }
 

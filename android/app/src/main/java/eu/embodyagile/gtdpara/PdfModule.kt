@@ -281,18 +281,28 @@ class PdfModule(private val reactContext: ReactApplicationContext) :
                     return@Thread
                 }
                 out.parentFile?.mkdirs()
-                val partFile = File(out.absolutePath + ".part")
+                // The unfinished file lives in the plugin's private temp folder
+                // (no permission needed, never visible to the user). Only the
+                // complete PDF is then COPIED to [out] - a write that replaces
+                // an existing file's content (the user confirmed that in JS
+                // when [overwrite] is set). No delete and no rename in shared
+                // storage, so FILE:DELETE is never needed (InkHub design §3.4).
+                val tmpDir = GtdParaFileModule.privateTmpDir(reactContext)
+                tmpDir.mkdirs()
+                val partFile = File(tmpDir, "$id.pdf.part")
                 part = partFile
                 if (partFile.exists()) partFile.delete()
                 val stats = PdfWriter(partFile, spec, { flag.get() }) { done, total -> emitProgress(id, done, total) }.write()
-                // Replace an earlier version only now that the new one is complete.
-                if (overwrite && out.exists() && !out.delete()) {
-                    promise.reject("E_RENAME", "Could not replace the existing ${out.name}")
+                try {
+                    partFile.inputStream().use { input ->
+                        FileOutputStream(out, false).use { output -> input.copyTo(output) }
+                    }
+                } catch (e: Throwable) {
+                    Log.e(TAG, "buildPdf: copying the finished PDF to $outPath failed", e)
+                    promise.reject("E_WRITE", "Could not write ${out.name}: ${e.message}", e)
                     return@Thread
-                }
-                if (!partFile.renameTo(out)) {
-                    promise.reject("E_RENAME", "Could not rename ${partFile.name} to ${out.name}")
-                    return@Thread
+                } finally {
+                    partFile.delete()
                 }
                 val map = WritableNativeMap()
                 map.putDouble("bytes", out.length().toDouble())

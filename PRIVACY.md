@@ -9,8 +9,28 @@ gtdpara is a local plugin. There is no account, no server and no telemetry.
   folders, so you can read and edit them without gtdpara.
 - **Notes it creates for you** (linked notes, meeting notes, standalone notes), in the same folders.
 - **Plugin settings**, stored in the plugin's own storage on the device (Android AsyncStorage).
+- **Temporary files** while a close-out PDF is made (page images and the unfinished PDF), in the
+  plugin's own private folder on the device - not in your folders. They are removed when the PDF
+  is done, and on the next start if gtdpara was interrupted. Only if the Supernote cannot render
+  pages into that private folder does gtdpara use `EXPORT/gtdpara/tmp` instead; those page images
+  have fixed names, are overwritten by the next PDF and are never deleted by gtdpara.
 
-Permissions requested: file read, file write, internet.
+## Permissions
+
+Each permission is requested right before the first action that needs it:
+
+- **File read / file write**: your PARA folders and `EXPORT/gtdpara`.
+- **File delete**: only after you confirmed a delete that names what is deleted - in practice the
+  empty folder left behind when an area is archived into an Archive folder that already exists.
+  gtdpara never deletes notes or files.
+- **Internet**: only for the two optional integrations below.
+
+## Changes to your files
+
+gtdpara tells you whenever it changes files: your own edits are saved where you made them; new
+notes, PDFs and exports are named with their folder when they are created; moves, overwrites and
+deletes are shown before they happen and confirmed afterwards. The one automatic change is the
+one-time Inbox move in 0.2.0 (for users of earlier builds), which is announced when it happens.
 
 ## Network access
 
@@ -33,10 +53,13 @@ time in your Google account. The ICS link can be reset in Google Calendar settin
 ## Logs and debug info
 
 Diagnostic output goes to the Android system log (`logcat`) on your device, and the last ~1000
-lines are kept in memory while the plugin runs. Nothing is uploaded.
+lines are kept in memory while the plugin runs. Nothing is uploaded, and nothing is written to a
+file unless you switch it on.
 
 - **Debug logging** (Settings → About, off by default) also writes these lines to
-  `EXPORT/gtdpara/debug/gtdpara-log.txt` (at most two files of about 1 MB each).
+  `EXPORT/gtdpara/debug/gtdpara-log.txt`. When it reaches about 1 MB its content is copied over
+  `gtdpara-log.1.txt` and it starts again, so there are at most two files.
+- **Run Integrity Check** (Settings → Advanced) saves its report there too.
 - **Export debug bundle** (Settings → About) saves one text file to the same folder: version,
   device, a settings summary without names, counts, and the recent log. The Gmail app password,
   calendar links and e-mail addresses are removed from it. File paths stay in it, because they

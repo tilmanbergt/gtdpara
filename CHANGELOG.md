@@ -12,6 +12,32 @@ or your project/area files are stored.
 
 - Minor Update to release process. 
 
+### Changed
+- **gtdpara now tells you about every change to your files.** Moves, overwrites and deletes are
+  shown before they happen and confirmed afterwards. Archiving an area from the Weekly Review now
+  asks first, like it does on the area's Current tab.
+- **Deleting only after you confirm it.** When an area is archived into an Archive folder that
+  already exists, the confirmation names the area's then-empty folder; it is deleted only if you
+  also allow it in the Supernote's permission prompt. Otherwise it stays, and gtdpara says so.
+- **Create again** in the close-out's PDF step asks before replacing the existing PDF.
+- Temporary files of a close-out PDF are kept in gtdpara's private folder instead of a hidden
+  folder in `Note`.
+- Diagnostic notes about Supernote calls are no longer written as separate files to
+  `EXPORT/gtdpara/debug`; they go into the log, which is written to a file only while
+  **Debug logging** is on.
+- Clearer permission prompts for Google Calendar and Gmail.
+
+### Fixed
+- A missing file-read permission now shows the Supernote's permission prompt when folders are
+  first listed, instead of an unclear error.
+
+### Upgrade notes
+- gtdpara now declares the **Delete files** permission. It is only requested after you confirmed a
+  delete; see Help → Troubleshooting → Permission prompts.
+- Many small files named like `abc123-001-openPath-OK.txt` in `EXPORT/gtdpara/debug` come from
+  earlier versions and can be deleted. So can a hidden `.gtdpara_tmp` folder in `Note`, if an
+  earlier PDF export was interrupted.
+
 ## [0.2.0] — 2026-10-01
 
 ### Changed

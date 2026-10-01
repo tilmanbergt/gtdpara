@@ -20,7 +20,7 @@ import {GtdParaSettings, resolvePaths} from '../domain/settings';
 import {assignedProjects} from './areaAssignment';
 import {CachedItem, FrontMatterSource, frontMatterOf, removeCachedItem} from './dataCache';
 import {saveFrontMatter} from './projectFile';
-import {moveFolder, moveFolderMerge} from '../supernote/fileSystem';
+import {deleteEmptyFolder, displayPath, folderExists, moveFolder, moveFolderMerge} from '../supernote/fileSystem';
 import {areaArchiveTarget, archiveYear, projectArchiveTargets} from '../domain/closeOut/archivePaths';
 import {isoDate, readLifecycleDate, writeLifecycleDate} from '../domain/lifecycleDates';
 import {log, logError} from '../utils/log';
@@ -101,11 +101,39 @@ export function archiveTargetsFor(
   return {folder: t.folder, pdf: t.pdf, merge: false};
 }
 
+/**
+ * True when archiving `item` will MERGE into an archive folder that already
+ * exists - the only case that leaves an empty source folder behind. Callers
+ * use it to name that folder in the confirmation text before archiving
+ * (docs/dev/technical-design-inkhub-submission.md §3.4/§3.8).
+ */
+export async function archiveLeavesEmptyFolder(
+  item: Pick<CachedItem, 'kind' | 'name'> & FrontMatterSource,
+  settings: GtdParaSettings,
+  today: Date = new Date(),
+): Promise<boolean> {
+  const target = archiveTargetsFor(item, settings, today);
+  return target.merge && (await folderExists(target.folder));
+}
+
+export interface ArchiveResult {
+  path: string;
+  /** The empty source folder left after a merge, when it was NOT deleted (user said no / permission refused). */
+  keptEmptyFolder: string | null;
+}
+
 export async function archiveItem(
   item: Pick<CachedItem, 'kind' | 'name' | 'path' | 'rawContent'> & FrontMatterSource,
   settings: GtdParaSettings,
   today: Date = new Date(),
-): Promise<{path: string}> {
+  /**
+   * Set only when the user's confirmation named the empty folder that a
+   * merge leaves behind: then it is deleted (FILE:DELETE is requested with
+   * a text naming it). Otherwise the empty folder stays and is reported in
+   * the result.
+   */
+  options: {deleteEmptySource?: boolean} = {},
+): Promise<ArchiveResult> {
   if (item.kind === 'area') {
     const block = describeAreaArchiveBlock(item.name);
     if (block) throw new Error(block);
@@ -118,8 +146,30 @@ export async function archiveItem(
   const {folder: toPath, merge} = archiveTargetsFor(item, settings, today);
 
   log('archiveItem: start', item.path, '->', toPath, merge ? '(merge)' : '');
-  if (merge) await moveFolderMerge(item.path, toPath);
-  else await moveFolder(item.path, toPath);
+  let keptEmptyFolder: string | null = null;
+  if (merge) {
+    await moveFolderMerge(item.path, toPath);
+    // A merge into an existing folder moves the contents and leaves the
+    // (now empty) source folder; a plain rename leaves nothing.
+    if (await folderExists(item.path)) {
+      const reason = `Delete the empty folder ${displayPath(item.path)} - its contents were just moved to ${displayPath(toPath)}.`;
+      let deleted = false;
+      if (options.deleteEmptySource) {
+        try {
+          deleted = await deleteEmptyFolder(item.path, reason);
+        } catch (e) {
+          // The move itself succeeded - a failed clean-up must not turn the archive into an error.
+          logError('archiveItem: deleting the empty source folder failed', item.path, e instanceof Error ? e.message : String(e));
+        }
+      }
+      if (!deleted) {
+        keptEmptyFolder = item.path;
+        log('archiveItem: empty source folder kept', item.path);
+      }
+    }
+  } else {
+    await moveFolder(item.path, toPath);
+  }
 
   try {
     await saveFrontMatter(item.kind, toPath, item.rawContent, {
@@ -143,5 +193,5 @@ export async function archiveItem(
 
   removeCachedItem(item.path);
   log('archiveItem: done', item.path, '->', toPath);
-  return {path: toPath};
+  return {path: toPath, keptEmptyFolder};
 }

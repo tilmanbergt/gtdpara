@@ -73,8 +73,8 @@ Checked.
 
 ## Notes for reviewers
 
-The form has no field for this. The full note is public in `docs/inkhub-review.md` (created in
-the implementation step) and linked from the description via the repository. Summary:
+The form has no field for this. The full note is public in `docs/inkhub-review.md` and linked
+from the description via the repository. Summary:
 
 - Source: github.com/tilmanbergt/gtdpara, tag `vX.Y.Z` = this build.
 - Native modules (Kotlin): `GtdParaFile` (folder listing, plain-text/binary read/write, moves -
@@ -92,5 +92,5 @@ the implementation step) and linked from the description via the repository. Sum
 
 ## Updating the listing
 
-See `RELEASING.md` §7 (filled in during implementation): new `.snplg`, description if features
-changed, thumbnails if screens changed.
+See `RELEASING.md` §7: new `.snplg`, description if features changed, thumbnails if screens
+changed.

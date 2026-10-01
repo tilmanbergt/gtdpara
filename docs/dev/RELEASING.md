@@ -149,6 +149,10 @@ CHANGELOG line under Fixed) followed by `./scripts/release.ps1 -Bump patch`.
 - Check the release page on GitHub: text and `.snplg` attached.
 - If it matters to users: update the InkHub listing with the same `.snplg`, post in the Reddit
   thread (one announcement per minor release; patch releases only if users waited for the fix).
+  InkHub runs on the Supernote: copy the `.snplg` (and new screenshots, if screens changed) to
+  `EXPORT/gtdpara/inkhub/`, then InkHub → Upload Item with the values in
+  `docs/dev/inkhub-listing.md`. If permissions changed, update the description's permission
+  paragraph and `docs/inkhub-review.md` first.
 - The next work starts with an empty `## [Unreleased]` section - the script leaves it ready.
 - Triage new issues: `needs-info` (version or log missing), `confirmed` (reproduced, ideally in
   the demo space), `experimental` (Google Calendar / Gmail). Fixes reference the issue

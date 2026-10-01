@@ -54,7 +54,14 @@ export function inboxMigrationNoticeFor(outcome: InboxMigrationOutcome, inboxRel
     case 'none':
       return null;
     case 'moved':
-      return {kind: 'success', text: `Inbox moved to ${inboxRelative}.`};
+      return {
+        kind: 'success',
+        text:
+          `Inbox moved to ${inboxRelative}` +
+          (outcome.linksRewritten > 0
+            ? `; links to its notes updated in ${outcome.linksRewritten} file${outcome.linksRewritten === 1 ? '' : 's'}.`
+            : '.'),
+      };
     case 'blocked':
       return outcome.reason === 'areaNameClash'
         ? {kind: 'warning', text: `Inbox not moved: an Area named ${inboxFolderName} exists. Choose another Inbox folder name in Settings → Folders.`}
