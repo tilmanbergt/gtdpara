@@ -49,7 +49,9 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ItemStatus} from '../domain/types';
 import {resolvePaths} from '../domain/settings';
 import {assignedProjects, assignProjectToArea, unassignProject} from '../storage/areaAssignment';
-import {archiveItem, archiveTargetsFor, describeAreaArchiveBlock} from '../storage/archive';
+import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor, describeAreaArchiveBlock} from '../storage/archive';
+import {archiveDoneText, emptyFolderConfirmNote} from '../domain/fileChangeText';
+import {displayPath} from '../supernote/fileSystem';
 import {ensureItemCached, findCachedItem} from '../storage/dataCache';
 import {useOnScreenShow} from './screenActivity';
 import {loadSettings} from '../storage/settingsStorage';
@@ -59,7 +61,7 @@ import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {ARMING_TEXT, LinkTarget} from './FileBrowserPane';
 import {common} from './commonStyles';
 import {COLORS, FONT} from './theme';
-import {useErrorStatus, useStatus} from './status/StatusProvider';
+import {useErrorStatus, useStatus, useStatusApi} from './status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
 
 interface Props {
@@ -130,6 +132,7 @@ export default function ItemStatusPanel({
   useEinkRefreshOnLoad(state === null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
+  const statusApi = useStatusApi();
   const [archiveError, setArchiveError] = useState<string | null>(null);
   useErrorStatus('ItemStatusPanel.archiveError', archiveError, () => setArchiveError(null));
   // "Can't archive yet" (was a native dialog) and the archive confirm (was
@@ -274,7 +277,11 @@ export default function ItemStatusPanel({
         const base = resolvePaths(settings).base;
         const target = archiveTargetsFor(currentItem(kind, name, path, state), settings);
         const targetLabel = target.folder.startsWith(`${base}/`) ? target.folder.slice(base.length + 1) : target.folder;
-        const mergeNote = target.merge ? ' If that folder already exists, the contents are added to it.' : '';
+        // A merge into an existing folder leaves this folder empty: name it
+        // here, so the confirmation is also the explicit OK for deleting it
+        // (docs/dev/technical-design-inkhub-submission.md §3.4).
+        const leavesEmpty = await archiveLeavesEmptyFolder(currentItem(kind, name, path, state), settings);
+        const mergeNote = leavesEmpty ? emptyFolderConfirmNote(displayPath(path), displayPath(target.folder)) : '';
         // Confirm in the central status slot (D10) - short question in the
         // slot, the full explanation behind a tap on the text (D12).
         setArchiveConfirm({
@@ -284,11 +291,18 @@ export default function ItemStatusPanel({
           } here again — to bring ${plural ? 'them' : 'it'} back, move the folder${plural ? 's' : ''} yourself in Supernote's file browser.`,
           run: () => {
             setArchiving(true);
-            archiveItem(
-              currentItem(kind, name, path, state),
-              settings,
-            )
-              .then(() => onArchived?.())
+            archiveItem(currentItem(kind, name, path, state), settings, undefined, {deleteEmptySource: leavesEmpty})
+              .then(result => {
+                // Global: this panel unmounts once onArchived navigates away.
+                const id = 'ItemStatusPanel.archiveDone';
+                statusApi.show(id, {
+                  kind: result.keptEmptyFolder ? 'info' : 'success',
+                  text: archiveDoneText(name, displayPath(result.path), result.keptEmptyFolder ? displayPath(result.keptEmptyFolder) : null),
+                  scope: 'global',
+                  onDismiss: () => statusApi.clear(id),
+                });
+                onArchived?.();
+              })
               .catch(e => {
                 logError('ItemStatusPanel: archive failed', e instanceof Error ? e.message : String(e));
                 setArchiveError(e instanceof Error ? e.message : String(e));
@@ -301,7 +315,7 @@ export default function ItemStatusPanel({
         setArchiveError(e instanceof Error ? e.message : String(e));
       }
     })();
-  }, [state, kind, name, path, onArchived]);
+  }, [state, kind, name, path, onArchived, statusApi]);
 
   /** Writes the new assignment, then cancels arming - the arm/pick round-trip is complete either way once a pick lands. */
   const handleAssignArea = useCallback(

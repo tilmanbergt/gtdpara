@@ -13,9 +13,14 @@
  * 3. build  - native writer, progress per encoded image page.
  *
  * Cancel works in every phase (between pages while rendering, via the
- * native cancel while building). Rendered PNGs live in
- * `<base>/.gtdpara_tmp/<jobId>/` and are removed in `finally`, success or
- * not. The output file only ever appears complete (.part + rename).
+ * native cancel while building). Rendered PNGs live in the plugin's PRIVATE
+ * temp folder (`<private>/tmp/<jobId>/`, no permission needed, invisible to
+ * the user) and are removed in `finally`, success or not
+ * (docs/dev/technical-design-inkhub-submission.md §3.2). The output file
+ * only ever appears complete: the native writer builds it in the private
+ * temp folder and copies it to `outPath` at the end. (Device-tested
+ * 2026-10-01: the host's page renderer, PluginFileAPI.generateNotePng,
+ * writes into the private folder fine.)
  */
 import {PdfDocument, ResolvedImage} from '../domain/pdf/pdfDocument';
 import {layoutDocument} from '../domain/pdf/pdfLayout';
@@ -29,7 +34,7 @@ import {
   PDF_CANCELLED,
   ppiForMachineType,
 } from '../supernote/pdfNative';
-import {deleteTempTree, ensureFolderExists, TEMP_FOLDER_NAME} from '../supernote/fileSystem';
+import {deleteTempTree, ensureFolderExists, getPrivateTempDir} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 
 export type PdfExportPhase = 'render' | 'layout' | 'build';
@@ -55,9 +60,10 @@ export interface PdfExportResult {
 }
 
 export interface PdfExportOptions {
-  /** Base root (settings) - the temp folder is created under it. */
-  baseRoot: string;
-  /** Replace an existing PDF at the output path (only after the new one is complete). */
+  /**
+   * Replace an existing PDF at the output path (only after the new one is
+   * complete). Callers set this only after the user confirmed replacing it.
+   */
   overwrite?: boolean;
   onProgress?: (p: PdfExportProgress) => void;
 }
@@ -89,7 +95,7 @@ function baseName(path: string): string {
 
 export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfExportOptions): PdfExportJob {
   const jobId = `pdf-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const tempDir = `${options.baseRoot.replace(/\/+$/, '')}/${TEMP_FOLDER_NAME}/${jobId}`;
+  let tempDir: string | null = null;
   let cancelled = false;
   let building = false;
   const report = (p: PdfExportProgress) => {
@@ -105,6 +111,7 @@ export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfEx
 
   const run = async (): Promise<PdfExportResult> => {
     const started = Date.now();
+    tempDir = `${await getPrivateTempDir()}/${jobId}`;
     await ensureFolderExists(tempDir);
 
     // 1. render
@@ -184,7 +191,9 @@ export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfEx
     }
   };
 
-  const done = run().finally(() => deleteTempTree(tempDir));
+  const done = run().finally(() => {
+    if (tempDir) void deleteTempTree(tempDir);
+  });
   log('pdfExport: started', jobId, outPath, `${doc.parts.length} parts`);
   return {
     jobId,

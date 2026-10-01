@@ -42,4 +42,4 @@ The Files pane browses the project folder, Resources and Areas. Tap a file to op
 
 ## Closing out and archiving
 
-For a project the button is **Close out…**: a short wizard that checks nothing is left open, moves results to the area or Resources, can create one PDF of all the project's notes, and then archives it. For an area, **Archive…** moves its folder to the Archive. See [Closing out a project](close-out.md).
+For a project the button is **Close out…**: a short wizard that checks nothing is left open, moves results to the area or Resources, can create one PDF of all the project's notes, and then archives it. For an area, **Archive…** shows where its folder goes and moves it to the Archive after you confirm. See [Closing out a project](close-out.md).

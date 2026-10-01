@@ -1,6 +1,6 @@
 # Technical design: InkHub submission and permission compliance
 
-Status: **draft, waiting for approval** (2026-10-01). Target version: probably **0.3.0** (not final yet).
+Status: **approved and implemented** (2026-10-01), see §7 As built; device test open. Target version: probably **0.3.0** (not final yet).
 
 Goal: submit gtdpara to Ratta's InkHub. It should get through review on the first try, meet Ratta's
 published review rules and still follow our own principles. Ratta's rules come from the
@@ -235,3 +235,82 @@ small; larger ones go to the backlog and are named in the reviewer note.
   the draft is kept short) and whether the description field supports paste.
 - **O4** Version 0.3.0 or later - decided at release time.
 - **O5** Remove the Inbox move code (0.2.0) in a later version → backlog.
+
+## 7. As built (2026-10-01)
+
+Implemented on `feature/inkhub-compliance`. Off-device checks: `npx tsc --noEmit` clean, Jest
+105/105 (new `__tests__/domain/fileChangeText.test.ts`). Device test (§5) done 2026-10-01 by
+Tilman: build compiled, close-out PDF, replace confirmation, area archive with and without the
+delete permission, Review archive confirmation, no per-call debug files, no fallback folder.
+
+**Native (`GtdParaFileModule.kt`, `PdfModule.kt`)**
+- `privateDir`/`privateTmpDir` (companion, shared with `PdfModule`): the npk's own folder, else
+  `<host filesDir>/plugins/<pluginID>`; temp files in `<private>/tmp`.
+- New `getPrivateTempDir`, `deleteEmptyFolder` (empty folders only, `E_NOT_EMPTY` otherwise).
+- `deleteTempTree` guard: canonical path must be inside `<private>/tmp` (was: contains `/.gtdpara_tmp/`).
+- `moveFolderMerge` no longer deletes the emptied source folder.
+- `appendTextFile` rotates by copying over `*.1.txt` and truncating - no delete, no rename.
+- `buildPdf` writes `<private>/tmp/<jobId>.pdf.part` and copies it to the target at the end
+  (truncating write); no delete or rename in shared storage.
+
+**JS**
+- `PluginConfig.json`: `FILE:DELETE` declared.
+- `pluginPermissions.ts`: `ensureFileDeletePermission(description)`; `ensureInternetPermission(description?)`
+  with a generic default; Calendar and Gmail pass their own text.
+- `fileSystem.ts`: `listFolderEntries` checks read permission; `appendDebugLogFile` and
+  `writePerfTraceFile` check write permission (a refusal stops file logging for the session, as
+  any write error did); `getPrivateTempDir`, `deleteEmptyFolder(path, reason)`; the
+  `.gtdpara_tmp` constant is gone.
+- **`recordDebugLogEntry` no longer writes files.** Found during implementation: it wrote one file
+  per host call (openPath, createNote, getElements, insertElements, shared-note page engine) into
+  `EXPORT/gtdpara/debug` on every call, unconditionally - unannounced file activity that §3.8
+  rules out. It is now one `log`/`logWarn` line with the same fields (in the ring buffer always,
+  in the log file only with Debug logging on). Upgrade note tells users the old files can go.
+- `pdfExport.ts`: rendered pages in `<private>/tmp/<jobId>/`, removed in `finally`; App start
+  clears `<private>/tmp` once. A temporary fallback to `EXPORT/gtdpara/tmp` (in case the host's
+  page renderer `generateNotePng` could not write into the private folder) was removed again
+  after the device test showed the private folder works (2026-10-01).
+- `closeOut/pdf.ts` + `CloseOutWizard.tsx`: "Create PDF / Create again" checks whether the PDF
+  exists; if so, a status-slot confirm ("Replace …?" / Replace, ✕) - overwrite only after Replace.
+  `PdfStep` text updated.
+- `archive.ts`: `archiveLeavesEmptyFolder()`; `archiveItem(..., {deleteEmptySource})` returns
+  `{path, keptEmptyFolder}`. After a merge, if the source folder still exists: delete it only when
+  the confirmation named it (`deleteEmptyFolder` with a reason naming it), otherwise keep it and
+  report it. A failed clean-up never fails the archive.
+- `ItemStatusPanel.tsx` (Area archive): confirmation names the empty folder when there will be
+  one; afterwards a global status message "Moved … to …" (plus "the empty folder … was kept").
+- `ReviewScreen.tsx`: **Area archive now asks first** (it used to move the folder on one tap -
+  a §3.8 gap found during the audit), with the same texts; acted-on marks only after confirming.
+- `domain/fileChangeText.ts`: the shared before/after texts.
+- Smaller §3.8 fixes: Integrity Check success names its report file; "Create demo space" names
+  `Note/gtdpara-demo`; the Inbox-move notice says in how many files links were updated; the
+  integrity finding for old Inbox leftovers also covers "only an empty folder was left behind"
+  (the Inbox move's merge no longer deletes it - decision 1.6, no prompt at startup).
+- Old hidden `Note/.gtdpara_tmp` folders: not reported by the Integrity Check as planned in
+  §3.2 - `listFolderEntries` hides dot-folders, so JS cannot see them. Covered by an Upgrade note
+  instead (they only exist after an interrupted export, since the old code always cleaned up).
+
+**§3.8 audit result** (every file-changing call site):
+
+| Call site | Kind | Status |
+|---|---|---|
+| `projectFile.ts`, `itemMutations`, `closeOut/planStore.ts` | user's own edits | OK |
+| `createItem.ts` (Create Project/Area) | created on tap, item appears | OK |
+| `noteLinks.ts`, `standaloneNotes.ts`, `textNote.ts`, `meetingNoteContent.ts`, `sharedNotePages.ts` | notes created on tap, opened / linked on the row | OK |
+| `gmailAttachments.ts`, `gmailEmailNote.ts` | saved on tap, shown as the item's linked file | OK (no separate message; experimental) |
+| `profiles.ts`, `debugBundle.ts` | saved on tap, message names the file | OK |
+| `integrityCheck.ts` report | message now names the file | fixed |
+| `demoSpace.ts` | message now names the folder | fixed |
+| `pdfExport.ts` / close-out PDF | named in the PDF step; replace now confirmed | fixed |
+| `closeOut/execute.ts` moves | listed in the Archive step before, results after | OK |
+| `archive.ts` (Item status panel) | confirm before, message after, empty folder named | fixed |
+| `archive.ts` (Review) | had no confirmation | fixed |
+| `inboxMigration.ts` (automatic, once) | notice names target and link updates | fixed |
+| `inboxMigration.ts` rename (Settings → Folders) | on Save, message after | OK |
+| `recordDebugLogEntry` files | unannounced files | removed (log lines) |
+| debug log / perf traces | only when switched on by the user | OK |
+
+**Docs**: PRIVACY.md (permissions, file changes, temp files, log rotation), help pages
+(troubleshooting: permission prompts; close-out; projects-and-areas), CHANGELOG `[Unreleased]`,
+DEVELOPMENT-POLICY §3 (file changes visible, deletes, permissions, diagnostics), design-overview
+§2.8 and §3, RELEASING §7 (InkHub update step), new public `docs/inkhub-review.md`.

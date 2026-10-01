@@ -98,7 +98,7 @@ describe('migrateInboxIfNeeded', () => {
     expect(inbox).toContain(`[[${NEW}/Todos/Call Bob.note]]`); // absolute: rewritten
     expect(mockFiles.get(`${BASE}/2 Areas/Home/area.txt`)).toContain('+[[2 Areas/0 Inbox/Todos/Call Bob.note]]');
     expect(await effectiveInboxFolderFor(paths)).toBe(NEW);
-    expect(takeInboxMigrationNotice()).toEqual({kind: 'success', text: 'Inbox moved to 2 Areas/0 Inbox.'});
+    expect(takeInboxMigrationNotice()).toEqual({kind: 'success', text: 'Inbox moved to 2 Areas/0 Inbox; links to its notes updated in 2 files.'});
     expect(takeInboxMigrationNotice()).toBeNull();
     // Once per base per session.
     expect(await migrateInboxIfNeeded(paths)).toBe(outcome);

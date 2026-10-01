@@ -160,9 +160,9 @@
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
-import {FolderEntry, listFolderEntries, openPath} from '../supernote/fileSystem';
+import {FolderEntry, listFolderEntries, openPath, subscribeFolderChanges} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
-import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
+import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import MiniTabs from './MiniTabs';
 import PagedSection from './PagedSection';
 import {JumpTo} from './pagination';
@@ -492,6 +492,22 @@ export default function FileBrowserPane({
   const pickNavigateDepth = isSourcesRoot ? 1 : 0;
   const showSourceChooser = isSourcesRoot && depth === 0;
 
+  // Rescan the shown folder when something creates or moves a file in it
+  // (supernote/fileSystem.ts's folder-change notifications) - e.g. a Quick
+  // Add note created right into this folder. Quiet: the old listing stays
+  // on screen until the new one arrives (no loading state, no flicker).
+  const [reloadTick, setReloadTick] = useState(0);
+  const shownPathRef = useRef<string | null>(null);
+  shownPathRef.current = current?.path ?? null;
+  useEffect(
+    () =>
+      subscribeFolderChanges(folder => {
+        if (folder === shownPathRef.current?.replace(/\/+$/, '')) setReloadTick(t => t + 1);
+      }),
+    [],
+  );
+  const loadedPathRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!current) return;
     if (showSourceChooser && activeRoot?.sources) {
@@ -502,18 +518,23 @@ export default function FileBrowserPane({
       return;
     }
     let cancelled = false;
-    setLoading(true);
+    const quiet = loadedPathRef.current === current.path;
+    if (!quiet) setLoading(true);
     setError(null);
     (async () => {
       try {
-        log('FileBrowserPane: loading', current.path);
+        log('FileBrowserPane: loading', current.path, quiet ? '(refresh)' : '');
         const result = await listFolderEntries(current.path);
         // Alphabetical, locale-aware, case-insensitive - see the module doc
         // comment's 2026-09-10 note. A real scan only; the `sources` root's
         // synthetic depth-0 chooser is built separately, above, and is
         // deliberately left in its caller-declared order.
         const sorted = [...result].sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
-        if (!cancelled) setEntries(sorted);
+        if (!cancelled) {
+          setEntries(sorted);
+          loadedPathRef.current = current.path;
+          if (quiet) requestEinkRefresh();
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         logError('FileBrowserPane: load failed', current.path, message);
@@ -533,7 +554,7 @@ export default function FileBrowserPane({
     // level change (or genuinely entering/leaving the depth-0 chooser)
     // should trigger a rescan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.path, showSourceChooser]);
+  }, [current?.path, showSourceChooser, reloadTick]);
 
   /** Which `sources` entry `current` (the folder actually being listed, one level below the depth-0 chooser) came from - null off a non-`sources` root, or above/below that level. Depends only on `current`, not on which of its child entries is being picked/navigated - every entry at pickNavigateDepth came from the same one source. */
   const currentSourceKind = (): 'project' | 'area' | null => {

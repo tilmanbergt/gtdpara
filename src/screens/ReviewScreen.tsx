@@ -193,7 +193,8 @@ import {
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {isoWeekKey} from '../domain/weekDate';
-import {archiveItem} from '../storage/archive';
+import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../storage/archive';
+import {archiveDoneText, emptyFolderConfirmNote} from '../domain/fileChangeText';
 import {planStatusLabel} from '../domain/closeOut/plan';
 import {
   CachedItem,
@@ -247,7 +248,7 @@ import {
 } from '../storage/reviewAggregate';
 import {loadSettings, updateReviewSteps} from '../storage/settingsStorage';
 import {SettableStatus, setItemStatus} from '../storage/statusControl';
-import {FolderEntry, openPath} from '../supernote/fileSystem';
+import {displayPath, FolderEntry, openPath} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {RefreshHandle} from '../ui/TabBar';
@@ -1033,21 +1034,63 @@ export default function ReviewScreen({
     requestEinkRefresh();
   };
 
-  const handleArchiveItem = async (itemRef: ReviewItemRef): Promise<void> => {
+  /**
+   * Archives an Area after an explicit confirmation in the status slot that
+   * names the target folder - and, when it merges into an existing folder,
+   * the then-empty folder that gets deleted
+   * (docs/dev/technical-design-inkhub-submission.md §3.4/§3.8). Resolves true
+   * once archived, false when the user cancelled (the card is then left as it was).
+   */
+  const handleArchiveItem = async (itemRef: ReviewItemRef): Promise<boolean> => {
     // Projects always archive through the close-out checklist (quick archive -
     // docs/dev/technical-design-project-close-out.md §6.1); Areas archive directly.
     if (itemRef.kind === 'project' && onStartCloseOut) {
       onStartCloseOut(itemRef.path, 'quick');
-      return;
+      return false;
     }
     if (!settings) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
     const cachedItem = findCachedItem(itemRef.path);
     if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - tap 🔄 to refresh.`);
-    await archiveItem(cachedItem, settings);
+    const target = archiveTargetsFor(cachedItem, settings);
+    const leavesEmpty = await archiveLeavesEmptyFolder(cachedItem, settings);
+    const confirmId = 'ReviewScreen.archiveConfirm';
+    const confirmed = await new Promise<boolean>(resolve => {
+      statusApi.show(confirmId, {
+        kind: 'confirm',
+        text: `Move "${itemRef.name}" to ${displayPath(target.folder)}?`,
+        detail:
+          `This moves the folder ${displayPath(itemRef.path)} into ${displayPath(target.folder)}.` +
+          (leavesEmpty ? emptyFolderConfirmNote(displayPath(itemRef.path), displayPath(target.folder)) : '') +
+          ' gtdpara will not show it here again.',
+        actions: [
+          {
+            label: 'Move to Archive',
+            primary: true,
+            onPress: () => {
+              statusApi.clear(confirmId);
+              resolve(true);
+            },
+          },
+        ],
+        onCancel: () => {
+          statusApi.clear(confirmId);
+          resolve(false);
+        },
+      });
+    });
+    if (!confirmed) return false;
+    const result = await archiveItem(cachedItem, settings, undefined, {deleteEmptySource: leavesEmpty});
     log('ReviewScreen: archived', itemRef.path);
+    const doneId = 'ReviewScreen.archiveDone';
+    statusApi.show(doneId, {
+      kind: result.keptEmptyFolder ? 'info' : 'success',
+      text: archiveDoneText(itemRef.name, displayPath(result.path), result.keptEmptyFolder ? displayPath(result.keptEmptyFolder) : null),
+      onDismiss: () => statusApi.clear(doneId),
+    });
     refreshFromCache();
     bump('archived');
     requestEinkRefresh();
+    return true;
   };
 
   /** Stalled projects step only - like handleItemStatusChange, but also marks the card acted-on (checkmarked, still in the list, still reopenable - see the module doc comment's "Frozen snapshots" note) rather than removing it from the frozen snapshot. */
@@ -1058,7 +1101,7 @@ export default function ReviewScreen({
 
   /** Stalled projects step only - see handleStalledStatusChange. */
   const handleStalledArchive = async (itemRef: ReviewItemRef): Promise<void> => {
-    await handleArchiveItem(itemRef);
+    if (!(await handleArchiveItem(itemRef))) return;
     setStalledActedOn(prev => new Set(prev).add(itemRef.path));
   };
 
@@ -1070,7 +1113,7 @@ export default function ReviewScreen({
 
   /** Neglected areas step only - see handleStalledStatusChange. */
   const handleNeglectedArchive = async (itemRef: ReviewItemRef): Promise<void> => {
-    await handleArchiveItem(itemRef);
+    if (!(await handleArchiveItem(itemRef))) return;
     setNeglectedActedOn(prev => new Set(prev).add(itemRef.path));
   };
 
@@ -1082,7 +1125,7 @@ export default function ReviewScreen({
 
   /** Done awaiting review step only - see handleDoneStatusChange. */
   const handleDoneArchive = async (itemRef: ReviewItemRef): Promise<void> => {
-    await handleArchiveItem(itemRef);
+    if (!(await handleArchiveItem(itemRef))) return;
     setDoneActedOn(prev => new Set(prev).add(itemRef.path));
   };
 
@@ -1094,7 +1137,7 @@ export default function ReviewScreen({
 
   /** On Hold reconsideration step only - see handleDoneStatusChange. */
   const handleOnHoldArchive = async (itemRef: ReviewItemRef): Promise<void> => {
-    await handleArchiveItem(itemRef);
+    if (!(await handleArchiveItem(itemRef))) return;
     setOnHoldActedOn(prev => new Set(prev).add(itemRef.path));
   };
 

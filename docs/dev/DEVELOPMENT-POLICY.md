@@ -64,7 +64,19 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
 - **Secrets** (passwords, private calendar links) are never written to a file, a log, a debug
   bundle or a profile file.
 - **Everything gtdpara exports** goes under `EXPORT/gtdpara/` (`debug/`, `profiles/`), never
-  under `Note/`.
+  under `Note/`. Diagnostics are written to a file only when the user asked for it (Debug
+  logging, Export debug bundle, Integrity Check, perf tracing) - never silently.
+- **File changes are visible** (`technical-design-inkhub-submission.md` §3.8): the user's own
+  edits need nothing extra; created files are named with their folder in the status slot; moves,
+  overwrites and deletes are shown before they happen (confirmation) and reported afterwards;
+  automatic changes (migrations) are announced. Texts for these live in `domain/fileChangeText.ts`.
+- **Deletes** in shared storage only after a confirmation that names what is deleted, then
+  `ensureFileDeletePermission(<text naming it>)`, then `deleteEmptyFolder` (the native side only
+  deletes empty folders). "No" leaves things as they are and says so. Temporary files live only
+  in the plugin's private folder (`getPrivateTempDir`, `deleteTempTree`). No other native delete.
+- **Permissions**: every file or network call checks its permission right before use
+  (`supernote/pluginPermissions.ts`); a new permission needs a line in PRIVACY.md and in
+  `docs/dev/inkhub-listing.md`.
 - **Reuse the shared building blocks**: status slot for messages, `PagedSection` for lists, the
   PDF pipeline, wizard frame, operation journal for multi-step file moves
   (design-overview §3 "Reusable building blocks").

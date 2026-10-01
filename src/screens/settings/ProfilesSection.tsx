@@ -75,7 +75,7 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
   const handleDemo = () =>
     run(async () => {
       const r = await createDemoSpace();
-      const files = r.written > 0 ? `${r.written} demo files written` : 'demo files already there';
+      const files = r.written > 0 ? `${r.written} demo files written to Note/gtdpara-demo` : 'demo files already in Note/gtdpara-demo';
       return `${files}${r.skipped > 0 && r.written > 0 ? `, ${r.skipped} kept` : ''}${r.profileCreated ? ', profile "Demo" added' : ''}.`;
     });
 

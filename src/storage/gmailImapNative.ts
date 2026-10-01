@@ -130,7 +130,7 @@ export function describeGmailFailure(e: unknown): Error & {kind: GmailErrorKind}
 async function callNative<T>(call: (native: GmailImapNativeModule) => Promise<T>): Promise<T> {
   try {
     const native = requireModule();
-    const granted = await ensureInternetPermission();
+    const granted = await ensureInternetPermission('Allow GtdPara to connect to your Gmail inbox (imap.gmail.com) - only when you tap Load or act on an email.');
     if (!granted) {
       throw new Error('Internet access was not allowed.');
     }

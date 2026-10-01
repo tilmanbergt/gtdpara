@@ -44,7 +44,8 @@ import {cancelMeeting, closeTask, moveMeetingTo, moveTaskTo, MoveTarget} from '.
 import {PdfExportCancelled} from '../storage/pdfExport';
 import {loadSettings} from '../storage/settingsStorage';
 import {setDoneDate} from '../storage/statusControl';
-import {openPath} from '../supernote/fileSystem';
+import {fileExists, openPath} from '../supernote/fileSystem';
+import {replacePdfConfirmText} from '../domain/fileChangeText';
 import ArchiveStep, {ArchiveRunState} from '../ui/closeOut/ArchiveStep';
 import ChecklistStep, {ChecklistActions} from '../ui/closeOut/ChecklistStep';
 import ContentsStep from '../ui/closeOut/ContentsStep';
@@ -57,7 +58,7 @@ import StepIndicator, {StepDef} from '../ui/wizard/StepIndicator';
 import WizardFrame from '../ui/wizard/WizardFrame';
 import {logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
-import {useErrorStatus} from '../ui/status/StatusProvider';
+import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
 
 interface Props {
   projectPath: string;
@@ -242,7 +243,43 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
   };
 
   // ---- step 4: PDF ----
+  // Replacing an existing PDF is announced and confirmed first
+  // (docs/dev/technical-design-inkhub-submission.md §3.4/§3.8).
+  const [replaceConfirm, setReplaceConfirm] = useState<string | null>(null);
+  useStatus(
+    'CloseOutWizard.replacePdf',
+    replaceConfirm
+      ? {
+          kind: 'confirm',
+          text: replacePdfConfirmText(replaceConfirm),
+          actions: [
+            {
+              label: 'Replace',
+              primary: true,
+              onPress: () => {
+                setReplaceConfirm(null);
+                startPdf(true);
+              },
+            },
+          ],
+          onCancel: () => setReplaceConfirm(null),
+        }
+      : null,
+  );
   const createPdf = () => {
+    if (!ctx || pdfRun.running) return;
+    setActionError(null);
+    fileExists(ctx.workingPdfPath)
+      .then(exists => {
+        if (exists) setReplaceConfirm(ctx.display(ctx.workingPdfPath));
+        else startPdf(false);
+      })
+      .catch(e => {
+        logError('CloseOutWizard: checking for an existing PDF failed', message(e));
+        setActionError(message(e));
+      });
+  };
+  const startPdf = (replaceExisting: boolean) => {
     if (!ctx || pdfRun.running) return;
     setActionError(null);
     setPdfRun({...IDLE_PDF, running: true});
@@ -254,7 +291,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       lastPaint.current = now;
       setPdfRun(prev => ({...prev, progress: p}));
       requestEinkRefresh();
-    });
+    }, replaceExisting);
     pdfJobRef.current = job;
     job.done
       .then(async result => {

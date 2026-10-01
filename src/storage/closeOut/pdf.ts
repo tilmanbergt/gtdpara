@@ -24,7 +24,16 @@ function localDateTime(d: Date): string {
   return `${isoDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function startCloseOutPdf(ctx: CloseOutContext, onProgress: (p: PdfExportProgress) => void): CloseOutPdfJob {
+/**
+ * `replaceExisting`: the user confirmed replacing an existing PDF at
+ * ctx.workingPdfPath (CloseOutWizard asks first). Without it, an existing
+ * file makes the export fail instead of being overwritten.
+ */
+export function startCloseOutPdf(
+  ctx: CloseOutContext,
+  onProgress: (p: PdfExportProgress) => void,
+  replaceExisting = false,
+): CloseOutPdfJob {
   const today = isoDate(new Date());
   const doc = buildArchiveDocument({
     projectName: ctx.item.name,
@@ -40,8 +49,7 @@ export function startCloseOutPdf(ctx: CloseOutContext, onProgress: (p: PdfExport
     outcomeLabel: ctx.outcomeLabel,
   });
   const job = startPdfExport(doc, ctx.workingPdfPath, {
-    baseRoot: ctx.paths.base,
-    overwrite: true,
+    overwrite: replaceExisting,
     onProgress,
   });
   const done = job.done.then(async result => {

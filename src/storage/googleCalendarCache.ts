@@ -236,7 +236,7 @@ async function doRefresh(icsUrl: string): Promise<GoogleCalendarCacheState> {
   }
 
   try {
-    const granted = await ensureInternetPermission();
+    const granted = await ensureInternetPermission('Allow GtdPara to download your Google Calendar (the ICS link you entered) - only when you tap Load or Refresh.');
     if (!granted) {
       cached = {fetchedAt: previousFetchedAt, events: previousEvents, error: 'Internet access was not allowed.'};
       return cached;

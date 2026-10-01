@@ -1,5 +1,6 @@
 package eu.embodyagile.gtdpara
 
+import android.content.Context
 import android.util.Log
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -29,6 +30,21 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
 
     companion object {
         private const val TAG = "GtdParaFile"
+
+        /**
+         * The plugin's private folder (`.../files/plugins/<pluginID>`), the
+         * one place exempt from every plugin permission (Supernote docs,
+         * plugin-base/permission). Derived from the installed npk's own
+         * folder; falls back to `<host filesDir>/plugins/<pluginID>`.
+         */
+        fun privateDir(context: Context): File {
+            val fromNpk = PluginRuntimeGuard.npkPath?.let { File(it).parentFile }
+            if (fromNpk != null && fromNpk.isDirectory) return fromNpk
+            return File(context.filesDir, "plugins/${PluginRuntimeGuard.pluginId}")
+        }
+
+        /** gtdpara's temp folder inside [privateDir] - rendered PDF pages, PDF .part files. */
+        fun privateTmpDir(context: Context): File = File(privateDir(context), "tmp")
     }
 
     init {
@@ -264,8 +280,10 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
      * that already holds archived projects - close-out design §2.2, decision
      * 23). Checks every top-level child for a name collision FIRST and
      * rejects with E_COLLISION listing them before anything moves; only then
-     * moves each child and removes the (now empty) source folder. When
-     * [toPath] doesn't exist this is a plain rename, like moveFolder.
+     * moves each child. The (now empty) source folder is left in place -
+     * removing it is the caller's job, after the user confirmed it
+     * ([deleteEmptyFolder]). When [toPath] doesn't exist this is a plain
+     * rename, like moveFolder.
      */
     @ReactMethod
     fun moveFolderMerge(fromPath: String?, toPath: String?, promise: Promise) {
@@ -307,8 +325,10 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
                     return
                 }
             }
-            source.delete()
-            Log.d(TAG, "moveFolderMerge: merged ${children.size} entries")
+            // The now-empty source folder is NOT deleted here: deleting is a
+            // separate, user-confirmed step (JS: confirm, request
+            // FILE:DELETE, then deleteEmptyFolder) - InkHub design §3.4.
+            Log.d(TAG, "moveFolderMerge: merged ${children.size} entries, source left in place")
             promise.resolve(true)
         } catch (error: Throwable) {
             Log.e(TAG, "moveFolderMerge: failed fromPath=$fromPath toPath=$toPath", error)
@@ -316,17 +336,40 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    private fun privateTmpDir(): File = privateTmpDir(reactApplicationContext)
+
+    /** Resolves the absolute path of gtdpara's private temp folder (created if missing). */
+    @ReactMethod
+    fun getPrivateTempDir(promise: Promise) {
+        PluginRuntimeGuard.trace("GtdParaFile.getPrivateTempDir")
+        try {
+            val tmp = privateTmpDir()
+            if (!tmp.exists()) tmp.mkdirs()
+            Log.d(TAG, "getPrivateTempDir: path=${tmp.absolutePath} exists=${tmp.isDirectory}")
+            promise.resolve(tmp.absolutePath)
+        } catch (error: Throwable) {
+            Log.e(TAG, "getPrivateTempDir: failed", error)
+            promise.reject("E_PRIVATE_DIR", error.message, error)
+        }
+    }
+
+    private fun isInsidePrivateTmp(path: String): Boolean {
+        val tmp = privateTmpDir().canonicalPath
+        val target = File(path).canonicalPath
+        return target == tmp || target.startsWith("$tmp/")
+    }
+
     /**
-     * Recursively deletes [path] - but ONLY inside gtdpara's own temp area:
-     * the path must contain "/.gtdpara_tmp/" (rendered page PNGs, close-out
-     * design §2.2). Anything else rejects without touching the disk. This is
-     * the only delete in the plugin, structurally unable to reach user files.
+     * Recursively deletes [path] - but ONLY inside gtdpara's private temp
+     * folder ([privateTmpDir]), which needs no permission and is never shared
+     * storage. Anything else rejects without touching the disk, so this can
+     * structurally never reach a user file.
      */
     @ReactMethod
     fun deleteTempTree(path: String?, promise: Promise) {
         PluginRuntimeGuard.trace("GtdParaFile.deleteTempTree")
-        if (path.isNullOrEmpty() || !path.contains("/.gtdpara_tmp/")) {
-            promise.reject("E_NOT_TEMP", "Refusing to delete outside .gtdpara_tmp: $path")
+        if (path.isNullOrEmpty() || !isInsidePrivateTmp(path)) {
+            promise.reject("E_NOT_TEMP", "Refusing to delete outside the private temp folder: $path")
             return
         }
         try {
@@ -336,6 +379,49 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
             promise.resolve(ok)
         } catch (error: Throwable) {
             Log.e(TAG, "deleteTempTree: failed path=$path", error)
+            promise.reject("E_DELETE", error.message, error)
+        }
+    }
+
+    /**
+     * Deletes [path] only if it is an EMPTY folder (InkHub design §3.4).
+     * Called by JS only after the user confirmed the delete and FILE:DELETE
+     * was granted. Refuses files and non-empty folders (E_NOT_EMPTY), so a
+     * bug can never delete user content. Resolves true when the folder is
+     * gone (or was already gone).
+     */
+    @ReactMethod
+    fun deleteEmptyFolder(path: String?, promise: Promise) {
+        PluginRuntimeGuard.trace("GtdParaFile.deleteEmptyFolder")
+        if (path.isNullOrEmpty()) {
+            promise.reject("E_PATH", "No folder path given")
+            return
+        }
+        try {
+            val folder = File(path)
+            if (!folder.exists()) {
+                promise.resolve(true)
+                return
+            }
+            if (!folder.isDirectory) {
+                promise.reject("E_NOT_DIRECTORY", "Not a folder: $path")
+                return
+            }
+            val children = folder.list()
+            if (children == null || children.isNotEmpty()) {
+                Log.w(TAG, "deleteEmptyFolder: not empty (${children?.size}) path=$path")
+                promise.reject("E_NOT_EMPTY", "Folder is not empty: $path")
+                return
+            }
+            val ok = folder.delete()
+            Log.d(TAG, "deleteEmptyFolder: ok=$ok path=$path")
+            if (!ok) {
+                promise.reject("E_DELETE", "Could not delete the folder")
+                return
+            }
+            promise.resolve(true)
+        } catch (error: Throwable) {
+            Log.e(TAG, "deleteEmptyFolder: failed path=$path", error)
             promise.reject("E_DELETE", error.message, error)
         }
     }
@@ -415,9 +501,10 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
      * Appends text to a file, creating it (and missing parent folders) if
      * needed - the optional debug-log sink (utils/logSink.ts,
      * docs/dev/technical-design-about-debug-experimental.md §3.3). When the
-     * file would grow beyond [maxBytes] (> 0), it is first renamed to
-     * "<name>.1.<ext>" (replacing an older one), so at most two log files
-     * exist. Resolves to the file's new length in bytes.
+     * file would grow beyond [maxBytes] (> 0), its content is first copied
+     * over "<name>.1.<ext>" and the file is truncated - writes only, no
+     * delete or rename - so at most two log files exist. Resolves to the
+     * file's new length in bytes.
      */
     @ReactMethod
     fun appendTextFile(path: String?, content: String?, maxBytes: Double, promise: Promise) {
@@ -434,9 +521,13 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
             if (limit > 0 && file.exists() && file.length() + bytes.size > limit) {
                 val dot = path.lastIndexOf('.')
                 val rotatedPath = if (dot > path.lastIndexOf('/')) path.substring(0, dot) + ".1" + path.substring(dot) else "$path.1"
-                val rotated = File(rotatedPath)
-                if (rotated.exists()) rotated.delete()
-                if (!file.renameTo(rotated)) file.delete()
+                // Rotate by OVERWRITING, never deleting or renaming (no
+                // FILE:DELETE needed): copy the full log over the ".1" file,
+                // then truncate the current one.
+                file.inputStream().use { input ->
+                    FileOutputStream(File(rotatedPath), false).use { output -> input.copyTo(output) }
+                }
+                FileOutputStream(file, false).use { }
                 Log.d(TAG, "appendTextFile: rotated path=$path")
             }
             FileOutputStream(file, true).use { it.write(bytes) }
