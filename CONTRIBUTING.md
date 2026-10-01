@@ -37,6 +37,7 @@ Please **open an issue first** and wait for a go before starting a pull request.
 product coherent and avoids wasted work on both sides. Small, obvious fixes (typos, broken links)
 are fine without asking.
 
+- Rules and checklists for every change: `docs/dev/DEVELOPMENT-POLICY.md`
 - Build instructions and a tour of the code: `docs/dev/README.md`
 - Keep `src/domain/` free of React Native and `sn-plugin-lib` imports.
 - Add a line to `CHANGELOG.md` under `[Unreleased]` describing the change for users.

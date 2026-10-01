@@ -732,8 +732,7 @@ These are the rules this codebase has settled on. A change that doesn't fit one 
 
 **Verification**
 
-- Pure `domain/`/`storage/` logic gets a standalone Node script, not a full test framework — this project has consistently verified parsing, time math, and aggregation this way rather than standing up Jest.
-- A `tsc --noEmit` pass against real `@types/react`/`@types/react-native` (with hand-written shims for `sn-plugin-lib` and AsyncStorage) is the standing way to catch type errors before shipping to device — there's a persistent scratch project for this rather than rebuilding the shim setup each time.
+- Superseded 2026-10-01 by `docs/dev/DEVELOPMENT-POLICY.md` §7: pure logic gets Jest tests in `__tests__/` (`npm test`), scripts are checked with `npm run test:scripts`, and `npx tsc --noEmit` runs in the repository itself. Earlier code was verified with standalone Node scripts and a separate shim project; that is no longer the standard.
 
 ## 4. Outstanding scope
 

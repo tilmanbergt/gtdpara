@@ -1,6 +1,7 @@
 # gtdpara — developer notes
 
-Everything here is for people working on the code. End-user documentation lives in
+Everything here is for people working on the code. **Start with `DEVELOPMENT-POLICY.md`**: the
+rules and checklists every change and every release has to meet. End-user documentation lives in
 `docs/user/` (start page: `index.md`).
 
 ## Building

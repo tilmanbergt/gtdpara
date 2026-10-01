@@ -114,7 +114,7 @@ $tscOut = & npx tsc --noEmit 2>&1
 $tscErrors = @($tscOut | Select-String -Pattern 'error TS').Count
 if ($tscErrors -gt 0) {
     $tscOut | Select-String -Pattern 'error TS' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Line }
-    Write-Host "tsc: $tscErrors error(s) (some are known and pre-existing, see technical_debt #7)." -ForegroundColor Yellow
+    Write-Host "tsc: $tscErrors error(s) - a release should have none (docs/dev/DEVELOPMENT-POLICY.md section 7)." -ForegroundColor Yellow
     if (-not (Confirm-Yes 'Continue anyway?')) { Stop-Release 'type check failed' }
 } else {
     Write-Host 'tsc: no errors' -ForegroundColor Green
@@ -122,6 +122,8 @@ if ($tscErrors -gt 0) {
 
 & node (Join-Path $root 'scripts\test-versioning.mjs')
 if ($LASTEXITCODE -ne 0) { Stop-Release 'scripts/test-versioning.mjs failed' }
+& node (Join-Path $root 'scripts\test-userdocs.mjs')
+if ($LASTEXITCODE -ne 0) { Stop-Release 'scripts/test-userdocs.mjs failed (help pages)' }
 
 & npx jest --passWithNoTests
 if ($LASTEXITCODE -ne 0) {
