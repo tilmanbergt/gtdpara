@@ -81,7 +81,7 @@
  * buildReviewAggregate - the same "pure sync transform over the already-warm
  * dataCache.ts cache" pattern storage/dailyAggregate.ts uses for the Daily
  * tab, so this is effectively instant regardless of how many Projects/Areas
- * exist. Inbox.txt is loaded directly (loadProjectFile('inbox', basePath)),
+ * exist. Inbox.txt is loaded directly (loadProjectFile('inbox', inboxPath)),
  * same as screens/InboxScreen.tsx and DailyView.tsx's Inbox-sourced rows,
  * since it's a single flat file outside the cache's per-item scan.
  *
@@ -160,7 +160,7 @@
  * (ui/MiniTabs.tsx) - "This week" is that section unchanged, "Google" is
  * the shared ui/GoogleCalendarPanel.tsx at `maxDays={7}` (matching this
  * step's own 7-day look-ahead) with copies defaulting to Inbox, same as
- * DailyView. `items`/`settings`/`basePath` are already loaded at this
+ * DailyView. `items`/`settings`/`inboxPath` are already loaded at this
  * screen's top level for the rest of the wizard, so the panel just reads
  * them rather than loading its own copy.
  */
@@ -546,11 +546,11 @@ export default function ReviewScreen({
   // (docs/dev/technical-design-about-debug-experimental.md §3.2).
   const features = useFeatures();
   const activeSteps = useMemo(() => activeReviewSteps(features), [features]);
-  const [basePath, setBasePath] = useState<string | null>(null);
+  const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's resolveLinkedFilePath (the Inbox-to-zero step's
   // read-only onOpenLinkedFile below, technical-design-linked-files.md §9.1)
-  // needs the full resolved path set, not just `basePath` - same "keep both"
-  // shape screens/InboxScreen.tsx's own `basePath`/`paths` pair uses.
+  // needs the full resolved path set, not just `inboxPath` - same "keep both"
+  // shape screens/InboxScreen.tsx's own `inboxPath`/`paths` pair uses.
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
   const [inbox, setInbox] = useState<ProjectFileState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -739,9 +739,9 @@ export default function ReviewScreen({
         cache = await rebuildCache(loadedSettings);
       }
       setAggregate(buildReviewAggregate(cache.items, new Date(), loadedSettings.noteCreationDefinitions));
-      setBasePath(cache.paths.base);
+      setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
-      setInbox(await loadProjectFile('inbox', cache.paths.base));
+      setInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       logError('ReviewScreen: load failed', message);
@@ -988,7 +988,7 @@ export default function ReviewScreen({
    * DailyView.tsx's own handleAddTask exactly.
    */
   const handleAddTask = async (text: string, destination: Destination): Promise<void> => {
-    const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, basePath});
+    const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
     else refreshFromCache();
     bump('tasksAdded');
@@ -1161,7 +1161,7 @@ export default function ReviewScreen({
    * onto it afterwards, and marks the message acted-on (checkmark).
    */
   const handleAddGmailTask = async (message: GmailCacheMessage, text: string): Promise<void> => {
-    const {nextInbox} = await addTaskToDestination(buildTask(text), FIXED_INBOX_DESTINATION, {inbox, basePath});
+    const {nextInbox} = await addTaskToDestination(buildTask(text), FIXED_INBOX_DESTINATION, {inbox, inboxPath});
     if (nextInbox) {
       setInbox(nextInbox);
       const index = nextInbox.tasks.length - 1;
@@ -1181,7 +1181,7 @@ export default function ReviewScreen({
 
   /** Meeting counterpart of handleAddGmailTask - see that function's own doc comment. Doesn't bump 'tasksAdded' (this is a meeting, not a task), same distinction handleAddInboxMeeting/handleAddTask already draw elsewhere on this screen. */
   const handleAddGmailMeeting = async (message: GmailCacheMessage, fields: MeetingQuickAddFields): Promise<void> => {
-    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), FIXED_INBOX_DESTINATION, {inbox, basePath});
+    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), FIXED_INBOX_DESTINATION, {inbox, inboxPath});
     if (nextInbox) {
       setInbox(nextInbox);
       const index = nextInbox.meetings.length - 1;
@@ -1227,7 +1227,7 @@ export default function ReviewScreen({
     artifact: {kind: 'body'} | {kind: 'attachment'; attachment: GmailAttachmentInfo},
     onProgress?: (text: string) => void,
   ): Promise<void> => {
-    if (!settings || !paths || !basePath) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
+    if (!settings || !paths || !inboxPath) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
     let linkedFile: string;
     let linkedName: string;
     let linkedKey: string;
@@ -1268,7 +1268,7 @@ export default function ReviewScreen({
     const driftMessage = `"${item.label}" changed on disk - tap 🔄 to refresh.`;
     if (item.type === 'task') {
       const {nextInbox} = await mutateEntryTasks(
-        {item: {kind: 'inbox', path: basePath}, taskIndex: item.index, task: {text: item.label}},
+        {item: {kind: 'inbox', path: inboxPath}, taskIndex: item.index, task: {text: item.label}},
         tasks => {
           const next = tasks.slice();
           const current = next[item.index];
@@ -1276,12 +1276,12 @@ export default function ReviewScreen({
           next[item.index] = {...current, linkedFile};
           return next;
         },
-        {inbox, basePath},
+        {inbox, inboxPath},
       );
       if (nextInbox) setInbox(nextInbox);
     } else {
       const {nextInbox} = await mutateEntryMeetings(
-        {item: {kind: 'inbox', path: basePath}, meetingIndex: item.index, meeting: {title: item.label}},
+        {item: {kind: 'inbox', path: inboxPath}, meetingIndex: item.index, meeting: {title: item.label}},
         meetings => {
           const next = meetings.slice();
           const current = next[item.index];
@@ -1289,7 +1289,7 @@ export default function ReviewScreen({
           next[item.index] = {...current, linkedFile};
           return next;
         },
-        {inbox, basePath},
+        {inbox, inboxPath},
       );
       if (nextInbox) setInbox(nextInbox);
     }
@@ -1554,12 +1554,12 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         const current = inbox.tasks[taskIndex];
         if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, done: true};
-        const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
         setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         bump('inboxCleared');
         log('ReviewScreen: inbox task done', taskIndex);
@@ -1586,12 +1586,12 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         const current = inbox.tasks[taskIndex];
         if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, cancelled: true};
-        const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
         setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         cancelEditTarget();
         bump('inboxCleared');
@@ -1609,12 +1609,12 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         const current = inbox.meetings[meetingIndex];
         if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
         const nextMeetings = inbox.meetings.slice();
         nextMeetings[meetingIndex] = {...current, cancelled: true};
-        const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
         setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         cancelEditTarget();
         bump('inboxCleared');
@@ -1631,8 +1631,8 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
-        const result = await fileInboxTask(inbox, basePath, taskIndex, target);
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
         setInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
         refreshFromCache();
         bump('inboxCleared');
@@ -1649,8 +1649,8 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
-        const result = await fileInboxMeeting(inbox, basePath, meetingIndex, target);
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
         setInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
         refreshFromCache();
         bump('inboxCleared');
@@ -1687,7 +1687,7 @@ export default function ReviewScreen({
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (!editTarget) return;
-    if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
     const index = editTarget.index;
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = inbox.tasks[index];
@@ -1695,7 +1695,7 @@ export default function ReviewScreen({
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
       await appendTaskToTarget(target, updated);
       const nextTasks = inbox.tasks.filter((_, i) => i !== index);
-      const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+      const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
       setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
@@ -1703,7 +1703,7 @@ export default function ReviewScreen({
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
       await appendMeetingToTarget(target, updated);
       const nextMeetings = inbox.meetings.filter((_, i) => i !== index);
-      const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+      const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
       setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
@@ -1781,7 +1781,7 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !basePath || !paths || !rootPath || !inboxZeroArmTarget) {
+        if (!inbox || !inboxPath || !paths || !rootPath || !inboxZeroArmTarget) {
           throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         }
         const absolutePath = `${rootPath.replace(/\/+$/, '')}/${relativePath}`;
@@ -1791,14 +1791,14 @@ export default function ReviewScreen({
           if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
           const nextTasks = inbox.tasks.slice();
           nextTasks[inboxZeroArmTarget.index] = {...current, linkedFile};
-          const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+          const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
           setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         } else {
           const current = inbox.meetings[inboxZeroArmTarget.index];
           if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
           const nextMeetings = inbox.meetings.slice();
           nextMeetings[inboxZeroArmTarget.index] = {...current, linkedFile};
-          const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+          const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
           setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         }
         log('ReviewScreen: linked inbox item', inboxZeroArmTarget.type, inboxZeroArmTarget.index, '->', relativePath);
@@ -1832,7 +1832,7 @@ export default function ReviewScreen({
    * above, and (2026-09-22, Slice 3 of docs/dev/technical-design-shared-note-
    * pages.md) the same `openOrCreateTodoNote`/`openOrCreateMeetingNote`
    * DailyView.tsx's own Inbox-sourced rows use, with `forceOwnTarget: true`
-   * (Inbox.txt lives at `basePath` itself, so `basePath` stands in for the
+   * (Inbox.txt lives at `inboxPath` itself, so `inboxPath` stands in for the
    * "item path" those functions normally take, and there's no Project/Area
    * to anchor a shared file to - see `handleInboxTaskNote`'s own doc
    * comment).
@@ -1841,12 +1841,12 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         const current = inbox.tasks[taskIndex];
         if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, text: nextText, ...deriveTaskFields(nextText), linkedFile: nextLinkedFile};
-        const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
         setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         cancelEditTarget();
         log('ReviewScreen: inbox task edited', taskIndex);
@@ -1865,22 +1865,22 @@ export default function ReviewScreen({
    * Slice 3, 2026-09-22): replaces the old separate handleInboxCreateTaskNote/
    * handleInboxOpenTaskNote pair with one call into `openOrCreateTodoNote`.
    * `forceOwnTarget: true` - same §9 Inbox exclusion as InboxScreen.tsx's own
-   * handlers (Inbox.txt lives at `basePath` itself, so there's no Project/
+   * handlers (Inbox.txt lives at `inboxPath` itself, so there's no Project/
    * Area to anchor a shared file to).
    */
   const handleInboxTaskNote = (taskIndex: number) => {
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         const currentSettings = settings ?? (await loadSettings());
-        const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], basePath, currentSettings, {tasks: inbox.tasks}, {
+        const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], inboxPath, currentSettings, {tasks: inbox.tasks}, {
           forceOwnTarget: true,
         });
         if (changed) {
           const nextTasks = inbox.tasks.slice();
           nextTasks[taskIndex] = task;
-          const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+          const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
           setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         }
         log('ReviewScreen: inbox task note opened/created', taskIndex);
@@ -1906,12 +1906,12 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         const current = inbox.meetings[meetingIndex];
         if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
         const nextMeetings = inbox.meetings.slice();
         nextMeetings[meetingIndex] = applyMeetingEdit(current, fields, nextLinkedFile);
-        const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
         setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         cancelEditTarget();
         log('ReviewScreen: inbox meeting edited', meetingIndex);
@@ -1939,7 +1939,7 @@ export default function ReviewScreen({
    * stripped from the saved title) was silently filed to the Inbox instead.
    */
   const handleAddInboxMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
-    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, basePath});
+    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
     else refreshFromCache();
     log('ReviewScreen: added meeting', destinationLabel(destination));
@@ -1950,11 +1950,11 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         const currentSettings = settings ?? (await loadSettings());
         const {meeting, changed} = await openOrCreateMeetingNote(
           inbox.meetings[meetingIndex],
-          basePath,
+          inboxPath,
           currentSettings,
           {tasks: inbox.tasks},
           {forceOwnTarget: true},
@@ -1962,7 +1962,7 @@ export default function ReviewScreen({
         if (changed) {
           const nextMeetings = inbox.meetings.slice();
           nextMeetings[meetingIndex] = meeting;
-          const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+          const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
           setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         }
         log('ReviewScreen: inbox meeting note opened/created', meetingIndex);
@@ -1979,10 +1979,10 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
         if (!inbox.meetings[meetingIndex]) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
         const nextMeetings = toggleMeetingTrackingAt(inbox.meetings, meetingIndex, kind);
-        const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
         setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         requestEinkRefresh();
       } catch (e) {
@@ -2197,7 +2197,7 @@ export default function ReviewScreen({
     refreshFromCache();
     const cache = getCachedData();
     if (!cache) return;
-    loadProjectFile('inbox', cache.paths.base)
+    loadProjectFile('inbox', cache.paths.inboxFolder)
       .then(setInbox)
       .catch(e => logError('ReviewScreen: inbox reload after week ahead failed', e instanceof Error ? e.message : String(e)));
   };

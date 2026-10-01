@@ -98,7 +98,7 @@ export function resolveFilingPick(paths: ResolvedParaPaths, root: string, relati
  */
 export async function fileInboxTask(
   inbox: ProjectFileState,
-  basePath: string,
+  inboxPath: string,
   taskIndex: number,
   target: InboxFilingTarget,
 ): Promise<{inboxRawContent: string; inboxTasks: Task[]}> {
@@ -110,7 +110,7 @@ export async function fileInboxTask(
   await appendTaskToTarget(target, task);
 
   const nextInboxTasks = inbox.tasks.filter((_, index) => index !== taskIndex);
-  const nextInboxRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextInboxTasks, inbox.taskExtraLines);
+  const nextInboxRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextInboxTasks, inbox.taskExtraLines);
 
   return {inboxRawContent: nextInboxRaw, inboxTasks: nextInboxTasks};
 }
@@ -118,7 +118,7 @@ export async function fileInboxTask(
 /** Meeting counterpart of fileInboxTask above - see its doc comment. */
 export async function fileInboxMeeting(
   inbox: ProjectFileState,
-  basePath: string,
+  inboxPath: string,
   meetingIndex: number,
   target: InboxFilingTarget,
 ): Promise<{inboxRawContent: string; inboxMeetings: Meeting[]}> {
@@ -132,7 +132,7 @@ export async function fileInboxMeeting(
   const nextInboxMeetings = inbox.meetings.filter((_, index) => index !== meetingIndex);
   const nextInboxRaw = await saveMeetings(
     'inbox',
-    basePath,
+    inboxPath,
     inbox.rawContent,
     nextInboxMeetings,
     inbox.meetingExtraLines,

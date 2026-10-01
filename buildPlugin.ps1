@@ -751,14 +751,20 @@ function Build-AndroidApk {
                 }
             }
             
-            # Execute gradle build
-            $process = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'gradlew.bat', 'buildCustomApkDebug' -Wait -PassThru -NoNewWindow
-            $buildResult = $process.ExitCode
+            # Execute gradle build. Called directly, not via Start-Process -Wait: -Wait also
+            # waits for every child process, including a Gradle daemon this build starts -
+            # which keeps running after the build, so the script hung after BUILD SUCCESSFUL
+            # whenever no daemon was running yet (first build after a reboot or daemon timeout).
+            # | Out-Host: the console output must not become part of this function's
+            # return value (the caller tests it as $true/$false).
+            & $gradlewPath buildCustomApkDebug | Out-Host
+            $buildResult = $LASTEXITCODE
         }
         elseif (Get-Command 'gradle' -ErrorAction SilentlyContinue) {
             Write-ColorOutput 'Using gradle to execute buildCustomApkDebug task...' 'Green'
-            $process = Start-Process -FilePath 'gradle' -ArgumentList 'buildCustomApkDebug' -Wait -PassThru -NoNewWindow
-            $buildResult = $process.ExitCode
+            # Called directly for the same reason as gradlew.bat above.
+            & gradle buildCustomApkDebug | Out-Host
+            $buildResult = $LASTEXITCODE
         }
         else {
             Write-ColorOutput 'Neither gradle nor gradlew.bat found, cannot build APK' 'Red'

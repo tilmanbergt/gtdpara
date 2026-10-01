@@ -31,10 +31,10 @@ import {Meeting, Task} from '../domain/types';
 import {ensureItemCached, findCachedItem, updateItemMeetings, updateItemTasks} from './dataCache';
 import {ProjectFileState, saveMeetings, saveTasks} from './projectFile';
 
-/** What a mutation needs to know about the (screen-local) Inbox. `basePath` addresses Inbox.txt. */
+/** What a mutation needs to know about the (screen-local) Inbox. `inboxPath` is the Inbox folder (cache paths.inboxFolder), which holds Inbox.txt. */
 export interface InboxContext {
   inbox: ProjectFileState | null;
-  basePath: string | null;
+  inboxPath: string | null;
 }
 
 /** `nextInbox` is set only when the Inbox file was the one written - see the module doc comment. */
@@ -110,10 +110,10 @@ export async function addTaskToDestination(
   ctx: InboxContext,
 ): Promise<MutationResult> {
   if (destination.type === 'inbox') {
-    const {inbox, basePath} = ctx;
-    if (!inbox || !basePath) throw new Error(INBOX_NOT_LOADED);
+    const {inbox, inboxPath} = ctx;
+    if (!inbox || !inboxPath) throw new Error(INBOX_NOT_LOADED);
     const nextTasks = [...inbox.tasks, task];
-    const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+    const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
     return {nextInbox: {...inbox, rawContent: nextRaw, tasks: nextTasks}};
   }
   const item = await ensureItemCached(destination.kind, destination.name, destination.path);
@@ -130,10 +130,10 @@ export async function addMeetingToDestination(
   ctx: InboxContext,
 ): Promise<MutationResult> {
   if (destination.type === 'inbox') {
-    const {inbox, basePath} = ctx;
-    if (!inbox || !basePath) throw new Error(INBOX_NOT_LOADED);
+    const {inbox, inboxPath} = ctx;
+    if (!inbox || !inboxPath) throw new Error(INBOX_NOT_LOADED);
     const nextMeetings = [...inbox.meetings, meeting];
-    const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+    const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
     return {nextInbox: {...inbox, rawContent: nextRaw, meetings: nextMeetings}};
   }
   const item = await ensureItemCached(destination.kind, destination.name, destination.path);
@@ -178,13 +178,13 @@ export async function mutateEntryTasks(
   ctx: InboxContext,
 ): Promise<MutationResult> {
   if (entry.item.kind === 'inbox') {
-    const {inbox, basePath} = ctx;
-    if (!inbox || !basePath) throw new Error(INBOX_NOT_LOADED);
+    const {inbox, inboxPath} = ctx;
+    if (!inbox || !inboxPath) throw new Error(INBOX_NOT_LOADED);
     if (!inbox.tasks[entry.taskIndex]) {
       throw new Error(`"${entry.task.text}" changed on disk - tap 🔄 to refresh.`);
     }
     const nextTasks = mutate(inbox.tasks.slice());
-    const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+    const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
     return {nextInbox: {...inbox, rawContent: nextRaw, tasks: nextTasks}};
   }
   const item = findCachedItem(entry.item.path);
@@ -205,13 +205,13 @@ export async function mutateEntryMeetings(
   ctx: InboxContext,
 ): Promise<MutationResult> {
   if (entry.item.kind === 'inbox') {
-    const {inbox, basePath} = ctx;
-    if (!inbox || !basePath) throw new Error(INBOX_NOT_LOADED);
+    const {inbox, inboxPath} = ctx;
+    if (!inbox || !inboxPath) throw new Error(INBOX_NOT_LOADED);
     if (!inbox.meetings[entry.meetingIndex]) {
       throw new Error(`"${entry.meeting.title}" changed on disk - tap 🔄 to refresh.`);
     }
     const nextMeetings = mutate(inbox.meetings.slice());
-    const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+    const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
     return {nextInbox: {...inbox, rawContent: nextRaw, meetings: nextMeetings}};
   }
   const item = findCachedItem(entry.item.path);

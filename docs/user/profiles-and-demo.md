@@ -26,7 +26,7 @@ The Gmail app password and the calendar link are never written into these files.
 
 ## The demo space
 
-**Create demo space** writes a small fictional setup to `Note/gtdpara-demo`: five projects (one on hold, one done), three areas and an Inbox, with todos, meetings, tags, focus and goals. Dates are set relative to today, so it always looks current. It also adds the profile "Demo" that points to these folders.
+**Create demo space** writes a small fictional setup to `Note/gtdpara-demo`: five projects (one on hold, one done), three areas and an Inbox (in `2 Areas/0 Inbox`), with todos, meetings, tags, focus and goals. Dates are set relative to today, so it always looks current. It also adds the profile "Demo" that points to these folders.
 
 Existing files are never overwritten. To start the demo from scratch, delete the `Note/gtdpara-demo` folder and create it again.
 

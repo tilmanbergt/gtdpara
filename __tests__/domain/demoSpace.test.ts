@@ -18,8 +18,9 @@ describe('demo space', () => {
   it('has projects, areas, inbox and the folders', () => {
     const paths = files.map(f => f.path);
     expect(paths.filter(p => p.startsWith('1 Projects/')).length).toBe(5);
-    expect(paths.filter(p => p.startsWith('2 Areas/')).length).toBe(3);
-    expect(paths).toContain('Inbox.txt');
+    expect(paths.filter(p => p.startsWith('2 Areas/') && p.endsWith('/area.txt')).length).toBe(3);
+    expect(paths).toContain('2 Areas/0 Inbox/Inbox.txt');
+    expect(paths).not.toContain('Inbox.txt');
     expect(paths).toContain('3 Resources/README.txt');
   });
 

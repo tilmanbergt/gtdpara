@@ -20,7 +20,7 @@ import {loadProjectFile, saveMeetings, saveTasks} from './projectFile';
 
 export type MoveTarget = {type: 'inbox'} | ({type: 'item'} & InboxFilingTarget);
 
-const NO_INBOX = {inbox: null, basePath: null};
+const NO_INBOX = {inbox: null, inboxPath: null};
 
 function sourceOf(itemPath: string) {
   const item = findCachedItem(itemPath);
@@ -29,9 +29,9 @@ function sourceOf(itemPath: string) {
 }
 
 async function appendToInbox(paths: ResolvedParaPaths, add: {task?: Task; meeting?: Meeting}): Promise<void> {
-  const inbox = await loadProjectFile('inbox', paths.base);
-  if (add.task) await saveTasks('inbox', paths.base, inbox.rawContent, [...inbox.tasks, add.task], inbox.taskExtraLines);
-  if (add.meeting) await saveMeetings('inbox', paths.base, inbox.rawContent, [...inbox.meetings, add.meeting], inbox.meetingExtraLines);
+  const inbox = await loadProjectFile('inbox', paths.inboxFolder);
+  if (add.task) await saveTasks('inbox', paths.inboxFolder, inbox.rawContent, [...inbox.tasks, add.task], inbox.taskExtraLines);
+  if (add.meeting) await saveMeetings('inbox', paths.inboxFolder, inbox.rawContent, [...inbox.meetings, add.meeting], inbox.meetingExtraLines);
 }
 
 /** Moves tasks[taskIndex] of the cached item at `itemPath` to `target`. Appends first, removes second: a failure in between leaves a duplicate, never a loss. */

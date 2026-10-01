@@ -9,7 +9,7 @@
  *
  * Inbox.txt is deliberately NOT covered here, same as dailyAggregate.ts -
  * it's a single flat file outside storage/dataCache.ts's `items` array, so
- * ReviewScreen loads it directly (loadProjectFile('inbox', basePath)),
+ * ReviewScreen loads it directly (loadProjectFile('inbox', inboxPath)),
  * same as DailyView already does for its own Inbox section.
  *
  * Scope, one bucket per Weekly Review step that needs cross-project data

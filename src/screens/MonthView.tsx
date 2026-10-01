@@ -84,7 +84,7 @@ export default function MonthView({
   const placeholderColor = '#999999';
 
   const planning = usePlanningScreen({logTag: 'MonthView', onRegisterRefresh, onRefreshingChange});
-  const {items, settings, basePath, paths, inbox, loading, error, load, editingKey} = planning;
+  const {items, settings, inboxPath, paths, inbox, loading, error, load, editingKey} = planning;
 
   const [monthOffset, setMonthOffset] = useState(0);
   const [leftTabState, setLeftTab] = useState<LeftTab>('month');
@@ -109,16 +109,16 @@ export default function MonthView({
   // the deps; `todayDate` keeps "today"-dependent parts fresh over midnight.
   const aggregate = useMemo(
     () =>
-      buildMonthlyAggregate(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, basePath ?? '', period),
+      buildMonthlyAggregate(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, inboxPath ?? '', period),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, inbox, basePath, period.key, period.start, period.end, todayDate],
+    [items, inbox, inboxPath, period.key, period.start, period.end, todayDate],
   );
   const dayRows = useMemo(
     () =>
       selectedDate
-        ? meetingsOnDay(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, basePath ?? '', selectedDate)
+        ? meetingsOnDay(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, inboxPath ?? '', selectedDate)
         : [],
-    [items, inbox, basePath, selectedDate],
+    [items, inbox, inboxPath, selectedDate],
   );
 
   // The meeting being edited in Quick Add is always one from the day panel.
@@ -195,7 +195,7 @@ export default function MonthView({
                     defaultDestination={FIXED_INBOX_DESTINATION}
                     items={items}
                     icsUrl={settings?.googleCalendarIcsUrl ?? ''}
-                    basePath={basePath ?? ''}
+                    inboxPath={inboxPath ?? ''}
                     onOpenSettings={() => onOpenCalendarSettings?.()}
                     textColor={textColor}
                     borderColor={borderColor}
@@ -261,7 +261,7 @@ export default function MonthView({
                         defaultDestination={FIXED_INBOX_DESTINATION}
                         items={items}
                         icsUrl={settings?.googleCalendarIcsUrl ?? ''}
-                        basePath={basePath ?? ''}
+                        inboxPath={inboxPath ?? ''}
                         onOpenSettings={() => onOpenCalendarSettings?.()}
                         textColor={textColor}
                         borderColor={borderColor}

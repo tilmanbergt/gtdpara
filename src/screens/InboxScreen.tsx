@@ -230,9 +230,9 @@ export default function InboxScreen({
   // below; re-renders with a fresh array after every cache mutation, including
   // the File actions' write-through inside storage/inboxFiling.ts.
   const items = useCachedItems();
-  const [basePath, setBasePath] = useState<string | null>(null);
+  const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's calls and the Files pane's `resources` root all
-  // need the full resolved path set, not just `basePath` - same "keep both"
+  // need the full resolved path set, not just `inboxPath` - same "keep both"
   // shape screens/ProjectDataPanel.tsx's `path`/`paths` pair uses.
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
   const [inbox, setInbox] = useState<ProjectFileState | null>(null);
@@ -291,9 +291,9 @@ export default function InboxScreen({
       if (!cache || forceRebuild) {
         cache = await rebuildCache(loadedSettings);
       }
-      setBasePath(cache.paths.base);
+      setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
-      setInbox(await loadProjectFile('inbox', cache.paths.base));
+      setInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       logError('InboxScreen: load failed', message);
@@ -328,17 +328,17 @@ export default function InboxScreen({
    * this plus a specific `mutate`.
    */
   const saveInboxTasks = async (mutate: (tasks: Task[]) => Task[]): Promise<void> => {
-    if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
     const nextTasks = mutate(inbox.tasks.slice());
-    const nextRaw = await saveTasks('inbox', basePath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+    const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
     setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
   };
 
   /** Meeting counterpart of saveInboxTasks above. */
   const saveInboxMeetings = async (mutate: (meetings: Meeting[]) => Meeting[]): Promise<void> => {
-    if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
     const nextMeetings = mutate(inbox.meetings.slice());
-    const nextRaw = await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+    const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
     setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
   };
 
@@ -473,9 +473,9 @@ export default function InboxScreen({
   const handleTaskNote = (taskIndex: number) => {
     Keyboard.dismiss();
     runTaskAction(async () => {
-      if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
       const settings = await loadSettings();
-      const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], basePath, settings, {tasks: inbox.tasks}, {
+      const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], inboxPath, settings, {tasks: inbox.tasks}, {
         forceOwnTarget: true,
       });
       if (changed) {
@@ -489,8 +489,8 @@ export default function InboxScreen({
 
   const handleFileTask = (taskIndex: number, target: InboxFilingTarget) => {
     runTaskAction(async () => {
-      if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
-      const result = await fileInboxTask(inbox, basePath, taskIndex, target);
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
       setInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
       log('InboxScreen: filed task', taskIndex, '->', target.path);
     });
@@ -597,7 +597,7 @@ export default function InboxScreen({
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (!editTarget) return;
-    if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
     const index = editTarget.index;
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = inbox.tasks[index];
@@ -622,11 +622,11 @@ export default function InboxScreen({
   const handleMeetingNote = (meetingIndex: number) => {
     Keyboard.dismiss();
     runMeetingAction(async () => {
-      if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
       const settings = await loadSettings();
       const {meeting, changed} = await openOrCreateMeetingNote(
         inbox.meetings[meetingIndex],
-        basePath,
+        inboxPath,
         settings,
         {tasks: inbox.tasks},
         {forceOwnTarget: true},
@@ -654,8 +654,8 @@ export default function InboxScreen({
 
   const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
     runMeetingAction(async () => {
-      if (!inbox || !basePath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
-      const result = await fileInboxMeeting(inbox, basePath, meetingIndex, target);
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
       setInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
       log('InboxScreen: filed meeting', meetingIndex, '->', target.path);
     });
@@ -758,14 +758,14 @@ export default function InboxScreen({
       }
       setArmTarget(null);
     },
-    // inbox/basePath are read indirectly through saveInboxTasks/
+    // inbox/inboxPath are read indirectly through saveInboxTasks/
     // saveInboxMeetings (plain, unmemoized closures recreated every render)
     // - listed explicitly here so this callback is rebuilt whenever they
     // change too, rather than relying on armTarget always changing first
     // (same defensive shape screens/ProjectDataPanel.tsx's own
     // handlePickLinkedFile takes by listing `state` in its own deps).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [paths, armTarget, inbox, basePath],
+    [paths, armTarget, inbox, inboxPath],
   );
 
   /**
@@ -786,7 +786,7 @@ export default function InboxScreen({
       setArmTarget(null);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [paths, armTarget, inbox, basePath],
+    [paths, armTarget, inbox, inboxPath],
   );
 
   const onOpenLinkedFile = useCallback(
@@ -1048,7 +1048,7 @@ export default function InboxScreen({
                   defaultDestination={FIXED_INBOX_DESTINATION}
                   items={items}
                   icsUrl={icsUrl}
-                  basePath={basePath ?? ''}
+                  inboxPath={inboxPath ?? ''}
                   onOpenSettings={() => onOpenCalendarSettings?.()}
                   textColor={textColor}
                   borderColor={borderColor}

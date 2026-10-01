@@ -8,11 +8,17 @@ With the default settings:
 
 - `Note/1 Projects/<project>/project.txt`
 - `Note/2 Areas/<area>/area.txt`
+- `Note/2 Areas/0 Inbox/Inbox.txt`: captured items not yet filed
 - `Note/3 Resources/`: your reference material
 - `Note/4 Archive/<year>/`: archived projects and areas, see [Closing out a project](close-out.md)
-- `Note/Inbox.txt`: captured items not yet filed
 
-Notes that gtdpara creates for todos and meetings go into `Todos` and `Meetings` folders inside the project or area.
+Notes that gtdpara creates for todos and meetings go into `Todos` and `Meetings` folders inside the project or area, and for the Inbox inside its folder `0 Inbox`.
+
+## The Inbox folder
+
+The Inbox has its own folder inside the Areas folder, so the `Note` folder holds only your PARA folders. gtdpara doesn't treat it as an area: it isn't listed on the Areas tab or in focus and refile. You can change its name in Settings, see [Settings](settings.md).
+
+Up to version 0.1.0 the Inbox lived directly in `Note` (`Inbox.txt` plus `Todos` and `Meetings` folders). The first start of a newer version moves these into the Inbox folder once and says so. If an area with the same name already exists, nothing is moved, the Inbox keeps working from `Note`, and you're asked to choose another name for the Inbox folder.
 
 ## Inside project.txt
 

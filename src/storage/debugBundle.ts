@@ -7,13 +7,15 @@
  * domain/redact.ts so passwords, calendar links and e-mail addresses never
  * leave the device.
  */
-import {DEFAULT_SETTINGS, GtdParaSettings} from '../domain/settings';
+import {DEFAULT_SETTINGS, GtdParaSettings, resolvePaths} from '../domain/settings';
 import {featuresOf} from '../domain/features';
 import {redactText} from '../domain/redact';
 import {BUILD_INFO} from '../generated/buildInfo';
 import {getRememberedLaunchNotePath, writeDebugBundleFile} from '../supernote/fileSystem';
 import {getRuntimeDiagnostics} from '../supernote/pluginRuntime';
 import {getRecentErrors, getRecentLogLines, isFileLoggingOn, LOG_FILE_NAME} from '../utils/logSink';
+import {getCachedData} from './dataCache';
+import {describeInboxMigrationOutcome, getInboxMigrationOutcome} from './inboxMigration';
 import {collectPerfStats} from './perfStats';
 
 function pad(n: number): string {
@@ -43,7 +45,7 @@ function extensionOf(path: string | null | undefined): string {
 
 /** Pure part: the settings summary line(s). Exported for tests. */
 export function summarizeSettings(s: GtdParaSettings): string[] {
-  const folderKeys = ['baseRoot', 'projectsFolder', 'areasFolder', 'resourcesFolder', 'archiveFolder'] as const;
+  const folderKeys = ['baseRoot', 'projectsFolder', 'areasFolder', 'resourcesFolder', 'archiveFolder', 'inboxFolder'] as const;
   const customFolders = folderKeys.some(k => (s[k] ?? '') !== DEFAULT_SETTINGS[k]);
   const f = featuresOf(s);
   const focus = [
@@ -88,6 +90,10 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
     // keep 'not available'
   }
   lines.push(`data: ${data}`);
+  // Inbox as a folder under Areas (docs/dev/technical-design-inbox-as-area.md §3.3).
+  const cachedPaths = getCachedData()?.paths;
+  const inboxLocation = !cachedPaths ? 'unknown' : cachedPaths.inboxFolder === cachedPaths.base ? 'legacy' : 'new';
+  lines.push(`inbox location: ${inboxLocation} · migration: ${describeInboxMigrationOutcome(getInboxMigrationOutcome(resolvePaths(settings).base))}`);
   lines.push(`log file: ${isFileLoggingOn() ? `ON (${LOG_FILE_NAME})` : 'OFF'}`);
   const errors = getRecentErrors(10);
   lines.push(`recent errors (${errors.length}):`);

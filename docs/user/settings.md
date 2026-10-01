@@ -4,7 +4,9 @@ Settings has these tabs:
 
 ## Folders
 
-The base folder and the names of the Projects, Areas, Resources and Archive folders. Below each field you see the full path. Tap **Save** at the bottom after changing something (the same on the Focus, Calendar and Gmail tabs).
+The base folder and the names of the Projects, Areas, Resources and Archive folders, and of the **Inbox folder** inside Areas. Below each field you see the full path. Tap **Save** at the bottom after changing something (the same on the Focus, Calendar and Gmail tabs).
+
+Changing a folder name only changes where gtdpara looks; move the folder yourself. The Inbox folder is the exception: a new name renames the folder on Save. Save refuses a name that another folder in Areas already has.
 
 ## Focus
 
@@ -22,7 +24,7 @@ How new notes look, see [Note templates](note-templates.md). A rule is saved wit
 
 - **Profiles**: switch between configurations and create the demo space, see [Profiles](profiles-and-demo.md)
 - **Experimental**: switch the Google Calendar and Gmail integrations on or off
-- **Run Integrity Check**: looks for broken note links and similar file problems and writes a report to `EXPORT/gtdpara/debug`
+- **Run Integrity Check**: looks for broken note links and similar file problems, including Inbox files left in `Note` by an unfinished move, and writes a report to `EXPORT/gtdpara/debug`
 - **Keep tabs in memory**: Daily, Week, Month, Current, Projects and Areas stay loaded, so switching tabs is fast. Turn it off if something looks outdated.
 - **Performance tracing**: for measuring speed; leave it off normally
 
