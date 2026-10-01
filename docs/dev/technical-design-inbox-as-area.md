@@ -1,6 +1,6 @@
 # Technical design: Inbox as a folder under Areas
 
-Status: **implemented 2026-10-01** (approved the same day), not yet device-tested. Planned for 0.2.0.
+Status: **implemented and device-tested 2026-10-01** (demo and production profiles). Ships in 0.2.0.
 
 ## 1. Requirements (decided in chat, 2026-10-01)
 
@@ -299,5 +299,5 @@ Implemented as designed, with these details:
   in-memory file system), demo-space test updated.
 
 Verified off-device: `npx tsc --noEmit` clean, `npm test` 102/102, App smoke render (throwaway,
-not committed). Still open: the device checklist in §5, and the Folders tab with one more field
-checked against the A5 X budget on the device.
+not committed). Device test 2026-10-01 (Tilman): the move worked on the demo and the production
+profile; the app behaves as before.
