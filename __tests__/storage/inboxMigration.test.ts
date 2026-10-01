@@ -37,6 +37,9 @@ function mockMoveTree(from: string, to: string): void {
   mockAddFolder(mockParentOf(to));
 }
 
+// Quiet: the move logs every step (and a warning in the blocked case, which is tested on purpose).
+jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
+
 jest.mock('../../src/supernote/fileSystem', () => ({
   listFolderEntries: jest.fn(async (folder: string) => mockChildren(folder)),
   readTextFile: jest.fn(async (path: string) => mockFiles.get(path) ?? null),

@@ -125,9 +125,14 @@ if ($LASTEXITCODE -ne 0) { Stop-Release 'scripts/test-versioning.mjs failed' }
 & node (Join-Path $root 'scripts\test-userdocs.mjs')
 if ($LASTEXITCODE -ne 0) { Stop-Release 'scripts/test-userdocs.mjs failed (help pages)' }
 
+Write-Info 'Running the Jest tests. Expected at the end: "Tests: N passed" and no "failed".'
+Write-Info 'Log lines or warnings printed while tests run are normal (some tests simulate errors on purpose).'
 & npx jest --passWithNoTests
 if ($LASTEXITCODE -ne 0) {
+    Write-Host 'Jest: some tests FAILED - look for "FAIL" and the red marks above. Do not publish a release with failing tests.' -ForegroundColor Red
     if (-not (Confirm-Yes 'Jest tests failed. Continue anyway?')) { Stop-Release 'tests failed' }
+} else {
+    Write-Host 'Jest: all tests passed - anything printed above the summary is expected output.' -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------- 5. commit + tag
