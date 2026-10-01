@@ -68,7 +68,7 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
   // so nothing here needs a manual "refresh after save" step.
   const items = useCachedItems();
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
-  const [basePath, setBasePath] = useState<string | null>(null);
+  const [inboxPath, setInboxPath] = useState<string | null>(null);
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
   const [inbox, setInbox] = useState<ProjectFileState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,10 +97,10 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
         if (!cache || forceRebuild) {
           cache = await rebuildCache(loadedSettings);
         }
-        const loadedInbox = await loadProjectFile('inbox', cache.paths.base);
+        const loadedInbox = await loadProjectFile('inbox', cache.paths.inboxFolder);
         setSettings(loadedSettings);
         setInbox(loadedInbox);
-        setBasePath(cache.paths.base);
+        setInboxPath(cache.paths.inboxFolder);
         setPaths(cache.paths);
       } catch (e) {
         if (loadedSettings) setSettings(loadedSettings);
@@ -133,7 +133,7 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
       try {
         const cache = getCachedData();
         if (!cache) return;
-        const [loadedSettings, loadedInbox] = await Promise.all([loadSettings(), loadProjectFile('inbox', cache.paths.base)]);
+        const [loadedSettings, loadedInbox] = await Promise.all([loadSettings(), loadProjectFile('inbox', cache.paths.inboxFolder)]);
         setSettings(prev => (prev && JSON.stringify(prev) === JSON.stringify(loadedSettings) ? prev : loadedSettings));
         setInbox(prev => (prev && prev.rawContent === loadedInbox.rawContent ? prev : loadedInbox));
       } catch (e) {
@@ -182,18 +182,18 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
     entry: WeeklyMeetingEntry,
     mutate: (meetings: Meeting[]) => Meeting[],
   ): Promise<void> => {
-    const {nextInbox} = await mutateEntryMeetings(entry, mutate, {inbox, basePath});
+    const {nextInbox} = await mutateEntryMeetings(entry, mutate, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
   };
 
   const handleAddTask = async (text: string, destination: Destination): Promise<void> => {
-    const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, basePath});
+    const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
     log(`${logTag}: added task`, destinationLabel(destination));
   };
 
   const handleAddMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
-    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, basePath});
+    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
     log(`${logTag}: added meeting`, destinationLabel(destination));
   };
@@ -368,7 +368,7 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
   return {
     items,
     settings,
-    basePath,
+    inboxPath,
     paths,
     inbox,
     loading,

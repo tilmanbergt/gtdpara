@@ -13,7 +13,7 @@ To update later, install the newer file over the old one. Read the **Upgrade not
 gtdpara works with four folders inside your `Note` folder:
 
 - `1 Projects`: one folder per project
-- `2 Areas`: one folder per area of responsibility
+- `2 Areas`: one folder per area of responsibility, plus `0 Inbox` for the Inbox
 - `3 Resources`: reference material
 - `4 Archive`: finished projects
 

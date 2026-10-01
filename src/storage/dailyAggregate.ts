@@ -90,7 +90,7 @@
  * context tag, or simply no match), this degrades to the tag-only behavior
  * above, unchanged. Never reaches the synthetic Inbox item - Inbox has no
  * abbrev, so `contextItemPath` (a real Project/Area's path) can never equal
- * `basePath`.
+ * `inboxPath`.
  */
 import {entriesInRange, entryDate, MeetingSpanDay} from '../domain/meetingSpan';
 import {resolveAbbrevPath} from '../domain/abbrev';
@@ -112,9 +112,9 @@ export interface DailyItemRef {
   abbrev: string | null;
 }
 
-/** The synthetic "source item" Inbox tasks/meetings carry - see the module doc comment's "Inbox" note. `path` is `basePath` itself, the same address storage/projectFile.ts's loadProjectFile('inbox', basePath) already uses. Exported (2026-09-11) for docs/dev/technical-design-now-focus-mode.md's buildNowEntries below, which needs the same synthetic ref. */
-export function inboxItemRef(basePath: string): DailyItemRef {
-  return {kind: 'inbox', name: 'Inbox', path: basePath, dailyFocus: false, weeklyFocus: false, monthlyFocus: false, abbrev: null};
+/** The synthetic "source item" Inbox tasks/meetings carry - see the module doc comment's "Inbox" note. `path` is `inboxPath` itself, the same address storage/projectFile.ts's loadProjectFile('inbox', inboxPath) already uses. Exported (2026-09-11) for docs/dev/technical-design-now-focus-mode.md's buildNowEntries below, which needs the same synthetic ref. */
+export function inboxItemRef(inboxPath: string): DailyItemRef {
+  return {kind: 'inbox', name: 'Inbox', path: inboxPath, dailyFocus: false, weeklyFocus: false, monthlyFocus: false, abbrev: null};
 }
 
 export interface DailyTaskEntry {
@@ -147,11 +147,11 @@ export interface DailyInboxInput {
   meetings: Meeting[];
 }
 
-/** Pure in-memory aggregation over already-cached items plus (2026-09-03) Inbox.txt's own tasks/meetings - see the module doc comment. `basePath` addresses the synthetic Inbox item (inboxItemRef above); ignored when `inbox` is null. */
+/** Pure in-memory aggregation over already-cached items plus (2026-09-03) Inbox.txt's own tasks/meetings - see the module doc comment. `inboxPath` addresses the synthetic Inbox item (inboxItemRef above); ignored when `inbox` is null. */
 function buildDailyAggregateImpl(
   items: CachedItem[],
   inbox: DailyInboxInput | null,
-  basePath: string,
+  inboxPath: string,
   now: Date = new Date(),
   contextTag: string | null = null,
 ): DailyAggregate {
@@ -212,7 +212,7 @@ function buildDailyAggregateImpl(
   }
 
   if (inbox) {
-    const item = inboxItemRef(basePath);
+    const item = inboxItemRef(inboxPath);
     inbox.tasks.forEach((task, taskIndex) => {
       if (task.done || task.cancelled) return;
       if (contextTag) {
@@ -262,7 +262,7 @@ export function dailyEntryDate(entry: DailyMeetingEntry): string {
 function buildNowEntriesImpl(
   items: CachedItem[],
   inbox: DailyInboxInput | null,
-  basePath: string,
+  inboxPath: string,
 ): DailyTaskEntry[] {
   const entries: DailyTaskEntry[] = [];
   for (const cachedItem of items) {
@@ -282,7 +282,7 @@ function buildNowEntriesImpl(
     });
   }
   if (inbox) {
-    const item = inboxItemRef(basePath);
+    const item = inboxItemRef(inboxPath);
     inbox.tasks.forEach((task, taskIndex) => {
       if (task.cancelled || !task.now) return;
       entries.push({item, taskIndex, task});

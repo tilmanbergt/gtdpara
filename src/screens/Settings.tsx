@@ -283,6 +283,7 @@ import {DEFAULT_SETTINGS, GtdParaSettings, resolvePaths} from '../domain/setting
 import {clearCachedData} from '../storage/dataCache';
 import {clearCachedGmailInbox} from '../storage/gmailInboxCache';
 import {runIntegrityCheck} from '../storage/integrityCheck';
+import {renameInboxFolderForSave} from '../storage/inboxMigration';
 import {loadSettings, patchSettings, saveSettings} from '../storage/settingsStorage';
 import {perfEnable} from '../utils/perf';
 import {setKeepTabsAlive} from '../ui/keepAliveStore';
@@ -303,7 +304,7 @@ import {COLORS, FONT, RADII, SPACING, useThemeColors} from '../ui/theme';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
 
-type PathKey = 'projects' | 'areas' | 'resources' | 'archive';
+type PathKey = 'projects' | 'areas' | 'inboxFolder' | 'resources' | 'archive';
 
 export type SettingsTab = 'folders' | 'focus' | 'calendar' | 'gmail' | 'templates' | 'advanced' | 'about';
 const SETTINGS_TABS: MiniTabDef<SettingsTab>[] = [
@@ -469,7 +470,7 @@ const PIECE_ROW_HEIGHT = 40;
 const TEMPLATE_BROWSE_ROW_HEIGHT = 32;
 
 /** The string-valued settings fields this section edits - deliberately narrower than `keyof GtdParaSettings` now that the type also has the four numeric focus-count fields (edited separately below, see FOCUS_COUNT_FIELDS), so `values[field.key]` stays a plain string for the TextInput `value` prop. */
-type StringSettingKey = 'baseRoot' | 'projectsFolder' | 'areasFolder' | 'resourcesFolder' | 'archiveFolder' | 'gmailEmail' | 'gmailAppPassword' | 'gmailImapHost';
+type StringSettingKey = 'baseRoot' | 'projectsFolder' | 'areasFolder' | 'inboxFolder' | 'resourcesFolder' | 'archiveFolder' | 'gmailEmail' | 'gmailAppPassword' | 'gmailImapHost';
 
 const FIELDS: Array<{
   key: StringSettingKey;
@@ -489,6 +490,13 @@ const FIELDS: Array<{
     label: 'Areas folder',
     placeholder: DEFAULT_SETTINGS.areasFolder,
     pathKey: 'areas',
+  },
+  {
+    // The Inbox's own folder inside Areas (docs/dev/technical-design-inbox-as-area.md §3.5).
+    key: 'inboxFolder',
+    label: 'Inbox folder',
+    placeholder: DEFAULT_SETTINGS.inboxFolder,
+    pathKey: 'inboxFolder',
   },
   {
     key: 'resourcesFolder',
@@ -587,7 +595,9 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
   // Save/clipboard results -> central status slot (docs/dev/technical-design-status-slot.md §7.4/§7.6).
   useErrorStatus('Settings.saveError', saveError, () => setSaveError(null));
   useErrorStatus('Settings.clipboardError', clipboardError, () => setClipboardError(null));
-  useStatus('Settings.saved', saved ? {kind: 'success', text: 'Settings saved.', onDismiss: () => setSaved(false)} : null);
+  // Extra sentence for the saved message, e.g. after the Inbox folder was renamed (§3.5 of technical-design-inbox-as-area.md).
+  const [savedNote, setSavedNote] = useState('');
+  useStatus('Settings.saved', saved ? {kind: 'success', text: `Settings saved.${savedNote}`, onDismiss: () => setSaved(false)} : null);
   // Folders tab's "Run Integrity Check" button (docs/dev/technical-design-integrity-check.md).
   const [integrityCheckRunning, setIntegrityCheckRunning] = useState(false);
   // MyStyle's .png listing for the "Meeting Note" tab's template picker
@@ -1061,6 +1071,7 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
         areasFolder: values.areasFolder.trim() || DEFAULT_SETTINGS.areasFolder,
         resourcesFolder: values.resourcesFolder.trim() || DEFAULT_SETTINGS.resourcesFolder,
         archiveFolder: values.archiveFolder.trim() || DEFAULT_SETTINGS.archiveFolder,
+        inboxFolder: values.inboxFolder.trim() || DEFAULT_SETTINGS.inboxFolder,
         // No fallback-to-default here (unlike the folder fields above) - an
         // empty string is itself a valid, meaningful value ("no calendar
         // linked yet"), not a broken path segment to guard against.
@@ -1097,6 +1108,15 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
           DEFAULT_SETTINGS.monthlyFocusAreaCount,
         ),
       };
+      // A new Inbox folder name moves the folder first; a problem throws and nothing is saved.
+      const inboxRename = await renameInboxFolderForSave(storedNow, cleaned);
+      setSavedNote(
+        inboxRename === 'moved'
+          ? ' Inbox folder renamed.'
+          : inboxRename === 'notMoved'
+            ? ' The Inbox folder was not moved, because Base root or Areas changed too.'
+            : '',
+      );
       await saveSettings(cleaned);
       // The cache was built against whatever paths were in effect before -
       // a changed root would otherwise keep showing stale Projects/Areas

@@ -78,11 +78,11 @@ export function findWeeklyGoalsForWeek(items: CachedItem[], weekKey: string): We
   return findGoalsForPeriod(items, 'weekly', weekKey);
 }
 
-/** Pure in-memory aggregation over already-cached items plus Inbox's own tasks/meetings - see the module doc comment. `basePath` addresses the synthetic Inbox item (same `inboxItemRef` DailyView/dailyAggregate.ts use); ignored when `inbox` is null. `weekStart`/`weekEnd` are inclusive YYYY-MM-DD bounds - domain/weekDate.ts's `weekRangeIso` (optionally shifted via `shiftWeeks`) is how WeekView.tsx produces them. `weekKey` is that same displayed week's ISO key (domain/weekDate.ts's `isoWeekKey`) - drives both `focusCards[].goal` and `historicalGoals`. */
+/** Pure in-memory aggregation over already-cached items plus Inbox's own tasks/meetings - see the module doc comment. `inboxPath` addresses the synthetic Inbox item (same `inboxItemRef` DailyView/dailyAggregate.ts use); ignored when `inbox` is null. `weekStart`/`weekEnd` are inclusive YYYY-MM-DD bounds - domain/weekDate.ts's `weekRangeIso` (optionally shifted via `shiftWeeks`) is how WeekView.tsx produces them. `weekKey` is that same displayed week's ISO key (domain/weekDate.ts's `isoWeekKey`) - drives both `focusCards[].goal` and `historicalGoals`. */
 function buildWeeklyAggregateImpl(
   items: CachedItem[],
   inbox: DailyInboxInput | null,
-  basePath: string,
+  inboxPath: string,
   weekStart: string,
   weekEnd: string,
   weekKey: string,
@@ -107,7 +107,7 @@ function buildWeeklyAggregateImpl(
   }
 
   if (inbox) {
-    const item = inboxItemRef(basePath);
+    const item = inboxItemRef(inboxPath);
     inbox.meetings.forEach((meeting, meetingIndex) => {
       if (!meeting.cancelled) meetings.push(...entriesInRange({item, meetingIndex, meeting}, weekStart, weekEnd));
     });

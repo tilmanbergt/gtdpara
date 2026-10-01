@@ -425,11 +425,11 @@ export default function DailyView({
   // there is no manual "refresh after save" step left to forget.
   const items = useCachedItems();
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
-  const [basePath, setBasePath] = useState<string | null>(null);
+  const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's resolveLinkedFilePath (the read-only
   // onOpenLinkedFile below, technical-design-linked-files.md §6) needs the
-  // full resolved path set, not just `basePath` - same "keep both" shape
-  // screens/InboxScreen.tsx's own `basePath`/`paths` pair uses.
+  // full resolved path set, not just `inboxPath` - same "keep both" shape
+  // screens/InboxScreen.tsx's own `inboxPath`/`paths` pair uses.
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
   const [inbox, setInbox] = useState<ProjectFileState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -529,10 +529,10 @@ export default function DailyView({
       if (!cache || forceRebuild) {
         cache = await rebuildCache(loadedSettings);
       }
-      const loadedInbox = await loadProjectFile('inbox', cache.paths.base);
+      const loadedInbox = await loadProjectFile('inbox', cache.paths.inboxFolder);
       setSettings(loadedSettings);
       setInbox(loadedInbox);
-      setBasePath(cache.paths.base);
+      setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
     } catch (e) {
       if (loadedSettings) setSettings(loadedSettings);
@@ -565,7 +565,7 @@ export default function DailyView({
       try {
         const cache = getCachedData();
         if (!cache) return;
-        const [loadedSettings, loadedInbox] = await Promise.all([loadSettings(), loadProjectFile('inbox', cache.paths.base)]);
+        const [loadedSettings, loadedInbox] = await Promise.all([loadSettings(), loadProjectFile('inbox', cache.paths.inboxFolder)]);
         setSettings(prev => (prev && JSON.stringify(prev) === JSON.stringify(loadedSettings) ? prev : loadedSettings));
         setInbox(prev => (prev && prev.rawContent === loadedInbox.rawContent ? prev : loadedInbox));
       } catch (e) {
@@ -596,10 +596,10 @@ export default function DailyView({
     const cohort = buildNowEntries(
       items,
       inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null,
-      basePath ?? '',
+      inboxPath ?? '',
     );
     setPickerMode(cohort.length === 0);
-  }, [focusMode, loading, items, inbox, basePath]);
+  }, [focusMode, loading, items, inbox, inboxPath]);
 
   /** Jumps to that Project/Area's Current tab, or (2026-09-03, docs/dev/technical-design-inbox-tab.md §3) to the Inbox tab when `item` is the synthetic Inbox entry - there's no Project/Area to open for that one. */
   const openItem = (item: DailyItemRef) => {
@@ -639,7 +639,7 @@ export default function DailyView({
     mutate: (tasks: Task[]) => Task[],
     inboxOverride?: ProjectFileState,
   ): Promise<ProjectFileState | null> => {
-    const {nextInbox} = await mutateEntryTasks(entry, mutate, {inbox: inboxOverride ?? inbox, basePath});
+    const {nextInbox} = await mutateEntryTasks(entry, mutate, {inbox: inboxOverride ?? inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
     return nextInbox;
   };
@@ -649,7 +649,7 @@ export default function DailyView({
     entry: DailyMeetingEntry,
     mutate: (meetings: Meeting[]) => Meeting[],
   ): Promise<void> => {
-    const {nextInbox} = await mutateEntryMeetings(entry, mutate, {inbox, basePath});
+    const {nextInbox} = await mutateEntryMeetings(entry, mutate, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
   };
 
@@ -784,7 +784,7 @@ export default function DailyView({
         const cohort = buildNowEntries(
           cache?.items ?? items,
           inboxForCohort ? {tasks: inboxForCohort.tasks, meetings: inboxForCohort.meetings} : null,
-          basePath ?? '',
+          inboxPath ?? '',
         );
         const stillOpen = cohort.filter(e => !e.task.done);
         if (stillOpen.length > 0) return; // more #now tasks still open - no clear yet
@@ -1056,7 +1056,7 @@ export default function DailyView({
    * saveEntryTasks/saveEntryMeetings above.
    */
   const handleAddTask = async (text: string, destination: Destination): Promise<void> => {
-    const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, basePath});
+    const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
     log('DailyView: added task', destinationLabel(destination));
   };
@@ -1068,7 +1068,7 @@ export default function DailyView({
    * actual save-file-then-write-cache mutation and throws on failure).
    */
   const handleAddMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
-    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, basePath});
+    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, inboxPath});
     if (nextInbox) setInbox(nextInbox);
     log('DailyView: added meeting', destinationLabel(destination));
   };
@@ -1120,16 +1120,16 @@ export default function DailyView({
   // buildDailyAggregate is a pure, synchronous transform over `items`/`inbox`
   // (storage/dailyAggregate.ts's own module doc comment), so recomputing is
   // cheap, and it can never be stale relative to the cache. `null` until
-  // load() has produced a basePath, same as the old state's null.
+  // load() has produced a inboxPath, same as the old state's null.
   // Memoized on its real inputs (docs/dev/technical-design-render-perf-ab.md
   // §3 B4) - `todayDate` is in the deps so a screen left open over midnight
   // still recomputes.
   const aggregate: DailyAggregate | null = useMemo(
     () =>
-      basePath !== null
-        ? buildDailyAggregate(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, basePath)
+      inboxPath !== null
+        ? buildDailyAggregate(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, inboxPath)
         : null,
-    [items, inbox, basePath, todayDate],
+    [items, inbox, inboxPath, todayDate],
   );
 
   // Context-tag filter (technical-design-context-tags.md §6) - the same
@@ -1144,12 +1144,12 @@ export default function DailyView({
         ? buildDailyAggregate(
             items,
             inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null,
-            basePath ?? '',
+            inboxPath ?? '',
             new Date(),
             dailyContext,
           )
         : aggregate ?? EMPTY_DAILY_AGGREGATE,
-    [dailyContext, items, inbox, basePath, aggregate, todayDate],
+    [dailyContext, items, inbox, inboxPath, aggregate, todayDate],
   );
 
   // dailyEntryDate: a multi-day meeting is listed on each day it covers.
@@ -1387,7 +1387,7 @@ export default function DailyView({
   // buildNowEntries/buildFocusCandidateEntries). Left empty when `focusMode`
   // is off so normal Daily never pays for this.
   const nowCohort = focusMode
-    ? buildNowEntries(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, basePath ?? '')
+    ? buildNowEntries(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, inboxPath ?? '')
     : [];
   const pickerCandidates = focusMode ? buildFocusCandidateEntries(items) : [];
   // 4-hour look-ahead (§4/§6's correction), judged against focusEntryNowMs -
@@ -1632,7 +1632,7 @@ export default function DailyView({
                       defaultDestination={FIXED_INBOX_DESTINATION}
                       items={items}
                       icsUrl={settings?.googleCalendarIcsUrl ?? ''}
-                      basePath={basePath ?? ''}
+                      inboxPath={inboxPath ?? ''}
                       onOpenSettings={() => onOpenCalendarSettings?.()}
                       textColor={textColor}
                       borderColor={borderColor}

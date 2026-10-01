@@ -30,6 +30,7 @@
  * exactly the kind of thing an integrity check should surface.
  */
 import {
+  checkLegacyInboxLeftovers,
   formatIntegrityReport,
   IntegrityCheckIO,
   IntegrityFinding,
@@ -42,6 +43,8 @@ import {AREA_FILE_NAME, GtdParaKind, PROJECT_FILE_NAME} from '../domain/types';
 import {fileExists, folderExists, listFolderEntries, writeIntegrityCheckReport} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
+import {resolveLivePaths} from './dataCache';
+import {hiddenAreaFolderFor} from './inboxMigration';
 import {loadProjectFile} from './projectFile';
 
 export interface IntegrityCheckSummary {
@@ -73,7 +76,11 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
     throw new Error('File read permission was not granted.');
   }
 
-  const paths = resolvePaths(settings);
+  // Live paths: the Inbox target is wherever the Inbox really is right now
+  // (docs/dev/technical-design-inbox-as-area.md §3.6).
+  const configuredPaths = resolvePaths(settings);
+  const paths = await resolveLivePaths(settings);
+  const hiddenAreaFolder = hiddenAreaFolderFor(configuredPaths);
   log('runIntegrityCheck: start');
 
   // The device capabilities the domain-layer checks need (see
@@ -82,15 +89,19 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
   // and threaded into every per-item check run below.
   const io: IntegrityCheckIO = {fileExists, folderExists};
 
-  const [projectEntries, areaEntries, archiveEntries] = await Promise.all([
+  const [projectEntries, areaEntries, archiveEntries, rootEntries] = await Promise.all([
     listFolderEntries(paths.projects),
     listFolderEntries(paths.areas),
     listFolderEntries(paths.archive),
+    listFolderEntries(paths.base),
   ]);
 
   const targets: ScanTarget[] = [
     ...projectEntries.filter(e => e.isFolder).map(e => ({kind: 'project' as const, path: e.path, name: e.name, inArchive: false})),
-    ...areaEntries.filter(e => e.isFolder).map(e => ({kind: 'area' as const, path: e.path, name: e.name, inArchive: false})),
+    ...areaEntries
+      // The Inbox folder lives under Areas but is never an Area (scanned below as the Inbox).
+      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== hiddenAreaFolder)
+      .map(e => ({kind: 'area' as const, path: e.path, name: e.name, inArchive: false})),
   ];
 
   const archiveFolders = archiveEntries.filter(e => e.isFolder);
@@ -100,8 +111,8 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
     if (kind) targets.push({kind, path: entry.path, name: entry.name, inArchive: true});
   });
 
-  // Inbox.txt lives directly at the base root, not inside its own folder (domain/settings.ts's resolvePaths).
-  targets.push({kind: 'inbox', path: paths.base, name: 'Inbox', inArchive: false});
+  // The Inbox at its effective location: its folder under Areas, or the base root while an old Inbox hasn't moved.
+  targets.push({kind: 'inbox', path: paths.inboxFolder, name: 'Inbox', inArchive: false});
 
   const perTargetResults = await Promise.all(
     targets.map(async (target): Promise<{findings: IntegrityFinding[]; summary: ScannedItemSummary | null}> => {
@@ -158,7 +169,12 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
     .map(result => result.summary)
     .filter((summary): summary is ScannedItemSummary => summary !== null);
   const wholeRunFindings = runWholeRunChecks(summaries);
-  const findings = [...perItemFindings, ...wholeRunFindings];
+  const leftoverFindings = checkLegacyInboxLeftovers(
+    rootEntries.map(e => ({name: e.name, isFolder: e.isFolder})),
+    paths.base,
+    configuredPaths.inboxFolder,
+  );
+  const findings = [...perItemFindings, ...wholeRunFindings, ...leftoverFindings];
 
   const report = formatIntegrityReport(findings, targets.length, new Date());
   const reportFileName = await writeIntegrityCheckReport(report);

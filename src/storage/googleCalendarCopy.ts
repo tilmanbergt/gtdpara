@@ -45,19 +45,19 @@ export function buildMeetingFromEvent(event: GoogleCalendarEvent, opts?: {highli
 export async function copyGoogleEventToDestination(
   event: GoogleCalendarEvent,
   destination: Destination,
-  basePath: string,
+  inboxPath: string,
   opts?: {highlight?: boolean},
 ): Promise<void> {
   const meeting = buildMeetingFromEvent(event, opts);
 
   if (destination.type === 'inbox') {
-    const inbox = await loadProjectFile('inbox', basePath);
+    const inbox = await loadProjectFile('inbox', inboxPath);
     const nextMeetings = [...inbox.meetings, meeting];
     // Inbox.txt is never part of storage/dataCache.ts's cache (§2.9 of
     // design-overview.md), so there's no matching cache write-through here
     // - same as every other Inbox save in this app (screens/InboxScreen.tsx,
     // storage/inboxFiling.ts).
-    await saveMeetings('inbox', basePath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+    await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
     return;
   }
 

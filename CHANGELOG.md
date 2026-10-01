@@ -10,6 +10,22 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- **The Inbox now has its own folder inside Areas** (`2 Areas/0 Inbox`), so your `Note` folder
+  only holds the PARA folders. Everything about the Inbox works as before; it is not shown as an
+  area. The folder name can be changed in **Settings → Folders** (renaming it there moves the
+  folder).
+- The Integrity Check also reports Inbox files left in `Note` by an unfinished move.
+
+### Upgrade notes
+- On the first start, gtdpara moves `Note/Inbox.txt` and the `Todos` and `Meetings` folders next to
+  it into `Note/2 Areas/0 Inbox` once, and shows a short message. Links to notes in those folders
+  are updated in the Inbox and in all active projects and areas (not in archived ones).
+- If an area named `0 Inbox` already exists, or a file would be overwritten, nothing is moved and
+  the Inbox keeps working from `Note`. Choose another Inbox folder name in Settings → Folders; the
+  move is tried again.
+- New setting **Inbox folder** (default `0 Inbox`); it switches with the profile.
+
 ## [0.1.0] — 2026-09-30
 
 First public release.

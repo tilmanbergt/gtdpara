@@ -172,7 +172,7 @@ interface Props {
   items: CachedItem[];
   /** '' = not configured - renders the empty state instead of a list. */
   icsUrl: string;
-  basePath: string;
+  inboxPath: string;
   onOpenSettings: () => void;
   textColor: string;
   borderColor: string;
@@ -225,7 +225,7 @@ export default function GoogleCalendarPanel({
   defaultDestination,
   items,
   icsUrl,
-  basePath,
+  inboxPath,
   onOpenSettings,
   textColor,
   borderColor,
@@ -333,13 +333,13 @@ export default function GoogleCalendarPanel({
   useEffect(() => {
     if (!icsUrl) return;
     let cancelled = false;
-    loadProjectFile('inbox', basePath).then(state => {
+    loadProjectFile('inbox', inboxPath).then(state => {
       if (!cancelled) setInboxMeetings(state.meetings);
     });
     return () => {
       cancelled = true;
     };
-  }, [icsUrl, basePath]);
+  }, [icsUrl, inboxPath]);
 
   // Dedup/hide-existing: computed unconditionally (like `visible`/`paged`
   // below) since none of it is a hook and it's cheap even when icsUrl is
@@ -391,7 +391,7 @@ export default function GoogleCalendarPanel({
   const handleCopy = async (event: GoogleCalendarEvent) => {
     setCopyingUid(event.uid);
     try {
-      await copyGoogleEventToDestination(event, pickerDestination, basePath, {highlight: copyAsHighlight});
+      await copyGoogleEventToDestination(event, pickerDestination, inboxPath, {highlight: copyAsHighlight});
       const key = googleEventKey(event);
       setJustCopiedKeys(prev => new Set(prev).add(key));
       if (pickerDestination.type === 'inbox') {

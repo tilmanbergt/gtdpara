@@ -36,6 +36,7 @@
  * domain/storage boundary in this codebase.
  */
 import {joinNotePath, parseSharedNoteAnchor} from './sharedNotePages';
+import {legacyInboxLeftovers, ListedEntry} from './inboxMigration';
 import {GtdParaKind, Meeting, Task} from './types';
 
 export interface IntegrityFinding {
@@ -429,6 +430,32 @@ export const WHOLE_RUN_CHECKS: Record<string, WholeRunCheck> = {
 /** Runs every registered whole-run check once, given every scanned item's summary. */
 export function runWholeRunChecks(items: ScannedItemSummary[]): IntegrityFinding[] {
   return Object.values(WHOLE_RUN_CHECKS).flatMap(check => check(items));
+}
+
+/**
+ * Whole-scan finding for anything still at the base root from where the
+ * Inbox lived up to 0.1.0 (docs/dev/technical-design-inbox-as-area.md §3.6):
+ * Inbox.txt, Todos/ or Meetings/. Means the automatic move didn't finish or
+ * was blocked - or, for Todos/Meetings, a folder created there by hand.
+ */
+export function checkLegacyInboxLeftovers(rootEntries: ListedEntry[], base: string, inboxFolder: string): IntegrityFinding[] {
+  const leftovers = legacyInboxLeftovers(rootEntries);
+  if (leftovers.length === 0) return [];
+  return [
+    {
+      checkId: 'legacyInboxLeftovers',
+      itemKind: 'inbox',
+      itemPath: base,
+      entityKind: 'item',
+      entityLabel: leftovers.join(', '),
+      notePath: '',
+      message:
+        `Left in the base folder from the old Inbox location: ${leftovers.join(', ')}. The move to ` +
+        `"${inboxFolder}" did not finish or was blocked (an Area with the same name, or the same file ` +
+        `name in both places). Move these by hand, or choose another Inbox folder name in Settings → ` +
+        `Folders and restart gtdpara.`,
+    },
+  ];
 }
 
 /** Formats a full run's findings into the single report file storage/integrityCheck.ts writes - kept pure/testable, separate from the actual file write. */

@@ -51,6 +51,10 @@ export async function createItem(
 
   const paths = resolvePaths(settings);
   const root = kind === 'project' ? paths.projects : paths.areas;
+  // The Inbox folder sits in Areas but is never an Area (docs/dev/technical-design-inbox-as-area.md §3.2).
+  if (kind === 'area' && `${root}/${trimmed}`.toLowerCase() === paths.inboxFolder.toLowerCase()) {
+    throw new Error('That name is used by the Inbox folder.');
+  }
 
   const granted = await ensureFileReadPermission();
   if (!granted) throw new Error('File read permission was not granted.');

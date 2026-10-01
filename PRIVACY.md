@@ -5,7 +5,7 @@ gtdpara is a local plugin. There is no account, no server and no telemetry.
 ## What it reads and writes
 
 - **Your PARA folders** (by default `Note/1 Projects`, `2 Areas`, `3 Resources`, `4 Archive` and
-  the Inbox file). Todos and meetings are stored as plain text in files inside those
+  the Inbox folder `2 Areas/0 Inbox`). Todos and meetings are stored as plain text in files inside those
   folders, so you can read and edit them without gtdpara.
 - **Notes it creates for you** (linked notes, meeting notes, standalone notes), in the same folders.
 - **Plugin settings**, stored in the plugin's own storage on the device (Android AsyncStorage).

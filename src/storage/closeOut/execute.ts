@@ -13,7 +13,7 @@ import {isoDate, writeLifecycleDate} from '../../domain/lifecycleDates';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../../domain/settings';
 import {fileExists, folderExists, moveFile, moveFolder, writeTextFile} from '../../supernote/fileSystem';
 import {archiveTargetsFor} from '../archive';
-import {findCachedItem, frontMatterOf, getCachedData, removeCachedItem, updateItemMeetings, updateItemTasks} from '../dataCache';
+import {findCachedItem, frontMatterOf, getCachedData, removeCachedItem, resolveLivePaths, updateItemMeetings, updateItemTasks} from '../dataCache';
 import {toLinkedFile} from '../linkedFiles';
 import {dataFilePath, loadProjectFile, saveMeetings, saveTasks} from '../projectFile';
 import {savePlan} from './planStore';
@@ -79,16 +79,16 @@ async function rewriteLinks(from: string, to: string, paths: ResolvedParaPaths):
       changed++;
     }
   }
-  let inbox = await loadProjectFile('inbox', paths.base);
+  let inbox = await loadProjectFile('inbox', paths.inboxFolder);
   if (inbox.tasks.some(t => t.linkedFile === from)) {
     const tasks = inbox.tasks.map(t => (t.linkedFile === from ? {...t, linkedFile: to} : t));
-    await saveTasks('inbox', paths.base, inbox.rawContent, tasks, inbox.taskExtraLines);
+    await saveTasks('inbox', paths.inboxFolder, inbox.rawContent, tasks, inbox.taskExtraLines);
     changed++;
-    inbox = await loadProjectFile('inbox', paths.base);
+    inbox = await loadProjectFile('inbox', paths.inboxFolder);
   }
   if (inbox.meetings.some(m => m.linkedFile === from)) {
     const meetings = inbox.meetings.map(m => (m.linkedFile === from ? {...m, linkedFile: to} : m));
-    await saveMeetings('inbox', paths.base, inbox.rawContent, meetings, inbox.meetingExtraLines);
+    await saveMeetings('inbox', paths.inboxFolder, inbox.rawContent, meetings, inbox.meetingExtraLines);
     changed++;
   }
   return changed;
@@ -124,7 +124,7 @@ export async function runCloseOutArchive(
 ): Promise<ArchiveRunResult> {
   const item = findCachedItem(projectPath);
   if (!item) throw new Error('This project is no longer in the lists - tap 🔄 to refresh.');
-  const paths = resolvePaths(settings);
+  const paths = await resolveLivePaths(settings);
   const ops = archiveOpsFor(projectPath, settings);
   const folderOp = ops.find((o): o is Extract<ArchiveOp, {kind: 'moveFolder'}> => o.kind === 'moveFolder');
   if (!folderOp) throw new Error('Internal error: no folder move planned.');

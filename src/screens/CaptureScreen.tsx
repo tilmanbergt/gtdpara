@@ -69,7 +69,7 @@ import {
 import {PluginManager} from 'sn-plugin-lib';
 import {Destination, destinationLabel} from '../domain/destination';
 import {parseFlexibleTime, todayIso} from '../domain/meetingTime';
-import {findEnclosingItem, resolvePaths} from '../domain/settings';
+import {findEnclosingItem} from '../domain/settings';
 import {getCachedData, rebuildCache} from '../storage/dataCache';
 import {addMeetingToDestination, addTaskToDestination, buildMeeting, buildTask} from '../storage/itemMutations';
 import {resolveNotePath} from '../storage/noteLinks';
@@ -91,7 +91,8 @@ interface Props {
 type Kind = 'todo' | 'meeting';
 
 interface LoadedState {
-  basePath: string;
+  /** The Inbox folder (cache paths.inboxFolder) - where an Inbox capture is written. */
+  inboxPath: string;
   currentNotePath: string | null;
   /** The one, non-overridable destination - see the module doc comment's "Destination" note. */
   defaultDestination: Destination;
@@ -155,13 +156,16 @@ export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.J
     setLoadError(null);
     try {
       const [settings, currentNotePath] = await Promise.all([loadSettings(), getCurrentNotePath()]);
-      const paths = resolvePaths(settings);
 
       // Warms the shared cache (for performSave's later ensureItemCached
       // call) - the return value itself is no longer needed here now that
       // the destination picker (which used to list its Projects/Areas) is
       // gone (docs/dev/technical-design-filing-unification.md §8).
-      if (!getCachedData()) await rebuildCache(settings);
+      // The cache's paths carry the effective Inbox location
+      // (docs/dev/technical-design-inbox-as-area.md §3.3) - never address
+      // the Inbox through resolvePaths(settings) directly.
+      const cache = getCachedData() ?? (await rebuildCache(settings));
+      const paths = cache.paths;
 
       const enclosing = currentNotePath ? findEnclosingItem(paths, currentNotePath) : null;
       const defaultDestination: Destination = enclosing
@@ -171,7 +175,7 @@ export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.J
       const recognized = await runRecognition();
       log('CaptureScreen: load recognized', JSON.stringify(recognized));
 
-      setLoaded({basePath: paths.base, currentNotePath, defaultDestination});
+      setLoaded({inboxPath: paths.inboxFolder, currentNotePath, defaultDestination});
       setText(recognized);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -243,8 +247,8 @@ export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.J
       // One shared write path (storage/itemMutations.ts, 2026-09-20) - the
       // Inbox state is read fresh from disk here since this screen keeps no
       // Inbox state of its own (nothing to hand the returned `nextInbox` to).
-      const inboxState = destination.type === 'inbox' ? await loadProjectFile('inbox', loaded.basePath) : null;
-      const ctx = {inbox: inboxState, basePath: loaded.basePath};
+      const inboxState = destination.type === 'inbox' ? await loadProjectFile('inbox', loaded.inboxPath) : null;
+      const ctx = {inbox: inboxState, inboxPath: loaded.inboxPath};
       if (kind === 'todo') {
         await addTaskToDestination(buildTask(trimmedText, {notePath}), destination, ctx);
       } else {

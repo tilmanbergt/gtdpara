@@ -6,7 +6,7 @@
  * call with real (and on this hardware, sometimes surprising) latency, so
  * it shouldn't happen silently every time a screen opens.
  */
-import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
+import {isInboxFolder, GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {FolderEntry, listFolderEntries} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
@@ -103,7 +103,8 @@ export async function rescanFolders(settings: GtdParaSettings): Promise<FolderIn
     archive: [],
   };
   sections.forEach((section, index) => {
-    entries[section.key] = results[index].filter(entry => entry.isFolder);
+    // The Inbox folder lives in Areas but is never an Area (technical-design-inbox-as-area.md §3.2).
+    entries[section.key] = results[index].filter(entry => entry.isFolder && !(section.key === 'areas' && isInboxFolder(paths, entry.path)));
   });
 
   const index: FolderIndex = {scannedAt: Date.now(), paths, entries};

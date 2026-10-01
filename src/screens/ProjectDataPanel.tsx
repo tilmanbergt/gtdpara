@@ -1221,7 +1221,7 @@ function MeetingsSection({
           defaultDestination={{type: 'item', kind, name, path: itemPath}}
           items={getCachedData()?.items ?? ([] as CachedItem[])}
           icsUrl={icsUrl}
-          basePath={getCachedData()?.paths.base ?? ''}
+          inboxPath={getCachedData()?.paths.inboxFolder ?? ''}
           onOpenSettings={() => onOpenCalendarSettings?.()}
           textColor={textColor}
           borderColor={borderColor}

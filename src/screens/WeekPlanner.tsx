@@ -75,7 +75,7 @@ export default function WeekPlanner({
   leftTabsTrailing,
 }: Props): React.JSX.Element {
   usePerfRender('WeekPlanner');
-  const {items, settings, basePath, paths, inbox, editingKey, selectedDate} = planning;
+  const {items, settings, inboxPath, paths, inbox, editingKey, selectedDate} = planning;
   const [leftTabState, setLeftTab] = useState<LeftTab>('meetings');
   // Google tabs only while the experimental Google Calendar integration is on
   // (docs/dev/technical-design-about-debug-experimental.md §3.2).
@@ -98,20 +98,20 @@ export default function WeekPlanner({
       buildWeeklyAggregate(
         items,
         inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null,
-        basePath ?? '',
+        inboxPath ?? '',
         weekStart,
         weekEnd,
         weekKey,
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, inbox, basePath, weekStart, weekEnd, weekKey, todayDate],
+    [items, inbox, inboxPath, weekStart, weekEnd, weekKey, todayDate],
   );
   const dayRows = useMemo(
     () =>
       selectedDate
-        ? meetingsOnDay(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, basePath ?? '', selectedDate)
+        ? meetingsOnDay(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, inboxPath ?? '', selectedDate)
         : [],
-    [items, inbox, basePath, selectedDate],
+    [items, inbox, inboxPath, selectedDate],
   );
 
   // The meeting in Quick Add's edit mode: from the day panel, else from the
@@ -185,7 +185,7 @@ export default function WeekPlanner({
               defaultDestination={FIXED_INBOX_DESTINATION}
               items={items}
               icsUrl={settings?.googleCalendarIcsUrl ?? ''}
-              basePath={basePath ?? ''}
+              inboxPath={inboxPath ?? ''}
               onOpenSettings={() => onOpenCalendarSettings?.()}
               textColor={textColor}
               borderColor={borderColor}
@@ -242,7 +242,7 @@ export default function WeekPlanner({
                   defaultDestination={FIXED_INBOX_DESTINATION}
                   items={items}
                   icsUrl={settings?.googleCalendarIcsUrl ?? ''}
-                  basePath={basePath ?? ''}
+                  inboxPath={inboxPath ?? ''}
                   onOpenSettings={() => onOpenCalendarSettings?.()}
                   textColor={textColor}
                   borderColor={borderColor}

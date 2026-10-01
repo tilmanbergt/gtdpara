@@ -67,7 +67,7 @@ function itemRefOf(cachedItem: CachedItem): DailyItemRef {
 }
 
 /** Every not-cancelled meeting from every item plus Inbox, with its source ref. */
-function allMeetingEntries(items: CachedItem[], inbox: DailyInboxInput | null, basePath: string): WeeklyMeetingEntry[] {
+function allMeetingEntries(items: CachedItem[], inbox: DailyInboxInput | null, inboxPath: string): WeeklyMeetingEntry[] {
   const out: WeeklyMeetingEntry[] = [];
   for (const cachedItem of items) {
     if (cachedItem.loadError) continue;
@@ -77,7 +77,7 @@ function allMeetingEntries(items: CachedItem[], inbox: DailyInboxInput | null, b
     });
   }
   if (inbox) {
-    const item = inboxItemRef(basePath);
+    const item = inboxItemRef(inboxPath);
     inbox.meetings.forEach((meeting, meetingIndex) => {
       if (!meeting.cancelled) out.push({item, meetingIndex, meeting});
     });
@@ -96,14 +96,14 @@ function byDayOrder(a: WeeklyMeetingEntry, b: WeeklyMeetingEntry): number {
 function buildMonthlyAggregateImpl(
   items: CachedItem[],
   inbox: DailyInboxInput | null,
-  basePath: string,
+  inboxPath: string,
   period: Period,
   today: Date = new Date(),
 ): MonthlyAggregate {
   // Candidates: highlights that start inside the month, or up to
   // MAX_MEETING_DAYS before it (a long run spilling into the month).
   const earliest = spanScanStart(period.start);
-  const highlights = allMeetingEntries(items, inbox, basePath).filter(
+  const highlights = allMeetingEntries(items, inbox, inboxPath).filter(
     e => isHighlight(e.meeting) && e.meeting.date >= earliest && e.meeting.date <= period.end,
   );
 
@@ -140,12 +140,12 @@ function buildMonthlyAggregateImpl(
 function meetingsOnDayImpl(
   items: CachedItem[],
   inbox: DailyInboxInput | null,
-  basePath: string,
+  inboxPath: string,
   date: string,
 ): WeeklyMeetingEntry[] {
   const earliest = spanScanStart(date);
   const out: WeeklyMeetingEntry[] = [];
-  for (const e of allMeetingEntries(items, inbox, basePath)) {
+  for (const e of allMeetingEntries(items, inbox, inboxPath)) {
     if (e.meeting.date < earliest || e.meeting.date > date) continue;
     out.push(...entriesInRange(e, date, date));
   }

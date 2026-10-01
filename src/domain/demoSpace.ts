@@ -8,6 +8,7 @@
 import {createDefaultMeetingDefinition} from './noteTemplate';
 import {monthKeyOf} from './period';
 import {DEFAULT_SETTINGS, GtdParaSettings} from './settings';
+import {INBOX_FILE_NAME} from './types';
 import {isoWeekKey} from './weekDate';
 
 export const DEMO_PROFILE_ID = 'demo';
@@ -156,7 +157,8 @@ export function buildDemoFiles(today: Date): DemoFile[] {
   });
 
   files.push({
-    path: 'Inbox.txt',
+    // The Inbox's own folder under Areas (docs/dev/technical-design-inbox-as-area.md).
+    path: `${DEFAULT_SETTINGS.areasFolder}/${DEFAULT_SETTINGS.inboxFolder}/${INBOX_FILE_NAME}`,
     content: [
       '---',
       'kind: inbox',

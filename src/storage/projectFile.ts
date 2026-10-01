@@ -43,7 +43,7 @@ import {readTextFile, writeTextFile} from '../supernote/fileSystem';
 import {log} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
 
-/** For 'inbox', callers pass the base root itself as itemPath (Inbox.txt isn't inside a Project/Area folder - see domain/settings.ts's resolvePaths). */
+/** For 'inbox', callers pass the Inbox folder as itemPath - the cache's `paths.inboxFolder` (docs/dev/technical-design-inbox-as-area.md), which is the base root only while an old Inbox hasn't been moved yet. */
 export function dataFileName(kind: GtdParaKind): string {
   if (kind === 'area') return AREA_FILE_NAME;
   if (kind === 'inbox') return INBOX_FILE_NAME;

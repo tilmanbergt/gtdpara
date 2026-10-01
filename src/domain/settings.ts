@@ -15,6 +15,12 @@ export interface GtdParaSettings {
   resourcesFolder: string;
   archiveFolder: string;
   /**
+   * Name of the Inbox's own folder inside the Areas folder
+   * (docs/dev/technical-design-inbox-as-area.md). Holds Inbox.txt and the
+   * Inbox's Todos/Meetings note folders. Never treated as an Area.
+   */
+  inboxFolder: string;
+  /**
    * Focus slot counts (see storage/focusSlots.ts): how many Projects/Areas
    * can be marked daily/weekly-focused at once, independently per
    * kind/scope. Weekly isn't consumed by any view yet (reserved for a
@@ -179,6 +185,7 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   areasFolder: '2 Areas',
   resourcesFolder: '3 Resources',
   archiveFolder: '4 Archive',
+  inboxFolder: '0 Inbox',
   dailyFocusProjectCount: 3,
   dailyFocusAreaCount: 2,
   weeklyFocusProjectCount: 5,
@@ -211,8 +218,17 @@ export interface ResolvedParaPaths {
   areas: string;
   resources: string;
   archive: string;
-  /** The untriaged-capture file, directly under the base root. */
+  /**
+   * The Inbox's own folder (`<areas>/<inboxFolder>`) - the Inbox's item path:
+   * Inbox.txt and its Todos/Meetings note folders live here. Address the
+   * Inbox through the CACHE's paths (storage/dataCache.ts), which hold the
+   * effective location - see technical-design-inbox-as-area.md §3.3.
+   */
+  inboxFolder: string;
+  /** The untriaged-capture file, `<inboxFolder>/Inbox.txt`. */
   inbox: string;
+  /** Where the Inbox lived up to 0.1.0 (the base root). Only the migration and the Integrity Check read this. */
+  legacyInboxFolder: string;
 }
 
 function joinPath(base: string, segment: string): string {
@@ -229,14 +245,46 @@ function joinPath(base: string, segment: string): string {
  */
 export function resolvePaths(settings: GtdParaSettings): ResolvedParaPaths {
   const base = (settings.baseRoot || DEFAULT_SETTINGS.baseRoot).replace(/\/+$/, '');
+  const areas = joinPath(base, settings.areasFolder || DEFAULT_SETTINGS.areasFolder).replace(/\/+$/, '');
+  const inboxFolder = joinPath(areas, (settings.inboxFolder || DEFAULT_SETTINGS.inboxFolder).trim()).replace(/\/+$/, '');
   return {
     base,
     projects: joinPath(base, settings.projectsFolder || DEFAULT_SETTINGS.projectsFolder),
-    areas: joinPath(base, settings.areasFolder || DEFAULT_SETTINGS.areasFolder),
+    areas,
     resources: joinPath(base, settings.resourcesFolder || DEFAULT_SETTINGS.resourcesFolder),
     archive: joinPath(base, settings.archiveFolder || DEFAULT_SETTINGS.archiveFolder),
-    inbox: joinPath(base, INBOX_FILE_NAME),
+    inboxFolder,
+    inbox: joinPath(inboxFolder, INBOX_FILE_NAME),
+    legacyInboxFolder: base,
   };
+}
+
+/** The same paths with the Inbox at `inboxFolder` - how the cache publishes the effective Inbox location (technical-design-inbox-as-area.md §3.3). */
+export function withInboxFolder(paths: ResolvedParaPaths, inboxFolder: string): ResolvedParaPaths {
+  const folder = inboxFolder.replace(/\/+$/, '');
+  return {...paths, inboxFolder: folder, inbox: joinPath(folder, INBOX_FILE_NAME)};
+}
+
+/** Whether `folderPath` is the configured Inbox folder (exact match, trailing slashes ignored). Used to keep it out of every Area listing. */
+export function isInboxFolder(paths: ResolvedParaPaths, folderPath: string): boolean {
+  if (paths.inboxFolder === paths.base) return false; // legacy location: the base root is never an Area folder
+  return folderPath.replace(/\/+$/, '') === paths.inboxFolder;
+}
+
+/** Whether `filePath` is the Inbox folder or anything inside it. */
+export function isUnderInboxFolder(paths: ResolvedParaPaths, filePath: string): boolean {
+  if (paths.inboxFolder === paths.base) return false; // legacy location: everything is under the base root
+  return filePath === paths.inboxFolder || filePath.startsWith(`${paths.inboxFolder}/`);
+}
+
+/** Problem with a typed Inbox folder name, or null when it can be used. */
+export function validateInboxFolderName(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return 'The Inbox folder needs a name.';
+  if (trimmed.includes('/') || trimmed.includes('\\')) return 'The Inbox folder name cannot contain a slash.';
+  if (trimmed.startsWith('.')) return 'The Inbox folder name cannot start with a dot.';
+  if (trimmed.length > 60) return 'The Inbox folder name is too long (60 characters at most).';
+  return null;
 }
 
 export interface EnclosingItem {
@@ -262,6 +310,10 @@ export function findEnclosingItem(
     {kind: 'project', root: paths.projects},
     {kind: 'area', root: paths.areas},
   ];
+  // The Inbox folder sits inside Areas but is never an Area
+  // (technical-design-inbox-as-area.md §3.1) - a note in it has no
+  // enclosing Project/Area, the same as a note in the old root Inbox.
+  if (isUnderInboxFolder(paths, filePath)) return null;
   for (const {kind, root} of roots) {
     const prefix = `${root.replace(/\/+$/, '')}/`;
     if (!filePath.startsWith(prefix)) continue;

@@ -1,6 +1,6 @@
 # Technical design: Inbox as a folder under Areas
 
-Status: **design, waiting for approval** (2026-10-01). Planned for the next minor release.
+Status: **implemented 2026-10-01** (approved the same day), not yet device-tested. Planned for 0.2.0.
 
 ## 1. Requirements (decided in chat, 2026-10-01)
 
@@ -265,3 +265,39 @@ active.
   This goes on the backlog and is not fixed here.
 - `storage/folderIndex.ts` has no callers. Deleting it goes on the backlog.
 - Version: behavior and file layout change, so this ships as a **minor** release (0.2.0).
+
+## 7. As built (2026-10-01)
+
+Implemented as designed, with these details:
+
+- **Settings/paths** (`domain/settings.ts`): `inboxFolder` setting; `ResolvedParaPaths.inboxFolder`,
+  `inbox`, `legacyInboxFolder`; helpers `withInboxFolder`, `isInboxFolder`, `isUnderInboxFolder`
+  (both return false while the Inbox is at the legacy location, so the base root is never mistaken
+  for "inside the Inbox"), `validateInboxFolderName`. `findEnclosingItem` returns null inside the
+  Inbox folder.
+- **Planner** (`domain/inboxMigration.ts`): triggered only by a root `Inbox.txt`, so a `Todos` or
+  `Meetings` folder created in `Note` by hand later is never touched. Ops are planned from the
+  file state; `rewriteLinks` is idempotent (a rewritten link no longer matches).
+- **Executor** (`storage/inboxMigration.ts`): `migrateInboxIfNeeded` (outcome kept per base root,
+  so profiles with different bases each get their own move), `effectiveInboxFolderFor`,
+  `hiddenAreaFolderFor` (the configured folder, except when it is a real Area, i.e. blocked by
+  `areaNameClash`), `renameInboxFolderForSave`, `takeInboxMigrationNotice`. The link rewrite
+  works on the files directly (the cache is not built yet at that point): root `Inbox.txt` plus
+  every Project/Area folder that has its data file.
+- **Cache** (`storage/dataCache.ts`): the rebuild runs the move, publishes the effective location,
+  skips the hidden folder in the Areas scan; new `resolveLivePaths(settings)` for storage code
+  (close-out context/executor, Integrity Check).
+- **Renaming in Settings** also forgets the session's outcome for that base, so a move that was
+  blocked by an Area name is tried again with the new name on the next rebuild.
+- **Status slot**: `App.tsx` publishes `app.inboxMigration` (global scope): success "Inbox moved
+  to 2 Areas/0 Inbox.", or a warning for blocked/failed.
+- **Debug bundle**: `inbox location: new | legacy | unknown · migration: none | moved |
+  blocked:<reason> | failed`; `inboxFolder` counts towards "folders custom".
+- **Tests**: `__tests__/domain/settingsPaths.test.ts`, `__tests__/domain/inboxMigration.test.ts`
+  (planner, rewrites, effective location, leftovers), `__tests__/storage/inboxMigration.test.ts`
+  (move, link rewrite through the real project-file parser, blocked case, rename, against an
+  in-memory file system), demo-space test updated.
+
+Verified off-device: `npx tsc --noEmit` clean, `npm test` 102/102, App smoke render (throwaway,
+not committed). Still open: the device checklist in §5, and the Folders tab with one more field
+checked against the A5 X budget on the device.
