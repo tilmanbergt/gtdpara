@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+- Minor Update to release process. 
+
 ## [0.2.0] — 2026-10-01
 
 ### Changed
