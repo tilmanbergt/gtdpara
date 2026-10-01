@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-01
+
 ### Changed
 - **The Inbox now has its own folder inside Areas** (`2 Areas/0 Inbox`), so your `Note` folder
   only holds the PARA folders. Everything about the Inbox works as before; it is not shown as an
