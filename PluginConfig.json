@@ -2,7 +2,7 @@
   "name": "GtdPara",
   "desc": "A filesystem-first PARA + GTD workspace: tasks, meetings, and notes filed as plain text you can read and edit anywhere.",
   "iconPath": "assets/icon.png",
-  "versionName": "0.2.0",
+  "versionName": "0.3.0",
   "versionCode": "0",
   "pluginID": "ndx27q77pojfqh6l",
   "pluginKey": "gtdpara",

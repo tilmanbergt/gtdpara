@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-01
+
 ### Changed
 - **gtdpara now tells you about every change to your files.** Moves, overwrites and deletes are
   shown before they happen and confirmed afterwards. Archiving an area from the Weekly Review now
