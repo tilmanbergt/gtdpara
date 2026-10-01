@@ -10,8 +10,6 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
-- Minor Update to release process. 
-
 ### Changed
 - **gtdpara now tells you about every change to your files.** Moves, overwrites and deletes are
   shown before they happen and confirmed afterwards. Archiving an area from the Weekly Review now
