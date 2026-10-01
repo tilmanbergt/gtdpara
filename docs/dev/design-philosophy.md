@@ -1,83 +1,129 @@
-# GtdPara — Design Philosophy: Word, Wholeness, and Intention
+# gtdpara — Design Philosophy: Word, Wholeness, and Intention
 
-*A companion to `design-overview.md`, not a replacement for it. That document says what's built and how. This one is a lens for deciding what gets built next and why — specifically, how integrity and authenticity (in Werner Erhard's and Michael Jensen's sense, not the ordinary "keep the data consistent" sense) become a real element of this app, not a bolted-on feature. Living document, revised as the thinking develops — this is its third draft.*
+> **About this document.** The values behind gtdpara and how they show up in its design - the
+> lens for deciding what gets built and how it should feel. It describes the philosophy as it
+> holds now, in present tense. It is not a plan, a backlog or a history: open questions and ideas
+> go to the internal backlog, and the reasons for individual features live in their technical
+> designs. Update it when a principle changes or a feature newly expresses one; keep it short
+> enough to read in ten minutes. What is built and how is in `design-overview.md`; the user-facing
+> version of these ideas is `docs/user/philosophy.md`.
 
 ## 1. The core commitment
 
-Underneath organizing — PARA, GTD, Next actions, Review — the actual commitment this app should hold is integrity and authenticity themselves. Not as a moral standard to be judged against, but the way Jensen's model uses the word: integrity is being whole and complete, and it lives almost entirely in one place — whether your word is clean. You keep it, or, when you don't, you acknowledge that honestly and either recommit or consciously renegotiate it. What breaks integrity isn't missing something; it's the silent slip — the thing that quietly stopped being true without you ever owning that it did.
+Underneath organizing - PARA, GTD, next actions, review - the commitment this app holds is
+integrity and authenticity, in the sense of Werner Erhard's and Michael Jensen's model rather
+than "keep the data consistent". Integrity is being whole and complete, and it lives almost
+entirely in one place: whether your word is clean. You keep it, or, when you don't, you
+acknowledge that and either recommit or consciously renegotiate it. What breaks integrity isn't
+missing something; it's the silent slip - the thing that quietly stopped being true without you
+owning that it did.
 
-Read this way, GTD's actual offer isn't organization, it's clarity of word. A task list without a real "next" is a list of things you might get to — nothing there is actually your word about anything. "What's next" is the discipline of making word clear enough that it can be kept, or knowingly renegotiated, rather than just accumulated.
+Read this way, GTD's real offer isn't organization, it's clarity of word. A task list without a
+real "next" is a list of things you might get to; nothing there is your word about anything.
+"What's next" is the discipline of making your word clear enough that it can be kept, or
+knowingly renegotiated, rather than just accumulated.
 
-The distinction worth watching for, in yourself, is what a piece of work is being done *from*: wholeness and real choice, or obligation, shame, blame, justification. Joy is one legible signal of the first. None of this is about never missing something — it's about whether you're present enough to notice when you have, and willing to own it rather than let it slide.
+The distinction worth watching for is what a piece of work is done *from*: wholeness and real
+choice, or obligation, shame, blame, justification. Joy is one legible signal of the first. None
+of this is about never missing something - it's about being present enough to notice when you
+have, and willing to own it.
 
-**Two further factors, held as inquiry rather than structure.** Erhard and Jensen's model names two more elements alongside integrity and authenticity: being cause in the matter (are you authoring your relationship to this, even when it arrived as an external task — not a victim stance) and a larger game or purpose (is this in service of something bigger than just completing it). GTD's own Horizons of Focus actually reach this far — Horizon 3 is Goals & Objectives, Horizon 4 is Vision, Horizon 5 is Purpose & Principles — but none of those horizons exist in gtdpara today; the app only goes up through Horizon 2 (Areas). Building that layer structurally (Areas linking to stated Goals, a Vision, a Purpose) would be a large, separate feature, not decided. For now these two factors are staying where the joy/obligation question already lives: as something to be asked, in Morning or Review, not something the app tracks as data.
+**Two further factors, held as inquiry rather than structure.** The model names two more
+elements: being cause in the matter (authoring your relationship to a piece of work, even when it
+arrived from outside) and a larger game or purpose. gtdpara's structure reaches up to GTD's
+Horizon 2 (Areas); goals, vision and purpose are not data in the app. These two factors are
+questions to ask - in a review, in a note - not something the app tracks.
 
 ## 2. Editing vs. redeciding
 
 Not every change to a task is the same kind of act:
 
-- **Editing** — fixing a typo, rewording a note, correcting a date you mistyped. This should stay exactly as frictionless as it already is. No ceremony belongs here.
-- **Redeciding** — changing what you're actually on the hook for: a Next/Focus choice, a Due date, a Status change. These are acts of renegotiating a commitment, and the interaction should let them register as that, not as a stray tap on a list.
+- **Editing** - fixing a typo, rewording, correcting a mistyped date. This stays frictionless; no
+  ceremony belongs here.
+- **Redeciding** - changing what you are on the hook for: next, focus, due date, status. These
+  renegotiate a commitment, and the interaction lets them register as that.
 
-Mostly a naming/framing question, not new mechanics — Status, Focus, and flow-state are already structurally separate controls from plain text editing. The `#now` marking introduced in §4 below is a small, deliberately lightweight example of this same idea done right: a double-tap on an existing badge, not a form, not a new screen — but still a distinct, visibly different gesture from typing, so it reads as "I'm redeciding what I'm on the hook for right now" rather than as incidental text editing.
+Status, focus and flow-state are separate controls from text editing for this reason. Marking a
+task `#now` is a deliberately light example: a double-tap on the existing Next badge, not a form
+or a new screen, but still a distinct gesture from typing, so it reads as "this is what I'm on
+the hook for right now".
 
-## 3. Spaciousness
+## 3. Every entry is a conscious choice
 
-The single biggest way the app can support presence isn't a feature — it's restraint. In your own words: "there is space, here is the focus, calmly but focused," rather than a page crammed with the implicit message that everything on it needs doing soon. Density itself is a message; a screen that fits more says, wordlessly, that more is expected of you right now.
+Nothing in gtdpara creates commitments on its own. There are no recurring meetings and no
+repeating todos: every meeting and every todo exists because someone entered it, deliberately,
+for that one occasion. A series that just continues by itself is exactly the kind of word that
+nobody is actually keeping - it stays on the list whether or not it is still meant. Making each
+entry by hand keeps every item on the list an active choice and a real commitment. Helpers that
+make entering easy ("New from this", copying a calendar event, date nudges) are welcome; helpers
+that enter things for you are not.
 
-This is worth naming honestly against the app's own recent history rather than pretending it's always been the direction: the 2026-09-03 Daily-cleanup pass (`design-overview.md` §2.15) was explicitly a *compaction* pass — its stated goal was freeing space to hold *more* (icon-only badges instead of text, tighter task grouping, headers removed). That's the opposite instinct from spaciousness-as-principle. Not a contradiction to quietly resolve — a real tension between an already-shipped decision and a value that's only become clear since. Focus mode (§4, §8) is the first place this tension actually gets resolved concretely, by hiding rather than re-compacting: instead of shrinking everything further to fit more in, focus mode simply removes what isn't `#now` from view. Worth revisiting the rest of Daily deliberately if and when that gets designed for real, not papering over.
+## 4. Spaciousness
 
-## 4. Breathing as rhythm, concretely: `#now` and focus mode
+The biggest way the app supports presence isn't a feature - it's restraint: "there is space, here
+is the focus, calmly but focused," rather than a page crammed with the implicit message that
+everything on it needs doing soon. Density itself is a message; a screen that fits more says,
+wordlessly, that more is expected of you right now.
 
-The clearest organizing image to come out of this thinking, now resolved into an actual, minimal design rather than staying only a metaphor.
+So the app shows less rather than shrinking more to fit: Daily shows only what matters today,
+focus mode hides everything that isn't `#now`, and lists are paged, not scrolled. There is a real
+tension with compact layouts that free space to hold more; when the two collide, hiding wins over
+re-compacting.
 
-**The daily arc.** Morning (in-breath — gathering, setting today's word) → the working day → Evening (out-breath — closing, releasing). Not yet built as separate screens; the current Daily view stays the entry point for now while this gets tried out as an addition.
+## 5. Breathing as rhythm: `#now` and focus mode
 
-**The rhythm within the working day.** Originally imagined as a hand-picked "batch" living on its own dedicated tab, with a Picker screen, a progress indicator, and a Complete screen — that shape was mocked up, compared side by side against a simpler alternative, and deliberately not built. What's actually landed on is smaller and reuses far more of what already exists:
+Within the working day, the rhythm is picking and working through a small set:
 
-- A task can carry `#now`, layered on top of (never instead of) `#next` — the same tasks, the same treatment, just one temporary extra flag saying "this is what I'm actually on the hook for right now." Marked by double-tapping the existing Next badge wherever it already appears (Daily, a Project/Area's Todos) — no new screen to reach it from.
-- **Focus mode is not a new tab — it's a mode of Daily itself**, toggled on and off from there. On, it hides everything except `#now` tasks (with whatever's linked to them), meetings starting within the next 4 hours, and the same quick-add widget Daily already uses everywhere else. Off, Daily is exactly what it already is today.
-- The breath: picking (marking something `#now`) is the in-breath; working the set until every one of them is done is the out-breath itself, not a separate step. Picking itself has two shapes: marking a single task `#now` directly wherever its badge already appears (Daily-normal, a Project/Area's Todos), or, once inside focus mode with nothing yet marked, selecting several at once from that moment's focused Projects/Areas and committing them together with an explicit "Start focus session" — because choosing more than one thing only works if something distinct from the picking gesture itself says "that's the set, begin." A `#now` task that's checked off stays visible, checked, rather than vanishing out from under you — the set only actually clears, all at once, the moment the *last* one is done. That moment gets a short, genuinely celebratory line — "Congratulations: all tasks done!" — with an offer to pick the next set, rather than being either silent or an elaborate ceremony.
-- No clock, no timer, no app-suggested pause anywhere in this — fully consistent with the app's existing all-passive posture (no notifications, ever). Nothing auto-advances you into the next set; the "done" moment sits there, unhurried, until you either act (pick more) or leave.
-- **Sessions are held lightly, on purpose — no new durable state to reason about.** There's no stored "session" entity, no start time, no membership list. The only new fact the app remembers across a reopen is whether focus mode is currently on. Reopening the plugin while it's on always returns straight to it, never to a Project/Area view. Leaving focus mode ends it there and then; if any tasks are still marked `#now`, coming back to focus mode later simply shows them again — which counts as a new pass, not a resumed one, because nothing was ever tracking continuity in the first place. Simplicity for the person using it, and for the code, come from the same decision here.
+- A task can carry `#now`, layered on top of (never instead of) `#next` - one temporary extra
+  flag saying "this is what I'm on the hook for right now".
+- **Focus mode is a mode of Daily, not a tab.** On, it shows only `#now` tasks (with what is
+  linked to them), meetings starting within the next four hours, and the quick-add widget. Off,
+  Daily is unchanged.
+- Picking is the in-breath; working the set until every task is done is the out-breath. With
+  nothing marked, focus mode offers the next tasks of today's focused Projects/Areas to choose
+  from, and an explicit "Start focus session" commits the set. Checked-off tasks stay visible;
+  the set clears only when the last one is done, with a short celebratory line and an offer to
+  pick the next set.
+- No clock, no timer, no suggested pause. Nothing auto-advances into the next set; the moment
+  after finishing waits, unhurried, until you act or leave. **Never auto-suggest or auto-select
+  the next set** - the instant the app does that, the gap stops being protected.
+- **Sessions are held lightly.** There is no stored session, start time or membership list; the
+  only remembered fact is whether focus mode is on. Reopening the plugin while it's on returns
+  straight to it.
 
-This resolves the doing/non-doing tension raised earlier, without needing a new mechanism for it. A "Rest" Area, tracked like any other Area, would trip Review's Stalled/Neglected detection — nothing happening there would read as a problem, exactly backwards for something meant to be rested rather than worked. The moment after every `#now` task is done and before the next set is picked doesn't need representing as anything special either — it's simply unhurried and un-nudged by default, whether that gap is a minute or much longer. The one design discipline this implies: never auto-suggest or auto-select the next set. The instant the app does that, the gap stops being protected.
+Rest needs no mechanism of its own. A "Rest" area tracked like other areas would trip Review's
+stalled/neglected detection - backwards for something meant to be rested, not worked. The gap
+after a finished set is simply unhurried and un-nudged, whether it lasts a minute or much longer.
 
-**What a meeting is inside focus mode — two distinct roles, both wanted.** (a) Present purely for time-planning awareness: knowing what's coming so tasks get placed around it — this is what focus mode shows today, surfaced automatically within a 4-hour look-ahead window, not hand-picked. That window is computed once, when the screen is (re-)entered — not kept ticking live while it's open, consistent with the no-clock, no-timer posture below: a meeting crossing the 4h line while you're mid-session simply appears the next time you come back to the screen, not mid-sit. A meeting held this way doesn't "empty" the way a task does; it's context, not something worked through. (b) A generator of its own tasks: the implicit or explicit "prepare for meeting X" / "wrap up and process meeting X" work that surrounds a real meeting. This second role is new ground, not just a new view over existing data — today Tasks and Meetings are entirely independent in the data model (`domain/types.ts`); neither can point at the other, only at an arbitrary linked file. A task genuinely tied to a specific meeting (as its prep, or its follow-up) would need a real relationship added, not just a screen that displays existing fields differently. Still its own, separate requirements pass before this reaches technical design — not part of the `#now`/focus-mode work.
+Meetings play two roles around this. In focus mode they are context for planning time - shown
+automatically within the look-ahead window, computed when the screen is entered, not kept ticking.
+Around the meeting itself, preparing and reviewing are their own small commitments, made visible
+by the optional prep/review marks rather than by extra tasks.
 
-## 5. Artifact wholeness
+## 6. Artifact wholeness
 
-The same "whole and complete" quality that applies to commitments could extend to the objects the app generates on your behalf. Right now a linked note created from a task (`storage/noteLinks.ts`) opens genuinely blank — a bare page waiting to be filled. The alternative: it arrives already holding its own context — Project/Area as a header, the task's own words, a link back to where it came from, the date it was created. Not decoration; the note is already whole rather than an orphaned fragment you'd have to reconstruct the context for later. Given as one example (task-linked notes specifically) — not yet decided whether this becomes a general rule for everything the app generates (a meeting's own linked note, for instance) or stays scoped to this one case.
+The "whole and complete" quality extends to what the app creates for you. A note created for a
+todo, meeting, project or area doesn't open as a blank orphan page: Tag Rules give it a background
+and pre-filled context (title, date, related items, a link back to where it came from), so the
+note is already whole rather than a fragment whose context you'd have to reconstruct later.
+Closing out a project carries the same idea to its end: one consolidated, readable record.
 
-## 6. Embodied interaction
+## 7. Embodied interaction
 
-A distinct facet from spaciousness — not about the absence of clutter, but the quality of engagement itself. Today the *only* place the app touches the Supernote's pen at all is Lasso capture (§2.9), recognizing a handwritten selection into text at the moment of capture. Everything else — setting focus, marking status, checking off `#now` — is tap and type. Tapping a checkbox and physically striking a line through a task are functionally identical and experientially nothing alike. Whether the SDK can recognize a gesture made over already-rendered content is genuinely unverified, and the user has explicitly deferred looking into that more than once — this stays a named, real gap to keep in view, not a feasibility question to chase yet.
+Quality of engagement matters as much as absence of clutter. The pen is the Supernote's own
+gesture: handwriting lives in real notes, and the lasso turns handwriting into a todo or meeting.
+Elsewhere the app uses taps, and tapping a checkbox and striking through a line are functionally
+the same but experientially nothing alike - a reason to prefer real notes and pen-based flows
+wherever the platform allows them.
 
-## 7. One page, one intention
+## 8. One page, one intention
 
-The working design-audit discipline: for every screen, and every distinct element within a screen, name the single intention it exists to serve — and only that one. If a second, unrelated intention has crept onto the same surface, that's the signal a split is worth considering. Get the intention sharp first; whether that leads to actually splitting or adding anything is a separate, later decision.
+The design-audit discipline: for every screen, and every distinct element on it, name the single
+intention it serves. If a second, unrelated intention has crept onto the same surface, that's the
+signal a split is worth considering. Get the intention sharp first; whether that leads to
+splitting or adding anything is a separate decision.
 
-## 8. The current screens, read through this lens
-
-**Projects / Areas, Inbox, CaptureScreen, Review** — read clean, each with one intention (survey standing commitments; notice without deciding; notice without deciding, sharper because mid-flow; each of Review's nine steps already has exactly one). No open concern.
-
-**Current** was flagged earlier as mixing more than one intention onto one surface (redeciding via Status, choosing via Focus, tending via Todos/Files). That observation stands and is unaddressed — out of scope for the `#now`/focus-mode work below.
-
-**Daily, concretely.** Daily was likewise flagged for mixing intentions (choosing via Focus, doing via Open tasks, noticing via Calendar), and the direction that's actually landed on doesn't restructure Daily to resolve that — it adds a mode *on top of* the Daily that already exists, and leaves the normal (focus-off) Daily untouched:
-
-- **Off (today's Daily, unchanged):** the two-column layout stays exactly as it is — Calendar and the Focus/Projects/Areas panel on the left, the quick-add widget and grouped Open tasks on the right. Nothing about this document changes that surface; the mixing of intentions it still has is a known, separate concern.
-- **On (focus mode):** the tab bar disappears entirely — no visible-chrome in-between state; the moment focus mode is on, chrome is hidden. What's left, top to bottom in one centered column, is: the quick-add widget (kept first, deliberately — it's the one thing you might reach for at any point, including the instant a screen opens, so it can never end up where an on-screen keyboard would cover it), the `#now` tasks with whatever's linked to them, and meetings starting within the next 4 hours, anchored at the bottom. A small, low-key exit mark sits in the corner — solid-stroke, not faint; a genuinely low-contrast mark doesn't read reliably on this screen's e-ink, so quietness here comes from its small size and placement, not from opacity. Checked-off tasks stay put, visibly done, until the whole set clears together. When nothing is marked `#now` — either nothing ever was, or the last set just finished and was dismissed — the same screen shows the Next tasks from today's focused Projects/Areas (the existing `dailyFocus` items, unchanged mechanism) to choose from; double-tapping one only selects it, since choosing more than one needs to be possible, and an explicit "Start focus session" button is what actually commits the selection and switches to the filtered view.
-- Reopening the plugin while focus mode is on always returns straight here, never to a Project/Area's Current view, overriding what `App.tsx`'s `reorient()` would otherwise pick. Leaving via the exit mark ends focus mode outright.
-
-This is a smaller, more reversible move than the tab that was originally mocked up: nothing new to navigate to, nothing to maintain as a separate destination, and normal Daily is genuinely left alone. Whether Daily's remaining mixed intentions (Focus/Open-tasks/Calendar, off-mode) get addressed later is still open, not a plan already in motion.
-
-## 9. Open questions
-
-- Does "integrity"/"word" language appear explicitly in the UI, or stay implicit in how existing controls are framed?
-- What gets written down for the morning/evening practice — freeform notes worth reviewing later, or something lighter with no real record?
-- Where does an evening close-of-day actually live, now that the within-day rhythm has taken the shape of `#now`/focus mode rather than a separate tab?
-- How broadly does "artifact wholeness" apply — just task-linked notes, or every auto-generated artifact?
-- What relationship would a meeting-linked prep/follow-up task actually need (§4) — this needs its own small requirements pass before a technical design.
-- Real on-device screenshots of the current screens, deliberately deferred by the user ("we take care of the on-screen reality a bit later") — still the single highest-value input for grounding any of this in actual available space, whenever that's picked back up.
-
-A design draft comparing the original separate-tab idea against the `#now`/focus-mode direction actually taken (layout and interaction sketch, not yet a technical design) exists alongside this document — see the accompanying mockup, most recently revised 2026-09-11. The technical design for `#now` and focus mode itself is `technical-design-now-focus-mode.md`.
+Read through this lens: Projects/Areas survey standing commitments; Inbox and capture notice
+without deciding; each Review step has one job; focus mode is purely doing. Daily (focus off) and
+a project's Current tab hold more than one intention - choosing, doing and noticing side by side -
+which is known and accepted for now.

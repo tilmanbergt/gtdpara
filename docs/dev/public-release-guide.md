@@ -1,5 +1,8 @@
 # gtdpara — Public Release Guide
 
+> **Historical.** The plan for the first public release (0.1.0, published 2026-09-30), kept as a
+> record. The current release process is `RELEASING.md`.
+
 Status: plan / design guide (2026-09-30). Goal: publish gtdpara as a community project on
 <https://github.com/tilmanbergt/gtdpara>, with downloadable releases, good user documentation,
 a clear update path, and in-app About / Help / Debug support — at a level that is *easy for one

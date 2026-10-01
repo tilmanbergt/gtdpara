@@ -1,5 +1,10 @@
 # gtdpara — developer notes
 
+> **About this document.** The entry point for developers: how to build and check the plugin,
+> how to write user docs, a short code tour, and which documents in `docs/dev/` are living and
+> which are historical. Present tense, current state only. Update it when the build, the checks,
+> the code layout or the set of living documents changes.
+
 Everything here is for people working on the code. **Start with `DEVELOPMENT-POLICY.md`**: the
 rules and checklists every change and every release has to meet. End-user documentation lives in
 `docs/user/` (start page: `index.md`).
@@ -80,15 +85,31 @@ that don't exist, so `npm test` catches most slips.
 
 ## Design documents
 
-- `design-overview.md`: the living architecture document. **Start here.** §2 describes what is
-  built, §4 what is still open, §5 the decisions made along the way.
-- `design-philosophy.md`: why the app works the way it does (integrity, spaciousness, rest).
-- `design-device-rendering.md`: real screen dimensions and space budgets for the A5 X.
-- `technical-design-*.md`: one document per feature, each with requirements, design and an
-  "as built" section. They record the history of decisions, including quotes from the chats in
-  which they were made.
-- `requirements-*.md`, `spike-*.md`: requirement notes and experiments.
-- `public-release-guide.md`: the plan for publishing, versioning and releases.
+**Living documents** describe the current state and are kept true in every change. They contain
+no history and no open work:
+
+- `DEVELOPMENT-POLICY.md`: the rules and checklists for every change and release. **Start here.**
+- `design-overview.md`: the architecture as built and intended - structure, file format, cache,
+  the binding rules (§3).
+- `design-philosophy.md`: the values behind the design and how they show up in it.
+- `design-device-rendering.md`: screen facts, row heights and space budgets for the A5 X.
+- `RELEASING.md`: git, build and release workflow.
+- this `README.md`.
+
+**Historical documents** record how something was decided and built. They are written once,
+get an "As built" section when the feature ships, and are not updated afterwards - if they
+disagree with a living document, the living document is right:
+
+- `technical-design-*.md`: one per feature (requirements, design, as built), including quotes
+  from the conversations in which decisions were made.
+- `design-meeting-lists.md`, `requirements-*.md`, `spike-*.md`: analyses, requirement notes and
+  experiments.
+- `public-release-guide.md`: the plan for the first public release (0.1.0).
+- `device-test-*.md`: device test records of a release.
+
+Open work - ideas, requirements under discussion, bugs, technical debt, housekeeping - is kept in
+the maintainers' internal backlog, not in this repository. Reports and ideas from users go to
+GitHub issues.
 
 Workflow used for this project: clarify requirements first, then write a technical design, then
 implement. For bugs: pin down the exact failure, find the root cause, then fix.

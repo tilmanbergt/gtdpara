@@ -1,5 +1,9 @@
 # Git, build and release workflow
 
+> **About this document.** The current git, build and release workflow, step by step, plus the
+> guide Claude gives after every change (§8). Present tense, no history. Update it in the same
+> change that alters a script, a branch rule or a release step.
+
 How code gets from an idea to a release: branches, commits, builds, releases and what comes
 after. Rules for *what* a change must contain are in `DEVELOPMENT-POLICY.md`; this document is
 about *how* it moves. Design of the release scripts: `technical-design-versioning-release.md`.

@@ -1,20 +1,13 @@
 # Device rendering reference
 
-Grounds future layout/design decisions in what actually happens on the physical
-Supernote screen, instead of guessing. Built 2026-09-14 from a batch of real
-on-device screenshots (Current, Review, Settings, Inbox, Week, Daily, Areas,
-Projects tabs), cross-checked against the current source (`ui/theme.ts`,
-`ui/pagination.ts`, every row/panel/widget component under `src/ui/`, and the
-per-screen `StyleSheet.create` blocks under `src/screens/`) and project memory
-(`feature_style_cleanup.md`, `gtdpara_project.md`, `technical_debt.md`).
-
-Treat every number in here as a **best current estimate**, not measured
-ground truth — `ui/pagination.ts`'s own doc comment is explicit that
-`PAGE_SIZE` is "tuned as a starting point... retune once checked against the
-real device rather than computing from measured layout," and the same logic
-applies to everything else below. When a change touches layout, check it
-against a fresh on-device screenshot and update this file — a stale note here
-is worse than no note, since it actively misdirects the next estimate.
+> **About this document.** The measured and derived facts about how gtdpara renders on the
+> Supernote A5 X - screen size and density, fonts, fixed row heights, pagination and a
+> per-element space budget - and the method for budgeting a new screen. It describes the current
+> code and device, in present tense, and is the reference every UI design is checked against
+> (`DEVELOPMENT-POLICY.md` §4). Keep it true: when a style value, row height or paging rule
+> changes, update the matching number here in the same change; when a number is an estimate,
+> say so. Open questions and planned tuning go to the internal backlog, not here; history stays
+> in the technical designs and git.
 
 ## 1. Screen facts
 
@@ -267,76 +260,13 @@ fields, or (more realistically) the Focus/Calendar tabs' own settings plus
 a good amount of headroom — worth knowing before assuming Settings needs a
 denser layout.
 
-## 7. Color: grayscale only, never a signal — *on hold*
+## 7. Color: grayscale only, never a signal
 
-The hardware has no color channel, and the codebase still hardcodes a blue
-accent (`#2f6feb`) in multiple places. **Tilman's instruction (2026-09-14):
-don't factor styling/color changes into designs right now — a parallel
-styling refactor is already in flight and this should wait for it to land.**
-The facts below are kept for reference so a future pass doesn't have to
-re-derive them, not as something to act on yet.
+The hardware has no color channel. `ui/theme.ts` keeps all shared colors in `COLORS`; the accent
+is black (`COLORS.accent`, with `COLORS.accentText` white) and is used only as a fill or border
+color - chip, pill and button backgrounds, the active-tab underline, the editing row's left
+border - never as plain text color, where it would read like body text. Any distinction that a
+color screen would show with hue (active vs. inactive, selected vs. unselected) uses weight,
+fill, border, underline or a glyph instead. `ui/TaskBadges.tsx`'s Unicode badges (☑/☐ done,
+▷/▶ next/now, ⚠/📅 overdue/due) are the model: grayscale-safe by construction.
 
-- Centralized in `ui/theme.ts` as `COLORS.accent` / `COLORS.accentText`, via
-  the 2026-09-14 style-cleanup pass (`docs/dev/technical-design-style-cleanup.md`)
-  — piloted on **`DailyView.tsx` and `ReviewScreen.tsx` only** so far,
-  awaiting an on-device smoke test before rolling further.
-- Still duplicated as an independent, locally-declared `const ACCENT =
-  '#2f6feb'` (or equivalent literal) in: `ProjectDataPanel.tsx`,
-  `InboxScreen.tsx`, `ItemDetail.tsx`, `ItemsList.tsx`, `CaptureScreen.tsx`,
-  `Settings.tsx`, `WeekView.tsx`, `QuickAddWidget.tsx`, and
-  `ui/TaskRow.tsx`, `ui/MeetingRow.tsx`, `ui/ItemStatusPanel.tsx`,
-  `ui/FlowStateChips.tsx`, `ui/TabBar.tsx`, `ui/GoogleCalendarPanel.tsx`
-  (per `feature_style_cleanup.md`'s own "not done yet" list, confirmed
-  against the actual files while building §5 above).
-- `ui/TabBar.tsx` also carries an independent red, `#d9534f`, for the
-  Review-overdue "●" badge — same problem, second color.
-- Centralizing the constant hasn't yet meant *converting* it —
-  `COLORS.accent` is still literally `#2f6feb` today.
-
-Once the style refactor lands and this is picked back up: `ui/TaskBadges.tsx`'s
-own doc comment already names the right pattern for anything new — its
-Unicode glyph badges (☑/☐ done, ▷/▶ next/now, ⚠/📅 overdue/due) are
-"grayscale-safe by construction, no new dependency." Any visual distinction
-that would reach for color on a color screen (active vs. inactive, selected
-vs. unselected, filled vs. outline) should be weight/fill/border/opacity
-instead, not hue.
-
-## 8. Open questions
-
-- **Exact line-height metric.** §2's ~1.2× estimate is the main source of
-  imprecision in §5's row budgets — closing this (device measurement, or an
-  explicit `lineHeight` in `theme.ts`) would make this whole document
-  exact rather than estimated.
-- **Roll out `includeFontPadding: false` beyond `ItemsList.tsx`.** §2's
-  descender-clipping bugfix confirmed the fix on one screen; the same fix
-  is presumed needed on `TaskRow.tsx`/`MeetingRow.tsx`/`FileBrowserPane.tsx`
-  (same unset-`includeFontPadding` default, same 22px-line-height
-  convention) but hasn't been checked/applied there yet.
-- **Accent color: plain black, or a mid-gray?** Deliberately parked — see
-  §7. Not to be decided or acted on until the parallel styling refactor is
-  ready for it.
-- **Which `PAGE_SIZE` constants from §4 to actually raise, and by how
-  much.** §6 now gives a first estimate methodology; the precise ceiling
-  for each list still wants an on-device check after any change.
-
-## Changelog
-
-- **2026-09-29** — §1 density corrected: 1 dp = 1.41 device px (not 1:1);
-  the screen is ~994 × 1325 dp, a column ~473 dp. §3 now lists the fixed
-  meeting-row heights (37/57 dp), the Week chip (34 dp) and group headers
-  (30 dp) of the unified meeting lists; §5.2's Google row is 37 dp.
-  Source: docs/dev/technical-design-meeting-lists.md.
-- **2026-09-14 (later)** — added §1's confirmed device facts (Supernote A5X,
-  1404×1872px @ 226 PPI, 1 RN dp ≈ 1 device px), and a full element/row-height
-  budget (§5) plus a reusable screen-budgeting method with a worked Settings
-  example (§6), sourced from every row/panel/widget component's own
-  `StyleSheet.create` block. Reframed §7 (color) as on hold pending a
-  parallel styling refactor, per Tilman's instruction — facts kept, no
-  action items.
-- **2026-09-14** — created from a batch of on-device screenshots (Current,
-  Review, Settings, Inbox, Week, Daily, Areas, Projects tabs), cross-checked
-  against `ui/theme.ts`, `ui/pagination.ts`, `ui/TaskRow.tsx`,
-  `ui/MeetingRow.tsx`, `ui/TabBar.tsx`, `ui/TagChips.tsx`,
-  `ui/TaskBadges.tsx`, `ui/commonStyles.ts`, `ui/LoadErrorNotice.tsx`, and
-  project memory (`feature_style_cleanup.md`, `gtdpara_project.md`,
-  `technical_debt.md`).

@@ -34,6 +34,10 @@ That is why gtdpara asks you to say clearly what is **next**, what is in **focus
 
 Changing a commitment - moving a due date, taking a project out of focus, putting it on hold - is a real decision, not a typo fix. gtdpara makes these separate, visible actions.
 
+## Every entry is a choice
+
+There are no recurring meetings and no repeating todos, on purpose. Every meeting and every todo in gtdpara is there because you entered it, for that one occasion. A series that continues by itself stays on your list whether or not you still mean it - and then it is no longer your word. Entering each one keeps every item a conscious choice and a real commitment. gtdpara helps you enter things quickly (**New from this**, copying a calendar event, the -1 / Today / +1 / +7 date buttons), but it never enters them for you.
+
 ## Room for rest
 
 There are no notifications, no timers and no streaks. When you finish your `#now` todos, nothing suggests the next set. The pause after finishing something is yours. Rest and non-doing are part of a good week, not a gap in it.

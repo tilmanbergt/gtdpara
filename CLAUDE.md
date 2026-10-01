@@ -12,6 +12,8 @@ Short version:
   Bugs: exact failure, then root cause, then fix.
 - `src/domain/` stays pure (no React Native, no `sn-plugin-lib`, no I/O).
 - Files are the source of truth; secrets never go into files, logs or debug bundles.
+- Living docs (`docs/dev/README.md` lists them) describe the current state only; open work goes
+  to the internal backlog `claude/next-improvements.md`, never into repo docs.
 - User-visible change = help page (`docs/user/`, device-safe markdown) + a line under
   `## [Unreleased]` in `CHANGELOG.md`, in the same change.
 - Checks: `npx tsc --noEmit`, `npm test`, `npm run test:scripts`; then a device test.

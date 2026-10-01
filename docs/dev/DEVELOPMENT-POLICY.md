@@ -9,6 +9,9 @@ rules; the detail lives there.
 If a change can't follow a rule here, say so explicitly in the change (commit message, design
 doc or code comment) and why. Silent exceptions are not allowed.
 
+Like every living document (see §6), this policy states the rules as they apply now. Change it
+in the same change that shows a rule is wrong or missing (§11).
+
 ## 1. How work is done
 
 1. **Features: requirements, then design, then implementation.**
@@ -123,11 +126,20 @@ A change is not done while the docs describe the old behavior.
   experimental. Screenshots are refreshed when a shown screen changes noticeably.
 - **PRIVACY.md**: update whenever data is stored somewhere new, sent over the network, or
   exported.
-- **Developer docs**: the technical design gets its "As built" section; `design-overview.md` §2
-  and §3 are updated when the architecture or a rule changes; `docs/dev/README.md` when the build
-  or the code layout changes.
-- **Internal notes**: decisions and open questions that are not for the public repository go to
-  the claude.ai project (documents and memory), not into the repo.
+- **Developer docs** come in two kinds (list in `docs/dev/README.md`):
+  - **Living documents** (`design-overview.md`, `design-philosophy.md`,
+    `design-device-rendering.md`, `DEVELOPMENT-POLICY.md`, `RELEASING.md`, `docs/dev/README.md`)
+    describe the current state in present tense: no history ("previously", "superseded",
+    "not yet verified"), no open questions, no plans. Each starts with a short "About this
+    document" note saying what it is for and how it is kept. Update the affected one in the same
+    change.
+  - **Historical documents** (`technical-design-*.md`, spikes, requirement notes, release plans,
+    device test records) are written for one feature or release, get their "As built" section,
+    and are then left alone.
+- **Open work lives in one place**: ideas, requirements under discussion, bugs, technical debt
+  and housekeeping go to the internal backlog (the claude.ai project document
+  `claude/next-improvements.md`), never into the repository's documents. Decisions and context
+  that are not for the public repository go to the claude.ai project (documents and memory).
 
 ## 7. Testing
 
