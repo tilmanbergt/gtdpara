@@ -11,9 +11,7 @@ gtdpara is a local plugin. There is no account, no server and no telemetry.
 - **Plugin settings**, stored in the plugin's own storage on the device (Android AsyncStorage).
 - **Temporary files** while a close-out PDF is made (page images and the unfinished PDF), in the
   plugin's own private folder on the device - not in your folders. They are removed when the PDF
-  is done, and on the next start if gtdpara was interrupted. Only if the Supernote cannot render
-  pages into that private folder does gtdpara use `EXPORT/gtdpara/tmp` instead; those page images
-  have fixed names, are overwritten by the next PDF and are never deleted by gtdpara.
+  is done, and on the next start if gtdpara was interrupted.
 
 ## Permissions
 

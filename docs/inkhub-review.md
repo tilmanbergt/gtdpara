@@ -34,8 +34,7 @@ Each permission is requested right before the first action that needs it, never 
   with links to those notes updated. Nothing is deleted, and a message names what moved. A fresh
   install never does this.
 - Temporary files (rendered PDF pages, the unfinished PDF) live in the plugin's private folder
-  and are removed when done. Only if the host cannot render pages into that folder does the
-  plugin use `EXPORT/gtdpara/tmp` (fixed names, overwritten next time, never deleted).
+  and are removed when done.
 - Diagnostics are written to files only when the user switches on Debug logging or exports a
   debug bundle. Secrets are never written to files or logs.
 

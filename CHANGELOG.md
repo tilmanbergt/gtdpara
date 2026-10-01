@@ -28,6 +28,8 @@ or your project/area files are stored.
 - Clearer permission prompts for Google Calendar and Gmail.
 
 ### Fixed
+- A note created with Quick Add (and any file gtdpara creates or moves) now appears in the Files
+  pane right away, without navigating away and back.
 - A missing file-read permission now shows the Supernote's permission prompt when folders are
   first listed, instead of an unclear error.
 

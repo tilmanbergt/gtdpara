@@ -239,8 +239,9 @@ small; larger ones go to the backlog and are named in the reviewer note.
 ## 7. As built (2026-10-01)
 
 Implemented on `feature/inkhub-compliance`. Off-device checks: `npx tsc --noEmit` clean, Jest
-105/105 (new `__tests__/domain/fileChangeText.test.ts`). Kotlin is not compiled off-device - the
-first `buildPlugin.ps1` run is the compile check. Device test (§5) open.
+105/105 (new `__tests__/domain/fileChangeText.test.ts`). Device test (§5) done 2026-10-01 by
+Tilman: build compiled, close-out PDF, replace confirmation, area archive with and without the
+delete permission, Review archive confirmation, no per-call debug files, no fallback folder.
 
 **Native (`GtdParaFileModule.kt`, `PdfModule.kt`)**
 - `privateDir`/`privateTmpDir` (companion, shared with `PdfModule`): the npk's own folder, else
@@ -266,12 +267,9 @@ first `buildPlugin.ps1` run is the compile check. Device test (§5) open.
   rules out. It is now one `log`/`logWarn` line with the same fields (in the ring buffer always,
   in the log file only with Debug logging on). Upgrade note tells users the old files can go.
 - `pdfExport.ts`: rendered pages in `<private>/tmp/<jobId>/`, removed in `finally`; App start
-  clears `<private>/tmp` once. **Fallback (deviation from §3.2):** `generateNotePng` is a host
-  call, and it is unverified whether the host can write into the plugin's private folder. If
-  the first page fails there, rendering retries in `EXPORT/gtdpara/tmp/` with fixed names
-  (`page-0001.png` ...), overwritten by the next export and never deleted. Device test §5 item 3
-  decides whether the fallback is ever used (logcat: "using the fallback folder"); if not, it can
-  be removed later.
+  clears `<private>/tmp` once. A temporary fallback to `EXPORT/gtdpara/tmp` (in case the host's
+  page renderer `generateNotePng` could not write into the private folder) was removed again
+  after the device test showed the private folder works (2026-10-01).
 - `closeOut/pdf.ts` + `CloseOutWizard.tsx`: "Create PDF / Create again" checks whether the PDF
   exists; if so, a status-slot confirm ("Replace …?" / Replace, ✕) - overwrite only after Replace.
   `PdfStep` text updated.

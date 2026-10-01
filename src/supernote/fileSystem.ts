@@ -208,6 +208,43 @@ interface GtdParaFileNativeModule {
 
 const {GtdParaFile} = NativeModules as {GtdParaFile?: GtdParaFileNativeModule};
 
+// ---- folder-change notifications ----
+// File-creating and moving calls below report the folder(s) they changed, so
+// a live folder listing (ui/FileBrowserPane.tsx) can rescan the folder it is
+// showing instead of waiting for the user to navigate away and back
+// (bug 2026-10-01: a Quick Add note didn't appear in the Files pane). Plain
+// text writes (project.txt saves) deliberately do NOT notify - they never
+// add a file the user browses for, and a rescan per todo edit would flicker.
+
+type FolderChangeListener = (folderPath: string) => void;
+const folderChangeListeners = new Set<FolderChangeListener>();
+
+function parentFolder(path: string): string {
+  const trimmed = path.replace(/\/+$/, '');
+  return trimmed.slice(0, Math.max(0, trimmed.lastIndexOf('/')));
+}
+
+/** Subscribe to "a file or folder was created/moved in this folder". Returns the unsubscribe function. */
+export function subscribeFolderChanges(listener: FolderChangeListener): () => void {
+  folderChangeListeners.add(listener);
+  return () => {
+    folderChangeListeners.delete(listener);
+  };
+}
+
+function notifyFolderChanged(...paths: string[]): void {
+  for (const path of paths) {
+    const folder = path.replace(/\/+$/, '');
+    folderChangeListeners.forEach(listener => {
+      try {
+        listener(folder);
+      } catch (e) {
+        logError('notifyFolderChanged: listener threw', e instanceof Error ? e.message : String(e));
+      }
+    });
+  }
+}
+
 /**
  * Lists one folder level via the native GtdParaFile module. Resolves to an
  * empty array if the folder doesn't exist yet (rather than throwing), since
@@ -459,6 +496,7 @@ export async function writeBinaryFile(path: string, base64Content: string): Prom
   try {
     await GtdParaFile.writeBinaryFile(path, base64Content);
     log('writeBinaryFile: done', path);
+    notifyFolderChanged(parentFolder(path));
   } catch (e) {
     logError('writeBinaryFile: failed', path, e instanceof Error ? e.message : String(e));
     throw e;
@@ -489,6 +527,7 @@ export async function moveFolder(fromPath: string, toPath: string): Promise<void
   try {
     await GtdParaFile.moveFolder(fromPath, toPath);
     log('moveFolder: done', fromPath, '->', toPath);
+    notifyFolderChanged(parentFolder(fromPath), parentFolder(toPath), fromPath);
   } catch (e) {
     logError('moveFolder: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
     throw e;
@@ -508,6 +547,7 @@ export async function moveFile(fromPath: string, toPath: string): Promise<void> 
   try {
     await GtdParaFile.moveFile(fromPath, toPath);
     log('moveFile: done', fromPath, '->', toPath);
+    notifyFolderChanged(parentFolder(fromPath), parentFolder(toPath));
   } catch (e) {
     logError('moveFile: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
     throw e;
@@ -527,6 +567,7 @@ export async function moveFolderMerge(fromPath: string, toPath: string): Promise
   try {
     await GtdParaFile.moveFolderMerge(fromPath, toPath);
     log('moveFolderMerge: done', fromPath, '->', toPath);
+    notifyFolderChanged(parentFolder(fromPath), toPath, fromPath);
   } catch (e) {
     logError('moveFolderMerge: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
     throw e;
@@ -582,6 +623,7 @@ export async function deleteEmptyFolder(path: string, reason: string): Promise<b
   try {
     await GtdParaFile.deleteEmptyFolder(path);
     log('deleteEmptyFolder: done', path);
+    notifyFolderChanged(parentFolder(path));
     return true;
   } catch (e) {
     const code = (e as {code?: string} | null)?.code;
@@ -747,6 +789,7 @@ export async function createNote(
     throw new Error(`Though write permission is granted, note creation was blocked by the device: ${hostMessage}`);
   }
   log('createNote: done', path);
+  notifyFolderChanged(parentFolder(path));
   await recordDebugLogEntry('createNote', true, durationMs, {notePath: path, template, isPortrait});
 }
 
