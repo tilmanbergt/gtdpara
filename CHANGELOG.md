@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-02
+
 ### New
 - **Nested tags** like `#coaching/sabina`. A Tag Rule on `coaching` also applies to every
   `#coaching/...` tag.
