@@ -101,20 +101,26 @@ import {
   resolvedSharedFileFolder,
   resolvedSharedFileName,
   resolveNoteTemplate,
+  ruleSubtag,
 } from '../domain/noteTemplate';
+import {NoteCreationPlan} from '../domain/noteCreationPlan';
 import {
   buildSharedNoteAnchor,
   meetingPageKeyword,
-  parseSharedNoteAnchor,
+  renderSharedFileName,
   todoPageKeyword,
 } from '../domain/sharedNotePages';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {
   createElement,
+  createNote,
   deleteElements,
+  displayPath,
   Element,
   ELEMENT_TYPE_LINK,
+  ensureFolderExists,
+  fileExists,
   getElements,
   insertElements,
   openPath,
@@ -124,7 +130,9 @@ import {log} from '../utils/log';
 import {getCachedData} from './dataCache';
 import {linkedFileStatus, resolveLinkedFilePath} from './linkedFiles';
 import {MeetingNoteInboxInput, relatedItemsFor} from './meetingNoteAggregate';
+import {collisionFreeName} from './fileNaming';
 import {
+  classifyNotePath,
   createLinkedNote,
   MEETINGS_SUBFOLDER,
   meetingNoteBaseName,
@@ -486,73 +494,29 @@ export async function refreshTodoNoteBlock(
   await populateNoteFromDefinition(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
 }
 
-// ---- Open-or-create entry point (Slice 3, docs/dev/technical-design-shared-note-pages.md §6-§8) ----
+// ---- Open-or-create entry point (Slice 3, docs/dev/technical-design-shared-note-pages.md §6-§8;
+// plan-then-confirm and file-name placeholders: docs/dev/technical-design-split-by-tag.md §3.3-§3.5) ----
 
 /**
- * What `resolveItemNoteAnchor` below decides, before any content is written:
- * which file+page this item's note lives on, whether `notePath` needs to
- * change, and whether the page's content should be written as if brand new
- * (bypassing the auto-update freeze rules) rather than as an ordinary
- * refresh. `changed`/`isInitialPopulation`/`recreated` are three genuinely
- * different questions - see `resolveItemNoteAnchor`'s own doc comment for
- * why each of the 7 branches sets them differently; nothing here is derived
- * from anything else in this object.
+ * What executing a note plan produced: which file+page this item's note
+ * lives on, whether `notePath` needs to change, and whether the page's
+ * content should be written as if brand new (bypassing the auto-update
+ * freeze rules) rather than as an ordinary refresh. `changed`/
+ * `isInitialPopulation` are genuinely different questions - e.g. a lazy
+ * keyword rename changes `notePath` but is still an ordinary reopen.
  */
 interface ItemNoteAnchorResolution {
   /** The notePath to use going forward - identical to the one passed in when nothing changed. */
   notePath: string;
   /** True when `notePath` differs from what was passed in - the caller must persist it. */
   changed: boolean;
-  /** True when this page's content should be (re)written regardless of the freeze rules - a brand-new page (first-ever link, or just recreated) has nothing worth preserving. */
+  /** True when this page's content should be (re)written regardless of the freeze rules - a brand-new page has nothing worth preserving. */
   isInitialPopulation: boolean;
-  /** True only on the two "expected keyword not found" branches - gates the one-time `writeRecreatedNotice` call. */
-  recreated: boolean;
   absolutePath: string;
   page: number;
 }
 
-/**
- * The own-vs-shared target resolution at the heart of both
- * `openOrCreateMeetingNote` and `openOrCreateTodoNote` below (design doc
- * §6-§8) - decides which file+page an item's note lives on and ensures it
- * exists, without touching the note's *content* (each caller's own
- * `refresh*NoteBlock` call, right after) or persisting anything (storage/
- * functions don't reach into screen state - see this file's own module doc
- * comment and each exported function's doc comment for why persistence is
- * the caller's job).
- *
- * The 7 branches, and what each sets (see `ItemNoteAnchorResolution`'s own
- * field comments for what `changed`/`isInitialPopulation`/`recreated` mean):
- * 1. Own target, no notePath yet -> `createLinkedNote` (today's behavior,
- *    completely unchanged) - changed, initial population, page 0.
- * 2. Own target, notePath already set -> unchanged, ordinary refresh, page 0.
- * 3. Shared target, item has no anchor yet (first-ever link) ->
- *    `insertChronologicalPage` - changed, initial population.
- * 4. Shared target, anchor's keyword still matches the item's current
- *    keyword, and that keyword is still found on the file -> unchanged,
- *    ordinary refresh (freeze rules still apply, same as own-target reopens).
- * 5. Same as 4, but the keyword is NOT found (page deleted by the user) ->
- *    recreate (§7): a fresh page under the SAME keyword, `notePath` itself
- *    doesn't change, but content must be written fresh (nothing on a brand
- *    new page is worth "preserving" from a freeze rule).
- * 6. Shared target, the item's title/date changed since it was last linked
- *    (keyword changed) and the OLD keyword is still found -> lazy rename
- *    (§6 step 4's third bullet): `renameKeywordAt` in place, `notePath`
- *    changes to the new keyword, but this is still an ordinary reopen of
- *    existing content, so freeze rules still apply (NOT an initial
- *    population - a title edit alone shouldn't blow away hand-edited
- *    content on that page).
- * 7. Same as 6, but the OLD keyword is NOT found either -> recreate (§7)
- *    under the NEW keyword - changed, initial population.
- *
- * `collisionCheck` (§8's guard, only read on branch 6) - the caller supplies
- * a small closure answering "does some OTHER item in this Project/Area still
- * derive this exact keyword" (via the live cache - see `meetingKeywordStillUsed`/
- * `todoKeywordStillUsed` below), used as `renameKeywordAt`'s `keepOldKeyword`
- * so a genuine collision (two items that used to have different titles now
- * sharing one) never loses the OTHER item's findability.
- */
-async function resolveItemNoteAnchor(params: {
+interface ItemNoteParams {
   notePath: string;
   itemPath: string;
   subfolder: typeof MEETINGS_SUBFOLDER | typeof TODOS_SUBFOLDER;
@@ -562,143 +526,237 @@ async function resolveItemNoteAnchor(params: {
   currentKeyword: string;
   baseName: string;
   isDated: boolean;
-  /** §9's Inbox exclusion - true forces branches 1-2 (own target) regardless of what the matched definition says, since Inbox items have no Project/Area to anchor a shared file to. Every caller of this internal function passes it explicitly - see `openOrCreateMeetingNote`/`openOrCreateTodoNote`'s own `options.forceOwnTarget` below, which the InboxScreen.tsx/ReviewScreen.tsx call sites set `true` for Inbox-filed items and every other call site leaves at its default `false`. */
+  /** YYYY-MM-DD for the `{year}`/`{quarter}`/`{month}` placeholders - a meeting's own date, today for a todo. */
+  fileDate: string;
+  /** Inbox items: always an own note, whatever the matched rule says (no shared files for Inbox items - see the split-by-tag design §4). */
   forceOwnTarget: boolean;
+  /** Does some OTHER item in this Project/Area still derive this exact keyword (shared-note design §8) - see `meetingKeywordStillUsed`/`todoKeywordStillUsed`. */
   collisionCheck: (oldKeyword: string) => boolean;
-}): Promise<ItemNoteAnchorResolution> {
-  const definition = resolveNoteTemplate(params.context, params.tags, params.settings.noteCreationDefinitions);
-  const background = resolveNoteBackgroundTemplate(params.settings, params.context, params.tags);
+}
 
-  if (params.forceOwnTarget || !definition || effectiveNoteTarget(definition) !== 'shared') {
-    // Branches 1-2: own target - exactly today's create-or-open behavior.
-    if (!params.notePath) {
-      const notePath = await createLinkedNote(params.itemPath, params.subfolder, params.baseName, params.settings, params.tags);
+/**
+ * The plan for one note-icon tap: the public part (`plan`, shown in the
+ * confirm - `null` for an ordinary open, which needs no confirm) plus the
+ * write step that carries it out. Planning only reads (folder listings,
+ * keyword lookups); nothing is created, linked or renamed until `execute`.
+ */
+interface ItemNotePlan {
+  plan: NoteCreationPlan | null;
+  execute: () => Promise<ItemNoteAnchorResolution>;
+}
+
+function relativeFolderPath(itemPath: string, relativeFolder: string): string {
+  const base = itemPath.replace(/\/+$/, '');
+  return relativeFolder ? `${base}/${relativeFolder}` : base;
+}
+
+/** The folder part of an absolute path ("" if there is none). */
+function parentFolder(absolutePath: string): string {
+  const slash = absolutePath.lastIndexOf('/');
+  return slash < 0 ? '' : absolutePath.slice(0, slash);
+}
+
+/** A fresh page (and the file, if missing) under `keyword`, with the "Recreated <date>" line - the shared-note design's §7. */
+async function recreateSharedPage(
+  folderPath: string,
+  fileName: string,
+  absoluteFile: string,
+  keyword: string,
+  background: string,
+  isDated: boolean,
+): Promise<number> {
+  await ensureSharedNoteFile(folderPath, fileName, background);
+  const page = await insertChronologicalPage(absoluteFile, keyword, background, isDated);
+  await writeRecreatedNotice(absoluteFile, page, todayIso());
+  return page;
+}
+
+/**
+ * Decides what a note-icon tap will do (split-by-tag design §3.4/§3.5).
+ *
+ * Item already has a note link - the link decides, never the current rule
+ * (decision 5, "once created, it stays"; see `classifyNotePath` for how own
+ * vs. shared is told apart):
+ * - own note, file there -> open (no confirm).
+ * - own note, file missing -> `recreate-own-file` under the same name; an
+ *   absolute lasso "source note" link is never recreated - that throws a
+ *   "not found" error instead, which the screen shows in the status slot.
+ * - shared, file there -> the page for the current keyword (or, if the
+ *   keyword changed since linking, the old one, renamed in place) -> open;
+ *   no such page -> `recreate-page`.
+ * - shared, file missing -> `recreate-shared-file`.
+ *
+ * No note link yet - the matched Tag Rule decides:
+ * - no rule, an own-target rule, or an Inbox item -> `new-own-file`.
+ * - shared-target rule -> file name from the rule's placeholders; file
+ *   missing -> `new-shared-file`; file there and a page with this keyword
+ *   already on it -> `link-page`; otherwise `new-page`.
+ */
+async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
+  const {itemPath, settings, tags, context, currentKeyword, isDated} = params;
+  const definition = resolveNoteTemplate(context, tags, settings.noteCreationDefinitions);
+  const background = resolveNoteBackgroundTemplate(settings, context, tags);
+  const ruleName = definition ? definition.name : null;
+
+  const existing = await classifyNotePath(itemPath, params.notePath);
+
+  if (existing.kind === 'own') {
+    if (existing.exists) {
       return {
-        notePath,
-        changed: true,
-        isInitialPopulation: true,
-        recreated: false,
-        absolutePath: await resolveNotePath(params.itemPath, notePath),
-        page: 0,
+        plan: null,
+        execute: async () => ({
+          notePath: params.notePath,
+          changed: false,
+          isInitialPopulation: false,
+          absolutePath: existing.absolutePath,
+          page: 0,
+        }),
       };
     }
+    if (existing.isAbsoluteLink) {
+      throw new Error(`Linked note not found: ${displayPath(existing.absolutePath)}`);
+    }
     return {
-      notePath: params.notePath,
-      changed: false,
-      isInitialPopulation: false,
-      recreated: false,
-      absolutePath: await resolveNotePath(params.itemPath, params.notePath),
-      page: 0,
+      plan: {kind: 'recreate-own-file', file: params.notePath, absolutePath: existing.absolutePath, ruleName: null},
+      execute: async () => {
+        await ensureFolderExists(parentFolder(existing.absolutePath));
+        await createNote(existing.absolutePath, background, true);
+        return {
+          notePath: params.notePath,
+          changed: false,
+          isInitialPopulation: true,
+          absolutePath: existing.absolutePath,
+          page: 0,
+        };
+      },
     };
   }
 
-  // Branches 3-7: shared target.
-  const folder = resolvedSharedFileFolder(definition);
-  // sanitizeFileNameComponent (2026-09-23, [[bugfix_shared_note_content_missing]]):
-  // resolvedSharedFileName returns the Tag Rule's raw, unsanitized
-  // "Shared file name" field (or rule name) - nothing filtered it before
-  // this became part of a file path. Sanitizing it here both prevents
-  // outright filesystem-illegal characters from reaching createNote, and -
-  // now that sanitizeFileNameComponent also strips '#' - guarantees this
-  // filePath half of a shared anchor can never collide with
-  // parseSharedNoteAnchor's separator, the same guarantee own-note file
-  // names now have.
-  const fileName = sanitizeFileNameComponent(resolvedSharedFileName(definition));
-  const relativeFolder = folder === 'root' ? '' : params.subfolder;
-  const folderPath = relativeFolder
-    ? `${params.itemPath.replace(/\/+$/, '')}/${relativeFolder}`
-    : params.itemPath;
-  const relativeFilePath = relativeFolder ? `${relativeFolder}/${fileName}.note` : `${fileName}.note`;
-  const absoluteFile = await ensureSharedNoteFile(folderPath, fileName, background);
+  if (existing.kind === 'shared') {
+    const {anchor, absolutePath: absoluteFile} = existing;
+    const relativeFolder = parentFolder(anchor.filePath);
+    const folderPath = relativeFolderPath(itemPath, relativeFolder);
+    const fileName = anchor.filePath.slice(relativeFolder ? relativeFolder.length + 1 : 0).replace(/\.note$/, '');
+    const newNotePath = buildSharedNoteAnchor(anchor.filePath, currentKeyword);
+    const keywordChanged = anchor.keyword !== currentKeyword;
 
-  const anchor = parseSharedNoteAnchor(params.notePath);
-
-  if (!anchor) {
-    // Branch 3, hardened (2026-09-22, [[bugfix_shared_note_content_missing]]):
-    // check for an already-existing page under this exact keyword before
-    // blindly inserting a new one. "No anchor yet" is supposed to mean
-    // "first-ever open for this item" (design doc §6), but that invariant
-    // breaks whenever ANYTHING between here and this function returning
-    // throws (the anchor-parsing bug fixed the same day in
-    // domain/sharedNotePages.ts's parseSharedNoteAnchor was the concrete
-    // case that surfaced this, but this guard isn't specific to that one
-    // bug - any failure in content population or openPath would produce
-    // the identical symptom): the anchor never gets persisted back onto
-    // the item, so the NEXT attempt believes "no anchor" all over again and
-    // would otherwise insert yet another duplicate page carrying the exact
-    // same keyword, every single time, forever. This check makes that
-    // self-healing regardless of what caused the earlier failure - the
-    // same page-sharing the design doc already accepts for two DIFFERENT
-    // items that happen to derive the same keyword (§3/§9: "probably
-    // related anyway"), just reached from one item's own earlier failed
-    // attempt instead of two items colliding. `isInitialPopulation: false`
-    // (not `true`, unlike the real first-ever-open path just below) - this
-    // is treated as reopening an existing page, same as branch 4, so the
-    // normal auto-update freeze rule still applies rather than
-    // unconditionally overwriting whatever is already on that page.
-    const existingPage = await findKeywordPage(absoluteFile, params.currentKeyword);
-    if (existingPage !== null) {
+    if (!existing.exists) {
       return {
-        notePath: buildSharedNoteAnchor(relativeFilePath, params.currentKeyword),
-        changed: true,
-        isInitialPopulation: false,
-        recreated: false,
-        absolutePath: absoluteFile,
-        page: existingPage,
+        plan: {kind: 'recreate-shared-file', file: anchor.filePath, absolutePath: absoluteFile, ruleName: null},
+        execute: async () => {
+          const page = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, isDated);
+          return {notePath: newNotePath, changed: keywordChanged, isInitialPopulation: true, absolutePath: absoluteFile, page};
+        },
       };
     }
-    // First-ever open for this item, and no other item's page to recover -
-    // the original Branch 3.
-    const page = await insertChronologicalPage(absoluteFile, params.currentKeyword, background, params.isDated);
-    return {
-      notePath: buildSharedNoteAnchor(relativeFilePath, params.currentKeyword),
-      changed: true,
-      isInitialPopulation: true,
-      recreated: false,
-      absolutePath: absoluteFile,
-      page,
-    };
-  }
 
-  if (anchor.keyword === params.currentKeyword) {
-    const page = await findKeywordPage(absoluteFile, params.currentKeyword);
+    // Lazy keyword rename (shared-note design §6): look up the keyword the item was linked under.
+    const page = await findKeywordPage(absoluteFile, anchor.keyword);
     if (page !== null) {
-      // Branch 4.
       return {
-        notePath: params.notePath,
-        changed: false,
-        isInitialPopulation: false,
-        recreated: false,
-        absolutePath: absoluteFile,
-        page,
+        plan: null,
+        execute: async () => {
+          if (keywordChanged) {
+            const keepOldKeyword = params.collisionCheck(anchor.keyword);
+            await renameKeywordAt(absoluteFile, page, anchor.keyword, currentKeyword, {keepOldKeyword});
+          }
+          return {notePath: newNotePath, changed: keywordChanged, isInitialPopulation: false, absolutePath: absoluteFile, page};
+        },
       };
     }
-    // Branch 5.
-    const newPage = await insertChronologicalPage(absoluteFile, params.currentKeyword, background, params.isDated);
-    await writeRecreatedNotice(absoluteFile, newPage, todayIso());
     return {
-      notePath: params.notePath,
-      changed: false,
-      isInitialPopulation: true,
-      recreated: true,
-      absolutePath: absoluteFile,
-      page: newPage,
+      plan: {kind: 'recreate-page', file: anchor.filePath, absolutePath: absoluteFile, ruleName: null},
+      execute: async () => {
+        const newPage = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, isDated);
+        return {notePath: newNotePath, changed: keywordChanged, isInitialPopulation: true, absolutePath: absoluteFile, page: newPage};
+      },
     };
   }
 
-  // Title/date changed since the note was last linked - lazy rename (branches 6-7).
-  const oldPage = await findKeywordPage(absoluteFile, anchor.keyword);
-  const notePath = buildSharedNoteAnchor(relativeFilePath, params.currentKeyword);
-  if (oldPage !== null) {
-    // Branch 6.
-    const keepOldKeyword = params.collisionCheck(anchor.keyword);
-    await renameKeywordAt(absoluteFile, oldPage, anchor.keyword, params.currentKeyword, {keepOldKeyword});
-    return {notePath, changed: true, isInitialPopulation: false, recreated: false, absolutePath: absoluteFile, page: oldPage};
+  // No note link yet.
+  if (params.forceOwnTarget || !definition || effectiveNoteTarget(definition) !== 'shared') {
+    const folderPath = relativeFolderPath(itemPath, params.subfolder);
+    const fileName = await collisionFreeName(folderPath, params.baseName, '.note');
+    const relativePath = `${params.subfolder}/${fileName}`;
+    const absolutePath = `${folderPath}/${fileName}`;
+    return {
+      plan: {kind: 'new-own-file', file: relativePath, absolutePath, ruleName},
+      execute: async () => {
+        const notePath = await createLinkedNote(itemPath, params.subfolder, params.baseName, settings, tags, fileName);
+        return {notePath, changed: true, isInitialPopulation: true, absolutePath, page: 0};
+      },
+    };
   }
-  // Branch 7.
-  const newPage = await insertChronologicalPage(absoluteFile, params.currentKeyword, background, params.isDated);
-  await writeRecreatedNotice(absoluteFile, newPage, todayIso());
-  return {notePath, changed: true, isInitialPopulation: true, recreated: true, absolutePath: absoluteFile, page: newPage};
+
+  // Shared target. sanitizeFileNameComponent: the rendered name comes from
+  // user text (rule field, subtag) - strip illegal characters and '#' (the
+  // anchor separator), and turn a deeper subtag's '/' into a space.
+  const fileName = sanitizeFileNameComponent(
+    renderSharedFileName({
+      template: resolvedSharedFileName(definition),
+      ruleName: definition.name,
+      subtag: ruleSubtag(tags, definition.tags),
+      date: params.fileDate,
+    }),
+  );
+  const relativeFolder = resolvedSharedFileFolder(definition) === 'root' ? '' : params.subfolder;
+  const folderPath = relativeFolderPath(itemPath, relativeFolder);
+  const relativeFilePath = relativeFolder ? `${relativeFolder}/${fileName}.note` : `${fileName}.note`;
+  const absoluteFile = `${folderPath}/${fileName}.note`;
+  const notePath = buildSharedNoteAnchor(relativeFilePath, currentKeyword);
+
+  if (!(await fileExists(absoluteFile))) {
+    return {
+      plan: {kind: 'new-shared-file', file: relativeFilePath, absolutePath: absoluteFile, ruleName},
+      execute: async () => {
+        await ensureSharedNoteFile(folderPath, fileName, background);
+        const page = await insertChronologicalPage(absoluteFile, currentKeyword, background, isDated);
+        return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page};
+      },
+    };
+  }
+
+  // A page with this keyword may already exist (two items with the same
+  // keyword, or an earlier attempt that never got its link saved - the
+  // shared-note bugfix's hardening). Linking to it is confirmed too, since
+  // that page may already hold content; freeze rules still apply to it.
+  const existingPage = await findKeywordPage(absoluteFile, currentKeyword);
+  if (existingPage !== null) {
+    return {
+      plan: {kind: 'link-page', file: relativeFilePath, absolutePath: absoluteFile, ruleName, keyword: currentKeyword},
+      execute: async () => ({notePath, changed: true, isInitialPopulation: false, absolutePath: absoluteFile, page: existingPage}),
+    };
+  }
+  return {
+    plan: {kind: 'new-page', file: relativeFilePath, absolutePath: absoluteFile, ruleName},
+    execute: async () => {
+      const page = await insertChronologicalPage(absoluteFile, currentKeyword, background, isDated);
+      return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page};
+    },
+  };
+}
+
+/**
+ * Plans, asks for confirmation when the plan creates, recreates or links
+ * something, then carries it out. `null` = the user cancelled: nothing was
+ * written, and the item's existing link (if any) is untouched, so the next
+ * tap asks again.
+ */
+async function resolveItemNote(
+  params: ItemNoteParams,
+  confirmCreate: ((plan: NoteCreationPlan) => Promise<boolean>) | undefined,
+  logTag: string,
+): Promise<ItemNoteAnchorResolution | null> {
+  const {plan, execute} = await planItemNote(params);
+  // Kind only - file names carry client/meeting names (DEVELOPMENT-POLICY §5).
+  log(`${logTag}: plan`, plan?.kind ?? 'open');
+  if (plan && confirmCreate && !(await confirmCreate(plan))) {
+    log(`${logTag}: cancelled`, plan.kind);
+    return null;
+  }
+  const resolution = await execute();
+  if (plan) log(`${logTag}: done`, plan.kind);
+  return resolution;
 }
 
 /** §8's guard, meeting side - does some OTHER meeting cached under `itemPath` still derive `keyword`. Reads the live cache fresh on every call (cheap - one project/area's own meeting list, already in memory), never the `meeting` object `openOrCreateMeetingNote` was called with, so a stale render-time reference can't hide a real collision. */
@@ -713,70 +771,67 @@ function todoKeywordStillUsed(itemPath: string, keyword: string): boolean {
   return cachedTasks.some(t => todoPageKeyword(t) === keyword);
 }
 
-/** What `openOrCreateMeetingNote`/`openOrCreateTodoNote` return alongside their `changed` flag - the resolved page this call already opened, kept here so a caller that wants to log/display the resolved location can, without re-deriving it. */
+/** What `openOrCreateMeetingNote`/`openOrCreateTodoNote` return alongside their `changed` flag - the resolved page this call already opened, kept here so a caller that wants to log/display the resolved location can, without re-deriving it. `null` when the user cancelled the confirm. */
 export interface OpenOrCreateNoteOutcome {
   absolutePath: string;
   page: number;
 }
 
+/** Options shared by both open-or-create entry points. */
+export interface OpenOrCreateNoteOptions {
+  /** Inbox call sites pass `true`: Inbox items always get their own note (see `ItemNoteParams.forceOwnTarget`). */
+  forceOwnTarget?: boolean;
+  /**
+   * Asked before anything is created, recreated or linked (split-by-tag
+   * design §3.5) - every screen passes `ui/useNoteCreateConfirm.ts`'s
+   * callback. Resolving `false` cancels: nothing is written, nothing opened.
+   * Without it the plan is carried out directly (non-UI callers).
+   */
+  confirmCreate?: (plan: NoteCreationPlan) => Promise<boolean>;
+}
+
 /**
- * Open-or-create entry point for a Meeting's linked note (design doc
- * §6-§8) - the one function DailyView/ProjectDataPanel/WeekView/InboxScreen/
- * ReviewScreen's note-icon tap handlers call instead of choosing between
- * `createLinkedNote` and a bare `openPath` themselves (today's separate
- * create-note/open-note handler pair). Handles both own- and shared-target
- * definitions transparently - for an own target this is *exactly* today's
- * create-or-open behavior, byte-for-byte; for a shared target it resolves or
- * creates the right page (§6), recreates it if the expected keyword vanished
- * (§7), and lazily renames the keyword in place if `meeting`'s date/title
- * changed since it was last linked (§6 step 4's third bullet) - see
- * `resolveItemNoteAnchor`'s own doc comment for the full branch breakdown.
+ * Open-or-create entry point for a Meeting's linked note - the one function
+ * DailyView/ProjectDataPanel/WeekView-Month (usePlanningScreen)/InboxScreen/
+ * ReviewScreen's note-icon tap handlers call. Plans what the tap will do
+ * (`planItemNote` - open, create, add page, link, recreate), asks
+ * `options.confirmCreate` for everything except a plain open, then carries
+ * it out, refreshes the page's content and opens it.
  *
  * Does NOT persist a changed `notePath` itself, and does NOT mutate
- * `meeting` - storage/ functions don't reach into screen state, and this
- * codebase's 5 screens persist a Meeting through 3 different mechanisms
- * (DailyView/InboxScreen/ReviewScreen's `mutateEntryMeetings`-backed
- * helpers, ProjectDataPanel's own local array + `saveMeetings`, WeekView's
- * `findCachedItem` + `saveMeetings` directly), none of which this file
- * should know about. Instead this returns the possibly-updated `Meeting`
- * (a new object only when something changed, the same `meeting` reference
- * otherwise) alongside `changed` - the caller's existing shape is always
- * "if changed, persist `result.meeting` the same way `createLinkedNote`'s
- * returned `notePath` used to be persisted; either way, done." This is a
- * strictly smaller diff at every call site than it looks - each site already
- * has its own persistence one-liner today, it just used to run
- * unconditionally after `createLinkedNote` and never after `openPath`; now
- * it runs conditionally on `changed`, in both cases.
- *
- * Ends by opening the resolved page itself (`openPath(absolutePath, page)`)
- * - the caller doesn't do this step separately, unlike today's handlers.
- *
- * `options.forceOwnTarget` (§9's Inbox exclusion) - InboxScreen.tsx/
- * ReviewScreen.tsx's Inbox-filed-meeting call sites pass `true`, since Inbox
- * items have no Project/Area to anchor a shared file to; every other call
- * site leaves it at its default `false`.
+ * `meeting` - storage/ functions don't reach into screen state, and the
+ * screens persist a Meeting through different mechanisms. Instead this
+ * returns the possibly-updated `Meeting` (a new object only when something
+ * changed) alongside `changed`; the caller persists when `changed`.
+ * `cancelled` is true (and `changed` false) when the user tapped ✕.
  */
 export async function openOrCreateMeetingNote(
   meeting: Meeting,
   itemPath: string,
   settings: GtdParaSettings,
   inbox: MeetingNoteInboxInput | null,
-  options: {forceOwnTarget?: boolean} = {},
-): Promise<{meeting: Meeting; changed: boolean; outcome: OpenOrCreateNoteOutcome}> {
+  options: OpenOrCreateNoteOptions = {},
+): Promise<{meeting: Meeting; changed: boolean; cancelled: boolean; outcome: OpenOrCreateNoteOutcome | null}> {
   const currentKeyword = meetingPageKeyword(meeting);
-  const anchor = await resolveItemNoteAnchor({
-    notePath: meeting.notePath,
-    itemPath,
-    subfolder: MEETINGS_SUBFOLDER,
-    settings,
-    tags: meeting.tags,
-    context: 'meeting',
-    currentKeyword,
-    forceOwnTarget: options.forceOwnTarget ?? false,
-    baseName: meetingNoteBaseName(meeting),
-    isDated: true,
-    collisionCheck: oldKeyword => meetingKeywordStillUsed(itemPath, oldKeyword),
-  });
+  const anchor = await resolveItemNote(
+    {
+      notePath: meeting.notePath,
+      itemPath,
+      subfolder: MEETINGS_SUBFOLDER,
+      settings,
+      tags: meeting.tags,
+      context: 'meeting',
+      currentKeyword,
+      baseName: meetingNoteBaseName(meeting),
+      isDated: true,
+      fileDate: meeting.date,
+      forceOwnTarget: options.forceOwnTarget ?? false,
+      collisionCheck: oldKeyword => meetingKeywordStillUsed(itemPath, oldKeyword),
+    },
+    options.confirmCreate,
+    'openOrCreateMeetingNote',
+  );
+  if (!anchor) return {meeting, changed: false, cancelled: true, outcome: null};
 
   const updatedMeeting = anchor.changed ? {...meeting, notePath: anchor.notePath} : meeting;
   await refreshMeetingNoteBlock(updatedMeeting, itemPath, settings, inbox, {
@@ -788,39 +843,43 @@ export async function openOrCreateMeetingNote(
   return {
     meeting: updatedMeeting,
     changed: anchor.changed,
+    cancelled: false,
     outcome: {absolutePath: anchor.absolutePath, page: anchor.page},
   };
 }
 
 /**
  * The Todo counterpart to `openOrCreateMeetingNote` above - same shape, same
- * contract (see that function's own doc comment for the full explanation of
- * why persistence is the caller's job, how `changed` drives it, and what
- * `options.forceOwnTarget` is for). Every real call site is one of
- * ProjectDataPanel.tsx's TodosSection, DailyView.tsx, InboxScreen.tsx,
- * ReviewScreen.tsx (WeekView.tsx has no Todo column).
+ * contract. A todo has no date, so the `{year}`/`{quarter}`/`{month}`
+ * placeholders use the day the note is created.
  */
 export async function openOrCreateTodoNote(
   task: Task,
   itemPath: string,
   settings: GtdParaSettings,
   inbox: MeetingNoteInboxInput | null,
-  options: {forceOwnTarget?: boolean} = {},
-): Promise<{task: Task; changed: boolean; outcome: OpenOrCreateNoteOutcome}> {
+  options: OpenOrCreateNoteOptions = {},
+): Promise<{task: Task; changed: boolean; cancelled: boolean; outcome: OpenOrCreateNoteOutcome | null}> {
   const currentKeyword = todoPageKeyword(task);
-  const anchor = await resolveItemNoteAnchor({
-    notePath: task.notePath,
-    itemPath,
-    subfolder: TODOS_SUBFOLDER,
-    settings,
-    tags: task.tags,
-    context: 'todo',
-    currentKeyword,
-    baseName: todoNoteBaseName(task),
-    isDated: false,
-    forceOwnTarget: options.forceOwnTarget ?? false,
-    collisionCheck: oldKeyword => todoKeywordStillUsed(itemPath, oldKeyword),
-  });
+  const anchor = await resolveItemNote(
+    {
+      notePath: task.notePath,
+      itemPath,
+      subfolder: TODOS_SUBFOLDER,
+      settings,
+      tags: task.tags,
+      context: 'todo',
+      currentKeyword,
+      baseName: todoNoteBaseName(task),
+      isDated: false,
+      fileDate: todayIso(),
+      forceOwnTarget: options.forceOwnTarget ?? false,
+      collisionCheck: oldKeyword => todoKeywordStillUsed(itemPath, oldKeyword),
+    },
+    options.confirmCreate,
+    'openOrCreateTodoNote',
+  );
+  if (!anchor) return {task, changed: false, cancelled: true, outcome: null};
 
   const updatedTask = anchor.changed ? {...task, notePath: anchor.notePath} : task;
   await refreshTodoNoteBlock(updatedTask, itemPath, settings, inbox, {
@@ -832,6 +891,7 @@ export async function openOrCreateTodoNote(
   return {
     task: updatedTask,
     changed: anchor.changed,
+    cancelled: false,
     outcome: {absolutePath: anchor.absolutePath, page: anchor.page},
   };
 }

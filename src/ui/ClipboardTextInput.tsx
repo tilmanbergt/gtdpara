@@ -36,11 +36,16 @@
  * omits the prop and keeps today's single-line behavior unchanged. The
  * overlay's own positioning (`bottom: '100%'`) needs no change either way,
  * since it's already anchored to the field's top regardless of height.
+ *
+ * `handleRef` (added 2026-10-02, docs/dev/technical-design-split-by-tag.md
+ * §3.6): an optional handle with `insertAtCursor(word)`, so buttons outside
+ * the field (the Tag Rules placeholder chips) can insert at the last cursor
+ * position - through the same tracked selection Paste uses.
  */
-import React, {useRef, useState} from 'react';
+import React, {useImperativeHandle, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import {copyCutRange, Selection, spliceAtSelection} from '../domain/clipboardText';
+import {copyCutRange, Selection, spliceAtSelection, spliceWordAtSelection} from '../domain/clipboardText';
 import {FONT} from './theme';
 
 interface Props {
@@ -55,6 +60,13 @@ interface Props {
   editable?: boolean;
   /** Default false (single line, current behavior). true renders a taller, top-aligned, wrapping box - e.g. for Scope's 1-3 sentence text - while keeping the same Select All/Copy/Cut/Paste overlay. */
   multiline?: boolean;
+  /** Optional handle for inserting text from outside the field - see the module doc comment. */
+  handleRef?: React.Ref<ClipboardTextInputHandle>;
+}
+
+export interface ClipboardTextInputHandle {
+  /** Inserts `word` at the field's last cursor position (end of the text if it was never focused), with spaces as needed; the cursor ends up right after it. */
+  insertAtCursor: (word: string) => void;
 }
 
 export default function ClipboardTextInput({
@@ -67,6 +79,7 @@ export default function ClipboardTextInput({
   borderColor,
   editable = true,
   multiline = false,
+  handleRef,
 }: Props): React.JSX.Element {
   const inputRef = useRef<TextInput>(null);
   const lastSelectionRef = useRef<Selection>(null);
@@ -100,6 +113,16 @@ export default function ClipboardTextInput({
     lastSelectionRef.current = selection;
     setSelectionOverride(selection);
   };
+  useImperativeHandle(handleRef, () => ({
+    insertAtCursor: (word: string) => {
+      const {text, cursor} = spliceWordAtSelection(value, lastSelectionRef.current, word);
+      onChangeText(text);
+      const selection = {start: cursor, end: cursor};
+      lastSelectionRef.current = selection;
+      setSelectionOverride(selection);
+    },
+  }));
+
   const handlePaste = async () => {
     const clip = await Clipboard.getString();
     if (!clip) return;

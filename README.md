@@ -47,7 +47,8 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
 - **Projects & Areas** with status, scope, abbreviations and linked files
 - **Inbox + lasso capture** from handwriting
 - **Weekly Review** hub with one clear step at a time
-- **Note templates** (Tag Rules): new notes come with a background and pre-filled context
+- **Note templates** (Tag Rules): new notes come with a background and pre-filled context; shared
+  notes can be split by nested tag and date, e.g. one file per coaching client and year
 - **Project close-out**: a short wizard before archiving, with an optional PDF of all notes
 - Experimental **Google Calendar** (ICS link) and **Gmail** (IMAP, in the Weekly Review) integrations
 

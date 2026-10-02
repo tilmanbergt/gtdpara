@@ -90,11 +90,12 @@ export function setFlowStateTag(text: string, next: FlowState, waitingOnSlug?: s
 // pair per word - deriveNow/setNowTag are now thin wrappers over it, so their
 // call sites are unchanged.
 //
-// The trailing lookahead mirrors domain/markdown.ts's TAG_RE (`[\w-]*` then an
-// optional `:[\w-]+`): `#now` must be the WHOLE tag, so `#nowhere`, `#now-x`
-// and `#now:x` are different tags and are neither matched nor stripped.
+// The trailing lookahead mirrors domain/markdown.ts's TAG_RE (`[\w-]*`, nested
+// `/[\w-]+` segments, then an optional `:[\w-]+`): `#now` must be the WHOLE
+// tag, so `#nowhere`, `#now-x`, `#now/x` and `#now:x` are different tags and
+// are neither matched nor stripped.
 function bareTagRe(tag: string): RegExp {
-  return new RegExp(`#${tag}(?![\\w-]|:[\\w-])`, 'gi');
+  return new RegExp(`#${tag}(?![\\w-]|[/:][\\w-])`, 'gi');
 }
 
 /**

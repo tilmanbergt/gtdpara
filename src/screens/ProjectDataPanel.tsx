@@ -100,6 +100,7 @@ import {appendMeetingToTarget, appendTaskToTarget, resolveFilingPick} from '../s
 import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
+import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings, saveSettings} from '../storage/settingsStorage';
 import {createStandaloneNote} from '../storage/standaloneNotes';
@@ -882,6 +883,7 @@ function TodosSection({
 }): React.JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
   useErrorStatus('ProjectDataPanel.actionError', actionError, () => setActionError(null));
+  const confirmNoteCreate = useNoteCreateConfirm('ProjectDataPanel.todoNoteCreateConfirm');
 
   // "Hide done tasks" (2026-09-03 Daily-cleanup pass) - remembered across
   // visits via GtdParaSettings.hideDoneProjectTasks (domain/settings.ts),
@@ -977,7 +979,7 @@ function TodosSection({
     Keyboard.dismiss();
     runAction(async () => {
       const settings = await loadSettings();
-      const {task, changed} = await openOrCreateTodoNote(tasks[index], itemPath, settings, null);
+      const {task, changed} = await openOrCreateTodoNote(tasks[index], itemPath, settings, null, {confirmCreate: confirmNoteCreate});
       if (changed) {
         const next = tasks.slice();
         next[index] = task;
@@ -1072,6 +1074,7 @@ function MeetingsSection({
 }): React.JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
   useErrorStatus('ProjectDataPanel.actionError', actionError, () => setActionError(null));
+  const confirmNoteCreate = useNoteCreateConfirm('ProjectDataPanel.meetingNoteCreateConfirm');
 
   // Meetings/Google mini-tab (docs/dev/technical-design-google-calendar.md §9) -
   // "Meetings" is this section's existing content below (unchanged),
@@ -1124,7 +1127,9 @@ function MeetingsSection({
     Keyboard.dismiss();
     runAction(async () => {
       const settings = await loadSettings();
-      const {meeting, changed} = await openOrCreateMeetingNote(meetings[index], itemPath, settings, null);
+      const {meeting, changed} = await openOrCreateMeetingNote(meetings[index], itemPath, settings, null, {
+        confirmCreate: confirmNoteCreate,
+      });
       if (changed) {
         const next = meetings.slice();
         next[index] = meeting;

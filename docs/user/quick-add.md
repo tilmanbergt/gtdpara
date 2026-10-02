@@ -41,7 +41,7 @@ Tap a todo or meeting in any list to open it in Quick Add. Change what you need,
 
 Every todo and meeting can have its own handwritten note - one of gtdpara's most useful features. One tap creates it, already filled in: title, date and time, related open todos, a background from your templates. Next time the same tap opens it again.
 
-- The note icon (+ with a notebook) creates a note for the todo or meeting and opens it; the notebook icon opens it later. How the note looks is set by [Tag Rules](note-templates.md).
+- The note icon (+ with a notebook) creates a note for the todo or meeting and opens it, after you confirm what will be created in the status line; the notebook icon opens it later. How the note looks and where it goes is set by [Tag Rules](note-templates.md).
 - The clip icon links an existing file (for example a PDF from Resources). Tap the `+` clip, then tap the file in the Files pane. A filled clip opens the linked file. To remove a link, edit the item and tap ✕ next to the clip.
 
 ## Capturing handwriting with the lasso

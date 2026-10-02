@@ -48,14 +48,17 @@ const NOTE_LINK_RE = /\s*→\s*\[\[([^\]]+)\]\]\s*$/;
 // reproduces the exact token order.
 const LINKED_FILE_RE = /\s*\+\[\[([^\]]+)\]\]\s*$/;
 
-// A tag is "#" followed by a letter/digit, optionally extended with "-" or
-// ":value" segments - #next, #waiting, #team-jf, #due:2026-09-01 are all
-// one tag each (design-overview.md §3's "one tag mechanism": GTD flow-state,
-// context, and now due dates all share this instead of separate syntaxes).
+// A tag is "#" followed by a letter/digit, optionally extended with "-",
+// nested "/segment" parts and a ":value" suffix - #next, #waiting, #team-jf,
+// #coaching/sabina, #due:2026-09-01 are all one tag each (design-overview.md
+// §3's "one tag mechanism": GTD flow-state, context, and due dates all share
+// this instead of separate syntaxes). Nested tags (docs/dev/technical-design-
+// split-by-tag.md §3.1) use the same "/" syntax as Obsidian; a segment needs
+// at least one character, so "#coaching/" is tag "coaching" plus text "/".
 // Not word-boundary-guarded - "C#5" reads as tag "5", same simplification
 // most hashtag parsers (including Obsidian's) make. Tags are read out of
 // `text`, never stripped from it - `text` keeps its #tags exactly as typed.
-const TAG_RE = /#([a-z0-9][\w-]*(?::[\w-]+)?)/gi;
+const TAG_RE = /#([a-z0-9][\w-]*(?:\/[\w-]+)*(?::[\w-]+)?)/gi;
 const DUE_TAG_RE = /^due:(\d{4}-\d{2}-\d{2})$/;
 // Matches a `#due:YYYY-MM-DD` tag anywhere in a line's text - used by
 // setDueTag below to strip an existing one before (optionally) appending a
@@ -248,7 +251,10 @@ export function insertTagAtPosition(
  */
 export function removeTagFromText(text: string, tag: string): string {
   const escapedTag = tag.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-  const tagRe = new RegExp(`\\s?#${escapedTag}\\b`, 'gi');
+  // Whole-tag guard instead of `\\b` (technical-design-split-by-tag.md §3.1):
+  // removing `#coaching` must not cut it out of `#coaching/sabina`,
+  // `#coaching-x` or `#coaching:x` - those are different tags.
+  const tagRe = new RegExp(`\\s?#${escapedTag}(?![\\w/:-])`, 'gi');
   return text.replace(tagRe, '').replace(/\s{2,}/g, ' ').trim();
 }
 

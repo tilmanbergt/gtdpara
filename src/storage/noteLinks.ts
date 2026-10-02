@@ -10,7 +10,7 @@ import {RESERVED_BARE_TAGS, setFlowStateTag, stripBareTags} from '../domain/flow
 import {setDueTag} from '../domain/markdown';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {NoteContext, resolveNoteTemplate} from '../domain/noteTemplate';
-import {joinNotePath, parseSharedNoteAnchor} from '../domain/sharedNotePages';
+import {joinNotePath, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaSettings} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {createNote, ensureFolderExists, fileExists, MYSTYLE_FOLDER} from '../supernote/fileSystem';
@@ -165,11 +165,13 @@ export async function createLinkedNote(
   baseName: string,
   settings: GtdParaSettings,
   tags: string[],
+  /** The final file name (with ".note"), when the caller already picked it - storage/meetingNoteContent.ts plans the name first so the confirm text shows the real one (technical-design-split-by-tag.md §3.5). */
+  plannedFileName?: string,
 ): Promise<string> {
   const folderPath = `${itemPath.replace(/\/+$/, '')}/${subfolder}`;
   await ensureFolderExists(folderPath);
 
-  const fileName = await collisionFreeName(folderPath, baseName, '.note');
+  const fileName = plannedFileName ?? (await collisionFreeName(folderPath, baseName, '.note'));
 
   const context: NoteContext = subfolder === MEETINGS_SUBFOLDER ? 'meeting' : 'todo';
   const absolutePath = `${folderPath}/${fileName}`;
@@ -225,6 +227,9 @@ export async function createLinkedNote(
  * it turns up.
  */
 export async function resolveNotePath(itemPath: string, notePath: string): Promise<string> {
+  // Kept to at most one existence check (only for anchor-shaped paths): this
+  // runs on every note refresh. `classifyNotePath` below is the full reading
+  // (it also checks own notes) for the open-or-create planning step.
   const anchor = parseSharedNoteAnchor(notePath);
   if (anchor) {
     const anchorTarget = joinNotePath(itemPath, anchor.filePath);
@@ -233,4 +238,40 @@ export async function resolveNotePath(itemPath: string, notePath: string): Promi
     // own-note reading below instead of trusting the guess.
   }
   return joinNotePath(itemPath, notePath);
+}
+
+/** What an item's stored notePath points to - see `classifyNotePath`. */
+export type NotePathClass =
+  | {kind: 'none'}
+  | {kind: 'own'; absolutePath: string; exists: boolean; isAbsoluteLink: boolean}
+  | {kind: 'shared'; anchor: SharedNoteAnchor; absolutePath: string; exists: boolean};
+
+/**
+ * Decides whether a stored notePath is an own note or a shared-note anchor,
+ * and whether its file exists (docs/dev/technical-design-split-by-tag.md
+ * §3.4) for storage/meetingNoteContent.ts's note planning. Same existence-verified
+ * reading `resolveNotePath` introduced in round 3 of the `#` bugfix:
+ * 1. Anchor-shaped and the anchor's file exists -> shared.
+ * 2. Otherwise the literal path exists -> own (older own-note files can
+ *    have `#` in their real name).
+ * 3. Neither exists: anchor-shaped with a `.note` file part -> shared, file
+ *    missing (a shared anchor's file part always ends in ".note"; a misread
+ *    own-note name with `#` never does, because ".note" comes after its `#`).
+ *    Anything else -> own, file missing.
+ * `isAbsoluteLink` marks a notePath starting with '/' (lasso capture's "link
+ * to source note") - a note gtdpara did not create and never recreates.
+ */
+export async function classifyNotePath(itemPath: string, notePath: string): Promise<NotePathClass> {
+  if (!notePath) return {kind: 'none'};
+  const literal = joinNotePath(itemPath, notePath);
+  const isAbsoluteLink = notePath.startsWith('/');
+  const anchor = parseSharedNoteAnchor(notePath);
+  if (anchor) {
+    const anchorTarget = joinNotePath(itemPath, anchor.filePath);
+    if (await fileExists(anchorTarget)) return {kind: 'shared', anchor, absolutePath: anchorTarget, exists: true};
+    if (await fileExists(literal)) return {kind: 'own', absolutePath: literal, exists: true, isAbsoluteLink};
+    if (anchor.filePath.endsWith('.note')) return {kind: 'shared', anchor, absolutePath: anchorTarget, exists: false};
+    return {kind: 'own', absolutePath: literal, exists: false, isAbsoluteLink};
+  }
+  return {kind: 'own', absolutePath: literal, exists: await fileExists(literal), isAbsoluteLink};
 }

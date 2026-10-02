@@ -709,6 +709,17 @@ Design: `docs/dev/technical-design-inbox-as-area.md`.
 - Settings → Folders: Inbox folder field; a new name moves the folder before saving (`renameInboxFolderForSave`), refused if the target exists; not moved when Base/Areas change in the same save.
 - Integrity Check: Inbox scanned at its effective place; new finding `legacyInboxLeftovers`.
 
+### 2.39 Nested tags, split shared files, confirm before creating a note (2026-10-02)
+
+Design: `docs/dev/technical-design-split-by-tag.md`.
+
+- **Nested tags.** `TAG_RE` (`domain/markdown.ts`) accepts `/segment` parts: `#coaching/sabina` is one tag. The whole-tag guards (`removeTagFromText`, `bareTagRe` in `domain/flowState.ts`) treat `/` (and `-`, `:`) as "the tag continues". Nested tags are context tags; the Daily context filter matches them exactly.
+- **Rule matching.** `resolveNoteTemplate` matches through `tagMatchesRuleTag`: a rule tag matches itself and every tag nested under it (parent to child only). `ruleSubtag` gives the part after the rule tag (`sabina`), first nested tag in text order, lowercased.
+- **Shared file names.** "Shared file name" is a template: `renderSharedFileName` (`domain/sharedNotePages.ts`) fills `{subtag}`, `{year}`, `{quarter}` (`Q1`-`Q4`), `{month}` (`01`-`12`) from the subtag and the item's date (meeting date; today for a todo), collapses spaces, falls back to the rule name when empty; `sanitizeFileNameComponent` then makes it a file name. The Tag Rules form shows the placeholders as chips that insert at the field's cursor (`ClipboardTextInput`'s `handleRef.insertAtCursor`) and an example line.
+- **Plan, confirm, then write.** `storage/meetingNoteContent.ts`'s `openOrCreateMeetingNote`/`openOrCreateTodoNote` first plan (`planItemNote`, reads only) and return a `NoteCreationPlan` (`domain/noteCreationPlan.ts`) for everything except a plain open: `new-own-file`, `new-page`, `new-shared-file`, `link-page`, `recreate-page`, `recreate-shared-file`, `recreate-own-file`. Every screen passes `confirmCreate` from `ui/useNoteCreateConfirm.ts`, which shows the plan in the status slot (texts: `noteCreationConfirmText` in `domain/fileChangeText.ts`); ✕ writes nothing and opens nothing (`cancelled: true`). Only one confirm per screen at a time; a newer tap cancels the older one.
+- **The stored link decides on reopen.** `classifyNotePath` (`storage/noteLinks.ts`) tells own notes from shared anchors (existence-verified; an anchor's file part ends in `.note`). An item with a link always reopens in the linked file, whatever the rule would pick now; the rule only decides for an item's first note. Lazy keyword rename and chronological insertion are unchanged. Absolute links (lasso source notes) are never recreated.
+- Inbox items keep getting own notes (`forceOwnTarget`), now with the confirm.
+
 ## 3. Architectural guidelines for future changes
 
 These are the rules this codebase has settled on. A change that doesn't fit one of these should probably explain why in its own comment, the same way the existing code explains its own deliberate deviations.

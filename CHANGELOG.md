@@ -10,6 +10,28 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Nested tags** like `#coaching/sabina`. A Tag Rule on `coaching` also applies to every
+  `#coaching/...` tag.
+- **Shared files split by tag and date.** The Tag Rule's "Shared file name" understands
+  `{subtag}`, `{year}`, `{quarter}` and `{month}` - for example `Coaching {subtag} {year}` collects
+  each client's sessions in their own file per year. Tap a placeholder to insert it.
+
+### Changed
+- **The note icon asks before creating a note.** The status line says which file or page will be
+  created (and by which Tag Rule), so a misspelt tag can be fixed first. It also asks before
+  recreating a deleted note or page, and before linking to a page that already exists.
+- Once a page in a shared file exists, it stays in that file, even if the rule's file name is
+  changed later.
+- A deleted own note can be created again from the note icon, instead of showing an error.
+- Removing a tag chip in Quick Add no longer cuts that tag out of a longer tag (`#team` out of
+  `#team-jf`).
+
+### Upgrade notes
+- Text like `#foo/bar` used to carry the tag `foo` followed by plain text `/bar`; it now carries the
+  nested tag `foo/bar`. Tag Rules on `foo` still apply. A Daily filter on `#foo` no longer shows
+  these items - tap `#foo/bar` instead.
+
 ## [0.3.0] — 2026-10-01
 
 ### Changed
