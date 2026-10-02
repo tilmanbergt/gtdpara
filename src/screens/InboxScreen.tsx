@@ -148,6 +148,7 @@ import {
 } from '../storage/inboxFiling';
 import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
+import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {loadProjectFile, ProjectFileState, saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings, saveSettings} from '../storage/settingsStorage';
@@ -230,6 +231,7 @@ export default function InboxScreen({
   // below; re-renders with a fresh array after every cache mutation, including
   // the File actions' write-through inside storage/inboxFiling.ts.
   const items = useCachedItems();
+  const confirmNoteCreate = useNoteCreateConfirm('InboxScreen.noteCreateConfirm');
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's calls and the Files pane's `resources` root all
   // need the full resolved path set, not just `inboxPath` - same "keep both"
@@ -477,6 +479,7 @@ export default function InboxScreen({
       const settings = await loadSettings();
       const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], inboxPath, settings, {tasks: inbox.tasks}, {
         forceOwnTarget: true,
+        confirmCreate: confirmNoteCreate,
       });
       if (changed) {
         await saveInboxTasks(tasks => {
@@ -629,7 +632,7 @@ export default function InboxScreen({
         inboxPath,
         settings,
         {tasks: inbox.tasks},
-        {forceOwnTarget: true},
+        {forceOwnTarget: true, confirmCreate: confirmNoteCreate},
       );
       if (changed) {
         await saveInboxMeetings(meetings => {

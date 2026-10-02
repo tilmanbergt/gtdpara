@@ -181,6 +181,7 @@ import {appendMeetingToTarget, appendTaskToTarget} from '../storage/inboxFiling'
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
 import {linkedFileStatus, resolveLinkedFilePath} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
+import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {loadProjectFile, ProjectFileState} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {FolderEntry, openPath} from '../supernote/fileSystem';
@@ -424,6 +425,7 @@ export default function DailyView({
   // from `items`/`inbox` on every render (see the const further below), so
   // there is no manual "refresh after save" step left to forget.
   const items = useCachedItems();
+  const confirmNoteCreate = useNoteCreateConfirm('DailyView.noteCreateConfirm');
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's resolveLinkedFilePath (the read-only
@@ -895,7 +897,9 @@ export default function DailyView({
     Keyboard.dismiss();
     runTaskAction(async () => {
       const currentSettings = settings ?? (await loadSettings());
-      const {task, changed} = await openOrCreateTodoNote(entry.task, entry.item.path, currentSettings, null);
+      const {task, changed} = await openOrCreateTodoNote(entry.task, entry.item.path, currentSettings, null, {
+        confirmCreate: confirmNoteCreate,
+      });
       if (changed) {
         await saveEntryTasks(entry, tasks => {
           tasks[entry.taskIndex] = task;
@@ -1019,6 +1023,7 @@ export default function DailyView({
         entry.item.path,
         currentSettings,
         inbox ? {tasks: inbox.tasks} : null,
+        {confirmCreate: confirmNoteCreate},
       );
       if (changed) {
         await saveEntryMeetings(entry, meetings => {

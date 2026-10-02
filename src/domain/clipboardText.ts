@@ -81,3 +81,24 @@ export function selectedText(text: string, selection: Selection): string {
   const hi = Math.max(0, Math.min(Math.max(selection.start, selection.end), text.length));
   return text.slice(lo, hi);
 }
+
+/**
+ * Like `spliceAtSelection`, but for inserting a whole word (a placeholder
+ * chip such as `{year}` - docs/dev/technical-design-split-by-tag.md §3.6): a
+ * space is added on whichever side needs one, the same rule
+ * domain/markdown.ts's `insertTagAtPosition` uses for tags, so the inserted
+ * word never runs into its neighbours. A selected range is replaced; no
+ * selection inserts at the end. Returns the cursor right after the
+ * inserted word (and its trailing space, if one was added).
+ */
+export function spliceWordAtSelection(text: string, selection: Selection, word: string): {text: string; cursor: number} {
+  const clamp = (n: number) => Math.max(0, Math.min(n, text.length));
+  const lo = selection ? clamp(Math.min(selection.start, selection.end)) : text.length;
+  const hi = selection ? clamp(Math.max(selection.start, selection.end)) : text.length;
+  const before = text.slice(0, lo);
+  const after = text.slice(hi);
+  const leadingSpace = before.length > 0 && !/\s$/.test(before) ? ' ' : '';
+  const trailingSpace = after.length > 0 && !/^\s/.test(after) ? ' ' : '';
+  const insertion = `${leadingSpace}${word}${trailingSpace}`;
+  return {text: before + insertion + after, cursor: before.length + insertion.length};
+}

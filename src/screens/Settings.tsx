@@ -232,7 +232,7 @@
  * stretched `templateBrowseColumns` the 'edit-template' page uses, since the
  * left list is now a self-measuring PagedSection.
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -244,7 +244,7 @@ import {
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {stripSpaceAfterHash} from '../domain/markdown';
-import {formatFullDate} from '../domain/meetingTime';
+import {formatFullDate, todayIso} from '../domain/meetingTime';
 import {trackingSummary} from '../domain/meetingTracking';
 import {
   addPieceToDefinition,
@@ -272,6 +272,7 @@ import {
   removePlacedPiece,
   removeTextItem,
   resolvedSharedFileFolder,
+  resolvedSharedFileName,
   setPieceFontSize,
   setPieceMaxWidth,
   setPieceStep,
@@ -280,6 +281,8 @@ import {
   withDefaultPieces,
 } from '../domain/noteTemplate';
 import {DEFAULT_SETTINGS, GtdParaSettings, resolvePaths} from '../domain/settings';
+import {renderSharedFileName, SHARED_FILE_NAME_PLACEHOLDERS} from '../domain/sharedNotePages';
+import {MEETINGS_SUBFOLDER, sanitizeFileNameComponent, TODOS_SUBFOLDER} from '../storage/noteLinks';
 import {clearCachedData} from '../storage/dataCache';
 import {clearCachedGmailInbox} from '../storage/gmailInboxCache';
 import {runIntegrityCheck} from '../storage/integrityCheck';
@@ -294,7 +297,7 @@ import AboutTab from './settings/AboutTab';
 import AdvancedTab from './settings/AdvancedTab';
 import {listFolderEntries, MYSTYLE_FOLDER} from '../supernote/fileSystem';
 import {common} from '../ui/commonStyles';
-import ClipboardTextInput from '../ui/ClipboardTextInput';
+import ClipboardTextInput, {ClipboardTextInputHandle} from '../ui/ClipboardTextInput';
 import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import NoteTemplatePreview, {PIECE_TYPE_LABELS, pieceSummaryLabel} from '../ui/NoteTemplatePreview';
 import NudgePad from '../ui/NudgePad';
@@ -622,6 +625,8 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
   const [templatesView, setTemplatesView] = useState<'list' | 'edit' | 'edit-template' | 'edit-piece'>('list');
   const [editingDefIndex, setEditingDefIndex] = useState<number | null>(null);
   const [draftDef, setDraftDef] = useState<NoteCreationDefinition | null>(null);
+  /** The "Shared file name" field - its placeholder chips insert at its cursor (docs/dev/technical-design-split-by-tag.md §3.6). */
+  const sharedFileNameInputRef = useRef<ClipboardTextInputHandle>(null);
   const [draftTagsText, setDraftTagsText] = useState('');
   const [selectedPieceIndex, setSelectedPieceIndex] = useState<number | null>(null);
   // "Add piece" page (§6.1): what the right panel shows, the name/text draft
@@ -1584,8 +1589,24 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
                           placeholderColor={placeholderColor}
                           textColor={textColor}
                           borderColor={borderColor}
+                          handleRef={sharedFileNameInputRef}
                         />
                       </View>
+                      {/* Placeholder chips + example (docs/dev/technical-design-split-by-tag.md §3.6). */}
+                      <View style={styles.placeholderChipRow}>
+                        {SHARED_FILE_NAME_PLACEHOLDERS.map(placeholder => (
+                          <Pressable
+                            key={placeholder}
+                            style={[styles.placeholderChip, {borderColor}]}
+                            onPress={() => sharedFileNameInputRef.current?.insertAtCursor(placeholder)}
+                            hitSlop={4}>
+                            <Text style={[styles.placeholderChipText, {color: textColor}]}>{placeholder}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                      <Text style={[styles.sharedFilePreview, {color: textColor}]} numberOfLines={1}>
+                        {`e.g. ${sharedFilePreview(draftDef)}`}
+                      </Text>
 
                       <Text style={[styles.label, styles.compactFieldSpacer, {color: textColor}]}>Shared file location</Text>
                       <MiniTabs
@@ -2011,6 +2032,26 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
   );
 }
 
+/**
+ * The example line under "Shared file name": what the rule's template
+ * produces for an item tagged `#<tag>/client` today, in the chosen location
+ * (docs/dev/technical-design-split-by-tag.md §3.6) - same rendering and
+ * sanitizing as storage/meetingNoteContent.ts's real file name.
+ */
+function sharedFilePreview(definition: NoteCreationDefinition): string {
+  const name = sanitizeFileNameComponent(
+    renderSharedFileName({
+      template: resolvedSharedFileName(definition),
+      ruleName: definition.name.trim() || 'Untitled',
+      subtag: 'client',
+      date: todayIso(),
+    }),
+  );
+  if (resolvedSharedFileFolder(definition) === 'root') return `${name}.note`;
+  const subfolder = definition.context === 'meeting' ? MEETINGS_SUBFOLDER : TODOS_SUBFOLDER;
+  return `${subfolder}/${name}.note`;
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -2136,6 +2177,26 @@ const styles = StyleSheet.create({
   // since `fieldSpacer` is still used for the Background label on the
   // right column below, where the more generous spacing reads fine.
   compactFieldSpacer: {
+    marginTop: SPACING.xs,
+  },
+  placeholderChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: SPACING.xs,
+  },
+  placeholderChip: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginRight: 4,
+  },
+  placeholderChipText: {
+    fontSize: FONT.small,
+    fontWeight: '600',
+  },
+  sharedFilePreview: {
+    fontSize: FONT.small,
     marginTop: SPACING.xs,
   },
   // Wraps each standalone ClipboardTextInput (Name/Tags above) in a

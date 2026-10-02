@@ -34,6 +34,7 @@ import {
 } from '../storage/itemMutations';
 import {linkedFileStatus, resolveLinkedFilePath} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote} from '../storage/meetingNoteContent';
+import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {saveItemGoal} from '../storage/periodGoals';
 import {loadProjectFile, ProjectFileState} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
@@ -67,6 +68,7 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
   // Live view of storage/dataCache.ts - re-renders on every cache mutation,
   // so nothing here needs a manual "refresh after save" step.
   const items = useCachedItems();
+  const confirmNoteCreate = useNoteCreateConfirm(`${logTag}.noteCreateConfirm`);
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
@@ -255,7 +257,9 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
   const handleMeetingNote = (entry: WeeklyMeetingEntry) =>
     runMeetingAction(async () => {
       const currentSettings = settings ?? (await loadSettings());
-      const {meeting, changed} = await openOrCreateMeetingNote(entry.meeting, entry.item.path, currentSettings, null);
+      const {meeting, changed} = await openOrCreateMeetingNote(entry.meeting, entry.item.path, currentSettings, null, {
+        confirmCreate: confirmNoteCreate,
+      });
       if (changed) {
         await saveEntryMeetings(entry, meetings => {
           meetings[entry.meetingIndex] = meeting;

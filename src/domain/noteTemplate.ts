@@ -461,7 +461,8 @@ export function migrateLegacyTextPieces(definition: NoteCreationDefinition): Not
 /**
  * First enabled, tagged definition (in list order - list order doubles as
  * priority, same "first match wins" rule domain/abbrev.ts's quick-file
- * already established) whose tag overlaps the note's own tags; otherwise the
+ * already established) one of whose tags matches one of the note's own tags
+ * (directly, or as a parent of a nested tag - see tagMatchesRuleTag); otherwise the
  * context's Default; otherwise `null`. This is also THE rule lookup for a
  * meeting's prep/review tracking (domain/meetingTracking.ts) - one resolved
  * definition per item supplies both its note layout and its tracking flags. Every caller treats `null` as "blank
@@ -488,11 +489,43 @@ export function resolveNoteTemplate(
   const tagsLower = tags.map(t => t.toLowerCase());
   for (const d of inContext) {
     const dTagsLower = d.tags.map(t => t.toLowerCase());
-    if (dTagsLower.length > 0 && dTagsLower.some(t => tagsLower.includes(t))) {
+    if (dTagsLower.length > 0 && dTagsLower.some(ruleTag => tagsLower.some(tag => tagMatchesRuleTag(tag, ruleTag)))) {
       return d;
     }
   }
   return inContext.find(d => d.isDefault) ?? null;
+}
+
+/**
+ * Whether an item's tag matches a Tag Rule's tag (docs/dev/technical-design-
+ * split-by-tag.md §3.2): the tag itself, or a tag nested under it - a rule on
+ * `coaching` matches `coaching` and `coaching/sabina`, never `coachingx`, and a
+ * rule on `coaching/sabina` never matches plain `coaching` (matching only goes
+ * from parent to child). Both sides are expected lowercased; callers already
+ * lowercase (see resolveNoteTemplate above).
+ */
+export function tagMatchesRuleTag(itemTag: string, ruleTag: string): boolean {
+  return itemTag === ruleTag || itemTag.startsWith(`${ruleTag}/`);
+}
+
+/**
+ * The part of the first item tag nested under any of `ruleTags`, with that
+ * rule-tag prefix removed (technical-design-split-by-tag.md §3.2) -
+ * `['coaching/sabina']` under rule `coaching` gives `"sabina"`; deeper nesting
+ * keeps the rest (`coaching/sabina/2026` -> `"sabina/2026"`). Item tags are
+ * scanned in their own order (text order, as extracted), so the first nested
+ * tag wins. Lowercased; `""` when no item tag is nested under a rule tag
+ * (including when the item only carries the plain rule tag).
+ */
+export function ruleSubtag(itemTags: string[], ruleTags: string[]): string {
+  const rulesLower = ruleTags.map(t => t.toLowerCase()).filter(Boolean);
+  for (const raw of itemTags) {
+    const tag = raw.toLowerCase();
+    for (const ruleTag of rulesLower) {
+      if (tag.startsWith(`${ruleTag}/`)) return tag.slice(ruleTag.length + 1);
+    }
+  }
+  return '';
 }
 
 /**

@@ -216,6 +216,7 @@ import {
 import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
 import {MeetingRelevantTodo, relatedItemsFor} from '../storage/meetingNoteAggregate';
 import {openOrCreateMeetingNote, openOrCreateTodoNote, refreshMeetingNoteBlock} from '../storage/meetingNoteContent';
+import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {resolveNotePath} from '../storage/noteLinks';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
 import {summarizeAttachmentsByExtension} from '../domain/attachmentSummary';
@@ -661,6 +662,7 @@ export default function ReviewScreen({
   // it still shows when the background IMAP call fails after the user has
   // already left Review (D13).
   const statusApi = useStatusApi();
+  const confirmNoteCreate = useNoteCreateConfirm('ReviewScreen.noteCreateConfirm');
   const gmailArchiveError = gmailArchiveErrorState;
   const setGmailArchiveError = useCallback(
     (text: string | null) => {
@@ -1919,6 +1921,7 @@ export default function ReviewScreen({
         const currentSettings = settings ?? (await loadSettings());
         const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], inboxPath, currentSettings, {tasks: inbox.tasks}, {
           forceOwnTarget: true,
+          confirmCreate: confirmNoteCreate,
         });
         if (changed) {
           const nextTasks = inbox.tasks.slice();
@@ -2000,7 +2003,7 @@ export default function ReviewScreen({
           inboxPath,
           currentSettings,
           {tasks: inbox.tasks},
-          {forceOwnTarget: true},
+          {forceOwnTarget: true, confirmCreate: confirmNoteCreate},
         );
         if (changed) {
           const nextMeetings = inbox.meetings.slice();

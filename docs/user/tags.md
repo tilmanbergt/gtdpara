@@ -22,6 +22,13 @@ Each todo has at most one of these. The chips in Quick Add set them for you.
 
 Any other tag is a context tag: a person (`#lena`), a topic (`#budget`) or a recurring meeting (`#team-sync`). Tap a context tag on Daily to see only matching items. Note templates can react to context tags - see [Tag Rules](note-templates.md).
 
+## Nested tags
+
+A tag can have parts separated by `/`, for example `#coaching/sabina`. It is one tag: one chip in Quick Add, one tap target on Daily. Obsidian reads the same syntax as a nested tag.
+
+- A Tag Rule on `coaching` also applies to `#coaching/sabina`, `#coaching/tom` and so on. The part after the `/` can choose the shared file, see [Tag Rules](note-templates.md).
+- On Daily, tapping `#coaching/sabina` shows only items with exactly that tag; tapping `#coaching` does not include the nested ones.
+
 ## Project and area abbreviations
 
 A tag that matches a project's or area's abbreviation (for example `#GR`) is shown in capitals. It lets you file an item directly into that project from Quick Add, and as a Daily filter it shows all of that project's items. Abbreviations are not case-sensitive.

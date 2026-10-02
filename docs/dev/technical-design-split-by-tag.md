@@ -1,6 +1,6 @@
 # Technical Design: Split shared notes by nested tag (file-name placeholders + confirm before creating a note)
 
-Status: **requirements decided 2026-10-02** (chat). Design for review - not yet implemented.
+Status: **implemented 2026-10-02** (see §9 As built); device test open.
 
 ## 1. Requirements as decided
 
@@ -22,6 +22,13 @@ shared `.note` per client (optionally per year/quarter/month), without one Tag R
    exists, the icon opens it directly, as today.
 5. **Once created, it stays.** A page stays in the file it was created in, even if the tag, the date or the
    rule changes later. The Integrity Check does not report this (it may become a candidate later).
+6. **Confirm applies to every first-time note**, including notes no rule matches - no match can itself be a
+   spelling mistake in the tag.
+7. **Missing or already-existing targets are made visible too.** Whenever the note icon would recreate a
+   deleted page or file, or link the item to a page that already exists (and may already hold content), the
+   status slot says so and asks first. Deleting may have been a mistake (the file can maybe still be restored),
+   or the existing page may hold data. ✕ changes nothing; the next tap asks again.
+8. **Subtags are lowercased**; placeholder formats `{quarter}` = `Q4`, `{month}` = `10` are accepted.
 
 ## 2. Current state (relevant code)
 
@@ -149,24 +156,40 @@ Side benefit: renaming a rule's "Shared file name" no longer orphans earlier pag
 
 ```ts
 type NoteCreationPlan =
-  | {kind: 'open'}                                    // has a note: no confirm (branches 2, 4-7)
-  | {kind: 'link-page'; file: string}                 // shared file has a page with this keyword already (branch 3 hardening): no confirm, nothing is created
-  | {kind: 'new-own-file'; file: string; ruleName: string | null}   // branch 1
-  | {kind: 'new-page'; file: string; ruleName: string}              // branch 3, file exists
-  | {kind: 'new-shared-file'; file: string; ruleName: string};      // branch 3, file missing
+  // no confirm
+  | {kind: 'open'}                                                   // note found (branches 2, 4, 6 incl. lazy keyword rename)
+  // first-time note (item has no note link yet)
+  | {kind: 'new-own-file'; file: string; ruleName: string | null}    // branch 1
+  | {kind: 'new-page'; file: string; ruleName: string}               // branch 3, file exists
+  | {kind: 'new-shared-file'; file: string; ruleName: string}        // branch 3, file missing
+  | {kind: 'link-page'; file: string; ruleName: string; keyword: string} // branch 3 hardening: a page with this keyword already exists
+  // item has a note link, but its target is gone
+  | {kind: 'recreate-page'; file: string}                            // branches 5, 7: file there, page (keyword) not found
+  | {kind: 'recreate-shared-file'; file: string}                     // shared file itself missing
+  | {kind: 'recreate-own-file'; file: string};                       // own note file missing (today: "File does not exist" error)
 // file = path relative to the Project/Area, e.g. "Meetings/Coaching sabina 2026.note"
 ```
+
+Planning for an item that **already has a note link** (§3.4 decides own vs. shared):
+- own: `fileExists(path)` -> `open`, else `recreate-own-file` (recreated under the **same** name, so the stored
+  link stays valid). Exception: an absolute link (starting with `/`, from lasso capture's "link to source note")
+  points to a note gtdpara did not create - nothing is recreated; the status slot shows an error naming the
+  missing file.
+- shared: `fileExists(anchor file)`? no -> `recreate-shared-file`. Yes -> `findKeywordPage` for the current
+  keyword, then (if the keyword changed) the old one -> found: `open` (old keyword renamed in place, as today);
+  not found: `recreate-page`.
 
 - The planning step for a shared target uses `fileExists` and, if the file exists, `findKeywordPage`. It does
   **not** call `ensureSharedNoteFile` any more; that moves into the create step.
 - For own notes, planning computes the final name with `collisionFreeName` (as `createLinkedNote` does), so the
   text shows the real name. `createLinkedNote` gets an optional precomputed file name.
 - `openOrCreateMeetingNote` / `openOrCreateTodoNote` get `options.confirmCreate?: (plan) => Promise<boolean>`.
-  It is called only for the three `new-*` kinds. `false` -> return `{changed: false, cancelled: true}`: nothing
-  created, nothing persisted, nothing opened. Without `confirmCreate` (no caller after this change, but keeps the
-  function usable from non-UI code) it behaves as today.
-- Recreate branches (5, 7: the user deleted the page) stay **without** a confirm, as today. They only re-create
-  what this item already had.
+  It is called for **every plan except `open`**. `false` -> return `{changed: false, cancelled: true}`: nothing
+  created, nothing linked, nothing persisted, nothing opened - the item's existing link (if any) stays, so the
+  next tap asks again. Without `confirmCreate` (no caller after this change, but keeps the function usable from
+  non-UI code) it behaves as today.
+- After a recreate, the "Recreated <date>: page keyword not found" line is still written on the new page (as
+  today), so the page itself shows what happened.
 
 **Texts** (`domain/fileChangeText.ts`, pure):
 
@@ -176,6 +199,13 @@ type NoteCreationPlan =
 | `new-page` | `Rule Coaching: new page in Meetings/Coaching sabina 2026.note` | `Add page` |
 | `new-own-file` with rule | `Rule Coaching: new note Todos/Call Sabina.note` | `Create` |
 | `new-own-file`, no rule | `New note Todos/Call Sabina.note` | `Create` |
+| `link-page` | `Rule Coaching: page "2026-10-02 Session …" already exists in Meetings/… - link it?` | `Link` |
+| `recreate-page` | `Page not found in Meetings/Coaching sabina 2026.note (deleted?) - add a new one?` | `Add page` |
+| `recreate-shared-file` | `Meetings/Coaching sabina 2026.note not found (deleted?) - create it again?` | `Create` |
+| `recreate-own-file` | `Todos/Call Sabina.note not found (deleted?) - create it again?` | `Create` |
+
+For the three `recreate-*` kinds the `detail` adds: "Earlier content is not restored. If the deletion was a
+mistake, restore the file first (e.g. from Supernote Cloud) and tap ✕."
 
 The slot line is tail-truncated; the tap-to-expand `detail` gives the full path including the Project/Area
 (`displayPath`).
@@ -226,8 +256,9 @@ budget of the left column (design-device-rendering §5-6); check this on the dev
 | Typo `#coaching/sabine` | confirm shows "new file … sabine …" -> ✕, fix tag, tap again |
 | Tag, date or rule changed after the note exists | page stays in its file (§3.4); keyword lazily renamed in place, as today |
 | Meeting date moved across a year/quarter boundary | stays in the original file (§3.4) |
-| Note already created, then the user deleted its page or the whole shared file in Supernote | next tap on the note icon: a fresh page (and the file, if it's gone) is recreated under the item's stored link, with the "Recreated <date>: page keyword not found" line; the deleted handwriting is gone; no confirm (as today) |
-| Inbox item | always own note (`forceOwnTarget`, unchanged); stays an own note after filing (decision 5). A coaching session's note should therefore be created after filing it to the Area |
+| Note already created, then its page, its shared file or its own note file was deleted | next tap: confirm `recreate-page` / `recreate-shared-file` / `recreate-own-file`; ✕ leaves everything as is |
+| Item's keyword matches a page that already exists (e.g. an earlier failed attempt, or two todos with the same text) | confirm `link-page`; ✕ creates and links nothing |
+| Inbox item | always own note (`forceOwnTarget`, unchanged, now with the confirm); stays an own note after filing (decision 5). Why the exception exists: it was built in the shared-pages feature when the Inbox still lived in the Note root. Since 0.2.0 the Inbox has its own folder under Areas, so technically a shared file could now live in `Inbox/Meetings/`. The remaining catch: Inbox items are meant to be filed elsewhere, and a page cannot move between files - a coaching page created in the Inbox would stay in an Inbox file after filing (the same "refile doesn't move the linked note" gap that already exists for own notes). Kept as is here; removing the exception goes on the backlog together with that refile bug |
 | Two rules match (`coaching` and another rule on `sabina`) | first enabled rule in list order wins (unchanged) |
 | Old text `#foo/bar` | now tag `foo/bar`; Daily filter on `foo` no longer includes it (Upgrade note) |
 | File name field is just `{subtag}` (no fixed text) and the item has `#coaching` only | the name would be empty, so the rule name is used: `Coaching.note` |
@@ -262,7 +293,7 @@ budget of the left column (design-device-rendering §5-6); check this on the dev
   child -> parent), `ruleSubtag` (first wins, deeper nesting, none).
 - `renderSharedFileName`: every placeholder, case-insensitive, unknown token kept, empty subtag, empty result ->
   rule name, quarter boundaries (03-31 / 04-01, 12-31).
-- `fileChangeText` texts for all four plan kinds.
+- `fileChangeText` texts for all seven confirm plan kinds.
 - Existing tests stay green (`npx tsc --noEmit`, `npm test`, `npm run test:scripts` for the docs).
 
 **On the device (demo space)**
@@ -280,6 +311,11 @@ budget of the left column (design-device-rendering §5-6); check this on the dev
 9. Quick Add: recent chips show `#coaching/sabina` as one chip; removing the `#coaching` chip does not damage
    `#coaching/sabina`.
 10. Week/Month and Review Inbox-to-zero note icons show the confirm too.
+11. In the file manager, delete the page of step 3 -> note icon -> "Page not found … (deleted?) - add a new one?"
+    -> ✕ -> nothing changes; tap again -> Add page -> new page with the "Recreated …" line.
+12. Delete `Coaching sabina 2026.note` -> note icon -> "… not found (deleted?) - create it again?" -> Create.
+13. Delete an own todo note file -> note icon -> "… not found (deleted?) - create it again?" (today: error).
+14. Two todos with identical text in one Project, shared rule -> second one shows "page … already exists … - link it?".
 
 ## 7. Implementation plan (each step ends with tsc + Jest passing)
 
@@ -295,7 +331,55 @@ budget of the left column (design-device-rendering §5-6); check this on the dev
 
 ## 8. Out of scope
 
+- Removing the Inbox's own-note exception (`forceOwnTarget`) - backlog, together with the "refile doesn't move the linked note" bug.
+
 - Integrity Check finding "page is in a file the rule would not pick any more" (decision 5: possible later).
 - Daily filter on a parent tag (`#coaching`) also showing children (`#coaching/*`) - goes to the backlog.
 - Moving a page to another file (no API, as in the shared-pages design).
 - Subtags for own-note file names or folders.
+
+## 9. As built (2026-10-02)
+
+Implemented as designed, in the order of §7 (steps 1-3 together with the docs of step 4). Verified
+off-device: `npx tsc --noEmit` clean, `npm test` 156/156 (41 new), `npm run test:scripts` passed.
+**Device test (§6) still open.**
+
+Where it landed, and the few points the design left open:
+
+- **Nested tags** (§3.1): `TAG_RE`, `removeTagFromText` and `bareTagRe` as designed. The new
+  whole-tag guard in `removeTagFromText` also fixes an older slip: removing the chip `#team` used to
+  cut `#team` out of `#team-jf` (`\b` matched before the `-`).
+- **Rule matching** (§3.2): `tagMatchesRuleTag` and `ruleSubtag` in `domain/noteTemplate.ts`;
+  `resolveNoteTemplate` uses the former.
+- **File-name template** (§3.3): `renderSharedFileName` and `SHARED_FILE_NAME_PLACEHOLDERS` in
+  `domain/sharedNotePages.ts`.
+- **Plan type** (§3.5): its own pure file `domain/noteCreationPlan.ts`; the confirm texts are
+  `noteCreationConfirmText` in `domain/fileChangeText.ts` (text, detail, button label).
+- **Planning** (§3.4/§3.5): `resolveItemNoteAnchor` was replaced by `planItemNote` (reads only,
+  returns the public plan plus an `execute` step) and `resolveItemNote` (plan -> confirm ->
+  execute) in `storage/meetingNoteContent.ts`. `openOrCreateMeetingNote`/`openOrCreateTodoNote`
+  take `OpenOrCreateNoteOptions` (`forceOwnTarget`, `confirmCreate`) and return `cancelled` and a
+  nullable `outcome`. Logging is the plan kind only (`plan`, `cancelled`, `done`).
+- **`classifyNotePath`** (`storage/noteLinks.ts`): used only by planning. `resolveNotePath` kept its
+  previous logic, so every note refresh still does at most one existence check (only for
+  anchor-shaped paths); the two agree whenever the file exists.
+- **Own notes**: `createLinkedNote` takes an optional planned file name, so the confirm shows the
+  real collision-free name. `recreate-own-file` recreates the file under its stored name;
+  absolute (lasso) links throw "Linked note not found: …" instead (shown by each screen's
+  existing error handling in the status slot).
+- **Confirm hook** `ui/useNoteCreateConfirm.ts`: one confirm per screen instance (instance-suffixed
+  id); a newer request, unmount, or hiding the kept tab resolves the pending one `false`.
+  Wired into all 9 call sites (Daily ×2, ProjectDataPanel Todos/Meetings, Inbox ×2, Review
+  Inbox-to-zero ×2, `usePlanningScreen` for Week/Month).
+- **Placeholder chips** (§3.6): `ClipboardTextInput` gained `handleRef` with `insertAtCursor`, built
+  on the new pure `spliceWordAtSelection` (`domain/clipboardText.ts`). Chips and the example line
+  sit under "Shared file name" in `screens/Settings.tsx` (`sharedFilePreview`).
+- **Tests**: `__tests__/domain/nestedTags.test.ts`, `__tests__/domain/splitByTag.test.ts`,
+  `__tests__/storage/noteCreationPlan.test.ts` (planning against an in-memory file system:
+  every plan kind, ✕ writes nothing, stored file wins, rename in place, old `#` own notes),
+  `__tests__/ui/useNoteCreateConfirm.test.tsx`, `__tests__/ui/clipboardTextInputInsert.test.tsx`.
+- **Docs**: help pages `tags.md` (Nested tags), `note-templates.md` (placeholders, "Before a note is
+  created"), `quick-add.md`, `meetings.md`; CHANGELOG `[Unreleased]` (New, Changed, Upgrade note
+  for `#a/b`); design-overview §2.39; README "Features at a glance".
+- Not changed, as designed: no new setting, no stored-data migration, nothing new for the debug
+  bundle (no new mode or switch).

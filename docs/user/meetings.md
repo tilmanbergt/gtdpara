@@ -11,7 +11,7 @@ A meeting has a date, an optional time or length, and a title that can carry tag
 
 ## Meeting notes
 
-Tap the note icon on a meeting to create its note. gtdpara fills it according to the matching [Tag Rule](note-templates.md): for example title, date, time and the open todos that share a tag with the meeting. Until the end of the meeting (for a meeting without a time: the end of its day), this information is refreshed each time you open the note from gtdpara. After that the note is left as it is.
+Tap the note icon on a meeting to create its note; the status line first says which file or page will be created (see [Tag Rules](note-templates.md)). gtdpara fills it according to the matching [Tag Rule](note-templates.md): for example title, date, time and the open todos that share a tag with the meeting. Until the end of the meeting (for a meeting without a time: the end of its day), this information is refreshed each time you open the note from gtdpara. After that the note is left as it is.
 
 Instead of one note per meeting, a Tag Rule can put the notes of all matching meetings as pages into one shared note per project, for example one "Team sync" note with a page per meeting.
 
