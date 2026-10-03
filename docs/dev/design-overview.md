@@ -780,9 +780,6 @@ for a related change starts from them.
 - **Recurring meetings.** The parser accepts a hand-written recurring meeting with its
   occurrence sub-list and keeps it intact, but nothing in the UI creates or edits one; every
   meeting made in the plugin is one-off.
-- **Selection button.** `index.js` registers a `SELECTION_BUTTON_ID` (DOC text-selection
-  toolbar) next to the Lasso button, but nothing routes it. The capture flow (§2.9) could serve
-  it, with selected text instead of recognized handwriting.
 - **Inbox outside the observable cache.** Projects and Areas go through the cache (§2.29); the
   Inbox is still loaded per screen (local `inbox` state, `inboxOverride`). Moving it into the
   cache would remove that duplication.
