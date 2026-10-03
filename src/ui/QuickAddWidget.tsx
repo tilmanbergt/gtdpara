@@ -153,6 +153,7 @@ import MarkWrap from './status/StatusMark';
 import {usePerfRender} from '../utils/perf';
 import {useAbbrevItems} from './useAbbrevItems';
 import {useOnScreenHide} from './screenActivity';
+import {common} from './commonStyles';
 
 /** Same shape MeetingQuickAdd.tsx used to export - QuickAddWidget is now this type's home; other files import it from here. */
 export interface MeetingQuickAddFields {
@@ -1207,18 +1208,18 @@ function QuickAddWidget({
           `display:none` pattern above (blur fires on touch-down, but the
           already-claimed touch responder keeps receiving the rest of that
           gesture as long as the view instance itself survives). */}
-      <View style={[styles.clipboardOverlay, {borderColor}, !taskInputFocused && styles.hidden]}>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleTaskSelectAll} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>All</Text>
+      <View style={[common.floatingStrip, {borderColor}, !taskInputFocused && styles.hidden]}>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskSelectAll} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
         </Pressable>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleTaskCopy} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>Copy</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskCopy} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
         </Pressable>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleTaskCut} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>Cut</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskCut} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
         </Pressable>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleTaskPaste} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>Paste</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskPaste} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
         </Pressable>
       </View>
     </View>
@@ -1425,18 +1426,18 @@ function QuickAddWidget({
         </MarkWrap>
       </View>
       {/* Same hovering overlay as taskRow2's - see its comment for why. */}
-      <View style={[styles.clipboardOverlay, {borderColor}, !meetingInputFocused && styles.hidden]}>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleMeetingSelectAll} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>All</Text>
+      <View style={[common.floatingStrip, {borderColor}, !meetingInputFocused && styles.hidden]}>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingSelectAll} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
         </Pressable>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleMeetingCopy} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>Copy</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingCopy} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
         </Pressable>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleMeetingCut} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>Cut</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingCut} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
         </Pressable>
-        <Pressable style={[styles.clipboardButton, {borderColor}]} onPress={handleMeetingPaste} hitSlop={6}>
-          <Text style={[styles.clipboardButtonText, {color: textColor}]}>Paste</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingPaste} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
         </Pressable>
       </View>
     </View>
@@ -1772,7 +1773,7 @@ const styles = StyleSheet.create({
   row2: {
     minHeight: 36,
     marginBottom: 6,
-    // Positioning context for clipboardOverlay below - the overlay is
+    // Positioning context for the clipboard strip (common.floatingStrip) - it is
     // absolutely positioned against *this* row, not the whole widget, so it
     // hovers right above the input regardless of which row2 (task/meeting)
     // is currently showing.
@@ -1787,30 +1788,6 @@ const styles = StyleSheet.create({
   // flush above row2's own top edge without any hardcoded height; `right: 0`
   // keeps it clear of row 1's Todo/Meeting tabs (top-left) instead of
   // hovering over them.
-  clipboardOverlay: {
-    position: 'absolute',
-    right: 0,
-    bottom: '100%',
-    marginBottom: 3,
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingVertical: 3,
-    paddingHorizontal: 3,
-    zIndex: 20,
-    elevation: 4,
-  },
-  clipboardButton: {
-    borderWidth: 1,
-    borderRadius: 3,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-    marginLeft: 3,
-  },
-  clipboardButtonText: {
-    fontSize: FONT.small,
-  },
   row3: {
     minHeight: 32,
     flexDirection: 'row',
