@@ -64,4 +64,36 @@ export const common = StyleSheet.create({
     opacity: 0.6,
     marginTop: 2,
   },
+  /**
+   * The small button strip that hovers flush above a focused text field,
+   * right-aligned (All/Copy/Cut/Paste in ui/ClipboardTextInput.tsx and
+   * QuickAddWidget, -1/Today/+1/+7 in ui/DateInput.tsx). Absolutely
+   * positioned, so it costs no layout space; the field's wrapper must be
+   * `position: 'relative'`. Pair with a `display: 'none'` style while the
+   * field isn't focused (kept mounted so taps aren't lost).
+   */
+  floatingStrip: {
+    position: 'absolute',
+    right: 0,
+    bottom: '100%',
+    marginBottom: 3,
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 3,
+    zIndex: 20,
+    elevation: 4,
+  },
+  floatingStripButton: {
+    borderWidth: 1,
+    borderRadius: 3,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    marginLeft: 3,
+  },
+  floatingStripButtonText: {
+    fontSize: FONT.small,
+  },
 });

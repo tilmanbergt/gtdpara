@@ -52,7 +52,6 @@ import ContentsStep from '../ui/closeOut/ContentsStep';
 import OutcomesStep from '../ui/closeOut/OutcomesStep';
 import PdfStep, {PdfRunState} from '../ui/closeOut/PdfStep';
 import PillButton from '../ui/PillButton';
-import {RefreshHandle} from '../ui/TabBar';
 import {FONT, SPACING, useThemeColors} from '../ui/theme';
 import StepIndicator, {StepDef} from '../ui/wizard/StepIndicator';
 import WizardFrame from '../ui/wizard/WizardFrame';
@@ -65,8 +64,6 @@ interface Props {
   mode: CloseOutMode;
   /** `archived` true once the project folder has moved into the archive. */
   onExit: (archived: boolean) => void;
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
 }
 
 const STEP_LABELS: Record<CloseOutStep, string> = {
@@ -90,7 +87,7 @@ function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-export default function CloseOutWizard({projectPath, mode: requestedMode, onExit, onRegisterRefresh, onRefreshingChange}: Props): React.JSX.Element {
+export default function CloseOutWizard({projectPath, mode: requestedMode, onExit}: Props): React.JSX.Element {
   const {textColor, borderColor, placeholderColor} = useThemeColors();
   const [ctx, setCtx] = useState<CloseOutContext | null>(null);
   const [loadLabel, setLoadLabel] = useState('Loading…');
@@ -127,7 +124,6 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
     setLoadError(null);
     setCtx(null);
     setLoadLabel('Loading…');
-    onRefreshingChange?.(true);
     try {
       const settings = await loadSettings();
       settingsRef.current = settings;
@@ -145,10 +141,9 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       logError('CloseOutWizard: load failed', message(e));
       setLoadError(message(e));
     } finally {
-      onRefreshingChange?.(false);
       requestEinkRefresh();
     }
-  }, [projectPath, requestedMode, onRefreshingChange]);
+  }, [projectPath, requestedMode]);
 
   useEffect(() => {
     load();
@@ -156,10 +151,6 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectPath, requestedMode]);
 
-  useEffect(() => {
-    onRegisterRefresh?.({run: () => load()});
-    return () => onRegisterRefresh?.(null);
-  }, [onRegisterRefresh, load]);
 
   /** Runs an action, then re-derives the context. Errors show under the step. */
   const run = useCallback(
@@ -225,7 +216,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       setArea: areaName =>
         run(async () => {
           const item = findCachedItem(projectPath);
-          if (!item) throw new Error('This project changed on disk - tap 🔄 to refresh.');
+          if (!item) throw new Error('This project changed on disk - Settings → Advanced → Reload all files.');
           if (areaName) await assignProjectToArea(item, areaName);
           else await unassignProject(item);
         }),

@@ -48,7 +48,7 @@ export interface CloseOutContext {
 
 function requireItem(projectPath: string): CachedItem {
   const item = findCachedItem(projectPath);
-  if (!item) throw new Error('This project is no longer in the lists - tap 🔄 to refresh.');
+  if (!item) throw new Error('This project is no longer in the lists - Settings → Advanced → Reload all files.');
   return item;
 }
 

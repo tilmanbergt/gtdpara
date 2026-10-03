@@ -95,8 +95,7 @@
  *
  * 2026-09-03 Daily-cleanup pass (technical-design-daily-compact-ui.md
  * §1/§3/§4, Phases 1-4): this screen's own heading + 🔄 button are gone
- * (handleRefresh below registers with App.tsx/TabBar's shared icon instead -
- * see ui/TabBar.tsx's module doc comment). The Open-tasks column is now
+ * (reloading: Settings → Advanced → Reload all files). The Open-tasks column is now
  * grouped by source Project/Area/Inbox (storage/dailyAggregate.ts's
  * groupDailyTasksByItem) rather than one flat list, with the group header
  * itself the "jump to that item" affordance. The Calendar column's
@@ -200,7 +199,6 @@ import {MiniTabDef} from '../ui/MiniTabs';
 import PagedSection from '../ui/PagedSection';
 import {PAGE_SIZE} from '../ui/pagination';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
-import {RefreshHandle} from '../ui/TabBar';
 import {displayTaskText} from '../ui/TaskBadges';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
@@ -212,14 +210,13 @@ import {useErrorStatus} from '../ui/status/StatusProvider';
 import {perfEnd, perfStart, usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
+import {useActionError} from '../ui/useActionError';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
   /** Switches to the Inbox tab - used when an Inbox-sourced row's group header/source subtext is tapped (docs/dev/technical-design-inbox-tab.md §3), since there's no Project/Area to open for those. */
   onOpenInbox?: () => void;
-  /** Registers this screen's reload action with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** Docs/technical-design-now-focus-mode.md §4: when true, this screen renders as focus mode's one-column, no-TabBar view instead of normal two-column Daily. App.tsx's `Mode: 'focus'` branch renders this same component with this prop on - see this file's own module doc comment. Absent/false is normal Daily, unchanged. */
@@ -409,8 +406,6 @@ const EMPTY_DAILY_AGGREGATE: DailyAggregate = {tasks: [], meetings: [], failedIt
 export default function DailyView({
   onOpenItem,
   onOpenInbox,
-  onRegisterRefresh,
-  onRefreshingChange,
   onOpenCalendarSettings,
   focusMode,
   onExitFocusMode,
@@ -477,10 +472,8 @@ export default function DailyView({
   // Shown as a warning in the central status slot (via QuickAddWidget) when a row tap is blocked
   // because an edit is already open elsewhere on screen (design doc §6).
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
-  const [tasksActionError, setTasksActionError] = useState<string | null>(null);
-  useErrorStatus('DailyView.tasksActionError', tasksActionError, () => setTasksActionError(null));
-  const [meetingsActionError, setMeetingsActionError] = useState<string | null>(null);
-  useErrorStatus('DailyView.meetingsActionError', meetingsActionError, () => setMeetingsActionError(null));
+  const tasksAction = useActionError('DailyView.tasksActionError', 'DailyView: task action failed');
+  const meetingsAction = useActionError('DailyView.meetingsActionError', 'DailyView: meeting action failed');
 
   // Focus-mode-only local state (docs/dev/technical-design-now-focus-mode.md §5/
   // §6) - see this file's module doc comment for why plain unpersisted
@@ -538,7 +531,7 @@ export default function DailyView({
       setPaths(cache.paths);
     } catch (e) {
       if (loadedSettings) setSettings(loadedSettings);
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('DailyView: load failed', message);
       setError(message);
     } finally {
@@ -550,7 +543,7 @@ export default function DailyView({
   useEffect(() => {
     load(false);
     // Only ever auto-loads once, on mount (using whatever's cached, or
-    // building it if nothing is) - the shared 🔄 icon is the explicit rebuild.
+    // building it if nothing is) - Settings → Advanced → Reload all files is the explicit rebuild.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -571,22 +564,11 @@ export default function DailyView({
         setSettings(prev => (prev && JSON.stringify(prev) === JSON.stringify(loadedSettings) ? prev : loadedSettings));
         setInbox(prev => (prev && prev.rawContent === loadedInbox.rawContent ? prev : loadedInbox));
       } catch (e) {
-        logError('DailyView: quiet reload on show failed', e instanceof Error ? e.message : String(e));
+        logError('DailyView: quiet reload on show failed', errorMessage(e));
       }
     })();
   });
 
-  /** Registers with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. `load` itself never changes identity (empty deps), so this only ever registers once. */
-  const handleRefresh = useCallback(() => load(true), [load]);
-
-  useEffect(() => {
-    onRegisterRefresh?.({run: () => { handleRefresh(); }});
-    return () => onRegisterRefresh?.(null);
-  }, [handleRefresh, onRegisterRefresh]);
-
-  useEffect(() => {
-    onRefreshingChange?.(loading);
-  }, [loading, onRefreshingChange]);
 
   // pickerMode's one-time initializer (see its own declaration above) - runs
   // once the initial load lands (guarded by pickerModeInitRef, not by an
@@ -683,21 +665,9 @@ export default function DailyView({
   // meetingsActionError are displayed in two different columns, while the
   // widget itself lives in only one - the same reasoning ProjectDataPanel.tsx/
   // InboxScreen.tsx already applied in step 2.
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-  useErrorStatus('DailyView.widgetError', widgetError, () => setWidgetError(null));
+  const widgetAction = useActionError('DailyView.widgetError', 'DailyView: widget action failed');
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
-  const runWidgetSave = async (fn: () => Promise<void>): Promise<boolean> => {
-    setWidgetError(null);
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('DailyView: widget action failed', message);
-      setWidgetError(message);
-      return false;
-    }
-  };
+  const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
 
   const handleToggleDone = (entry: DailyTaskEntry) => {
@@ -710,7 +680,7 @@ export default function DailyView({
         });
         log('DailyView: toggled', entry.item.path, entry.taskIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('DailyView: toggle failed', message);
         setActionError(message);
       }
@@ -742,7 +712,7 @@ export default function DailyView({
         });
         log('DailyView: toggled #now', entry.item.path, entry.taskIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('DailyView: toggle #now failed', message);
         setActionError(message);
       }
@@ -813,7 +783,7 @@ export default function DailyView({
         }
         log('DailyView: focus cohort cleared', cohort.length);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('DailyView: focus toggle done failed', message);
         setActionError(message);
       }
@@ -831,16 +801,7 @@ export default function DailyView({
   // the shared widget instead. async (returns the underlying promise) so
   // callers with their own promise chains have a real promise to attach to
   // - same shape as ProjectDataPanel's runAction.
-  const runTaskAction = async (fn: () => Promise<void>): Promise<void> => {
-    setTasksActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('DailyView: task action failed', message);
-      setTasksActionError(message);
-    }
-  };
+  const runTaskAction = tasksAction.run;
 
   const startTaskEdit = (entry: DailyTaskEntry) => {
     startEditTarget({type: 'task', key: taskKey(entry)});
@@ -911,16 +872,7 @@ export default function DailyView({
 
   // Now only backs this column's own row-level actions (note create/open) -
   // edit/cancel moved to runWidgetAction above. Same shape as runTaskAction.
-  const runMeetingAction = async (fn: () => Promise<void>): Promise<void> => {
-    setMeetingsActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('DailyView: meeting action failed', message);
-      setMeetingsActionError(message);
-    }
-  };
+  const runMeetingAction = meetingsAction.run;
 
   const startMeetingEdit = (entry: DailyMeetingEntry) => {
     startEditTarget({type: 'meeting', key: meetingKey(entry)});
@@ -1382,7 +1334,7 @@ export default function DailyView({
   const onOpenLinkedFile = (linkedFile: string) => {
     if (!paths) return;
     openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
-      logError('DailyView: open linked file failed', e instanceof Error ? e.message : String(e)),
+      logError('DailyView: open linked file failed', errorMessage(e)),
     );
   };
 

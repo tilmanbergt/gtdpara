@@ -4,9 +4,9 @@ In PARA, a **project** is something with a clear end ("Garden renovation", "Team
 
 ## Creating one
 
-On the **Projects** or **Areas** tab, write a name into the field at the top and tap **Create Project** or **Create Area**. gtdpara creates the folder and its file.
+On the **Projects** or **Areas** tab, write a name into the field at the top and tap **Create Project** or **Create Area**. gtdpara creates the folder and its file. A name can't contain `\ / : * ? " < > |` or `# [ ] ^` (see [Your files and folders](files-and-folders.md)); the message says which character to remove.
 
-You can also simply create a folder yourself - in the Supernote's file manager or on your computer - inside `1 Projects` or `2 Areas`. Every folder there is a project or area. Tap 🔄 and gtdpara picks it up, gives it an abbreviation and creates its file.
+You can also simply create a folder yourself - in the Supernote's file manager or on your computer - inside `1 Projects` or `2 Areas`. Every folder there is a project or area. Tap **Reload all files** in Settings → Advanced and gtdpara picks it up, gives it an abbreviation and creates its file.
 
 ## The Current tab
 

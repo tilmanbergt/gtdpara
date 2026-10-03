@@ -6,13 +6,8 @@
  *
  * No heading of its own since the 2026-09-03 Daily-cleanup pass (technical-
  * design-daily-compact-ui.md §1) - every tab's per-screen heading was
- * removed there. This screen registers a refresh handler with App.tsx/
- * TabBar's shared 🔄 icon as of 2026-09-18 (`loadAll` below, registered via
- * `onRegisterRefresh`/`onRefreshingChange` - see ui/TabBar.tsx's module doc
- * comment's "Shared refresh" note) - every other screen already did; the
- * Templates tab's file-backed MyStyle listing/background-image preview made
- * this one worth a manual nudge too (Tilman: "now that is more complex it
- * sometimes needs manual refresh").
+ * removed there. Advanced → "Reload all files" re-reads every file for all
+ * tabs, this one included (handleReloadAllFiles below).
  *
  * Folders/Focus/Calendar sub-tabs (docs/dev/technical-design-google-calendar.md
  * §9-10, 2026-09-03): sections that used to all sit in one scrolling
@@ -283,15 +278,16 @@ import {
 import {DEFAULT_SETTINGS, GtdParaSettings, resolvePaths} from '../domain/settings';
 import {renderSharedFileName, SHARED_FILE_NAME_PLACEHOLDERS} from '../domain/sharedNotePages';
 import {MEETINGS_SUBFOLDER, sanitizeFileNameComponent, TODOS_SUBFOLDER} from '../storage/noteLinks';
-import {clearCachedData} from '../storage/dataCache';
+import {clearCachedData, rebuildCache} from '../storage/dataCache';
 import {clearCachedGmailInbox} from '../storage/gmailInboxCache';
 import {runIntegrityCheck} from '../storage/integrityCheck';
 import {renameInboxFolderForSave} from '../storage/inboxMigration';
 import {loadSettings, patchSettings, saveSettings} from '../storage/settingsStorage';
 import {perfEnable} from '../utils/perf';
-import {setKeepTabsAlive} from '../ui/keepAliveStore';
+import {dropKeptTabs, setKeepTabsAlive} from '../ui/keepAliveStore';
 import {setFeatures, useFeatures} from '../ui/featureStore';
 import {featuresOf} from '../domain/features';
+import {log, logError} from '../utils/log';
 import {setFileLogging} from '../utils/logSink';
 import AboutTab from './settings/AboutTab';
 import AdvancedTab from './settings/AdvancedTab';
@@ -302,7 +298,6 @@ import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import NoteTemplatePreview, {PIECE_TYPE_LABELS, pieceSummaryLabel} from '../ui/NoteTemplatePreview';
 import NudgePad from '../ui/NudgePad';
 import PagedSection from '../ui/PagedSection';
-import {RefreshHandle} from '../ui/TabBar';
 import {COLORS, FONT, RADII, SPACING, useThemeColors} from '../ui/theme';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
@@ -563,14 +558,11 @@ function focusCountsToText(settings: GtdParaSettings): Record<FocusCountKey, str
 interface Props {
   /** Which sub-tab to land on when this screen mounts - see the module doc comment's note on why this is read once via useState's initializer rather than watched with an effect. */
   initialTab?: SettingsTab;
-  /** Registers this screen's RefreshHandle with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment's "Shared refresh" note. Added 2026-09-18 (Tilman: "overall settings should also get the treatment to trigger refreshing the screen... should be there on other tabs already") - every other screen already had this. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Switches the active profile (App.tsx resets and remounts the app) - docs/dev/technical-design-profiles-demo-space.md. */
   onSwitchProfile?: (id: string) => Promise<void>;
 }
 
-export default function Settings({initialTab, onRegisterRefresh, onRefreshingChange, onSwitchProfile}: Props): React.JSX.Element {
+export default function Settings({initialTab, onSwitchProfile}: Props): React.JSX.Element {
   const {isDarkMode, textColor, placeholderColor} = useThemeColors();
   // Settings uses its own, slightly different border shade than the rest
   // of the app ('#444444'/'#cccccc' vs the usual '#333333'/'#dddddd') -
@@ -603,6 +595,10 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
   useStatus('Settings.saved', saved ? {kind: 'success', text: `Settings saved.${savedNote}`, onDismiss: () => setSaved(false)} : null);
   // Folders tab's "Run Integrity Check" button (docs/dev/technical-design-integrity-check.md).
   const [integrityCheckRunning, setIntegrityCheckRunning] = useState(false);
+  // "Reload all files" (Advanced tab) - running flag and its result line in the status slot.
+  const [reloading, setReloading] = useState(false);
+  const [reloadResult, setReloadResult] = useState<{kind: 'success' | 'error'; text: string} | null>(null);
+  useStatus('Settings.reload', reloadResult ? {...reloadResult, onDismiss: () => setReloadResult(null)} : null);
   // MyStyle's .png listing for the "Meeting Note" tab's template picker
   // (§1.2) - null while still loading, [] once loaded with nothing found.
   // Loaded once on mount regardless of which tab is active (same "load your
@@ -661,22 +657,15 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
   useErrorStatus('Settings.templatesSaveError', templatesSaveError, () => setTemplatesSaveError(null));
   /**
    * Loads settings + the MyStyle .png listing together - the two mount-only
-   * loads this screen always had, now merged into one callback so it can
-   * double as the RefreshHandle this screen registers below (2026-09-18,
-   * Tilman: "overall settings should also get the treatment to trigger
-   * refreshing the screen... should be there on other tabs already" - every
-   * other screen already registered one, see ui/TabBar.tsx's module doc
-   * comment's "Shared refresh" note; the Templates tab's file-backed
-   * background-image preview/listing, plus this screen's own already-complex
-   * draft/edit state, is exactly the "sometimes needs manual refresh" case
-   * Tilman called out). `loading` now gates on both loads finishing (via
+   * loads this screen always had, merged into one callback so "Reload all
+   * files" (handleReloadAllFiles) can run it again. `loading` now gates on both loads finishing (via
    * Promise.all) rather than only the settings one - the PNG listing used to
    * resolve independently with no loading-state involvement at all, but
    * folding it in means `useEinkRefreshOnLoad(loading)` below fires once
    * both are actually done, not before the MyStyle listing has settled.
    * Each call tracks its own local `cancelled` flag (not a shared/module-
-   * level one) so an in-flight load from a stale mount or a stale tap of the
-   * 🔄 icon can never clobber state after a newer call - or an unmount - has
+   * level one) so an in-flight load from a stale mount or an earlier reload
+   * can never clobber state after a newer call - or an unmount - has
    * already landed; returning the flag-setter as a cleanup function keeps
    * that available to the mount effect below without a second copy of this
    * logic.
@@ -711,21 +700,7 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
     return loadAll();
   }, [loadAll]);
 
-  // RefreshHandle registration - same shape DailyView.tsx's own
-  // onRegisterRefresh/onRefreshingChange wiring uses (ui/TabBar.tsx's module
-  // doc comment).
-  useEffect(() => {
-    onRegisterRefresh?.({
-      run: () => {
-        loadAll();
-      },
-    });
-    return () => onRegisterRefresh?.(null);
-  }, [loadAll, onRegisterRefresh]);
 
-  useEffect(() => {
-    onRefreshingChange?.(loading);
-  }, [loading, onRefreshingChange]);
 
   useEinkRefreshOnLoad(loading);
 
@@ -1223,6 +1198,33 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
   // this tab's existing folder-path previews just below (field.pathKey),
   // rather than requiring a save first - scanning is read-only, so there's
   // no reason to force that.
+  /**
+   * Settings → Advanced → "Reload all files" (docs/dev/technical-design-cleanup-0.5.md
+   * S8, replacing the tab bar's 🔄): re-reads every Project/Area from its
+   * file (the cache), drops the kept tabs so each loads again - Inbox
+   * included - on its next visit, and reloads this screen's own data. Uses
+   * the saved settings, not unsaved edits on the Folders tab.
+   */
+  const handleReloadAllFiles = async () => {
+    setReloadResult(null);
+    setReloading(true);
+    try {
+      log('Settings: reload all files - start');
+      const saved = await loadSettings();
+      const cache = await rebuildCache(saved);
+      dropKeptTabs();
+      loadAll();
+      log('Settings: reload all files - done', cache.items.length);
+      setReloadResult({kind: 'success', text: `Reloaded ${cache.items.length} projects and areas from the files.`});
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      logError('Settings: reload all files failed', message);
+      setReloadResult({kind: 'error', text: `Reload failed: ${message}`});
+    } finally {
+      setReloading(false);
+    }
+  };
+
   const handleRunIntegrityCheck = async () => {
     setIntegrityResult(null);
     setIntegrityCheckRunning(true);
@@ -1274,6 +1276,8 @@ export default function Settings({initialTab, onRegisterRefresh, onRefreshingCha
           perfTracing={values.perfTracing}
           keepTabsAlive={values.keepTabsAlive}
           integrityCheckRunning={integrityCheckRunning}
+          reloading={reloading}
+          onReloadAllFiles={handleReloadAllFiles}
           onToggleGoogleCalendar={() => handleToggleExperimental('experimentalGoogleCalendar')}
           onToggleGmail={() => handleToggleExperimental('experimentalGmail')}
           onTogglePerfTracing={handleTogglePerfTracing}

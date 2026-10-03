@@ -101,7 +101,7 @@ export function applyMeetingEdit(meeting: Meeting, fields: MeetingInput, linkedF
   };
 }
 
-const INBOX_NOT_LOADED = 'Inbox not loaded yet - tap 🔄 to refresh.';
+const INBOX_NOT_LOADED = 'Inbox not loaded yet - Settings → Advanced → Reload all files.';
 
 /** Appends `task` to the Inbox file or to the Project/Area `destination` names (loading that item into the cache first if it is not there yet). */
 export async function addTaskToDestination(
@@ -181,7 +181,7 @@ export async function mutateEntryTasks(
     const {inbox, inboxPath} = ctx;
     if (!inbox || !inboxPath) throw new Error(INBOX_NOT_LOADED);
     if (!inbox.tasks[entry.taskIndex]) {
-      throw new Error(`"${entry.task.text}" changed on disk - tap 🔄 to refresh.`);
+      throw new Error(`"${entry.task.text}" changed on disk - Settings → Advanced → Reload all files.`);
     }
     const nextTasks = mutate(inbox.tasks.slice());
     const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
@@ -190,7 +190,7 @@ export async function mutateEntryTasks(
   const item = findCachedItem(entry.item.path);
   const current = item?.tasks[entry.taskIndex];
   if (!item || !current) {
-    throw new Error(`"${entry.task.text}" changed on disk - tap 🔄 to refresh.`);
+    throw new Error(`"${entry.task.text}" changed on disk - Settings → Advanced → Reload all files.`);
   }
   const nextTasks = mutate(item.tasks.slice());
   const nextRaw = await saveTasks(entry.item.kind, entry.item.path, item.rawContent, nextTasks, item.taskExtraLines);
@@ -208,7 +208,7 @@ export async function mutateEntryMeetings(
     const {inbox, inboxPath} = ctx;
     if (!inbox || !inboxPath) throw new Error(INBOX_NOT_LOADED);
     if (!inbox.meetings[entry.meetingIndex]) {
-      throw new Error(`"${entry.meeting.title}" changed on disk - tap 🔄 to refresh.`);
+      throw new Error(`"${entry.meeting.title}" changed on disk - Settings → Advanced → Reload all files.`);
     }
     const nextMeetings = mutate(inbox.meetings.slice());
     const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
@@ -217,7 +217,7 @@ export async function mutateEntryMeetings(
   const item = findCachedItem(entry.item.path);
   const current = item?.meetings[entry.meetingIndex];
   if (!item || !current) {
-    throw new Error(`"${entry.meeting.title}" changed on disk - tap 🔄 to refresh.`);
+    throw new Error(`"${entry.meeting.title}" changed on disk - Settings → Advanced → Reload all files.`);
   }
   const nextMeetings = mutate(item.meetings.slice());
   const nextRaw = await saveMeetings(

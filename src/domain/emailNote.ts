@@ -4,12 +4,13 @@
  */
 
 /** Emails longer than this many pages are cut (Tilman, 2026-09-21: cap at 10 pages, end with "mail capped"). */
+import {sanitizeFileNameComponent} from './fileName';
+
 export const EMAIL_NOTE_MAX_PAGES = 10;
 export const EMAIL_NOTE_TRUNCATION_NOTICE = '[mail capped]';
 /** Subject part of the file name is cut to this many characters. */
 export const EMAIL_NOTE_SUBJECT_MAX_CHARS = 80;
 
-const INVALID_FILENAME_CHARS = /[\\/:*?"<>|\u0000-\u001f]/g;
 
 function pad2(value: number): string {
   return value < 10 ? `0${value}` : String(value);
@@ -32,9 +33,9 @@ function parseMessageDate(dateIso: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-/** File-name-safe, single-line, at most `maxChars` characters (counted in code points so an emoji is never cut in half). */
+/** File-name-safe (domain/fileName.ts's rule), single-line, at most `maxChars` characters (counted in code points so an emoji is never cut in half). */
 function sanitizeSubject(subject: string, maxChars: number): string {
-  const cleaned = subject.replace(INVALID_FILENAME_CHARS, ' ').replace(/\s+/g, ' ').trim();
+  const cleaned = sanitizeFileNameComponent(subject, '');
   const chars = Array.from(cleaned);
   const cut = (chars.length > maxChars ? chars.slice(0, maxChars).join('') : cleaned)
     // A file name must not end in a dot or space.

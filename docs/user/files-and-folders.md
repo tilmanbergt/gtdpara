@@ -14,6 +14,10 @@ With the default settings:
 
 Notes that gtdpara creates for todos and meetings go into `Todos` and `Meetings` folders inside the project or area, and for the Inbox inside its folder `0 Inbox`.
 
+## File names
+
+The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Project and area names can't contain these characters at all. Files you named yourself are left as they are.
+
 ## The Inbox folder
 
 The Inbox has its own folder inside the Areas folder, so the `Note` folder holds only your PARA folders. gtdpara doesn't treat it as an area: it isn't listed on the Areas tab or in focus and refile. You can change its name in Settings, see [Settings](settings.md).
@@ -60,7 +64,7 @@ Turn the back garden into a vegetable garden before winter.
 
 ## Editing by hand
 
-You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Tap 🔄 in gtdpara afterwards to reload. Keep the section headings (`## Tasks`, `## Meetings`) as they are.
+You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Afterwards, tap **Reload all files** in Settings → Advanced so gtdpara reads them again. Keep the section headings (`## Tasks`, `## Meetings`) as they are.
 
 ## What gtdpara keeps elsewhere
 

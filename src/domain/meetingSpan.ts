@@ -97,3 +97,17 @@ export function entriesInRange<T extends {meeting: Pick<Meeting, 'date' | 'time'
 export function entryDate(entry: {meeting: Pick<Meeting, 'date'>; span?: MeetingSpanDay}): string {
   return entry.span?.date ?? entry.meeting.date;
 }
+
+/**
+ * How many not-cancelled meetings touch [start, end] (inclusive) - a multi-day
+ * meeting that started before `start` but reaches into the range counts, and
+ * counts once however many of its days fall inside. The Review hub's
+ * "Week ahead" number (storage/reviewAggregate.ts, screens/ReviewScreen.tsx).
+ */
+export function countMeetingsInRange(
+  meetings: ReadonlyArray<Pick<Meeting, 'date' | 'time' | 'days' | 'cancelled'>>,
+  start: string,
+  end: string,
+): number {
+  return meetings.filter(m => !m.cancelled && coveredDaysIn(m, start, end).length > 0).length;
+}

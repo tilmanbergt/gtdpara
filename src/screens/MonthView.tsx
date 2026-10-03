@@ -47,7 +47,6 @@ import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/Qui
 import {useStableCallback} from '../ui/useStableCallback';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {CachedItem} from '../storage/dataCache';
-import {RefreshHandle} from '../ui/TabBar';
 import {common} from '../ui/commonStyles';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
 import {FONT} from '../ui/theme';
@@ -57,8 +56,6 @@ import {usePerfRender} from '../utils/perf';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Switches to Settings' Calendar sub-tab - the Google mini-tab's empty state. */
   onOpenCalendarSettings?: () => void;
 }
@@ -74,8 +71,6 @@ const LEFT_TABS: MiniTabDef<LeftTab>[] = [
 
 export default function MonthView({
   onOpenItem,
-  onRegisterRefresh,
-  onRefreshingChange,
   onOpenCalendarSettings,
 }: Props): React.JSX.Element {
   usePerfRender('MonthView');
@@ -83,7 +78,7 @@ export default function MonthView({
   const borderColor = '#dddddd';
   const placeholderColor = '#999999';
 
-  const planning = usePlanningScreen({logTag: 'MonthView', onRegisterRefresh, onRefreshingChange});
+  const planning = usePlanningScreen({logTag: 'MonthView'});
   const {items, settings, inboxPath, paths, inbox, loading, error, load, editingKey} = planning;
 
   const [monthOffset, setMonthOffset] = useState(0);

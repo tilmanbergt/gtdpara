@@ -50,7 +50,7 @@ export async function saveItemGoal(
   text: string,
 ): Promise<void> {
   const current = findCachedItem(item.path);
-  if (!current) throw new Error(`"${item.name}" changed on disk - tap 🔄 to refresh.`);
+  if (!current) throw new Error(`"${item.name}" changed on disk - Settings → Advanced → Reload all files.`);
   if (scope === 'weekly') {
     const next = setGoalForWeek(current.weeklyGoals, key, text);
     const raw = await saveWeeklyGoals(current.kind, current.path, current.rawContent, next, current.weeklyGoalsExtraLines);

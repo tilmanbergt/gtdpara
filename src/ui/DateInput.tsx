@@ -38,6 +38,7 @@ import React, {forwardRef, useImperativeHandle, useRef, useState} from 'react';
 import {Pressable, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle} from 'react-native';
 import {DATE_NUDGES, nudgeIsoDate} from '../domain/dateNudge';
 import {FONT} from './theme';
+import {common} from './commonStyles';
 
 export interface DateInputHandle {
   focus: () => void;
@@ -98,14 +99,14 @@ const DateInput = forwardRef<DateInputHandle, Props>(function DateInput(
         autoCapitalize="none"
         editable={editable}
       />
-      <View style={[styles.strip, {borderColor}, !focused && styles.hidden]}>
+      <View style={[common.floatingStrip, {borderColor}, !focused && styles.hidden]}>
         {DATE_NUDGES.map(({kind, label}) => (
           <Pressable
             key={kind}
-            style={[styles.stripButton, {borderColor}]}
+            style={[common.floatingStripButton, {borderColor}]}
             onPress={() => onChangeText(nudgeIsoDate(value, kind))}
             hitSlop={6}>
-            <Text style={[styles.stripButtonText, {color: textColor}]}>{label}</Text>
+            <Text style={[common.floatingStripButtonText, {color: textColor}]}>{label}</Text>
           </Pressable>
         ))}
       </View>
@@ -125,31 +126,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    fontSize: FONT.small,
-  },
-  /** Same look as QuickAddWidget's clipboardOverlay: flush above the field, right-aligned, no layout cost. */
-  strip: {
-    position: 'absolute',
-    right: 0,
-    bottom: '100%',
-    marginBottom: 3,
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingVertical: 3,
-    paddingHorizontal: 3,
-    zIndex: 20,
-    elevation: 4,
-  },
-  stripButton: {
-    borderWidth: 1,
-    borderRadius: 3,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-    marginLeft: 3,
-  },
-  stripButtonText: {
     fontSize: FONT.small,
   },
   /** Keeps the strip mounted (see the module doc comment) - Yoga skips display:none, so it costs no space. */

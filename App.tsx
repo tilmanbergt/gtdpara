@@ -4,12 +4,11 @@
  * @format
  */
 
-import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import TabBar, {AppTab} from './src/ui/TabBar';
-import {refreshHandlersFor, setActiveRefreshTab} from './src/ui/refreshStore';
-import {setKeepTabsAlive, useKeepTabsAlive} from './src/ui/keepAliveStore';
+import {getKeptTabsGeneration, setKeepTabsAlive, useKeepTabsAlive} from './src/ui/keepAliveStore';
 import KeptTab from './src/ui/KeptTab';
 import ItemsList from './src/screens/ItemsList';
 import Settings, {SettingsTab} from './src/screens/Settings';
@@ -84,12 +83,6 @@ configureLogFileSink(
 // §2 D1). Inbox, Review and Settings keep the mount-while-visible behavior.
 const KEPT_TABS: AppTab[] = ['daily', 'week', 'month', 'current', 'projects', 'areas'];
 
-/** Stable onRegisterRefresh/onRefreshingChange props for one tab (ui/refreshStore.ts, per tab). */
-function refreshProps(tab: AppTab) {
-  const h = refreshHandlersFor(tab);
-  return {onRegisterRefresh: h.register, onRefreshingChange: h.setRefreshing};
-}
-
 // The Project/Area currently shown on the "Current" tab - set whenever one
 // is opened (from Projects/Areas/Daily, from a Lasso-capture save, or by
 // reorient() below), and left alone by everything else, including tab
@@ -161,24 +154,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // ReviewScreen records a step visit (or stamps an empty step), so the badge
   // clears without needing a full reorient()/tab switch.
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
-
-  // Whichever refreshable screen (ItemsList ×2, DailyView, WeekView,
-  // ReviewScreen, ItemDetail, and - 2026-09-18, once the Templates tab made
-  // this screen complex enough to sometimes need a manual nudge itself -
-  // Settings too) is currently mounted registers its own refresh action here
-  // via its onRegisterRefresh/onRefreshingChange props (2026-09-03
-  // Daily-cleanup pass, technical-design-daily-compact-ui.md §1) - fed
-  // straight to TabBar's single shared 🔄 icon below. App.tsx genuinely
-  // unmounts a tab's screen when it's not active (conditional rendering,
-  // no display:none/back-stack), so a screen's registration-effect cleanup
-  // fires exactly on tab-switch-away and the newly-mounted screen's own
-  // mount effect registers fresh - no tab-change-specific wiring needed
-  // here at all, it falls out of the existing lifecycle.
-  // 2026-09-30 (docs/dev/technical-design-render-perf-ab.md §3 B1): the handle
-  // and the refreshing flag live in ui/refreshStore.ts rather than in this
-  // component's state - registerRefresh/setRefreshing below are its stable
-  // module functions, and TabBar subscribes itself - so a screen registering
-  // on mount no longer re-renders this whole shell and everything under it.
 
   // Stable identity for openItem (defined further below, after the loading
   // early-return, so it can't be a hook there): screens pass it on to
@@ -487,11 +462,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // ---- Keep tabs alive (docs/dev/technical-design-keep-tabs-alive.md) ----
   const keepTabsAlive = useKeepTabsAlive();
   const features = useFeatures();
-  // The 🔄 button follows the visible tab (refreshStore is per tab). Layout
-  // effect: runs before the new screen's own (passive) registration effect.
-  useLayoutEffect(() => {
-    setActiveRefreshTab(activeTab);
-  }, [activeTab]);
   // Stable identities for App callbacks passed to kept screens (they are
   // defined below the loading early-return, where no hook can live); each
   // call runs the latest version via navRef, assigned further below.
@@ -513,13 +483,21 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     [],
   );
   // Which kept tabs have been visited (mounted) - a kept screen is mounted on
-  // its first visit and then stays. Reset when the switch is turned off.
+  // its first visit and then stays. Reset when the switch is turned off, and
+  // when Settings → Advanced → "Reload all files" drops the kept tabs
+  // (ui/keepAliveStore.ts's dropKeptTabs) so each loads again on its next visit.
   const visitedRef = useRef<Set<AppTab>>(new Set());
+  const shownBeforeRef = useRef<Set<AppTab>>(new Set());
+  const keptGenerationRef = useRef(getKeptTabsGeneration());
+  if (keptGenerationRef.current !== getKeptTabsGeneration()) {
+    keptGenerationRef.current = getKeptTabsGeneration();
+    visitedRef.current.clear();
+    shownBeforeRef.current.clear();
+  }
   if (!keepTabsAlive) visitedRef.current.clear();
   else if (KEPT_TABS.includes(activeTab)) visitedRef.current.add(activeTab);
   // Showing an already-mounted kept screen has no "loading finished" edge to
   // trigger the e-ink refresh (src/utils/screenRefresh.ts) - request it here.
-  const shownBeforeRef = useRef<Set<AppTab>>(new Set());
   useEffect(() => {
     if (!keepTabsAlive) {
       shownBeforeRef.current.clear();
@@ -534,13 +512,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // hidden screen entirely when App re-renders on a tab tap.
   const keptScreens = useMemo(
     () => ({
-      projects: <ItemsList kind="project" onOpenItem={stableOpenItem} {...refreshProps('projects')} />,
-      areas: <ItemsList kind="area" onOpenItem={stableOpenItem} {...refreshProps('areas')} />,
+      projects: <ItemsList kind="project" onOpenItem={stableOpenItem} />,
+      areas: <ItemsList kind="area" onOpenItem={stableOpenItem} />,
       daily: (
         <DailyView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-          {...refreshProps('daily')}
+         
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onEnterFocusMode={stableNav.onEnterFocusMode}
         />
@@ -549,14 +527,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         <WeekView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-          {...refreshProps('week')}
+         
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
       month: (
         <MonthView
           onOpenItem={stableOpenItem}
-          {...refreshProps('month')}
+         
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
@@ -569,7 +547,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           name={currentItem.name}
           path={currentItem.path}
           onArchived={stableNav.handleArchived}
-          {...refreshProps('current')}
+         
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onOpenItem={stableOpenItem}
           onStartCloseOut={stableNav.startCloseOutFull}
@@ -850,7 +828,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     <>
       {activeTab === 'inbox' && (
         <InboxScreen
-          {...refreshProps('inbox')}
+         
           onOpenCalendarSettings={openSettingsCalendar}
           onOpenItem={stableOpenItem}
         />
@@ -862,19 +840,19 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
             projectPath={closeOut.path}
             mode={closeOut.mode}
             onExit={handleCloseOutExit}
-            {...refreshProps('review')}
+           
           />
         ) : (
           <ReviewScreen
             onOpenItem={stableOpenItem}
             onReviewRecorded={refreshSettings}
-            {...refreshProps('review')}
+           
             onOpenCalendarSettings={openSettingsCalendar}
             onStartCloseOut={openCloseOut}
           />
         ))}
       {activeTab === 'settings' && (
-        <Settings initialTab={settingsTab} onSwitchProfile={switchToProfile} {...refreshProps('settings')} />
+        <Settings initialTab={settingsTab} onSwitchProfile={switchToProfile} />
       )}
     </>
   );
@@ -916,21 +894,21 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                 <ItemsList
                   kind="project"
                   onOpenItem={stableOpenItem}
-                  {...refreshProps('projects')}
+                 
                 />
               )}
               {activeTab === 'areas' && (
                 <ItemsList
                   kind="area"
                   onOpenItem={stableOpenItem}
-                  {...refreshProps('areas')}
+                 
                 />
               )}
               {activeTab === 'daily' && (
                 <DailyView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-                  {...refreshProps('daily')}
+                 
                   onOpenCalendarSettings={openSettingsCalendar}
                   onEnterFocusMode={onEnterFocusMode}
                 />
@@ -939,14 +917,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                 <WeekView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-                  {...refreshProps('week')}
+                 
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
               {activeTab === 'month' && (
                 <MonthView
                   onOpenItem={stableOpenItem}
-                  {...refreshProps('month')}
+                 
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
@@ -957,7 +935,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                     name={currentItem.name}
                     path={currentItem.path}
                     onArchived={handleArchived}
-                    {...refreshProps('current')}
+                   
                     onOpenCalendarSettings={openSettingsCalendar}
                     onOpenItem={stableOpenItem}
                     onStartCloseOut={path => openCloseOut(path, 'full')}

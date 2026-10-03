@@ -164,14 +164,14 @@ import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
-import {RefreshHandle} from '../ui/TabBar';
 import {displayTaskText} from '../ui/TaskBadges';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
 import {common} from '../ui/commonStyles';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
 import {FONT, useThemeColors} from '../ui/theme';
-import {useErrorStatus} from '../ui/status/StatusProvider';
+import {useActionError} from '../ui/useActionError';
+import {errorMessage} from '../utils/errorMessage';
 
 // Right column width this whole screen's Tasks/Meetings panes render in
 // (this screen's own `leftPane`/`rightPane`, the identical plain `flex:1`
@@ -195,9 +195,6 @@ const MEETINGS_WEIGHT = 6;
 const SUBHEADING_ROW_PX = 30;
 
 interface Props {
-  /** Registers this screen's reload action with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** The Files pane's Browse tab (2026-09-09) - plain-browsing a top-level Project/Area entry there jumps the whole app to it (App.tsx's `openItem`), same as opening one from the Projects/Areas tabs or screens/ReviewScreen.tsx's own cards. Optional purely so this screen still type-checks if App.tsx ever forgot to wire it - Browse's navigate behavior is just a no-op without it, not a crash. */
@@ -219,8 +216,6 @@ type EditTarget = {type: 'task' | 'meeting'; index: number};
 type ArmTarget = {type: 'task' | 'meeting'; index: number; intent: 'link' | 'file'};
 
 export default function InboxScreen({
-  onRegisterRefresh,
-  onRefreshingChange,
   onOpenCalendarSettings,
   onOpenItem,
 }: Props): React.JSX.Element {
@@ -264,18 +259,15 @@ export default function InboxScreen({
   const armingTaskIndex = armTarget?.type === 'task' ? armTarget.index : null;
   const armingMeetingIndex = armTarget?.type === 'meeting' ? armTarget.index : null;
 
-  const [tasksActionError, setTasksActionError] = useState<string | null>(null);
-  useErrorStatus('InboxScreen.tasksActionError', tasksActionError, () => setTasksActionError(null));
-  const [meetingsActionError, setMeetingsActionError] = useState<string | null>(null);
-  useErrorStatus('InboxScreen.meetingsActionError', meetingsActionError, () => setMeetingsActionError(null));
+  const tasksAction = useActionError('InboxScreen.tasksActionError', 'InboxScreen: task action failed');
+  const meetingsAction = useActionError('InboxScreen.meetingsActionError', 'InboxScreen: meeting action failed');
   // QuickAddWidget's own add/edit/delete error surface (docs/technical-
   // design-unified-quickadd.md §6/§10 step 2) - one shared widget now
   // covers both types, so its own failures get one shared error line
   // rather than tasksActionError/meetingsActionError (those stay as they
   // were, for the row-level actions - toggle done, create/open note, file -
   // that are still per-type).
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-  useErrorStatus('InboxScreen.widgetError', widgetError, () => setWidgetError(null));
+  const widgetAction = useActionError('InboxScreen.widgetError', 'InboxScreen: widget action failed');
   // Set when a row tap was blocked because an edit is already open
   // elsewhere on screen - see startEditTarget's guard below and
   // QuickAddWidget's own `blockedMessage` prop doc comment.
@@ -297,7 +289,7 @@ export default function InboxScreen({
       setPaths(cache.paths);
       setInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('InboxScreen: load failed', message);
       setError(message);
     } finally {
@@ -310,17 +302,6 @@ export default function InboxScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Registers with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. */
-  const handleRefresh = useCallback(() => load(true), [load]);
-
-  useEffect(() => {
-    onRegisterRefresh?.({run: () => { handleRefresh(); }});
-    return () => onRegisterRefresh?.(null);
-  }, [handleRefresh, onRegisterRefresh]);
-
-  useEffect(() => {
-    onRefreshingChange?.(loading);
-  }, [loading, onRefreshingChange]);
 
   /**
    * Re-fetch-index, apply, write, update local state - the same save-shape
@@ -330,7 +311,7 @@ export default function InboxScreen({
    * this plus a specific `mutate`.
    */
   const saveInboxTasks = async (mutate: (tasks: Task[]) => Task[]): Promise<void> => {
-    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
     const nextTasks = mutate(inbox.tasks.slice());
     const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
     setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
@@ -338,7 +319,7 @@ export default function InboxScreen({
 
   /** Meeting counterpart of saveInboxTasks above. */
   const saveInboxMeetings = async (mutate: (meetings: Meeting[]) => Meeting[]): Promise<void> => {
-    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
     const nextMeetings = mutate(inbox.meetings.slice());
     const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
     setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
@@ -349,22 +330,13 @@ export default function InboxScreen({
     setHideDone(next);
     loadSettings()
       .then(s => saveSettings({...s, hideDoneInboxTasks: next}))
-      .catch(e => logError('InboxScreen: save hideDoneInboxTasks failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('InboxScreen: save hideDoneInboxTasks failed', errorMessage(e)));
   };
 
   // Still used by every other Tasks-row action below (toggle done, create/
   // open note, file, link) - add/edit/delete now go through runWidgetAction
   // instead, see that function's own doc comment.
-  const runTaskAction = async (fn: () => Promise<void>): Promise<void> => {
-    setTasksActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('InboxScreen: task action failed', message);
-      setTasksActionError(message);
-    }
-  };
+  const runTaskAction = tasksAction.run;
 
   const handleToggleTaskDone = (taskIndex: number) => {
     runTaskAction(() =>
@@ -422,18 +394,7 @@ export default function InboxScreen({
    * handleDeleteEditForWidget below since one widget serves both types.
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
-  const runWidgetSave = async (fn: () => Promise<void>): Promise<boolean> => {
-    setWidgetError(null);
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('InboxScreen: widget action failed', message);
-      setWidgetError(message);
-      return false;
-    }
-  };
+  const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
 
   /**
@@ -475,7 +436,7 @@ export default function InboxScreen({
   const handleTaskNote = (taskIndex: number) => {
     Keyboard.dismiss();
     runTaskAction(async () => {
-      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
       const settings = await loadSettings();
       const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], inboxPath, settings, {tasks: inbox.tasks}, {
         forceOwnTarget: true,
@@ -492,7 +453,7 @@ export default function InboxScreen({
 
   const handleFileTask = (taskIndex: number, target: InboxFilingTarget) => {
     runTaskAction(async () => {
-      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
       const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
       setInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
       log('InboxScreen: filed task', taskIndex, '->', target.path);
@@ -516,16 +477,7 @@ export default function InboxScreen({
   // Still used by every other Meetings-row action below (create/open note,
   // file, link) - add/edit/delete now go through runWidgetAction instead,
   // same split runTaskAction above notes.
-  const runMeetingAction = async (fn: () => Promise<void>): Promise<void> => {
-    setMeetingsActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('InboxScreen: meeting action failed', message);
-      setMeetingsActionError(message);
-    }
-  };
+  const runMeetingAction = meetingsAction.run;
 
   /**
    * QuickAddWidget's `editingMeeting` mode onSaveEditMeeting - `fields` has
@@ -600,17 +552,17 @@ export default function InboxScreen({
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (!editTarget) return;
-    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
     const index = editTarget.index;
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = inbox.tasks[index];
-      if (!stored) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+      if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
       await appendTaskToTarget(target, updated);
       await saveInboxTasks(tasks => tasks.filter((_, i) => i !== index));
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
-      if (!stored) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+      if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
       await appendMeetingToTarget(target, updated);
       await saveInboxMeetings(meetings => meetings.filter((_, i) => i !== index));
@@ -625,7 +577,7 @@ export default function InboxScreen({
   const handleMeetingNote = (meetingIndex: number) => {
     Keyboard.dismiss();
     runMeetingAction(async () => {
-      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
       const settings = await loadSettings();
       const {meeting, changed} = await openOrCreateMeetingNote(
         inbox.meetings[meetingIndex],
@@ -657,7 +609,7 @@ export default function InboxScreen({
 
   const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
     runMeetingAction(async () => {
-      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
       const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
       setInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
       log('InboxScreen: filed meeting', meetingIndex, '->', target.path);
@@ -796,7 +748,7 @@ export default function InboxScreen({
     (linkedFile: string) => {
       if (!paths) return;
       openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
-        logError('InboxScreen: open linked file failed', e instanceof Error ? e.message : String(e)),
+        logError('InboxScreen: open linked file failed', errorMessage(e)),
       );
     },
     [paths],

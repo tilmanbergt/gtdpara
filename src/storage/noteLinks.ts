@@ -13,8 +13,9 @@ import {NoteContext, resolveNoteTemplate} from '../domain/noteTemplate';
 import {joinNotePath, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaSettings} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
-import {createNote, ensureFolderExists, fileExists, MYSTYLE_FOLDER} from '../supernote/fileSystem';
-import {log} from '../utils/log';
+import {createNote, ensureFolderExists, fileExists, insertKeyWord, MYSTYLE_FOLDER} from '../supernote/fileSystem';
+import {errorMessage} from '../utils/errorMessage';
+import {log, logWarn} from '../utils/log';
 import {collisionFreeName} from './fileNaming';
 
 export const MEETINGS_SUBFOLDER = 'Meetings';
@@ -78,41 +79,13 @@ export function resolveNoteBackgroundTemplate(
   return definition.template ? `${MYSTYLE_FOLDER}/${definition.template}` : BLANK_TEMPLATE_NAME;
 }
 
-const INVALID_FILENAME_CHARS = /[\\/:*?"<>|#]/g;
-
 /**
- * Strips characters that can't live in a filename and collapses whitespace;
- * falls back to "Untitled" for an empty result.
- *
- * `#` was added 2026-09-23 ([[bugfix_shared_note_content_missing]], second
- * occurrence) - not filesystem-illegal, but reserved by
- * `domain/sharedNotePages.ts`'s anchor encoding
- * (`buildSharedNoteAnchor`/`parseSharedNoteAnchor`, `"relativePath#keyword"`)
- * to mark where a shared-note anchor's file path ends. `todoNoteBaseName`
- * below intentionally keeps context tags like `#daily` in a note's file
- * name (they're part of what the item *is*), which meant an ordinary
- * OWN-note notePath could legitimately contain a `#` - and
- * `resolveNotePath`/`resolveItemNoteAnchor` run every notePath through
- * `parseSharedNoteAnchor` unconditionally to check "is this a shared
- * anchor?", so that `#` got misread as the anchor separator, truncating the
- * path and producing the host's "File does not exist" on a plain single-note
- * Todo that was never a shared target at all - confirmed on-device
- * 2026-09-23. Stripping `#` here (the one function every note/attachment
- * filename in the app is built through) guarantees a filePath component can
- * never contain one, which is what makes splitting `parseSharedNoteAnchor`'s
- * anchor string on the first `#` unambiguous - the keyword half (after the
- * separator) is deliberately left untouched, so `#Daily` etc. still shows up
- * in the actual on-page Supernote keyword exactly as intended (confirmed
- * with Tilman as expected behavior, not a bug). Only affects *new* filenames
- * - an already-created file with a literal `#` in its name keeps that `#`
- * (and keeps tripping this) until it's renamed and its notePath corrected by
- * hand; see the scan script referenced from the same memory entry for
- * finding those.
+ * Re-exported from domain/fileName.ts - the one file name rule (strips `#`
+ * and the other characters listed there). Kept here so existing imports from
+ * this module keep working.
  */
-export function sanitizeFileNameComponent(input: string): string {
-  const cleaned = input.replace(INVALID_FILENAME_CHARS, ' ').replace(/\s+/g, ' ').trim();
-  return cleaned.length > 0 ? cleaned : 'Untitled';
-}
+import {sanitizeFileNameComponent} from '../domain/fileName';
+export {sanitizeFileNameComponent};
 
 /** "2026-09-03 - Kickoff Call" - matches design-overview.md §3's example naming exactly. */
 export function meetingNoteBaseName(meeting: Pick<Meeting, 'date' | 'title'>): string {
@@ -167,6 +140,8 @@ export async function createLinkedNote(
   tags: string[],
   /** The final file name (with ".note"), when the caller already picked it - storage/meetingNoteContent.ts plans the name first so the confirm text shows the real one (technical-design-split-by-tag.md §3.5). */
   plannedFileName?: string,
+  /** Page-1 keywords (the item's free tags, docs/dev/technical-design-cleanup-0.5.md S7) - see insertNoteKeywords. */
+  keywords: readonly string[] = [],
 ): Promise<string> {
   const folderPath = `${itemPath.replace(/\/+$/, '')}/${subfolder}`;
   await ensureFolderExists(folderPath);
@@ -176,10 +151,27 @@ export async function createLinkedNote(
   const context: NoteContext = subfolder === MEETINGS_SUBFOLDER ? 'meeting' : 'todo';
   const absolutePath = `${folderPath}/${fileName}`;
   await createNote(absolutePath, resolveNoteBackgroundTemplate(settings, context, tags), true);
+  await insertNoteKeywords(absolutePath, keywords);
 
   const relativePath = `${subfolder}/${fileName}`;
   log('createLinkedNote: done', relativePath);
   return relativePath;
+}
+
+/**
+ * Adds `keywords` to page 1 of a just-created note, so the Supernote's
+ * keyword search finds it (docs/dev/technical-design-cleanup-0.5.md S7). A
+ * keyword that can't be added is logged and skipped - the note itself
+ * exists and works without it, so this never fails the note creation.
+ */
+export async function insertNoteKeywords(absolutePath: string, keywords: readonly string[]): Promise<void> {
+  for (const keyword of keywords) {
+    try {
+      await insertKeyWord(absolutePath, 0, keyword);
+    } catch (e) {
+      logWarn('noteLinks: adding a note keyword failed', errorMessage(e));
+    }
+  }
 }
 
 /**

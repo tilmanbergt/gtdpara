@@ -114,7 +114,6 @@ import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native
 import {shiftPeriod} from '../domain/period';
 import {isoWeekOf} from '../domain/weekDate';
 import {FolderEntry} from '../supernote/fileSystem';
-import {RefreshHandle} from '../ui/TabBar';
 import {common} from '../ui/commonStyles';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
 import {FONT} from '../ui/theme';
@@ -126,9 +125,6 @@ interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
   /** Switches to the Inbox tab - an Inbox-sourced meeting's source tap jumps here (there's no Project/Area to open). */
   onOpenInbox?: () => void;
-  /** Registers this screen's reload action with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Switches to Settings' Calendar sub-tab - the Google mini-tab's empty state. */
   onOpenCalendarSettings?: () => void;
 }
@@ -136,8 +132,6 @@ interface Props {
 export default function WeekView({
   onOpenItem,
   onOpenInbox,
-  onRegisterRefresh,
-  onRefreshingChange,
   onOpenCalendarSettings,
 }: Props): React.JSX.Element {
   usePerfRender('WeekView');
@@ -145,7 +139,7 @@ export default function WeekView({
   const borderColor = '#dddddd';
   const placeholderColor = '#999999';
 
-  const planning = usePlanningScreen({logTag: 'WeekView', onRegisterRefresh, onRefreshingChange});
+  const planning = usePlanningScreen({logTag: 'WeekView'});
   const {loading, error, load} = planning;
 
   // Plain, unpersisted - every fresh mount starts on the current week.

@@ -124,6 +124,8 @@ import {useErrorStatus} from '../ui/status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
+import {useActionError} from '../ui/useActionError';
+import {errorMessage} from '../utils/errorMessage';
 
 // Right column width this whole screen renders in (screens/ItemDetail.tsx's
 // `leftPane`/`rightPane`, both plain `flex:1` inside a 16px-gutter two-
@@ -174,8 +176,6 @@ interface Props {
   kind: 'project' | 'area';
   name: string;
   path: string;
-  /** Bumped by ItemDetail.tsx's "Current" tab refresh action once it has rebuilt the shared cache - added to the mount effect's own dependency array below so this panel re-derives from the now-fresh cache entry (technical-design-daily-compact-ui.md §1.5). */
-  refreshToken?: number;
   /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by MeetingsSection's Google mini-tab empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** Reports this panel's current LinkTarget (technical-design-linked-files.md §8) up to ItemDetail.tsx, which passes it straight into ui/FileBrowserPane.tsx's `linkTarget` prop - null whenever nothing is being edited/armed, `{mode: 'locating', ...}` while editing a row with a linkedFile set, `{mode: 'arming', onPick}` while a row's clip has been tapped to start a new link, or (2026-09-09) `{mode: 'arming', onPick, pickKind: 'folder', ...}` while QuickAddWidget's "Refile" button has armed a Project/Area destination pick - see the ArmTarget doc comment below. ItemDetail.tsx tells the two arming shapes apart by `pickKind` to decide which Files-pane roots to offer (its own fileBrowserRoots doc comment). The `onPick` closure (when present) is fully owned/constructed here - see the module doc comment on EditTarget. */
@@ -206,7 +206,6 @@ export default function ProjectDataPanel({
   kind,
   name,
   path,
-  refreshToken,
   onOpenCalendarSettings,
   onLinkTargetChange,
   noteFolderPath,
@@ -231,8 +230,7 @@ export default function ProjectDataPanel({
   // MeetingsSection keep for their own row-level actions (toggle done,
   // create/open note), just lifted here since the widget itself is now
   // lifted too.
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-  useErrorStatus('ProjectDataPanel.widgetError', widgetError, () => setWidgetError(null));
+  const widgetAction = useActionError('ProjectDataPanel.widgetError', 'ProjectDataPanel: widget action failed');
   // Set when a row tap was blocked because an edit is already open
   // elsewhere on screen - see startEditTarget's guard below and
   // QuickAddWidget's own `blockedMessage` prop doc comment.
@@ -267,7 +265,7 @@ export default function ProjectDataPanel({
         area: item.area,
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ProjectDataPanel: load failed', kind, path, message);
       setError(message);
     } finally {
@@ -277,13 +275,8 @@ export default function ProjectDataPanel({
 
   useEffect(() => {
     load();
-    // refreshToken has no meaning of its own here - it's just a signal from
-    // ItemDetail.tsx's "Current" tab refresh action that the shared cache
-    // was just rebuilt, so this effect should re-run and re-derive from it
-    // (ensureItemCached finds the item already-fresh at that point, so no
-    // second disk read happens - see ItemDetail.tsx's own doc comment).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load, refreshToken]);
+  }, [load]);
 
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
   // re-derive quietly from the shared cache if this item's file changed
@@ -453,12 +446,12 @@ export default function ProjectDataPanel({
       runWidgetAction(async () => {
         if (armTarget.type === 'task') {
           const task = state.tasks[armTarget.index];
-          if (!task) throw new Error('That task changed on disk - tap 🔄 to refresh.');
+          if (!task) throw new Error('That task changed on disk - Settings → Advanced → Reload all files.');
           await appendTaskToTarget(target, task);
           await withTasks(state.tasks.filter((_, index) => index !== armTarget.index));
         } else {
           const meeting = state.meetings[armTarget.index];
-          if (!meeting) throw new Error('That meeting changed on disk - tap 🔄 to refresh.');
+          if (!meeting) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
           await appendMeetingToTarget(target, meeting);
           await withMeetings(state.meetings.filter((_, index) => index !== armTarget.index));
         }
@@ -503,13 +496,13 @@ export default function ProjectDataPanel({
     const index = editTarget.index;
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = state.tasks[index];
-      if (!stored) throw new Error('That task changed on disk - tap 🔄 to refresh.');
+      if (!stored) throw new Error('That task changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
       await appendTaskToTarget(target, updated);
       await withTasks(state.tasks.filter((_, i) => i !== index));
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = state.meetings[index];
-      if (!stored) throw new Error('That meeting changed on disk - tap 🔄 to refresh.');
+      if (!stored) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
       await appendMeetingToTarget(target, updated);
       await withMeetings(state.meetings.filter((_, i) => i !== index));
@@ -524,7 +517,7 @@ export default function ProjectDataPanel({
     (linkedFile: string) => {
       if (!paths) return;
       openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
-        logError('ProjectDataPanel: open linked file failed', e instanceof Error ? e.message : String(e)),
+        logError('ProjectDataPanel: open linked file failed', errorMessage(e)),
       );
     },
     [paths],
@@ -589,18 +582,7 @@ export default function ProjectDataPanel({
    * `actionError` already establishes for edit-save failures).
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
-  const runWidgetSave = async (fn: () => Promise<void>): Promise<boolean> => {
-    setWidgetError(null);
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('ProjectDataPanel: widget action failed', message);
-      setWidgetError(message);
-      return false;
-    }
-  };
+  const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
 
   const handleAddTask = (text: string, destination: Destination): Promise<void> =>
@@ -908,7 +890,7 @@ function TodosSection({
     setHideDone(next);
     loadSettings()
       .then(s => saveSettings({...s, hideDoneProjectTasks: next}))
-      .catch(e => logError('TodosSection: save hideDoneProjectTasks failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('TodosSection: save hideDoneProjectTasks failed', errorMessage(e)));
   };
 
   const doneCount = tasks.filter(t => !t.cancelled && t.done).length;
@@ -952,8 +934,8 @@ function TodosSection({
       await fn();
       log('TodosSection: action done');
     } catch (e) {
-      logError('TodosSection: action failed', e instanceof Error ? e.message : String(e));
-      setActionError(e instanceof Error ? e.message : String(e));
+      logError('TodosSection: action failed', errorMessage(e));
+      setActionError(errorMessage(e));
     }
   };
 
@@ -1117,8 +1099,8 @@ function MeetingsSection({
       await fn();
       log('MeetingsSection: action done');
     } catch (e) {
-      logError('MeetingsSection: action failed', e instanceof Error ? e.message : String(e));
-      setActionError(e instanceof Error ? e.message : String(e));
+      logError('MeetingsSection: action failed', errorMessage(e));
+      setActionError(errorMessage(e));
     }
   };
 

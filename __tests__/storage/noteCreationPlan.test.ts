@@ -18,6 +18,7 @@ jest.mock('../../src/supernote/fileSystem', () => {
       mockFiles.add(path);
     }),
     ensureFolderExists: jest.fn(async () => undefined),
+    insertKeyWord: jest.fn(async () => undefined),
     openPath: jest.fn(async () => undefined),
     displayPath: (p: string) => p.replace(/^\/storage\/emulated\/0\//, ''),
     getElements: jest.fn(async () => []),
@@ -172,6 +173,48 @@ describe('first-time own note', () => {
     expect(r.plans[0]).toMatchObject({kind: 'new-own-file', file: 'Todos/Call Sabina (2).note', ruleName: null});
     expect(result.task.notePath).toBe('Todos/Call Sabina (2).note');
     expect(mockFiles.has(`${AREA}/Todos/Call Sabina (2).note`)).toBe(true);
+  });
+});
+
+describe('keywords on own notes (cleanup 0.5 S7)', () => {
+  it('a new own note gets one keyword per free tag, not the functional ones', async () => {
+    const r = recorder(true);
+    await openOrCreateTodoNote(task('Call Marco #marco #next #due:2026-10-09 #team/jf'), AREA, settingsWith([]), null, {
+      confirmCreate: r.confirm,
+    });
+    const file = `${AREA}/Todos/Call Marco marco team jf.note`;
+    expect(mockFiles.has(file)).toBe(true);
+    expect((fs.insertKeyWord as jest.Mock).mock.calls).toEqual([
+      [file, 0, 'marco'],
+      [file, 0, 'team/jf'],
+    ]);
+  });
+
+  it('a note without free tags gets no keyword', async () => {
+    const r = recorder(true);
+    await openOrCreateTodoNote(task('Call #next'), AREA, settingsWith([]), null, {confirmCreate: r.confirm});
+    expect(fs.insertKeyWord).not.toHaveBeenCalled();
+  });
+
+  it('a recreated own note gets its keywords again', async () => {
+    const r = recorder(true);
+    await openOrCreateTodoNote(task('Call #marco', 'Todos/Call marco.note'), AREA, settingsWith([]), null, {confirmCreate: r.confirm});
+    expect(fs.insertKeyWord).toHaveBeenCalledWith(`${AREA}/Todos/Call marco.note`, 0, 'marco');
+  });
+
+  it('a failing keyword does not fail the note', async () => {
+    (fs.insertKeyWord as jest.Mock).mockRejectedValueOnce(new Error('no permission'));
+    const r = recorder(true);
+    const result = await openOrCreateMeetingNote(meeting('Kickoff #acme'), AREA, settingsWith([]), null, {confirmCreate: r.confirm});
+    expect(result.meeting.notePath).toBe('Meetings/2026-10-02 - Kickoff acme.note');
+  });
+
+  it('shared pages are unchanged: no extra keyword call', async () => {
+    const r = recorder(true);
+    await openOrCreateMeetingNote(meeting('Session #coaching/sabina'), AREA, settingsWith([coachingRule()]), null, {
+      confirmCreate: r.confirm,
+    });
+    expect(fs.insertKeyWord).not.toHaveBeenCalled();
   });
 });
 

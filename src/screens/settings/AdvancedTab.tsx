@@ -1,8 +1,7 @@
 /**
  * Settings → Advanced (docs/dev/technical-design-about-debug-experimental.md §3.6):
- * the Experimental switches, and the tools that used to sit at the bottom of
- * the Folders tab (Integrity Check, Performance tracing, Keep tabs in
- * memory). Presentational: Settings.tsx owns the values and the handlers,
+ * the Experimental switches, and the tools (Reload all files, Integrity
+ * Check, Keep tabs in memory, Performance tracing). Presentational: Settings.tsx owns the values and the handlers,
  * every switch saves immediately.
  */
 import React from 'react';
@@ -18,6 +17,8 @@ interface Props {
   perfTracing: boolean;
   keepTabsAlive: boolean;
   integrityCheckRunning: boolean;
+  reloading: boolean;
+  onReloadAllFiles: () => void;
   onToggleGoogleCalendar: () => void;
   onToggleGmail: () => void;
   onTogglePerfTracing: () => void;
@@ -86,6 +87,16 @@ export default function AdvancedTab(p: Props): React.JSX.Element {
       <View style={[styles.divider, {backgroundColor: borderColor}]} />
       <View style={styles.column}>
         <Text style={[styles.heading, {color: textColor}]}>Tools</Text>
+        <View style={styles.field}>
+          <Pressable onPress={p.onReloadAllFiles} disabled={p.reloading} hitSlop={8} style={styles.button}>
+            <Text style={[styles.buttonText, {color: textColor}]}>Reload all files</Text>
+          </Pressable>
+          {p.reloading && <ActivityIndicator style={styles.spinner} />}
+          <Text style={[styles.hint, {color: textColor}]}>
+            Reads all projects, areas and the Inbox again. Use it after editing files outside gtdpara, for example on
+            your computer or in Obsidian.
+          </Text>
+        </View>
         <View style={styles.field}>
           <Pressable onPress={p.onRunIntegrityCheck} disabled={p.integrityCheckRunning} hitSlop={8} style={styles.button}>
             <Text style={[styles.buttonText, {color: textColor}]}>Run Integrity Check</Text>

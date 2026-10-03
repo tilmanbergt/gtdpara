@@ -42,7 +42,7 @@ function nowStamp(): string {
 /** Ops for the project at `projectPath` as they would run now - also what step 5 displays. */
 export function archiveOpsFor(projectPath: string, settings: GtdParaSettings): ArchiveOp[] {
   const item = findCachedItem(projectPath);
-  if (!item) throw new Error('This project is no longer in the lists - tap 🔄 to refresh.');
+  if (!item) throw new Error('This project is no longer in the lists - Settings → Advanced → Reload all files.');
   const paths = resolvePaths(settings);
   const {plan} = parsePlan(item.rawContent);
   const targets = archiveTargetsFor(item, settings);
@@ -123,7 +123,7 @@ export async function runCloseOutArchive(
   onUpdate?: (steps: OpStatus[]) => void,
 ): Promise<ArchiveRunResult> {
   const item = findCachedItem(projectPath);
-  if (!item) throw new Error('This project is no longer in the lists - tap 🔄 to refresh.');
+  if (!item) throw new Error('This project is no longer in the lists - Settings → Advanced → Reload all files.');
   const paths = await resolveLivePaths(settings);
   const ops = archiveOpsFor(projectPath, settings);
   const folderOp = ops.find((o): o is Extract<ArchiveOp, {kind: 'moveFolder'}> => o.kind === 'moveFolder');

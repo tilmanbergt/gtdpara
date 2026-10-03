@@ -147,10 +147,9 @@
  * isReviewOverdue for the Review tab's badge in ui/TabBar.tsx).
  *
  * 2026-09-03 Daily-cleanup pass (technical-design-daily-compact-ui.md §1):
- * this screen's own "Weekly Review" heading + 🔄 button are gone -
- * handleRefresh below registers with App.tsx/TabBar's shared icon instead
- * (see ui/TabBar.tsx's module doc comment; every "manual 🔄 reload" mention
- * above now means that shared icon). Each ReviewItemCard's quick-add also
+ * this screen's own "Weekly Review" heading + 🔄 button are gone (and since
+ * 0.5 the tab bar's 🔄 too: every "manual 🔄 reload" mention above now means
+ * reopening the tab or Settings → Advanced → Reload all files). Each ReviewItemCard's quick-add also
  * moved above its open-tasks/shelved-tasks lists, same overlap-with-the-
  * keyboard fix as DailyView.tsx/ProjectDataPanel.tsx's own quick-adds -
  * Week ahead's own quick-add was already at the top and needed no change.
@@ -192,7 +191,8 @@ import {
 } from '../domain/reviewSteps';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
-import {isoWeekKey} from '../domain/weekDate';
+import {isoWeekKey, weekAheadRangeIso} from '../domain/weekDate';
+import {countMeetingsInRange} from '../domain/meetingSpan';
 import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../storage/archive';
 import {archiveDoneText, emptyFolderConfirmNote} from '../domain/fileChangeText';
 import {planStatusLabel} from '../domain/closeOut/plan';
@@ -252,7 +252,6 @@ import {SettableStatus, setItemStatus} from '../storage/statusControl';
 import {displayPath, FolderEntry, openPath} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
-import {RefreshHandle} from '../ui/TabBar';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPane';
 import DateInput from '../ui/DateInput';
 import FocusedItemRow from '../ui/FocusedItemRow';
@@ -284,9 +283,6 @@ interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
   /** Called after a step visit (or the hub's empty-step stamps) was written to settings.reviewSteps - lets App.tsx refresh the settings it feeds to TabBar's badge. */
   onReviewRecorded?: () => void;
-  /** Registers this screen's reload action with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by Week ahead's Google mini-tab empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /**
@@ -529,8 +525,6 @@ function ReviewLeftRow({
 export default function ReviewScreen({
   onOpenItem,
   onReviewRecorded,
-  onRegisterRefresh,
-  onRefreshingChange,
   onOpenCalendarSettings,
   onStartCloseOut,
 }: Props): React.JSX.Element {
@@ -759,17 +753,6 @@ export default function ReviewScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Registers with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. */
-  const handleRefresh = useCallback(() => load(true), [load]);
-
-  useEffect(() => {
-    onRegisterRefresh?.({run: () => { handleRefresh(); }});
-    return () => onRegisterRefresh?.(null);
-  }, [handleRefresh, onRegisterRefresh]);
-
-  useEffect(() => {
-    onRefreshingChange?.(loading);
-  }, [loading, onRefreshingChange]);
 
   /** Rebuilds the frozen Review aggregate from the already-warm cache after a mutation (`items` itself is live via useCachedItems above). */
   const refreshFromCache = () => {
@@ -790,7 +773,7 @@ export default function ReviewScreen({
    * an effect, never as a retry (2026-09-21: an effect that re-fired whenever
    * `gmailMessages` was still null retried every failure immediately, in a
    * loop, and each retry cleared the error text before it could be read).
-   * Also NOT by the shared 🔄 icon (handleRefresh/load), since an IMAP round
+   * Also NOT by reopening the step or Reload all files (load), since an IMAP round
    * trip is a materially different cost than resnapshotting the already-warm
    * local cache every other step refreshes against. A failure leaves
    * `gmailMessages` as it was and shows `gmailError` until the next tap.
@@ -1001,7 +984,7 @@ export default function ReviewScreen({
 
   const handleItemStatusChange = async (itemRef: ReviewItemRef, status: SettableStatus): Promise<void> => {
     const cachedItem = findCachedItem(itemRef.path);
-    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - tap 🔄 to refresh.`);
+    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - Settings → Advanced → Reload all files.`);
     await setItemStatus(cachedItem, status);
     log('ReviewScreen: status changed', itemRef.path, status);
     refreshFromCache();
@@ -1024,7 +1007,7 @@ export default function ReviewScreen({
     const cachedItem = findCachedItem(entry.item.path);
     const current = cachedItem?.tasks[entry.taskIndex];
     if (!cachedItem || !current) {
-      throw new Error(`"${entry.task.text}" changed on disk - tap 🔄 to refresh.`);
+      throw new Error(`"${entry.task.text}" changed on disk - Settings → Advanced → Reload all files.`);
     }
     const nextText = setFlowStateTag(current.text, 'next');
     const nextTasks = cachedItem.tasks.slice();
@@ -1050,9 +1033,9 @@ export default function ReviewScreen({
       onStartCloseOut(itemRef.path, 'quick');
       return false;
     }
-    if (!settings) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
+    if (!settings) throw new Error('Settings not loaded yet - Settings → Advanced → Reload all files.');
     const cachedItem = findCachedItem(itemRef.path);
-    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - tap 🔄 to refresh.`);
+    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - Settings → Advanced → Reload all files.`);
     const target = archiveTargetsFor(cachedItem, settings);
     const leavesEmpty = await archiveLeavesEmptyFolder(cachedItem, settings);
     const confirmId = 'ReviewScreen.archiveConfirm';
@@ -1155,7 +1138,7 @@ export default function ReviewScreen({
     const cachedItem = findCachedItem(entry.item.path);
     const current = cachedItem?.meetings[entry.meetingIndex];
     if (!cachedItem || !current) {
-      throw new Error(`"${meetingDisplayTitle(entry.meeting)}" changed on disk - tap 🔄 to refresh.`);
+      throw new Error(`"${meetingDisplayTitle(entry.meeting)}" changed on disk - Settings → Advanced → Reload all files.`);
     }
     const wasReviewed = resolveMeetingTracking(current, settings?.noteCreationDefinitions ?? [])?.done ?? false;
     const nextMeetings = cachedItem.meetings.slice();
@@ -1188,7 +1171,7 @@ export default function ReviewScreen({
   const handleOpenCloseOutNote = async (entry: ReviewMeetingEntry): Promise<void> => {
     const current = findCachedItem(entry.item.path)?.meetings[entry.meetingIndex];
     if (!current || !current.notePath) {
-      throw new Error(`"${meetingDisplayTitle(entry.meeting)}" has no note - tap 🔄 to refresh.`);
+      throw new Error(`"${meetingDisplayTitle(entry.meeting)}" has no note - Settings → Advanced → Reload all files.`);
     }
     const currentSettings = settings ?? (await loadSettings());
     await refreshMeetingNoteBlock(current, entry.item.path, currentSettings, inbox ? {tasks: inbox.tasks} : null);
@@ -1245,7 +1228,7 @@ export default function ReviewScreen({
 
   /** Lazily fetches (and caches) one message's full body - see storage/gmailInboxCache.ts's own fetchGmailBody doc comment for why this isn't done for every listed message up front. */
   const handleFetchGmailBody = async (uid: string): Promise<string | 'unsupported'> => {
-    if (!settings) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
+    if (!settings) throw new Error('Settings not loaded yet - Settings → Advanced → Reload all files.');
     const body = await fetchGmailBody(settings, uid);
     setGmailMessages(getCachedGmailInbox());
     return body;
@@ -1272,7 +1255,7 @@ export default function ReviewScreen({
     artifact: {kind: 'body'} | {kind: 'attachment'; attachment: GmailAttachmentInfo},
     onProgress?: (text: string) => void,
   ): Promise<void> => {
-    if (!settings || !paths || !inboxPath) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
+    if (!settings || !paths || !inboxPath) throw new Error('Settings not loaded yet - Settings → Advanced → Reload all files.');
     let linkedFile: string;
     let linkedName: string;
     let linkedKey: string;
@@ -1310,7 +1293,7 @@ export default function ReviewScreen({
     }
     // Index-drift guard: the created item is addressed by its position in the Inbox file, so
     // make sure the item there is still the one this row was created for before writing.
-    const driftMessage = `"${item.label}" changed on disk - tap 🔄 to refresh.`;
+    const driftMessage = `"${item.label}" changed on disk - Settings → Advanced → Reload all files.`;
     if (item.type === 'task') {
       const {nextInbox} = await mutateEntryTasks(
         {item: {kind: 'inbox', path: inboxPath}, taskIndex: item.index, task: {text: item.label}},
@@ -1363,7 +1346,7 @@ export default function ReviewScreen({
    */
   const handleArchiveGmailMessage = (message: GmailCacheMessage): void => {
     if (!settings) {
-      setGmailArchiveError('Settings not loaded yet - tap 🔄 to refresh.');
+      setGmailArchiveError('Settings not loaded yet - Settings → Advanced → Reload all files.');
       return;
     }
     const index = gmailList.findIndex(m => m.uid === message.uid);
@@ -1397,7 +1380,7 @@ export default function ReviewScreen({
    */
   const handleTogglePeriodFocus = async (item: CachedItem, scope: 'weekly' | 'monthly', value: boolean): Promise<void> => {
     if (value) {
-      if (!settings) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
+      if (!settings) throw new Error('Settings not loaded yet - Settings → Advanced → Reload all files.');
       const reason = focusBlockedReason(items, item.kind, scope, settings);
       if (reason) throw new Error(reason);
     }
@@ -1427,7 +1410,7 @@ export default function ReviewScreen({
     const cachedItem = findCachedItem(entry.item.path);
     const current = cachedItem?.tasks[entry.taskIndex];
     if (!cachedItem || !current) {
-      throw new Error(`"${entry.task.text}" changed on disk - tap 🔄 to refresh.`);
+      throw new Error(`"${entry.task.text}" changed on disk - Settings → Advanced → Reload all files.`);
     }
     const nextTasks = cachedItem.tasks.slice();
     if (action === 'done') {
@@ -1464,7 +1447,7 @@ export default function ReviewScreen({
     const cachedItem = findCachedItem(entry.item.path);
     const current = cachedItem?.tasks[entry.taskIndex];
     if (!cachedItem || !current) {
-      throw new Error(`"${entry.task.text}" changed on disk - tap 🔄 to refresh.`);
+      throw new Error(`"${entry.task.text}" changed on disk - Settings → Advanced → Reload all files.`);
     }
     const nextText = setDueTag(current.text, dueDate);
     const nextTasks = cachedItem.tasks.slice();
@@ -1489,8 +1472,8 @@ export default function ReviewScreen({
    */
   const handleAddToDailyFocus = async (itemRef: ReviewItemRef): Promise<void> => {
     const cachedItem = findCachedItem(itemRef.path);
-    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - tap 🔄 to refresh.`);
-    if (!settings) throw new Error('Settings not loaded yet - tap 🔄 to refresh.');
+    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - Settings → Advanced → Reload all files.`);
+    if (!settings) throw new Error('Settings not loaded yet - Settings → Advanced → Reload all files.');
     const reason = focusBlockedReason(items, cachedItem.kind, 'daily', settings);
     if (reason) throw new Error(reason);
     await setItemFocus(
@@ -1519,7 +1502,7 @@ export default function ReviewScreen({
    */
   const handleAddToWeeklyFocus = async (itemRef: ReviewItemRef): Promise<void> => {
     const cachedItem = findCachedItem(itemRef.path);
-    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - tap 🔄 to refresh.`);
+    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - Settings → Advanced → Reload all files.`);
     await handleTogglePeriodFocus(cachedItem, 'weekly', true);
     setUnfocusedNextActedOn(prev => new Set(prev).add(itemRef.path));
   };
@@ -1527,7 +1510,7 @@ export default function ReviewScreen({
   /** "+ Add to Monthly focus" (2026-09-28, docs/dev/technical-design-review-monthly-focus.md §2) - same shape as handleAddToWeeklyFocus above. */
   const handleAddToMonthlyFocus = async (itemRef: ReviewItemRef): Promise<void> => {
     const cachedItem = findCachedItem(itemRef.path);
-    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - tap 🔄 to refresh.`);
+    if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - Settings → Advanced → Reload all files.`);
     await handleTogglePeriodFocus(cachedItem, 'monthly', true);
     setUnfocusedNextActedOn(prev => new Set(prev).add(itemRef.path));
   };
@@ -1599,9 +1582,9 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const current = inbox.tasks[taskIndex];
-        if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, done: true};
         const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
@@ -1631,9 +1614,9 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const current = inbox.tasks[taskIndex];
-        if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, cancelled: true};
         const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
@@ -1654,9 +1637,9 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const current = inbox.meetings[meetingIndex];
-        if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
         const nextMeetings = inbox.meetings.slice();
         nextMeetings[meetingIndex] = {...current, cancelled: true};
         const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
@@ -1676,7 +1659,7 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
         setInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
         refreshFromCache();
@@ -1694,7 +1677,7 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
         setInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
         refreshFromCache();
@@ -1732,11 +1715,11 @@ export default function ReviewScreen({
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (!editTarget) return;
-    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
     const index = editTarget.index;
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = inbox.tasks[index];
-      if (!stored) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+      if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
       await appendTaskToTarget(target, updated);
       const nextTasks = inbox.tasks.filter((_, i) => i !== index);
@@ -1744,7 +1727,7 @@ export default function ReviewScreen({
       setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
-      if (!stored) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+      if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
       await appendMeetingToTarget(target, updated);
       const nextMeetings = inbox.meetings.filter((_, i) => i !== index);
@@ -1827,20 +1810,20 @@ export default function ReviewScreen({
     (async () => {
       try {
         if (!inbox || !inboxPath || !paths || !rootPath || !inboxZeroArmTarget) {
-          throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+          throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         }
         const absolutePath = `${rootPath.replace(/\/+$/, '')}/${relativePath}`;
         const linkedFile = toLinkedFile(paths, absolutePath);
         if (inboxZeroArmTarget.type === 'task') {
           const current = inbox.tasks[inboxZeroArmTarget.index];
-          if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+          if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
           const nextTasks = inbox.tasks.slice();
           nextTasks[inboxZeroArmTarget.index] = {...current, linkedFile};
           const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
           setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         } else {
           const current = inbox.meetings[inboxZeroArmTarget.index];
-          if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+          if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
           const nextMeetings = inbox.meetings.slice();
           nextMeetings[inboxZeroArmTarget.index] = {...current, linkedFile};
           const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
@@ -1886,9 +1869,9 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const current = inbox.tasks[taskIndex];
-        if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, text: nextText, ...deriveTaskFields(nextText), linkedFile: nextLinkedFile};
         const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
@@ -1917,7 +1900,7 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const currentSettings = settings ?? (await loadSettings());
         const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], inboxPath, currentSettings, {tasks: inbox.tasks}, {
           forceOwnTarget: true,
@@ -1952,9 +1935,9 @@ export default function ReviewScreen({
     setInboxActionError(null);
     return (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const current = inbox.meetings[meetingIndex];
-        if (!current) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
         const nextMeetings = inbox.meetings.slice();
         nextMeetings[meetingIndex] = applyMeetingEdit(current, fields, nextLinkedFile);
         const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
@@ -1996,7 +1979,7 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const currentSettings = settings ?? (await loadSettings());
         const {meeting, changed} = await openOrCreateMeetingNote(
           inbox.meetings[meetingIndex],
@@ -2025,8 +2008,8 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - tap 🔄 to refresh.');
-        if (!inbox.meetings[meetingIndex]) throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
+        if (!inbox.meetings[meetingIndex]) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
         const nextMeetings = toggleMeetingTrackingAt(inbox.meetings, meetingIndex, kind);
         const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
         setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
@@ -2101,6 +2084,10 @@ export default function ReviewScreen({
           items,
           settings,
           gmailMessages?.length ?? 0,
+          (() => {
+            const week = weekAheadRangeIso();
+            return countMeetingsInRange(inbox?.meetings ?? [], week.start, week.end);
+          })(),
         )
       : null;
   // Backlog steps with nothing in them, as a stable string so the effect
@@ -4378,7 +4365,7 @@ const styles = StyleSheet.create({
   // Gmail inbox step's own manual-refresh row (renderGmailInbox) - a single
   // pill plus an inline error, above the ReviewMasterDetail shell rather
   // than inside it, since an IMAP fetch is its own explicit action distinct
-  // from every other step's shared 🔄 icon (see loadGmailInbox's own doc
+  // from reloading the files (see loadGmailInbox's own doc
   // comment for why).
   gmailToolbar: {
     flexDirection: 'row',

@@ -47,6 +47,7 @@ import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {copyCutRange, Selection, spliceAtSelection, spliceWordAtSelection} from '../domain/clipboardText';
 import {FONT} from './theme';
+import {common} from './commonStyles';
 
 interface Props {
   value: string;
@@ -152,18 +153,18 @@ export default function ClipboardTextInput({
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
       />
-      <View style={[styles.overlay, {borderColor}, !focused && styles.hidden]}>
-        <Pressable style={[styles.button, {borderColor}]} onPress={handleSelectAll} hitSlop={6}>
-          <Text style={[styles.buttonText, {color: textColor}]}>All</Text>
+      <View style={[common.floatingStrip, {borderColor}, !focused && styles.hidden]}>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleSelectAll} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
         </Pressable>
-        <Pressable style={[styles.button, {borderColor}]} onPress={handleCopy} hitSlop={6}>
-          <Text style={[styles.buttonText, {color: textColor}]}>Copy</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleCopy} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
         </Pressable>
-        <Pressable style={[styles.button, {borderColor}]} onPress={handleCut} hitSlop={6}>
-          <Text style={[styles.buttonText, {color: textColor}]}>Cut</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleCut} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
         </Pressable>
-        <Pressable style={[styles.button, {borderColor}]} onPress={handlePaste} hitSlop={6}>
-          <Text style={[styles.buttonText, {color: textColor}]}>Paste</Text>
+        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handlePaste} hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
         </Pressable>
       </View>
     </View>
@@ -188,29 +189,5 @@ const styles = StyleSheet.create({
   },
   hidden: {
     display: 'none',
-  },
-  overlay: {
-    position: 'absolute',
-    right: 0,
-    bottom: '100%',
-    marginBottom: 3,
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingVertical: 3,
-    paddingHorizontal: 3,
-    zIndex: 20,
-    elevation: 4,
-  },
-  button: {
-    borderWidth: 1,
-    borderRadius: 3,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-    marginLeft: 3,
-  },
-  buttonText: {
-    fontSize: FONT.small,
   },
 });

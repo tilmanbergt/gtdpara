@@ -22,7 +22,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 import {shiftPeriod} from '../domain/period';
-import {isoWeekOf} from '../domain/weekDate';
+import {isoWeekOf, weekAheadOffset} from '../domain/weekDate';
 import {FolderEntry} from '../supernote/fileSystem';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
 import {common} from '../ui/commonStyles';
@@ -40,12 +40,6 @@ interface Props {
   placeholderColor: string;
 }
 
-/** Friday to Sunday the review looks at next week, otherwise at this one. */
-export function initialWeekAheadOffset(now: Date = new Date()): number {
-  const day = now.getDay();
-  return day === 5 || day === 6 || day === 0 ? 1 : 0;
-}
-
 export default function ReviewWeekAhead({
   onOpenItem,
   onOpenCalendarSettings,
@@ -56,7 +50,7 @@ export default function ReviewWeekAhead({
 }: Props): React.JSX.Element {
   const planning = usePlanningScreen({logTag: 'ReviewWeekAhead'});
   const {loading, error, load} = planning;
-  const [weekOffset, setWeekOffset] = useState(() => initialWeekAheadOffset());
+  const [weekOffset, setWeekOffset] = useState(() => weekAheadOffset());
   const {week} = isoWeekOf(shiftPeriod('weekly', new Date(), weekOffset));
   const changeWeek = (delta: number) => planning.closeDayPanel(() => setWeekOffset(o => o + delta));
 
