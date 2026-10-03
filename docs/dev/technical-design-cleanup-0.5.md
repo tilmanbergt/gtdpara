@@ -1,6 +1,7 @@
 # Technical design: cleanup release (0.5.0)
 
-Status: **designed, waiting for Tilman's decisions (§2) and approval** - 2026-10-03.
+Status: **approved 2026-10-03** (decisions in §2, check results in §1.1), implemented on the
+branch - see §6 "As built".
 Branch: `feature/cleanup-0.5`. Source: the twelve backlog items picked on 2026-10-03.
 
 This is a bundle of small cleanups, not one feature. Each step is one commit
@@ -26,7 +27,17 @@ Everything below was checked against the code on the device as of 0.4.0, with a 
 | 9 | Clipboard and date-nudge strip styles | The floating strip is defined three times, byte-identical: `ClipboardTextInput.overlay/button`, `DateInput.strip/stripButton`, `QuickAddWidget.clipboardOverlay/clipboardButton`. | **Step S6** |
 | 10 | Keywords on own notes | `createLinkedNote` creates the note without keywords; shared pages and Quick Add Note notes get them. | **Step S7** |
 | 11 | CHANGELOG `[Unreleased]` wording | **Already done**: `[Unreleased]` is empty in 0.4.0. | Close |
-| 12 | "Settings Folders" screenshot | Manual. The image is `docs/user/images/20260930_Settings Folders.png`. | **Tilman** (§4) |
+| 12 | "Settings Folders" screenshot | Manual. The image is `docs/user/images/20260930_Settings Folders.png`. | **Tilman**: new file `20261003_Settings Folders.png` |
+
+### 1.1 Tilman's checks (2026-10-03)
+
+- A1-A5: clean tree on 0.4.0, `tsc`, `npm test` and `npm run test:scripts` all clean. Item 5 closed.
+- B1: the Review Done / On hold rows render fine, **but** in the one-line date+time column a
+  two-digit day (`14.10. 14:30`) is cut to `14.10. 14:…`; `7.10. 14:30` fits. Same in every
+  one-line list with dates. → new step **S0**.
+- B2: hub 20, step 22 meetings (next week, on a Saturday) - confirms S2.
+- B3: new own notes have no `#` in their names - confirms the help page error.
+- B4: new screenshot `docs/user/images/20261003_Settings Folders.png` is in the folder.
 
 Also found:
 
@@ -42,16 +53,25 @@ Also found:
 
 | | Question | Proposal |
 |---|---|---|
-| D1 | Should the shared filename rule also replace Obsidian's link breakers `[` `]` `^` (`\|` is already in)? Only affects **new** file names. | **Yes**: one rule, Obsidian-safe. |
-| D2 | A new Project/Area name with a forbidden character: reject it with a message, or create it under a cleaned-up name? | **Reject**, naming the characters. The folder name is what the user typed; silently changing it would surprise them. |
-| D3 | 🔄 to Settings (item 8) | **Defer** until reopening reloads changed files on its own (render-perf F). Stays on the backlog. |
-| D4 | Which keyword does an own note get? (a) the same keyword a shared page gets (meeting: `date + title`, todo: text with free tags), or (b) one keyword per tag | **(a)**: one rule for both kinds, so a keyword search finds own notes and shared pages alike. Set once at creation; a later title change doesn't update it (as with the file name). |
-| D5 | Version | **0.5.0** (minor): S7 is new and S3 changes behavior. Alternative: 0.4.1 with S1, S2, S4-S6 only, then S3/S7 in 0.5.0. |
+| D1 | Should the shared filename rule also replace Obsidian's link breakers `[` `]` `^` (`\|` is already in)? Only affects **new** file names. | **Decided: yes.** |
+| D2 | A new Project/Area name with a forbidden character: reject it with a message, or create it under a cleaned-up name? | **Decided: reject**, naming the characters. |
+| D3 | 🔄 to Settings (item 8) | **Decided: now** → step **S8**. |
+| D4 | Which keyword does an own note get? (a) the same keyword a shared page gets, or (b) one keyword per tag | **Decided: (b) one keyword per tag** - the item's free/context tags, exactly like a Quick Add "Note" note. |
+| D5 | Version | **Decided: 0.5.0.** |
 
 ## 3. Steps
 
 Order = commit order. The no-risk steps come first, so the branch is always mergeable up to the
 last finished step.
+
+### S0 - Wider date+time column in one-line meeting rows (B1)
+
+- `ui/MeetingRow.tsx` `TIME_COLUMN_DP.dateTime.oneLine` 104 → 118 dp: `28.12. 23:59` in bold
+  `FONT.medium` needs ~110 dp; 104 only fit one-digit days. `ui/GoogleCalendarPanel.tsx` reads the
+  same constant, so Google rows stay aligned. Row height is unchanged (fixed 37 dp), so paging is
+  unaffected; the title gets 14 dp less.
+- CHANGELOG `### Fixed`: "Meeting lists with dates no longer cut the time short for days 10-31."
+- Commit: `Widen the date and time column in one-line meeting rows`
 
 ### S1 - Docs: remove the stale selection-button note (item 4)
 
@@ -169,20 +189,52 @@ New test files, no source changes (if a test finds a bug, it becomes its own fix
 - `storage/noteLinks.ts` `createLinkedNote` gets a `keyword: string` parameter; after
   `createNote`, `insertKeyWord(absolutePath, 0, keyword)`. A failed keyword insert is logged
   (`logWarn`) and doesn't fail note creation - the note exists and works without it.
-- `storage/meetingNoteContent.ts` passes `meetingPageKeyword(meeting)` /
-  `todoPageKeyword(task)` - the same keyword a shared page would get (D4).
+- `storage/meetingNoteContent.ts` passes `extractContextTags(meeting.title)` /
+  `extractContextTags(task.text)` (D4: one keyword per free/context tag, without `#`, the same
+  as Quick Add "Note" notes). No tags → no keyword. `createLinkedNote` takes `keywords: string[]`.
 - Only new notes. Existing own notes are not touched.
 - Tests: extend `__tests__/storage/noteCreationPlan.test.ts` (it already mocks
   `fileSystem`; add `insertKeyWord` to that mock): an own-note create calls `insertKeyWord`
-  once with the expected keyword on page 0; a rejecting `insertKeyWord` still returns the
+  once per tag on page 0; a rejecting `insertKeyWord` still returns the
   note path.
-- Help: `note-templates.md` "Finding notes again" - own notes get the same keyword as a shared
-  page.
-- CHANGELOG `### New`: "A todo's or meeting's own note gets a keyword too (its date and title,
-  or the todo's text), so the Supernote's keyword search finds own notes and shared pages
-  alike."
+- Help: `note-templates.md` "Finding notes again" - an own note gets its item's tags as
+  keywords.
+- CHANGELOG `### New`: "A todo's or meeting's own note gets its tags as keywords (like a note
+  from Quick Add), so the Supernote's keyword search finds it."
 - **Device test**: the keyword appears in the note's keyword list; keyword search finds it.
 - Commit: `Add a keyword to new own notes for todos and meetings`
+
+### S8 - "Reload all files" in Settings instead of 🔄 in the tab bar (item 8, D3)
+
+Today 🔄 reloads the active tab. With tabs kept in memory, the reliable way to pick up files
+edited outside gtdpara is to rebuild the cache **and** let every kept tab load again.
+
+- `ui/TabBar.tsx`: the 🔄 icon and its spinner go.
+- `ui/keepAliveStore.ts`: `dropKeptTabs()` - bumps a generation counter and notifies; App.tsx
+  clears its visited-tabs set when the generation changes, so every kept screen unmounts and
+  loads fresh on its next visit (Inbox, Review and Settings are never kept, they load on every
+  visit anyway).
+- Settings → Advanced → Tools: **Reload all files** (first entry, above Run Integrity Check).
+  Tap: `rebuildCache(settings)`, then `dropKeptTabs()`, then a success line in the status slot
+  "Reloaded N projects and areas from the files." (error → status slot error, logged). Hint
+  text: "Reads all projects, areas and the Inbox again. Use it after editing files outside
+  gtdpara, for example on the computer or in Obsidian."
+- The per-tab refresh plumbing has no reader left, so it goes: `ui/refreshStore.ts`, the
+  `RefreshHandle` type, App.tsx's `refreshProps`/`setActiveRefreshTab`, and every screen's
+  `onRegisterRefresh` prop and registration effect. `onRefreshingChange` goes with it (it only
+  drove the 🔄 spinner). Screens keep their own load/retry (e.g. `LoadErrorNotice`'s Retry).
+- Help: `getting-started.md`, `files-and-folders.md`, `projects-and-areas.md`,
+  `troubleshooting.md`, `settings.md` - "tap 🔄" becomes "Settings → Advanced → Reload all files".
+- `design-overview.md` §2.1/§2.15/keep-tabs notes: the shared 🔄 described there is replaced.
+- CHANGELOG `### Changed`: "🔄 has moved: **Settings → Advanced → Reload all files** reads all
+  projects, areas and the Inbox again, for every tab at once."
+- Commit: `Replace the tab bar refresh with Reload all files in Settings`
+
+### S9 - New Settings Folders screenshot (item 12)
+
+- `docs/user/images/20261003_Settings Folders.png` replaces `20260930_Settings Folders.png`
+  (no page links to it; it's for the InkHub listing).
+- Commit: `Refresh the Settings Folders screenshot`
 
 ## 4. Test plan
 
@@ -191,6 +243,8 @@ Off-device, after every step: `npx tsc --noEmit` (0 errors), `npm test`,
 
 On the device (demo space, Settings → Advanced → Profiles), after building the branch:
 
+0. **S0**: Review → Done / On hold, Daily or Week lists with dates on the 10th-31st: the time is
+   shown in full.
 1. **S2**: create a 3-day meeting starting yesterday and one in the Inbox for this week. The Review
    hub's Week ahead count includes both, and on Fri-Sun it counts next week (the week the step
    opens on).
@@ -201,12 +255,15 @@ On the device (demo space, Settings → Advanced → Profiles), after building t
    Inbox, Daily and Current - the error appears in the status line as before.
 5. **S6**: the strip above a todo field (Copy/Paste) and above a date field (-1/Today/+1/+7)
    looks as before.
-6. **S7**: create an own note for a todo and a meeting; the keyword is on page 1; keyword search
-   finds it.
-7. Release checklist (`RELEASING.md` §6).
+6. **S7**: create an own note for a todo `Call Marco #marco #next` and a meeting with two tags;
+   page 1 has the keywords `marco` (not `next`) / both tags; keyword search finds the note.
+7. **S8**: no 🔄 in the tab bar. Edit a project.txt outside gtdpara (or add a todo line on the
+   computer), Settings → Advanced → Reload all files: success line; Daily, Week, Current and the
+   Projects list show the change. With Keep tabs in memory off, the same works.
+8. Release checklist (`RELEASING.md` §6).
 
 ## 5. Out of scope (stays on the backlog)
 
-- 🔄 to Settings (D3), Inbox move code removal (see §1), ReviewScreen's error copies and the
+- Inbox move code removal (see §1), ReviewScreen's error copies and the
   edit/arming hook, `errorMessage` everywhere, the one-time rename tool for existing `#` files
   (Obsidian part a, "Open").
