@@ -212,6 +212,8 @@ import {useErrorStatus} from '../ui/status/StatusProvider';
 import {perfEnd, perfStart, usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
+import {useActionError} from '../ui/useActionError';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
@@ -477,10 +479,8 @@ export default function DailyView({
   // Shown as a warning in the central status slot (via QuickAddWidget) when a row tap is blocked
   // because an edit is already open elsewhere on screen (design doc §6).
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
-  const [tasksActionError, setTasksActionError] = useState<string | null>(null);
-  useErrorStatus('DailyView.tasksActionError', tasksActionError, () => setTasksActionError(null));
-  const [meetingsActionError, setMeetingsActionError] = useState<string | null>(null);
-  useErrorStatus('DailyView.meetingsActionError', meetingsActionError, () => setMeetingsActionError(null));
+  const tasksAction = useActionError('DailyView.tasksActionError', 'DailyView: task action failed');
+  const meetingsAction = useActionError('DailyView.meetingsActionError', 'DailyView: meeting action failed');
 
   // Focus-mode-only local state (docs/dev/technical-design-now-focus-mode.md §5/
   // §6) - see this file's module doc comment for why plain unpersisted
@@ -538,7 +538,7 @@ export default function DailyView({
       setPaths(cache.paths);
     } catch (e) {
       if (loadedSettings) setSettings(loadedSettings);
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('DailyView: load failed', message);
       setError(message);
     } finally {
@@ -571,7 +571,7 @@ export default function DailyView({
         setSettings(prev => (prev && JSON.stringify(prev) === JSON.stringify(loadedSettings) ? prev : loadedSettings));
         setInbox(prev => (prev && prev.rawContent === loadedInbox.rawContent ? prev : loadedInbox));
       } catch (e) {
-        logError('DailyView: quiet reload on show failed', e instanceof Error ? e.message : String(e));
+        logError('DailyView: quiet reload on show failed', errorMessage(e));
       }
     })();
   });
@@ -683,21 +683,9 @@ export default function DailyView({
   // meetingsActionError are displayed in two different columns, while the
   // widget itself lives in only one - the same reasoning ProjectDataPanel.tsx/
   // InboxScreen.tsx already applied in step 2.
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-  useErrorStatus('DailyView.widgetError', widgetError, () => setWidgetError(null));
+  const widgetAction = useActionError('DailyView.widgetError', 'DailyView: widget action failed');
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
-  const runWidgetSave = async (fn: () => Promise<void>): Promise<boolean> => {
-    setWidgetError(null);
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('DailyView: widget action failed', message);
-      setWidgetError(message);
-      return false;
-    }
-  };
+  const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
 
   const handleToggleDone = (entry: DailyTaskEntry) => {
@@ -710,7 +698,7 @@ export default function DailyView({
         });
         log('DailyView: toggled', entry.item.path, entry.taskIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('DailyView: toggle failed', message);
         setActionError(message);
       }
@@ -742,7 +730,7 @@ export default function DailyView({
         });
         log('DailyView: toggled #now', entry.item.path, entry.taskIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('DailyView: toggle #now failed', message);
         setActionError(message);
       }
@@ -813,7 +801,7 @@ export default function DailyView({
         }
         log('DailyView: focus cohort cleared', cohort.length);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('DailyView: focus toggle done failed', message);
         setActionError(message);
       }
@@ -831,16 +819,7 @@ export default function DailyView({
   // the shared widget instead. async (returns the underlying promise) so
   // callers with their own promise chains have a real promise to attach to
   // - same shape as ProjectDataPanel's runAction.
-  const runTaskAction = async (fn: () => Promise<void>): Promise<void> => {
-    setTasksActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('DailyView: task action failed', message);
-      setTasksActionError(message);
-    }
-  };
+  const runTaskAction = tasksAction.run;
 
   const startTaskEdit = (entry: DailyTaskEntry) => {
     startEditTarget({type: 'task', key: taskKey(entry)});
@@ -911,16 +890,7 @@ export default function DailyView({
 
   // Now only backs this column's own row-level actions (note create/open) -
   // edit/cancel moved to runWidgetAction above. Same shape as runTaskAction.
-  const runMeetingAction = async (fn: () => Promise<void>): Promise<void> => {
-    setMeetingsActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('DailyView: meeting action failed', message);
-      setMeetingsActionError(message);
-    }
-  };
+  const runMeetingAction = meetingsAction.run;
 
   const startMeetingEdit = (entry: DailyMeetingEntry) => {
     startEditTarget({type: 'meeting', key: meetingKey(entry)});
@@ -1382,7 +1352,7 @@ export default function DailyView({
   const onOpenLinkedFile = (linkedFile: string) => {
     if (!paths) return;
     openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
-      logError('DailyView: open linked file failed', e instanceof Error ? e.message : String(e)),
+      logError('DailyView: open linked file failed', errorMessage(e)),
     );
   };
 

@@ -48,11 +48,12 @@ import {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {RefreshHandle} from '../ui/TabBar';
 import {useCachedItems} from '../ui/useCachedItems';
 import {useEditFlush} from '../ui/useEditFlush';
-import {useErrorStatus} from '../ui/status/StatusProvider';
 import {perfEnd, perfStart} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
 import {todayIso} from '../domain/meetingTime';
+import {useActionError} from '../ui/useActionError';
+import {errorMessage} from '../utils/errorMessage';
 
 /** Stable identity of one listed meeting (source file + index) - what `editingKey` holds. */
 export const meetingKey = (entry: WeeklyMeetingEntry) => `${entry.item.path}#${entry.meetingIndex}`;
@@ -77,12 +78,12 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-  const [meetingsActionError, setMeetingsActionError] = useState<string | null>(null);
   // Both go to the central status slot (docs/dev/technical-design-status-slot.md §7.4)
   // - the Week/Month screens no longer render them inline.
-  useErrorStatus('planning.widgetError', widgetError, () => setWidgetError(null));
-  useErrorStatus('planning.meetingsActionError', meetingsActionError, () => setMeetingsActionError(null));
+  const widgetAction = useActionError('planning.widgetError', `${logTag}: widget action failed`);
+  const meetingsAction = useActionError('planning.meetingsActionError', `${logTag}: meeting action failed`);
+  const widgetError = widgetAction.error;
+  const meetingsActionError = meetingsAction.error;
 
   const load = useCallback(
     async (forceRebuild: boolean) => {
@@ -106,7 +107,7 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
         setPaths(cache.paths);
       } catch (e) {
         if (loadedSettings) setSettings(loadedSettings);
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError(`${logTag}: load failed`, message);
         setError(message);
       } finally {
@@ -139,7 +140,7 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
         setSettings(prev => (prev && JSON.stringify(prev) === JSON.stringify(loadedSettings) ? prev : loadedSettings));
         setInbox(prev => (prev && prev.rawContent === loadedInbox.rawContent ? prev : loadedInbox));
       } catch (e) {
-        logError(`${logTag}: quiet reload on show failed`, e instanceof Error ? e.message : String(e));
+        logError(`${logTag}: quiet reload on show failed`, errorMessage(e));
       }
     })();
   });
@@ -154,30 +155,10 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
   }, [loading, onRefreshingChange]);
 
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
-  const runWidgetSave = async (fn: () => Promise<void>): Promise<boolean> => {
-    setWidgetError(null);
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError(`${logTag}: widget action failed`, message);
-      setWidgetError(message);
-      return false;
-    }
-  };
+  const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
 
-  const runMeetingAction = async (fn: () => Promise<void>): Promise<void> => {
-    setMeetingsActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError(`${logTag}: meeting action failed`, message);
-      setMeetingsActionError(message);
-    }
-  };
+  const runMeetingAction = meetingsAction.run;
 
   /** Re-fetches `entry`'s own source item/Inbox fresh, applies `mutate`, and write-throughs (storage/itemMutations.ts). An Inbox write hands back the new Inbox state; a Project/Area write goes through the cache, which re-renders the screen itself. */
   const saveEntryMeetings = async (
@@ -271,7 +252,7 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
   const onOpenLinkedFile = (linkedFile: string) => {
     if (!paths) return;
     openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
-      logError(`${logTag}: open linked file failed`, e instanceof Error ? e.message : String(e)),
+      logError(`${logTag}: open linked file failed`, errorMessage(e)),
     );
   };
 

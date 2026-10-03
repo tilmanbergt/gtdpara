@@ -171,7 +171,8 @@ import {useCachedItems} from '../ui/useCachedItems';
 import {common} from '../ui/commonStyles';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
 import {FONT, useThemeColors} from '../ui/theme';
-import {useErrorStatus} from '../ui/status/StatusProvider';
+import {useActionError} from '../ui/useActionError';
+import {errorMessage} from '../utils/errorMessage';
 
 // Right column width this whole screen's Tasks/Meetings panes render in
 // (this screen's own `leftPane`/`rightPane`, the identical plain `flex:1`
@@ -264,18 +265,15 @@ export default function InboxScreen({
   const armingTaskIndex = armTarget?.type === 'task' ? armTarget.index : null;
   const armingMeetingIndex = armTarget?.type === 'meeting' ? armTarget.index : null;
 
-  const [tasksActionError, setTasksActionError] = useState<string | null>(null);
-  useErrorStatus('InboxScreen.tasksActionError', tasksActionError, () => setTasksActionError(null));
-  const [meetingsActionError, setMeetingsActionError] = useState<string | null>(null);
-  useErrorStatus('InboxScreen.meetingsActionError', meetingsActionError, () => setMeetingsActionError(null));
+  const tasksAction = useActionError('InboxScreen.tasksActionError', 'InboxScreen: task action failed');
+  const meetingsAction = useActionError('InboxScreen.meetingsActionError', 'InboxScreen: meeting action failed');
   // QuickAddWidget's own add/edit/delete error surface (docs/technical-
   // design-unified-quickadd.md §6/§10 step 2) - one shared widget now
   // covers both types, so its own failures get one shared error line
   // rather than tasksActionError/meetingsActionError (those stay as they
   // were, for the row-level actions - toggle done, create/open note, file -
   // that are still per-type).
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-  useErrorStatus('InboxScreen.widgetError', widgetError, () => setWidgetError(null));
+  const widgetAction = useActionError('InboxScreen.widgetError', 'InboxScreen: widget action failed');
   // Set when a row tap was blocked because an edit is already open
   // elsewhere on screen - see startEditTarget's guard below and
   // QuickAddWidget's own `blockedMessage` prop doc comment.
@@ -297,7 +295,7 @@ export default function InboxScreen({
       setPaths(cache.paths);
       setInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('InboxScreen: load failed', message);
       setError(message);
     } finally {
@@ -349,22 +347,13 @@ export default function InboxScreen({
     setHideDone(next);
     loadSettings()
       .then(s => saveSettings({...s, hideDoneInboxTasks: next}))
-      .catch(e => logError('InboxScreen: save hideDoneInboxTasks failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('InboxScreen: save hideDoneInboxTasks failed', errorMessage(e)));
   };
 
   // Still used by every other Tasks-row action below (toggle done, create/
   // open note, file, link) - add/edit/delete now go through runWidgetAction
   // instead, see that function's own doc comment.
-  const runTaskAction = async (fn: () => Promise<void>): Promise<void> => {
-    setTasksActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('InboxScreen: task action failed', message);
-      setTasksActionError(message);
-    }
-  };
+  const runTaskAction = tasksAction.run;
 
   const handleToggleTaskDone = (taskIndex: number) => {
     runTaskAction(() =>
@@ -422,18 +411,7 @@ export default function InboxScreen({
    * handleDeleteEditForWidget below since one widget serves both types.
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
-  const runWidgetSave = async (fn: () => Promise<void>): Promise<boolean> => {
-    setWidgetError(null);
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('InboxScreen: widget action failed', message);
-      setWidgetError(message);
-      return false;
-    }
-  };
+  const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
 
   /**
@@ -516,16 +494,7 @@ export default function InboxScreen({
   // Still used by every other Meetings-row action below (create/open note,
   // file, link) - add/edit/delete now go through runWidgetAction instead,
   // same split runTaskAction above notes.
-  const runMeetingAction = async (fn: () => Promise<void>): Promise<void> => {
-    setMeetingsActionError(null);
-    try {
-      await fn();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('InboxScreen: meeting action failed', message);
-      setMeetingsActionError(message);
-    }
-  };
+  const runMeetingAction = meetingsAction.run;
 
   /**
    * QuickAddWidget's `editingMeeting` mode onSaveEditMeeting - `fields` has
@@ -796,7 +765,7 @@ export default function InboxScreen({
     (linkedFile: string) => {
       if (!paths) return;
       openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
-        logError('InboxScreen: open linked file failed', e instanceof Error ? e.message : String(e)),
+        logError('InboxScreen: open linked file failed', errorMessage(e)),
       );
     },
     [paths],

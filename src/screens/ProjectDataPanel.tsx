@@ -124,6 +124,8 @@ import {useErrorStatus} from '../ui/status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
+import {useActionError} from '../ui/useActionError';
+import {errorMessage} from '../utils/errorMessage';
 
 // Right column width this whole screen renders in (screens/ItemDetail.tsx's
 // `leftPane`/`rightPane`, both plain `flex:1` inside a 16px-gutter two-
@@ -231,8 +233,7 @@ export default function ProjectDataPanel({
   // MeetingsSection keep for their own row-level actions (toggle done,
   // create/open note), just lifted here since the widget itself is now
   // lifted too.
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-  useErrorStatus('ProjectDataPanel.widgetError', widgetError, () => setWidgetError(null));
+  const widgetAction = useActionError('ProjectDataPanel.widgetError', 'ProjectDataPanel: widget action failed');
   // Set when a row tap was blocked because an edit is already open
   // elsewhere on screen - see startEditTarget's guard below and
   // QuickAddWidget's own `blockedMessage` prop doc comment.
@@ -267,7 +268,7 @@ export default function ProjectDataPanel({
         area: item.area,
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ProjectDataPanel: load failed', kind, path, message);
       setError(message);
     } finally {
@@ -524,7 +525,7 @@ export default function ProjectDataPanel({
     (linkedFile: string) => {
       if (!paths) return;
       openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
-        logError('ProjectDataPanel: open linked file failed', e instanceof Error ? e.message : String(e)),
+        logError('ProjectDataPanel: open linked file failed', errorMessage(e)),
       );
     },
     [paths],
@@ -589,18 +590,7 @@ export default function ProjectDataPanel({
    * `actionError` already establishes for edit-save failures).
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
-  const runWidgetSave = async (fn: () => Promise<void>): Promise<boolean> => {
-    setWidgetError(null);
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('ProjectDataPanel: widget action failed', message);
-      setWidgetError(message);
-      return false;
-    }
-  };
+  const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
 
   const handleAddTask = (text: string, destination: Destination): Promise<void> =>
@@ -908,7 +898,7 @@ function TodosSection({
     setHideDone(next);
     loadSettings()
       .then(s => saveSettings({...s, hideDoneProjectTasks: next}))
-      .catch(e => logError('TodosSection: save hideDoneProjectTasks failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('TodosSection: save hideDoneProjectTasks failed', errorMessage(e)));
   };
 
   const doneCount = tasks.filter(t => !t.cancelled && t.done).length;
@@ -952,8 +942,8 @@ function TodosSection({
       await fn();
       log('TodosSection: action done');
     } catch (e) {
-      logError('TodosSection: action failed', e instanceof Error ? e.message : String(e));
-      setActionError(e instanceof Error ? e.message : String(e));
+      logError('TodosSection: action failed', errorMessage(e));
+      setActionError(errorMessage(e));
     }
   };
 
@@ -1117,8 +1107,8 @@ function MeetingsSection({
       await fn();
       log('MeetingsSection: action done');
     } catch (e) {
-      logError('MeetingsSection: action failed', e instanceof Error ? e.message : String(e));
-      setActionError(e instanceof Error ? e.message : String(e));
+      logError('MeetingsSection: action failed', errorMessage(e));
+      setActionError(errorMessage(e));
     }
   };
 
