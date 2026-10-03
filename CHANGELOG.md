@@ -10,6 +10,9 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Fixed
+- Meeting lists with dates no longer cut the time short on days 10 to 31.
+
 ## [0.4.0] — 2026-10-02
 
 ### New

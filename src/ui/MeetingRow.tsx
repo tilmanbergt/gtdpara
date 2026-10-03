@@ -83,7 +83,8 @@ const SUB_LINE_DP = 18;
 /** The time column's width - exported so ui/GoogleCalendarPanel.tsx's event rows line up with meeting rows. */
 export const TIME_COLUMN_DP: Record<MeetingTimeMode, Record<MeetingRowLayout, number>> = {
   time: {oneLine: 58, twoLine: 58},
-  dateTime: {oneLine: 104, twoLine: 96},
+  // oneLine 118: "28.12. 23:59" in bold FONT.medium needs ~110 dp (104 cut two-digit days).
+  dateTime: {oneLine: 118, twoLine: 96},
 };
 
 export interface MeetingRowProps {
