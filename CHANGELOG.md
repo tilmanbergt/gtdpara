@@ -10,10 +10,19 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- File names gtdpara creates no longer contain `#`, `[`, `]` or `^` (also for notes and attachments from
+  Gmail), so links to them work in Obsidian. Existing files keep their names.
+
 ### Fixed
 - Meeting lists with dates no longer cut the time short on days 10 to 31.
 - The Review's **Week ahead** count matches the week the step shows, including multi-day meetings
   that started earlier and meetings in the Inbox.
+
+### Upgrade notes
+- A Tag Rule whose **Shared file name** contains `[`, `]` or `^` now makes a file name without them, so new
+  pages go into a new file. Pages already in the old file stay there. Rename the old file or the rule's
+  file name if you want them together.
 
 ## [0.4.0] — 2026-10-02
 

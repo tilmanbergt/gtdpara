@@ -14,6 +14,10 @@ With the default settings:
 
 Notes that gtdpara creates for todos and meetings go into `Todos` and `Meetings` folders inside the project or area, and for the Inbox inside its folder `0 Inbox`.
 
+## File names
+
+The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Files you named yourself are left as they are.
+
 ## The Inbox folder
 
 The Inbox has its own folder inside the Areas folder, so the `Note` folder holds only your PARA folders. gtdpara doesn't treat it as an area: it isn't listed on the Areas tab or in focus and refile. You can change its name in Settings, see [Settings](settings.md).
