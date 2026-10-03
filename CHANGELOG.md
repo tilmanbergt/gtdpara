@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-03
+
 ### New
 - A todo's or meeting's **own note gets its tags as keywords**, like a note from Quick Add, so the
   Supernote's keyword search finds it.
