@@ -267,3 +267,41 @@ On the device (demo space, Settings → Advanced → Profiles), after building t
 - Inbox move code removal (see §1), ReviewScreen's error copies and the
   edit/arming hook, `errorMessage` everywhere, the one-time rename tool for existing `#` files
   (Obsidian part a, "Open").
+
+## 6. As built (2026-10-03)
+
+All steps implemented on `feature/cleanup-0.5`, one commit each, in the order of §3.
+Off-device: `npx tsc --noEmit` 0 errors, `npm test` 208 tests (156 before), `npm run test:scripts`
+passes, ESLint shows no new unused-variable or hook-dependency findings in the changed files, and
+a throwaway `<App />` smoke render mounts without an invalid element. **Device test: open** (§4).
+
+Deviations and details:
+
+- **S0**: only the one-line width changed (104 → 118 dp); the two-line column (96 dp) was not
+  reported and stays.
+- **S2**: the hub counts each meeting once, also when it spans several days in the week. The
+  step's grid shows a multi-day meeting on every covered day, so the grid can show more chips
+  than the hub's number.
+- **S3a**: the rule is `domain/fileName.ts`; `storage/noteLinks.ts` re-exports
+  `sanitizeFileNameComponent`, so no call site changed. It also applies to Gmail attachment
+  names and shared-file names - hence the CHANGELOG upgrade note for Tag Rules whose shared
+  file name contains `[ ] ^`.
+- **S3b**: message `A name can't contain "#", "[".` through the existing `ItemsList.createError`
+  status line.
+- **S4**: `useActionError` replaces 9 local wrappers in Inbox, Daily, Current (`ProjectDataPanel`)
+  and `usePlanningScreen` (Week/Month); `errorMessage()` replaces the inline pattern in those four
+  files only. Status names and log texts are unchanged. ReviewScreen and Daily's own
+  `actionError` handlers are untouched (backlog).
+- **S5**: shared fixtures live in `test-helpers/fixtures.ts` (outside `__tests__`, so Jest doesn't
+  run them as a suite).
+- **S7**: keywords are `contextTagsOf(item.tags)` (new in `domain/flowState.ts`), without `#`,
+  also for a recreated own note. A failing `insertKeyWord` is logged (`logWarn`) and skipped.
+- **S8**: besides the 🔄 icon, the whole per-tab refresh plumbing is gone: `ui/refreshStore.ts`,
+  `RefreshHandle`, every screen's `onRegisterRefresh`/`onRefreshingChange` prop and effect, the
+  now-unused `handleRefresh`/`handleRebuild` functions, and ItemDetail's `refreshToken` (with
+  the matching prop on ProjectDataPanel, ItemStatusPanel and ItemFocusPanel). The Projects/Areas
+  lists build the cache on mount when none exists (their old empty state said "tap 🔄"). About 70
+  user-facing messages that said "tap 🔄 to refresh" now say
+  "Settings → Advanced → Reload all files". Reload also reloads the Settings screen itself, so
+  unsaved edits on the Folders/Focus tabs are discarded.
+- **S9**: the screenshot is only swapped in git (no page links to it).
