@@ -100,28 +100,21 @@
  * (drills in to find a file) on its own - see ui/FileBrowserPane.tsx's
  * `sources`/`onNavigateToItem`/`startAt` doc comments for how.
  *
- * Refresh (2026-09-03 Daily-cleanup pass, technical-design-daily-compact-
- * ui.md §1.5): rebuilds the shared cache from disk, then bumps
- * `refreshToken` so ProjectDataPanel/ItemStatusPanel re-derive from the
- * now-fresh cache entry. FileBrowserPane does its own live, uncached scan of
- * whichever folder is open any time it (re)mounts or drills - it doesn't
- * need a cache rebuild to see fresh entries, so this action no longer forces
- * it to rescan its current folder the way this screen's old inline browser
- * used to (that folder-rescan lived here only because the browser itself
- * used to live here too).
+ * Reloading: leaving the tab and "Reload all files" (Settings → Advanced)
+ * remount this screen, which loads the item again; FileBrowserPane scans its
+ * open folder itself whenever it (re)mounts or drills.
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ItemStatus} from '../domain/types';
 import {AbbrevValidation, ExistingAbbrev, validateAbbrev} from '../domain/abbrev';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
-import {ensureItemCached, findCachedItem, frontMatterOf, getCachedData, rebuildCache, updateItemFrontMatter} from '../storage/dataCache';
+import {ensureItemCached, findCachedItem, frontMatterOf, getCachedData, updateItemFrontMatter} from '../storage/dataCache';
 import {saveFrontMatter} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {FolderEntry} from '../supernote/fileSystem';
 import {logError} from '../utils/log';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
-import {RefreshHandle} from '../ui/TabBar';
 import ClipboardTextInput from '../ui/ClipboardTextInput';
 import {common} from '../ui/commonStyles';
 import {FONT, useThemeColors} from '../ui/theme';
@@ -162,9 +155,6 @@ interface Props {
   path: string;
   /** Called once ui/ItemStatusPanel.tsx's Archive action has actually moved this item's folder - App.tsx navigates away, since `path` no longer resolves to anything under Projects/Areas. */
   onArchived?: (kind: 'project' | 'area') => void;
-  /** Registers this screen's refresh action with App.tsx/TabBar's shared 🔄 icon - see the module doc comment's "Refresh" note and ui/TabBar.tsx. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Threaded straight through to ProjectDataPanel's MeetingsSection (docs/dev/technical-design-google-calendar.md §9) - switches to Settings' Calendar sub-tab from the Google mini-tab's empty state. */
   onOpenCalendarSettings?: () => void;
   /** The Files pane's Browse tab (2026-09-09, see the module doc comment's "Browse tab" note) - plain-browsing a top-level Project/Area entry there swaps the "Current" tab to that item, same App.tsx `openItem` used to open one from the Projects/Areas tabs. */
@@ -192,8 +182,6 @@ export default function ItemDetail({
   name,
   path,
   onArchived,
-  onRegisterRefresh,
-  onRefreshingChange,
   onOpenCalendarSettings,
   onOpenItem,
   onStartCloseOut,
@@ -202,12 +190,6 @@ export default function ItemDetail({
   const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  // Bumped by handleRefresh below - passed to ProjectDataPanel/ItemStatusPanel
-  // as one more dependency on their existing mount effects, so they re-derive
-  // from the now-freshly-rebuilt cache without any change to what those
-  // effects do.
-  const [refreshToken, setRefreshToken] = useState(0);
 
   // The user's resolved Resources folder (domain/settings.ts) - the
   // 'resources' root's rootPath below. Loaded once; Settings changes take
@@ -245,10 +227,7 @@ export default function ItemDetail({
     return () => {
       cancelled = true;
     };
-    // refreshToken has no meaning of its own here - same "just a signal to
-    // re-run and re-derive from the already-fresh cache" convention
-    // ProjectDataPanel/ItemStatusPanel's own mount effects document.
-  }, [kind, name, path, refreshToken]);
+  }, [kind, name, path]);
 
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
   // re-derive quietly if this item's file changed while hidden.
@@ -268,11 +247,11 @@ export default function ItemDetail({
     });
   });
 
-  // Explicit e-ink refresh once either the initial ensureItemCached load or
-  // a manual refresh actually lands - see src/utils/screenRefresh.ts.
+  // Explicit e-ink refresh once the initial ensureItemCached load lands -
+  // see src/utils/screenRefresh.ts.
   // `resourceFolderState === null` covers the mount-time load above, which
   // (unlike most other screens) never had its own loading flag before this.
-  useEinkRefreshOnLoad(refreshing || resourceFolderState === null);
+  useEinkRefreshOnLoad(resourceFolderState === null);
 
   /** The Resources root's pin (ui/FileBrowserPane.tsx's onSetDefaultSubfolder) - writes the new pinned subfolder into this item's frontmatter, write-through into the shared cache, same as ui/ItemStatusPanel.tsx's changeStatus. */
   const handleSetDefaultResourceFolder = useCallback(
@@ -463,33 +442,6 @@ export default function ItemDetail({
         ]
     : [{key: 'project', label: kind === 'project' ? 'Project Files' : 'Area Files', rootPath: path}];
 
-  /** See the module doc comment's "Refresh" note. */
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setError(null);
-    try {
-      const settings = await loadSettings();
-      await rebuildCache(settings);
-      setRefreshToken(t => t + 1);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('ItemDetail: refresh failed', message);
-      setError(message);
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Re-registers whenever handleRefresh's own identity changes so the
-    // shared icon always calls the current version of it.
-    onRegisterRefresh?.({run: () => { handleRefresh(); }});
-    return () => onRegisterRefresh?.(null);
-  }, [handleRefresh, onRegisterRefresh]);
-
-  useEffect(() => {
-    onRefreshingChange?.(refreshing);
-  }, [refreshing, onRefreshingChange]);
 
   return (
     <View style={common.container}>
@@ -518,7 +470,6 @@ export default function ItemDetail({
             kind={kind}
             name={name}
             path={path}
-            refreshToken={refreshToken}
             textColor={textColor}
             borderColor={borderColor}
             placeholderColor={placeholderColor}
@@ -545,7 +496,6 @@ export default function ItemDetail({
             path={path}
             onArchived={() => onArchived?.(kind)}
             onStartCloseOut={onStartCloseOut}
-            refreshToken={refreshToken}
             onRequestAreaAssignment={setAreaLinkTarget}
             textColor={textColor}
             borderColor={borderColor}
@@ -557,7 +507,6 @@ export default function ItemDetail({
             kind={kind}
             name={name}
             path={path}
-            refreshToken={refreshToken}
             onOpenCalendarSettings={onOpenCalendarSettings}
             onLinkTargetChange={setDataPanelLinkTarget}
             noteFolderPath={noteFolderPath}

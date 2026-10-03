@@ -15,6 +15,8 @@ or your project/area files are stored.
   Supernote's keyword search finds it.
 
 ### Changed
+- **🔄 has moved to Settings → Advanced → Reload all files.** It reads all projects, areas and the Inbox
+  again, for every tab at once, instead of only the tab you are on.
 - File names gtdpara creates no longer contain `#`, `[`, `]` or `^` (also for notes and attachments from
   Gmail), so links to them work in Obsidian. Existing files keep their names.
 - A new project or area name can't contain `#`, `[`, `]`, `^` or the characters file names can't hold;

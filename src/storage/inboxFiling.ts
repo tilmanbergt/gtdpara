@@ -104,7 +104,7 @@ export async function fileInboxTask(
 ): Promise<{inboxRawContent: string; inboxTasks: Task[]}> {
   const task = inbox.tasks[taskIndex];
   if (!task) {
-    throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+    throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
   }
 
   await appendTaskToTarget(target, task);
@@ -124,7 +124,7 @@ export async function fileInboxMeeting(
 ): Promise<{inboxRawContent: string; inboxMeetings: Meeting[]}> {
   const meeting = inbox.meetings[meetingIndex];
   if (!meeting) {
-    throw new Error('That inbox item changed on disk - tap 🔄 to refresh.');
+    throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
   }
 
   await appendMeetingToTarget(target, meeting);

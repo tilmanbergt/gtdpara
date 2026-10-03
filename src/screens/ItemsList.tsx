@@ -22,11 +22,9 @@
  * Tapping an entry hands it to `onOpenItem`, which App.tsx wires to set the
  * "Current" tab's item and switch to it.
  *
- * No heading or refresh button of its own (2026-09-03 Daily-cleanup pass,
- * technical-design-daily-compact-ui.md §1) - this screen registers its own
- * rebuild action with ui/TabBar.tsx's single shared 🔄 icon via
- * onRegisterRefresh/onRefreshingChange instead of rendering a labeled
- * "🔄 Build/Rebuild cache" button, same as every other refreshable screen.
+ * No heading or refresh button of its own. If no cache exists yet when it
+ * mounts, it builds one; otherwise "Reload all files" in Settings → Advanced
+ * re-reads everything (docs/dev/technical-design-cleanup-0.5.md S8).
  *
  * Grouped by status (technical-design-status-archive.md §7): Active, then
  * On Hold, then - Projects only - "Done — awaiting review". Within Active,
@@ -72,7 +70,6 @@ import {createItem} from '../storage/createItem';
 import {loadSettings} from '../storage/settingsStorage';
 import {log} from '../utils/log';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
-import {RefreshHandle} from '../ui/TabBar';
 import ClipboardTextInput from '../ui/ClipboardTextInput';
 import PagedSection from '../ui/PagedSection';
 import {COLUMN_WIDTH_PX, itemEntryHeight, itemEntryLines} from '../ui/itemEntryRow';
@@ -125,9 +122,6 @@ const FULL_VIEWPORT_PX = COLUMN_BUDGET_PX - SECTION_HEADER_ROW_PX; // ≈ 1700
 interface Props {
   kind: 'project' | 'area';
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
-  /** Registers this screen's rebuild action with App.tsx/TabBar's shared 🔄 icon - called once on mount, once (null) on unmount. See ui/TabBar.tsx's module doc comment. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
 }
 
 const TITLES: Record<'project' | 'area', string> = {
@@ -166,7 +160,7 @@ function groupByStatus(kind: 'project' | 'area', entries: CachedItem[]): StatusG
   return {active, onHold, done};
 }
 
-export default function ItemsList({kind, onOpenItem, onRegisterRefresh, onRefreshingChange}: Props): React.JSX.Element {
+export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element {
   const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [cache, setCache] = useState<DataCache | null>(() => getCachedData());
@@ -212,18 +206,12 @@ export default function ItemsList({kind, onOpenItem, onRegisterRefresh, onRefres
     }
   }, []);
 
+  // No cache yet (nothing has built it this session): build it now, instead
+  // of asking the user to trigger it.
   useEffect(() => {
-    onRegisterRefresh?.({run: () => { handleRebuild(); }});
-    return () => onRegisterRefresh?.(null);
-    // Registered once on mount (handleRebuild's identity is stable, []) -
-    // see ui/TabBar.tsx's module doc comment for why this isn't re-run on
-    // every `scanning` toggle.
+    if (!getCachedData()) handleRebuild();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    onRefreshingChange?.(scanning);
-  }, [scanning, onRefreshingChange]);
 
   /**
    * Create Project/Area (2026-09-11, storage/createItem.ts). Deliberately
@@ -317,7 +305,7 @@ export default function ItemsList({kind, onOpenItem, onRegisterRefresh, onRefres
 
       {!cache && !scanning && !error && (
         <Text style={[styles.empty, {color: textColor}]}>
-          Not built yet — tap 🔄 above to scan your {TITLES[kind]} folder.
+          Not loaded yet. Settings → Advanced → Reload all files scans your {TITLES[kind]} folder.
         </Text>
       )}
 

@@ -64,7 +64,7 @@ Turn the back garden into a vegetable garden before winter.
 
 ## Editing by hand
 
-You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Tap 🔄 in gtdpara afterwards to reload. Keep the section headings (`## Tasks`, `## Meetings`) as they are.
+You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Afterwards, tap **Reload all files** in Settings → Advanced so gtdpara reads them again. Keep the section headings (`## Tasks`, `## Meetings`) as they are.
 
 ## What gtdpara keeps elsewhere
 

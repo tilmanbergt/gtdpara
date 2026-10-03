@@ -15,7 +15,7 @@
  * item state for its own unrelated purpose) - this component does its own
  * small `ensureItemCached` load rather than sharing state with
  * ItemStatusPanel, synchronized only through the shared cache +
- * write-through + `refreshToken`, same as every other section on this
+ * write-through, same as every other section on this
  * screen. The one accepted consequence: changing Status in the (separate)
  * ItemStatusPanel at the bottom of the column - which itself clears both
  * focus flags when moving off Active - won't visibly greyout/uncheck the
@@ -87,8 +87,6 @@ interface Props {
   kind: 'project' | 'area';
   name: string;
   path: string;
-  /** Bumped by screens/ItemDetail.tsx's "Current" tab refresh action once it has rebuilt the shared cache - same convention as ui/ItemStatusPanel.tsx's own prop of the same name. */
-  refreshToken?: number;
   textColor: string;
   borderColor: string;
   placeholderColor: string;
@@ -110,7 +108,6 @@ export default function ItemFocusPanel({
   kind,
   name,
   path,
-  refreshToken,
   textColor,
   borderColor,
   placeholderColor,
@@ -139,11 +136,8 @@ export default function ItemFocusPanel({
 
   useEffect(() => {
     load();
-    // refreshToken has no meaning of its own here - same "just a signal to
-    // re-run and re-derive from the already-fresh cache" convention every
-    // other section on this screen documents.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load, refreshToken]);
+  }, [load]);
 
   /** The item as a write should see it: fresh from the cache, else this panel's copy. */
   const current = (): CachedItem | null => findCachedItem(path) ?? state;

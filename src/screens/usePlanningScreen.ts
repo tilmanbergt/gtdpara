@@ -2,7 +2,7 @@
  * Everything the Week and Month planning screens share that isn't layout
  * (docs/dev/technical-design-monthly-view.md §5.10) - extracted verbatim from
  * screens/WeekView.tsx so screens/MonthView.tsx doesn't carry a second copy:
- * loading settings/cache/Inbox, the shared 🔄 registration, and every
+ * loading settings/cache/Inbox and every
  * meeting action a planning screen offers (add, edit, cancel, quick-file,
  * prep/review tick, note, linked file, Month highlight + short form) plus
  * the focus toggle and goal save for either period scope.
@@ -45,7 +45,6 @@ import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {MeetingRowLayout, MeetingRowProps, MeetingTrackingConfig} from '../ui/MeetingRow';
 import {entryDate} from '../domain/meetingSpan';
 import {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
-import {RefreshHandle} from '../ui/TabBar';
 import {useCachedItems} from '../ui/useCachedItems';
 import {useEditFlush} from '../ui/useEditFlush';
 import {perfEnd, perfStart} from '../utils/perf';
@@ -61,11 +60,9 @@ export const meetingKey = (entry: WeeklyMeetingEntry) => `${entry.item.path}#${e
 interface Options {
   /** Log prefix, e.g. "WeekView". */
   logTag: string;
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
 }
 
-export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange}: Options) {
+export function usePlanningScreen({logTag}: Options) {
   // Live view of storage/dataCache.ts - re-renders on every cache mutation,
   // so nothing here needs a manual "refresh after save" step.
   const items = useCachedItems();
@@ -144,15 +141,6 @@ export function usePlanningScreen({logTag, onRegisterRefresh, onRefreshingChange
       }
     })();
   });
-
-  const handleRefresh = useCallback(() => load(true), [load]);
-  useEffect(() => {
-    onRegisterRefresh?.({run: () => { handleRefresh(); }});
-    return () => onRegisterRefresh?.(null);
-  }, [handleRefresh, onRegisterRefresh]);
-  useEffect(() => {
-    onRefreshingChange?.(loading);
-  }, [loading, onRefreshingChange]);
 
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;

@@ -17,6 +17,22 @@ export function setKeepTabsAlive(next: boolean): void {
   Array.from(listeners).forEach(l => l());
 }
 
+/**
+ * Bumped by dropKeptTabs: App.tsx unmounts every kept screen when it changes,
+ * so each loads again on its next visit ("Reload all files" in Settings →
+ * Advanced, docs/dev/technical-design-cleanup-0.5.md S8).
+ */
+let keptGeneration = 0;
+
+export function dropKeptTabs(): void {
+  keptGeneration += 1;
+  Array.from(listeners).forEach(l => l());
+}
+
+export function getKeptTabsGeneration(): number {
+  return keptGeneration;
+}
+
 export function useKeepTabsAlive(): boolean {
   const [, setTick] = useState(0);
   useEffect(() => {

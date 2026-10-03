@@ -1,13 +1,9 @@
 /**
  * Shared top chrome for the tab-based navigation (App.tsx): eight persistent
  * tabs - Projects, Areas, Daily, Week, Inbox, Current, Review, Settings -
- * plus a shared 🔄 refresh icon and a "✕ Close plugin" action, always
- * visible regardless of which tab is active. Replaces the old per-screen
- * header/back-button pattern (Home/DailyView/ItemDetail/Settings each used
- * to render their own "‹ Back" + "✕", and most of them their own refresh
- * button too): switching tabs is now the only navigation, there is no back
- * stack, and there is now exactly one refresh affordance rather than one
- * per screen.
+ * plus "?" (help) and a "✕ Close plugin" action, always visible regardless
+ * of which tab is active. Switching tabs is the only navigation; there is no
+ * back stack.
  *
  * Week (2026-09-13, docs/dev/technical-design-weekly-view.md §9) sits right
  * after Daily - both are calendar-scoped "what's coming up" tabs (Daily for
@@ -29,44 +25,22 @@
  * reminder/notification, just this badge, per the feature's own design
  * decision.
  *
- * Shared refresh (2026-09-03 Daily-cleanup pass, technical-design-daily-
- * compact-ui.md §1). `onRefresh` means "refresh whatever the active tab is
- * showing" - App.tsx wires it to whichever screen most recently registered
- * a RefreshHandle via the screen's own onRegisterRefresh prop (callback-prop
- * registration, not a ref/imperative-handle - see the design doc's §1.1 for
- * why: it's the same "parent reacts to what a child does" shape every other
- * parent/child data flow in this codebase already uses, and it composes for
- * free with App.tsx genuinely unmounting a tab's screen when it's not
- * active - the registration effect's own cleanup fires on tab-switch-away,
- * no tab-change-specific wiring needed here at all). The icon itself is
- * only rendered when `onRefresh` is defined - every screen registers one
- * now (2026-09-18: Settings joined the rest once the Templates tab made it
- * complex enough to sometimes need a manual nudge itself), so in practice
- * the icon is always present, but the `undefined` case stays supported
- * rather than assumed away, same defensive posture as every other optional
- * prop in this file. Shows a small spinner in its place while `refreshing`.
+ * Reloading: there is no refresh icon here. Settings → Advanced → "Reload
+ * all files" rebuilds the cache and drops the kept tabs (ui/keepAliveStore.ts),
+ * so every tab loads again on its next visit
+ * (docs/dev/technical-design-cleanup-0.5.md S8).
  *
  * "?" (2026-09-30, docs/dev/technical-design-in-app-help.md): opens the
  * in-app help as an overlay over the body; while it's open the "?" carries
  * the active underline instead of the current tab.
- *
- * 2026-09-30 (docs/dev/technical-design-render-perf-ab.md §3 B1): the handle and
- * the refreshing flag no longer arrive as props from App.tsx state - they
- * live in ui/refreshStore.ts and this component subscribes itself, so a
- * screen registering its handle re-renders only TabBar, not the whole app.
+
  */
 import React from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {COLORS, FONT, useThemeColors} from './theme';
 import {usePerfRender} from '../utils/perf';
-import {runRefresh, useRefreshState} from './refreshStore';
 
 export type AppTab = 'projects' | 'areas' | 'daily' | 'week' | 'month' | 'inbox' | 'current' | 'review' | 'settings';
-
-/** What a refreshable screen registers with App.tsx via its own onRegisterRefresh prop - see the module doc comment's "Shared refresh" note. */
-export interface RefreshHandle {
-  run: () => void;
-}
 
 const TABS: Array<{key: AppTab; label: string}> = [
   {key: 'projects', label: 'Projects'},
@@ -89,7 +63,7 @@ interface Props {
   /**
    * Set while a profile other than the default is active
    * (docs/dev/technical-design-profiles-demo-space.md §3.6): shown as a small
-   * bordered label left of 🔄/✕, so demo data is never mistaken for real data.
+   * bordered label left of ✕, so demo data is never mistaken for real data.
    * Tapping it opens Settings → Advanced.
    */
   profileLabel?: string | null;
@@ -110,9 +84,6 @@ export default function TabBar({
   onHelpPress,
 }: Props): React.JSX.Element {
   usePerfRender('TabBar');
-  // Undefined only for the brief instant between tab-switch unmount/remount.
-  const {hasRefresh, refreshing} = useRefreshState();
-  const onRefresh = hasRefresh ? runRefresh : undefined;
   const {isDarkMode, textColor, borderColor} = useThemeColors();
 
   return (
@@ -156,15 +127,6 @@ export default function TabBar({
           </Text>
         </Pressable>
       ) : null}
-      {onRefresh && (
-        <Pressable style={styles.refreshButton} onPress={onRefresh} disabled={refreshing} hitSlop={8}>
-          {refreshing ? (
-            <ActivityIndicator size="small" color={textColor} />
-          ) : (
-            <Text style={[styles.refreshText, {color: textColor}]}>🔄</Text>
-          )}
-        </Pressable>
-      )}
       <Pressable style={styles.closeButton} onPress={onClose} hitSlop={8}>
         <Text style={[styles.closeText, {color: textColor}]}>✕</Text>
       </Pressable>
@@ -221,15 +183,6 @@ const styles = StyleSheet.create({
     minWidth: 28,
     alignItems: 'center',
     marginRight: 10,
-  },
-  refreshButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    minWidth: 28,
-    alignItems: 'center',
-  },
-  refreshText: {
-    fontSize: FONT.medium,
   },
   closeButton: {
     paddingHorizontal: 10,

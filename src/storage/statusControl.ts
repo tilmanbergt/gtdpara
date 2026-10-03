@@ -86,7 +86,7 @@ export async function setItemStatus(
  */
 export async function setDoneDate(path: string, date: string): Promise<void> {
   const item = findCachedItem(path);
-  if (!item) throw new Error('This project changed on disk - tap 🔄 to refresh.');
+  if (!item) throw new Error('This project changed on disk - Settings → Advanced → Reload all files.');
   const fm = {...frontMatterOf(item), extraLines: writeLifecycleDate(item.frontMatterExtraLines, 'doneAt', date)};
   const rawContent = await saveFrontMatter(item.kind, item.path, item.rawContent, fm);
   updateItemFrontMatter(item.path, rawContent, fm);

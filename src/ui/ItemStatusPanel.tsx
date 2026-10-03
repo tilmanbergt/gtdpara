@@ -70,8 +70,6 @@ interface Props {
   path: string;
   /** Called once this item's folder has actually moved to Archive - same convention as ProjectDataPanel's former prop of the same name (the caller navigates away, since `path` no longer resolves to anything under Projects/Areas). */
   onArchived?: () => void;
-  /** Bumped by ItemDetail.tsx's "Current" tab refresh action once it has rebuilt the shared cache - same convention as ProjectDataPanel's own prop of the same name. */
-  refreshToken?: number;
   /**
    * Projects only: when set, "Archive…" becomes "Close out…" and opens the
    * close-out wizard instead of archiving directly (docs/dev/technical-design-
@@ -117,7 +115,6 @@ export default function ItemStatusPanel({
   path,
   onArchived,
   onStartCloseOut,
-  refreshToken,
   onRequestAreaAssignment,
   textColor,
   borderColor,
@@ -194,11 +191,8 @@ export default function ItemStatusPanel({
 
   useEffect(() => {
     load();
-    // refreshToken has no meaning of its own here - same "just a signal to
-    // re-run and re-derive from the already-fresh cache" convention
-    // ProjectDataPanel's own mount effect documents.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load, refreshToken]);
+  }, [load]);
 
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
   // reload from the shared cache only if this item's file changed while

@@ -95,8 +95,7 @@
  *
  * 2026-09-03 Daily-cleanup pass (technical-design-daily-compact-ui.md
  * §1/§3/§4, Phases 1-4): this screen's own heading + 🔄 button are gone
- * (handleRefresh below registers with App.tsx/TabBar's shared icon instead -
- * see ui/TabBar.tsx's module doc comment). The Open-tasks column is now
+ * (reloading: Settings → Advanced → Reload all files). The Open-tasks column is now
  * grouped by source Project/Area/Inbox (storage/dailyAggregate.ts's
  * groupDailyTasksByItem) rather than one flat list, with the group header
  * itself the "jump to that item" affordance. The Calendar column's
@@ -200,7 +199,6 @@ import {MiniTabDef} from '../ui/MiniTabs';
 import PagedSection from '../ui/PagedSection';
 import {PAGE_SIZE} from '../ui/pagination';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
-import {RefreshHandle} from '../ui/TabBar';
 import {displayTaskText} from '../ui/TaskBadges';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
@@ -219,9 +217,6 @@ interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
   /** Switches to the Inbox tab - used when an Inbox-sourced row's group header/source subtext is tapped (docs/dev/technical-design-inbox-tab.md §3), since there's no Project/Area to open for those. */
   onOpenInbox?: () => void;
-  /** Registers this screen's reload action with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. */
-  onRegisterRefresh?: (handle: RefreshHandle | null) => void;
-  onRefreshingChange?: (refreshing: boolean) => void;
   /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** Docs/technical-design-now-focus-mode.md §4: when true, this screen renders as focus mode's one-column, no-TabBar view instead of normal two-column Daily. App.tsx's `Mode: 'focus'` branch renders this same component with this prop on - see this file's own module doc comment. Absent/false is normal Daily, unchanged. */
@@ -411,8 +406,6 @@ const EMPTY_DAILY_AGGREGATE: DailyAggregate = {tasks: [], meetings: [], failedIt
 export default function DailyView({
   onOpenItem,
   onOpenInbox,
-  onRegisterRefresh,
-  onRefreshingChange,
   onOpenCalendarSettings,
   focusMode,
   onExitFocusMode,
@@ -550,7 +543,7 @@ export default function DailyView({
   useEffect(() => {
     load(false);
     // Only ever auto-loads once, on mount (using whatever's cached, or
-    // building it if nothing is) - the shared 🔄 icon is the explicit rebuild.
+    // building it if nothing is) - Settings → Advanced → Reload all files is the explicit rebuild.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -576,17 +569,6 @@ export default function DailyView({
     })();
   });
 
-  /** Registers with App.tsx/TabBar's shared 🔄 icon - see ui/TabBar.tsx's module doc comment. `load` itself never changes identity (empty deps), so this only ever registers once. */
-  const handleRefresh = useCallback(() => load(true), [load]);
-
-  useEffect(() => {
-    onRegisterRefresh?.({run: () => { handleRefresh(); }});
-    return () => onRegisterRefresh?.(null);
-  }, [handleRefresh, onRegisterRefresh]);
-
-  useEffect(() => {
-    onRefreshingChange?.(loading);
-  }, [loading, onRefreshingChange]);
 
   // pickerMode's one-time initializer (see its own declaration above) - runs
   // once the initial load lands (guarded by pickerModeInitRef, not by an

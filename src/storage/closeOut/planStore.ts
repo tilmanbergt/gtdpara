@@ -15,13 +15,13 @@ import {dataFilePath} from '../projectFile';
 /** The plan of the cached project at `path`; `found` is false when the project has no close-out section yet. */
 export function loadPlan(path: string): {plan: CloseOutPlan; found: boolean} {
   const item = findCachedItem(path);
-  if (!item) throw new Error('This project is no longer in the cache - tap 🔄 to refresh.');
+  if (!item) throw new Error('This project is no longer in the cache - Settings → Advanced → Reload all files.');
   return parsePlan(item.rawContent);
 }
 
 async function writeContent(path: string, transform: (content: string) => string): Promise<void> {
   const item = findCachedItem(path);
-  if (!item) throw new Error('This project is no longer in the cache - tap 🔄 to refresh.');
+  if (!item) throw new Error('This project is no longer in the cache - Settings → Advanced → Reload all files.');
   const next = transform(ensureSkeleton(item.rawContent, item.kind));
   await writeTextFile(dataFilePath(item.kind, item.path), next);
   updateItemRawContent(item.path, next);
