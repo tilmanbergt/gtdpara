@@ -20,6 +20,7 @@
  * item's ItemDetail screen is typically opened immediately after creating
  * it.
  */
+import {invalidFileNameChars} from '../domain/fileName';
 import {ensureSkeleton} from '../domain/markdown';
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
@@ -47,7 +48,11 @@ export async function createItem(
 ): Promise<CachedItem> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Enter a name.');
-  if (/[/\\]/.test(trimmed)) throw new Error('Name can\'t contain "/" or "\\".');
+  // The shared file name rule (domain/fileName.ts, D2 of
+  // docs/dev/technical-design-cleanup-0.5.md): reject rather than silently
+  // rename - the folder gets exactly the name the user typed, or none.
+  const invalid = invalidFileNameChars(trimmed);
+  if (invalid.length > 0) throw new Error(`A name can't contain ${invalid.map(c => `"${c}"`).join(', ')}.`);
 
   const paths = resolvePaths(settings);
   const root = kind === 'project' ? paths.projects : paths.areas;

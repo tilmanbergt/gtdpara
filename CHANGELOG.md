@@ -13,6 +13,8 @@ or your project/area files are stored.
 ### Changed
 - File names gtdpara creates no longer contain `#`, `[`, `]` or `^` (also for notes and attachments from
   Gmail), so links to them work in Obsidian. Existing files keep their names.
+- A new project or area name can't contain `#`, `[`, `]`, `^` or the characters file names can't hold;
+  the message names the character.
 
 ### Fixed
 - Meeting lists with dates no longer cut the time short on days 10 to 31.

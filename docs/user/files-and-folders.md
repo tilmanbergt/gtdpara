@@ -16,7 +16,7 @@ Notes that gtdpara creates for todos and meetings go into `Todos` and `Meetings`
 
 ## File names
 
-The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Files you named yourself are left as they are.
+The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Project and area names can't contain these characters at all. Files you named yourself are left as they are.
 
 ## The Inbox folder
 
