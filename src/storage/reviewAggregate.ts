@@ -15,11 +15,12 @@
  * Scope, one bucket per Weekly Review step that needs cross-project data
  * (steps that only touch one item at a time - status/archive/focus actions -
  * don't need an aggregate entry, they read/write CachedItem directly):
- * - weekMeetings: every not-cancelled meeting dated today through 6 days
- *   from now (the coming-week look-ahead, step 1) - sorted soonest first
- *   even though the UI no longer displays the time (design decision
- *   2026-09-02: step 1 is compact/read-only, no times shown), just so a
- *   day's meetings still land in a sensible order.
+ * - weekMeetings: every not-cancelled meeting that touches the week the
+ *   "Week ahead" step shows (domain/weekDate.ts's weekAheadRangeIso: this
+ *   week, or next week from Friday to Sunday) - once per meeting, also when
+ *   a multi-day meeting started before that week. Sorted soonest first.
+ *   Only its length is used, as the hub's count; the step itself is
+ *   screens/ReviewWeekAhead.tsx.
  * - stalledProjects: Active projects with zero *actionable* open tasks -
  *   not done, not cancelled, and NOT tagged Someday or Maybe (technical-
  *   design-tags.md's follow-up decision, 2026-09-02: a project whose only
@@ -27,7 +28,7 @@
  *   either, so those tasks don't count towards "has open work" any more
  *   than a done or cancelled one does - Waiting For tasks still count,
  *   since they represent real, if blocked, follow-up). Each stalled entry
- *   carries its own next-2-upcoming-meetings (not bounded to the 7-day
+ *   carries its own next-2-upcoming-meetings (not bounded to the week-ahead
  *   window above - a stalled project's only near-term touchpoint might be
  *   three weeks out, and that's still worth surfacing) AND its own
  *   `shelvedTasks` - the Someday/Maybe tasks that got excluded from the
@@ -76,11 +77,13 @@
  *   them in (an empty list -> nothing tracked -> empty bucket).
  */
 import {isFocused} from '../domain/destination';
-import {meetingTimestampMs, isoDateOffset, splitAndSortMeetings, todayIso} from '../domain/meetingTime';
+import {countMeetingsInRange} from '../domain/meetingSpan';
+import {meetingTimestampMs, splitAndSortMeetings} from '../domain/meetingTime';
 import {isReviewOutstanding} from '../domain/meetingTracking';
 import {NoteCreationDefinition} from '../domain/noteTemplate';
 import {ReviewStepId} from '../domain/reviewSteps';
 import {Meeting, Task} from '../domain/types';
+import {weekAheadRangeIso} from '../domain/weekDate';
 import {CachedItem} from './dataCache';
 
 export interface ReviewItemRef {
@@ -105,7 +108,7 @@ export interface ReviewShelvedTaskEntry {
 
 export interface ReviewProjectEntry {
   item: ReviewItemRef;
-  /** Up to 2 nearest not-cancelled upcoming meetings for this item, any date - not bounded to weekMeetings' 7-day window. */
+  /** Up to 2 nearest not-cancelled upcoming meetings for this item, any date - not bounded to weekMeetings' week. */
   upcomingMeetings: ReviewMeetingEntry[];
   /** This item's own open Someday/Maybe tasks - excluded from the stalled/neglected check itself (see the module doc comment) but surfaced here so the UI can offer a one-tap promote-to-Next. */
   shelvedTasks: ReviewShelvedTaskEntry[];
@@ -199,8 +202,7 @@ export function buildReviewAggregate(
   now: Date = new Date(),
   definitions: NoteCreationDefinition[] = [],
 ): ReviewAggregate {
-  const startDate = todayIso(now);
-  const endDate = isoDateOffset(6, now);
+  const week = weekAheadRangeIso(now);
 
   const weekMeetings: ReviewMeetingEntry[] = [];
   const stalledProjects: ReviewProjectEntry[] = [];
@@ -220,7 +222,7 @@ export function buildReviewAggregate(
     }
 
     cachedItem.meetings.forEach((meeting, meetingIndex) => {
-      if (!meeting.cancelled && meeting.date >= startDate && meeting.date <= endDate) {
+      if (countMeetingsInRange([meeting], week.start, week.end) > 0) {
         weekMeetings.push({item, meetingIndex, meeting});
       }
       if (isReviewOutstanding(meeting, definitions, now)) {
@@ -292,7 +294,9 @@ export interface ReviewStepCount {
  * `inboxOpenCount` is passed in because Inbox.txt lives outside the item
  * cache (ReviewScreen loads it directly and already knows which Inbox tasks/
  * meetings are still open). Week ahead counts gtdpara meetings only - Google
- * Calendar events sit in a separate async cache. Unfocused next items counts
+ * Calendar events sit in a separate async cache; the Inbox's meetings in
+ * that week come in as `weekAheadInboxCount`, for the same reason as
+ * `inboxOpenCount`. Unfocused next items counts
  * TASKS, not projects: the tasks are that step's selectable rows.
  *
  * `gmailInboxCount` is passed in for the same reason `inboxOpenCount` is -
@@ -312,9 +316,10 @@ export function buildReviewStepCounts(
     monthlyFocusAreaCount: number;
   },
   gmailInboxCount: number,
+  weekAheadInboxCount = 0,
 ): Record<ReviewStepId, ReviewStepCount> {
   return {
-    weekAhead: {n: aggregate.weekMeetings.length},
+    weekAhead: {n: aggregate.weekMeetings.length + weekAheadInboxCount},
     meetingsCloseOut: {n: aggregate.meetingsToClose.length},
     gmailInbox: {n: gmailInboxCount},
     inbox: {n: inboxOpenCount},

@@ -12,6 +12,8 @@ or your project/area files are stored.
 
 ### Fixed
 - Meeting lists with dates no longer cut the time short on days 10 to 31.
+- The Review's **Week ahead** count matches the week the step shows, including multi-day meetings
+  that started earlier and meetings in the Inbox.
 
 ## [0.4.0] — 2026-10-02
 

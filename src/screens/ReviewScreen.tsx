@@ -192,7 +192,8 @@ import {
 } from '../domain/reviewSteps';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
-import {isoWeekKey} from '../domain/weekDate';
+import {isoWeekKey, weekAheadRangeIso} from '../domain/weekDate';
+import {countMeetingsInRange} from '../domain/meetingSpan';
 import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../storage/archive';
 import {archiveDoneText, emptyFolderConfirmNote} from '../domain/fileChangeText';
 import {planStatusLabel} from '../domain/closeOut/plan';
@@ -2101,6 +2102,10 @@ export default function ReviewScreen({
           items,
           settings,
           gmailMessages?.length ?? 0,
+          (() => {
+            const week = weekAheadRangeIso();
+            return countMeetingsInRange(inbox?.meetings ?? [], week.start, week.end);
+          })(),
         )
       : null;
   // Backlog steps with nothing in them, as a stable string so the effect

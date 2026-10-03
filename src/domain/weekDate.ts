@@ -72,3 +72,19 @@ export function weeksBetween(a: string, b: string): number {
 // Re-exported for convenience so callers that only need "today, as a week
 // key" don't have to import meetingTime.ts separately just for todayIso.
 export {todayIso};
+
+/**
+ * Which week the Review's "Week ahead" step opens on, as an offset from the
+ * current week: from Friday to Sunday (the usual review days) the coming
+ * week (1), otherwise this one (0) - the same rule domain/period.ts's
+ * canEditPeriod uses for editing next week's focus.
+ */
+export function weekAheadOffset(now: Date = new Date()): number {
+  const day = now.getDay();
+  return day === 5 || day === 6 || day === 0 ? 1 : 0;
+}
+
+/** The Monday..Sunday range the "Week ahead" step shows (see weekAheadOffset). */
+export function weekAheadRangeIso(now: Date = new Date()): {start: string; end: string} {
+  return weekRangeIso(shiftWeeks(now, weekAheadOffset(now)));
+}
