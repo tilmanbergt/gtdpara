@@ -127,6 +127,7 @@ import {
 } from '../supernote/fileSystem';
 import {buildTextboxElement} from '../supernote/noteElements';
 import {log} from '../utils/log';
+import {contextTagsOf} from '../domain/flowState';
 import {getCachedData} from './dataCache';
 import {linkedFileStatus, resolveLinkedFilePath} from './linkedFiles';
 import {MeetingNoteInboxInput, relatedItemsFor} from './meetingNoteAggregate';
@@ -134,6 +135,7 @@ import {collisionFreeName} from './fileNaming';
 import {
   classifyNotePath,
   createLinkedNote,
+  insertNoteKeywords,
   MEETINGS_SUBFOLDER,
   meetingNoteBaseName,
   resolveNoteBackgroundTemplate,
@@ -621,6 +623,7 @@ async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
       execute: async () => {
         await ensureFolderExists(parentFolder(existing.absolutePath));
         await createNote(existing.absolutePath, background, true);
+        await insertNoteKeywords(existing.absolutePath, contextTagsOf(tags));
         return {
           notePath: params.notePath,
           changed: false,
@@ -682,7 +685,15 @@ async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
     return {
       plan: {kind: 'new-own-file', file: relativePath, absolutePath, ruleName},
       execute: async () => {
-        const notePath = await createLinkedNote(itemPath, params.subfolder, params.baseName, settings, tags, fileName);
+        const notePath = await createLinkedNote(
+          itemPath,
+          params.subfolder,
+          params.baseName,
+          settings,
+          tags,
+          fileName,
+          contextTagsOf(tags),
+        );
         return {notePath, changed: true, isInitialPopulation: true, absolutePath, page: 0};
       },
     };

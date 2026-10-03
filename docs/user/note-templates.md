@@ -36,7 +36,7 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
 
 - A note of its own is named after its item, for example `2026-10-04 - Site visit with Marco marco`, so the Supernote's file search finds it. File names leave out `#` and the other characters listed in [Your files and folders](files-and-folders.md).
 - A page in a shared note gets a **keyword**: the meeting's date and title, or the todo's text, including its tags - for example `2026-10-04 Site visit with Marco #marco`. The Supernote's keyword search then finds every page about Marco.
-- A note from the **Note** tab in Quick Add gets the tags of its title as keywords.
+- A note of its own also gets the item's tags as **keywords** (without `#next`, `#due` and the other tags gtdpara uses itself), for example `marco`. A note from the **Note** tab in Quick Add gets the tags of its title as keywords the same way.
 
 ## Todos and meetings: one note or one shared note
 

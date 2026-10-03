@@ -10,6 +10,10 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- A todo's or meeting's **own note gets its tags as keywords**, like a note from Quick Add, so the
+  Supernote's keyword search finds it.
+
 ### Changed
 - File names gtdpara creates no longer contain `#`, `[`, `]` or `^` (also for notes and attachments from
   Gmail), so links to them work in Obsidian. Existing files keep their names.

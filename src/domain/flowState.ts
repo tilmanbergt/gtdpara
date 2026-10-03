@@ -173,6 +173,20 @@ export function isContextTag(tag: string): boolean {
   return true;
 }
 
+/**
+ * The free/context tags among an item's `tags`, once each, in order - the
+ * keywords a todo's or meeting's own note gets (docs/dev/technical-design-
+ * cleanup-0.5.md S7), the same set a Quick Add "Note" note gets from its
+ * title (domain/markdown.ts's extractContextTags).
+ */
+export function contextTagsOf(tags: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const tag of tags) {
+    if (isContextTag(tag) && !out.includes(tag)) out.push(tag);
+  }
+  return out;
+}
+
 export interface TaskGroup {
   key: Exclude<FlowState, null> | 'other';
   label: string;

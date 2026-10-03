@@ -13,8 +13,9 @@ import {NoteContext, resolveNoteTemplate} from '../domain/noteTemplate';
 import {joinNotePath, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaSettings} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
-import {createNote, ensureFolderExists, fileExists, MYSTYLE_FOLDER} from '../supernote/fileSystem';
-import {log} from '../utils/log';
+import {createNote, ensureFolderExists, fileExists, insertKeyWord, MYSTYLE_FOLDER} from '../supernote/fileSystem';
+import {errorMessage} from '../utils/errorMessage';
+import {log, logWarn} from '../utils/log';
 import {collisionFreeName} from './fileNaming';
 
 export const MEETINGS_SUBFOLDER = 'Meetings';
@@ -139,6 +140,8 @@ export async function createLinkedNote(
   tags: string[],
   /** The final file name (with ".note"), when the caller already picked it - storage/meetingNoteContent.ts plans the name first so the confirm text shows the real one (technical-design-split-by-tag.md §3.5). */
   plannedFileName?: string,
+  /** Page-1 keywords (the item's free tags, docs/dev/technical-design-cleanup-0.5.md S7) - see insertNoteKeywords. */
+  keywords: readonly string[] = [],
 ): Promise<string> {
   const folderPath = `${itemPath.replace(/\/+$/, '')}/${subfolder}`;
   await ensureFolderExists(folderPath);
@@ -148,10 +151,27 @@ export async function createLinkedNote(
   const context: NoteContext = subfolder === MEETINGS_SUBFOLDER ? 'meeting' : 'todo';
   const absolutePath = `${folderPath}/${fileName}`;
   await createNote(absolutePath, resolveNoteBackgroundTemplate(settings, context, tags), true);
+  await insertNoteKeywords(absolutePath, keywords);
 
   const relativePath = `${subfolder}/${fileName}`;
   log('createLinkedNote: done', relativePath);
   return relativePath;
+}
+
+/**
+ * Adds `keywords` to page 1 of a just-created note, so the Supernote's
+ * keyword search finds it (docs/dev/technical-design-cleanup-0.5.md S7). A
+ * keyword that can't be added is logged and skipped - the note itself
+ * exists and works without it, so this never fails the note creation.
+ */
+export async function insertNoteKeywords(absolutePath: string, keywords: readonly string[]): Promise<void> {
+  for (const keyword of keywords) {
+    try {
+      await insertKeyWord(absolutePath, 0, keyword);
+    } catch (e) {
+      logWarn('noteLinks: adding a note keyword failed', errorMessage(e));
+    }
+  }
 }
 
 /**
