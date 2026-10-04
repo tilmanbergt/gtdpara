@@ -204,6 +204,8 @@ interface GtdParaFileNativeModule {
   writeBinaryFile(path: string, base64Content: string): Promise<boolean>;
   /** Added 2026-09-30 (debug-log sink); missing on older native builds. */
   appendTextFile?(path: string, content: string, maxBytes: number): Promise<number>;
+  /** Added in 0.6.0 (technical-design-files-0.6.md §3.1); missing on older native builds. */
+  statFiles?(paths: string[]): Promise<FileStat[]>;
 }
 
 const {GtdParaFile} = NativeModules as {GtdParaFile?: GtdParaFileNativeModule};
@@ -273,6 +275,40 @@ export async function listFolderEntries(folderPath: string): Promise<FolderEntry
       folderPath,
       e instanceof Error ? e.message : String(e),
     );
+    throw e;
+  }
+}
+
+/** Last-modified time (ms) and size (bytes) of one path; a missing path has exists=false, lastModified=0, size=-1. */
+export interface FileStat {
+  path: string;
+  exists: boolean;
+  lastModified: number;
+  size: number;
+}
+
+/**
+ * Stats many files in ONE native call (docs/dev/technical-design-files-0.6.md
+ * §3.1) - what storage/dataCache.ts's refreshCache uses to see which data
+ * files changed since they were read. Resolves `null` on a native build that
+ * doesn't have the call yet, so the caller can fall back to a full re-read.
+ */
+export async function statFiles(paths: string[]): Promise<FileStat[] | null> {
+  if (!GtdParaFile?.statFiles) {
+    logWarn('statFiles: not available on this native build');
+    return null;
+  }
+  if (!(await ensureFileReadPermission())) {
+    logError('statFiles: file read permission not granted');
+    throw new Error('File read permission was not granted.');
+  }
+  const perfToken = perfStart();
+  try {
+    const stats = await GtdParaFile.statFiles(paths);
+    perfEnd('io:stat', perfToken, {files: paths.length});
+    return stats;
+  } catch (e) {
+    logError('statFiles: failed', `${paths.length} paths`, e instanceof Error ? e.message : String(e));
     throw e;
   }
 }
