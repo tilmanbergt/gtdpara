@@ -1,6 +1,6 @@
 # Technical design: Waiting for, visible (0.7.0)
 
-Status: **approved** - 2026-10-04 (boundary for W1 changed to today in the same review).
+Status: **implemented** (S0-S5) - 2026-10-04, device test open. As built: §8.
 Branch: `feature/waiting-0.7`, created from `main` after the 0.6.0 release.
 Scope agreed in chat on 2026-10-04 (backlog "Planned: 0.7.0").
 
@@ -193,3 +193,27 @@ Each step: `npx tsc --noEmit`, `npm test`; S3/S4 also a smoke render of Daily an
 - None blocking. To watch on the device: whether `FONT.small` + `600` labels are distinct enough
   next to context tags (`#lena`), which render in the title font.
 
+## 8. As built (2026-10-04)
+
+All steps implemented on `feature/waiting-0.7` as one commit per step; `npx tsc --noEmit` clean,
+`npm test` 288 tests (247 before). Device test (§6) still open. Deviations and details:
+
+- **W1 boundary is today**, not tomorrow (Tilman, 2026-10-04, after the first version of this
+  design): a Waiting For todo with a date shows from that day on. `isWaitingForShownOnDaily` in
+  `domain/flowState.ts`.
+- **Labels** have no opacity: React Native doesn't apply opacity to nested text spans reliably, so
+  they are set apart by `FONT.small` + `fontWeight: '600'` only.
+- **Layout module**: the fitting and line count live in `ui/taskRowLayout.ts` (`taskRowLayout`,
+  `fitTitleToLines`, `taskTextWidthPx`), used by both `TaskRow` (render) and `taskRowHeight`/
+  `taskRowLines`. `TaskRow` takes an optional `columnWidthPx` (default 678, what every caller
+  uses). `taskRowHeight`/`taskRowLines` take an optional `contextActive`; Daily passes it, so a
+  `#someday` label under a tag filter is counted too.
+- **`TaskBadgeContext`** stays as a type alias in `ui/TaskRow.tsx` (= `TaskLabelContext`) so the
+  screens' props didn't change; `displayTaskText` moved to `domain/taskLabels.ts` (screens import
+  it from there).
+- **P1/P2**: `ui/itemEntryRow.ts` takes `ItemEntryOptions {showAbbrev, paddingPx}`; only
+  `screens/ItemsList.tsx` passes `{showAbbrev: true, paddingPx: 8}`. Review's lists are unchanged
+  (34 px rows, no abbreviation).
+- **Tests**: `__tests__/domain/taskLabels.test.ts`, `__tests__/storage/dailyAggregate.test.ts`,
+  `__tests__/ui/taskRowLayout.test.ts`, `__tests__/ui/taskRowRender.test.tsx` (smoke render: label
+  inside the title text, `#next` double-tap), `__tests__/ui/itemEntryRow.test.ts`.
