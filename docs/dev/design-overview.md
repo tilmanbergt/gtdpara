@@ -89,6 +89,8 @@ One module-level `DataCache | null`, kept current two ways (and, since 2026-09-2
 1. **Full rebuild** (`rebuildCache(settings)`) — scans the Projects and Areas folders, then loads every item's own data file, in parallel. Replaces the entire cache on success; one item's load failure is recorded on that item's `loadError` rather than failing the whole rebuild. Triggered automatically, fire-and-forget, every time `App.tsx`'s reorient logic runs (plugin open, or sidebar button pressed again) — not awaited, so a slow scan never blocks landing on a screen — and manually via Settings → Advanced → "Reload all files" (§2.1). The Projects/Areas lists also build it on mount when none exists yet.
 2. **Write-through** (`updateItemTasks`/`updateItemMeetings`) — every plugin-initiated save (add/toggle/cancel a task or meeting, link a note) updates the matching cache entry in the same operation that writes the file, so every other screen sees the change immediately without needing a rebuild.
 
+**The Inbox in the cache (0.6.0, `technical-design-files-0.6.md` §3.3).** `Inbox.txt` is not an entry of `items` (it is not a Project/Area folder), but the cache module keeps it next to them: `getCachedInbox()`/`setCachedInbox(next | updater)`/`subscribeInbox()`/`reloadCachedInbox(inboxFolder)` (never throws), read through `ui/useCachedInbox.ts` (same screen-activity pattern as `useCachedItems`). `rebuildCache` loads it in parallel with the items; `clearCachedData` drops it. Daily, Planning (Week/Month), Inbox and Review read it from there and write through `setCachedInbox`, so a change on one screen is seen on every other; storage code that writes `Inbox.txt` itself (`itemMove.appendToInbox`, close-out, Google Calendar copy to Inbox) calls `reloadCachedInbox`, Capture hands its `nextInbox` to `setCachedInbox`.
+
 `ensureItemCached(kind, name, path)` is the read-side escape hatch: if an item isn't in the cache yet (cache never built, or built before this folder existed), it loads just that one item's file and — if a cache object already exists — inserts it, rather than forcing a full rebuild to open one Project/Area.
 
 The cache is still fully disposable in the sense the original design intended: a full rebuild always reproduces it correctly from the files, which remain the only real data. What's different from the original framing is the **trade-off window got wider**: before this cache existed, every screen open (Home's folder scan, ItemDetail opening a Project/Area, Daily's aggregation) did its own fresh filesystem read, so "an edit made outside the plugin" was visible the next time you opened *anything*. Now, a screen can serve cached data that's stale relative to an external edit until the next automatic or manual rebuild. This is a deliberate trade for the responsiveness Daily view needed (see §4's note on this) — worth knowing before assuming "opening a screen always shows the latest file contents," which was true before and isn't quite true anymore.
@@ -684,7 +686,7 @@ Design: `docs/dev/technical-design-keep-tabs-alive.md` (decisions D1-D6, as-buil
 - Daily, Week, Month, Current, Projects and Areas stay mounted (hidden with `display: 'none'`, `ui/KeptTab.tsx`) after their first visit; Inbox, Review, Settings mount only while visible. Switch "Keep tabs in memory" (Settings -> Folders, default ON, `settings.keepTabsAlive`, `ui/keepAliveStore.ts`) - OFF renders exactly as before.
 - `ui/screenActivity.ts`: per-tab activity store (`useOnScreenShow`/`useOnScreenHide`, `useScreenActivity`); default always-active outside a KeptTab.
 - Leaving a kept tab: Quick Add edit saved and closed, keyboard dismissed, screen-scoped status messages withdrawn (armed picks cancelled via `onCancel`, errors dismissed). Drafts and all other view state are kept.
-- Coming back: cache subscriptions catch up (paused while hidden), Inbox.txt/settings re-read quietly, Current re-derives from the cache if its file changed, Projects/Areas refresh their cache snapshot, one e-ink refresh; a new day re-renders.
+- Coming back: cache subscriptions catch up (paused while hidden), settings re-read quietly (since 0.6.0 the Inbox comes from the shared cache, §2.3), Current re-derives from the cache if its file changed, Projects/Areas refresh their cache snapshot, one e-ink refresh; a new day re-renders.
 - "Reload all files" (Settings → Advanced) drops all kept tabs (`dropKeptTabs`); each loads fresh on its next visit.
 
 ### 2.38 Inbox as a folder under Areas (2026-10-01)
@@ -767,9 +769,6 @@ repository, in the maintainers' internal list; bugs and ideas from users go to G
 This section only lists open points that touch the architecture or the rules in §3, so a design
 for a related change starts from them.
 
-- **Inbox outside the observable cache.** Projects and Areas go through the cache (§2.29); the
-  Inbox is still loaded per screen (local `inbox` state, `inboxOverride`). Moving it into the
-  cache would remove that duplication.
 - **Moving items: one helper, several copies.** `storage/itemMove.ts` (§2.32) moves a todo or
   meeting between Projects, Areas and the Inbox via the cache. Daily, Inbox and Current
   (`ProjectDataPanel`) still append-then-remove themselves with

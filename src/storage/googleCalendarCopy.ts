@@ -13,7 +13,7 @@ import {deriveMeetingFields} from '../domain/markdown';
 import {setHighlight} from '../domain/monthHighlight';
 import {Meeting} from '../domain/types';
 import {GoogleCalendarEvent} from '../domain/googleCalendarEvent';
-import {ensureItemCached, updateItemMeetings} from './dataCache';
+import {ensureItemCached, reloadCachedInbox, updateItemMeetings} from './dataCache';
 import {loadProjectFile, saveMeetings} from './projectFile';
 
 /** Exported so ui/GoogleCalendarPanel.tsx's optimistic Inbox update builds the exact same Meeting (it used to carry its own literal copy). */
@@ -49,11 +49,8 @@ export async function copyGoogleEventToDestination(
   if (destination.type === 'inbox') {
     const inbox = await loadProjectFile('inbox', inboxPath);
     const nextMeetings = [...inbox.meetings, meeting];
-    // Inbox.txt is never part of storage/dataCache.ts's cache (§2.9 of
-    // design-overview.md), so there's no matching cache write-through here
-    // - same as every other Inbox save in this app (screens/InboxScreen.tsx,
-    // storage/inboxFiling.ts).
     await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+    await reloadCachedInbox(inboxPath);
     return;
   }
 

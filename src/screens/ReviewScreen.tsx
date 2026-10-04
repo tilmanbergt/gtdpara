@@ -196,14 +196,7 @@ import {countMeetingsInRange} from '../domain/meetingSpan';
 import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../storage/archive';
 import {archiveDoneText, emptyFolderConfirmNote} from '../domain/fileChangeText';
 import {planStatusLabel} from '../domain/closeOut/plan';
-import {
-  CachedItem,
-  findCachedItem,
-  getCachedData,
-  rebuildCache,
-  updateItemMeetings,
-  updateItemTasks,
-} from '../storage/dataCache';
+import {CachedItem, findCachedItem, getCachedData, rebuildCache, setCachedInbox, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
 import {FocusScope, focusBlockedReason, setItemFocus} from '../storage/focusSlots';
 import {
   appendMeetingToTarget,
@@ -232,7 +225,7 @@ import {
   refreshGmailInbox,
 } from '../storage/gmailInboxCache';
 import {fetchAttachment as fetchGmailAttachmentBytes, GmailAttachmentInfo} from '../storage/gmailImapNative';
-import {loadProjectFile, ProjectFileState, saveMeetings, saveTasks} from '../storage/projectFile';
+import {loadProjectFile, saveMeetings, saveTasks} from '../storage/projectFile';
 import {
   buildReviewAggregate,
   buildReviewStepCounts,
@@ -278,6 +271,7 @@ import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {useFeatures} from '../ui/featureStore';
 import {useErrorStatus, useStatusApi} from '../ui/status/StatusProvider';
 import MarkWrap from '../ui/status/StatusMark';
+import {useCachedInbox} from '../ui/useCachedInbox';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
@@ -548,7 +542,8 @@ export default function ReviewScreen({
   // needs the full resolved path set, not just `inboxPath` - same "keep both"
   // shape screens/InboxScreen.tsx's own `inboxPath`/`paths` pair uses.
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
-  const [inbox, setInbox] = useState<ProjectFileState | null>(null);
+  // The shared Inbox (storage/dataCache.ts, technical-design-files-0.6.md §3.3) - setCachedInbox writes it for every screen.
+  const inbox = useCachedInbox();
   const [loading, setLoading] = useState(true);
   // Explicit e-ink refresh once the initial load or a manual refresh
   // actually lands - see src/utils/screenRefresh.ts.
@@ -738,7 +733,7 @@ export default function ReviewScreen({
       setAggregate(buildReviewAggregate(cache.items, new Date(), loadedSettings.noteCreationDefinitions));
       setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
-      setInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
+      setCachedInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       logError('ReviewScreen: load failed', message);
@@ -975,7 +970,7 @@ export default function ReviewScreen({
    */
   const handleAddTask = async (text: string, destination: Destination): Promise<void> => {
     const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
     else refreshFromCache();
     bump('tasksAdded');
     log('ReviewScreen: added task', destinationLabel(destination));
@@ -1191,7 +1186,7 @@ export default function ReviewScreen({
   const handleAddGmailTask = async (message: GmailCacheMessage, text: string): Promise<void> => {
     const {nextInbox} = await addTaskToDestination(buildTask(text), FIXED_INBOX_DESTINATION, {inbox, inboxPath});
     if (nextInbox) {
-      setInbox(nextInbox);
+      setCachedInbox(nextInbox);
       const index = nextInbox.tasks.length - 1;
       setGmailCreatedItems(prev => ({
         ...prev,
@@ -1211,7 +1206,7 @@ export default function ReviewScreen({
   const handleAddGmailMeeting = async (message: GmailCacheMessage, fields: MeetingQuickAddFields): Promise<void> => {
     const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), FIXED_INBOX_DESTINATION, {inbox, inboxPath});
     if (nextInbox) {
-      setInbox(nextInbox);
+      setCachedInbox(nextInbox);
       const index = nextInbox.meetings.length - 1;
       setGmailCreatedItems(prev => ({
         ...prev,
@@ -1306,7 +1301,7 @@ export default function ReviewScreen({
         },
         {inbox, inboxPath},
       );
-      if (nextInbox) setInbox(nextInbox);
+      if (nextInbox) setCachedInbox(nextInbox);
     } else {
       const {nextInbox} = await mutateEntryMeetings(
         {item: {kind: 'inbox', path: inboxPath}, meetingIndex: item.index, meeting: {title: item.label}},
@@ -1319,7 +1314,7 @@ export default function ReviewScreen({
         },
         {inbox, inboxPath},
       );
-      if (nextInbox) setInbox(nextInbox);
+      if (nextInbox) setCachedInbox(nextInbox);
     }
     setGmailCreatedItems(prev => ({
       ...prev,
@@ -1588,7 +1583,7 @@ export default function ReviewScreen({
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, done: true};
         const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-        setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         bump('inboxCleared');
         log('ReviewScreen: inbox task done', taskIndex);
       } catch (e) {
@@ -1620,7 +1615,7 @@ export default function ReviewScreen({
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, cancelled: true};
         const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-        setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         cancelEditTarget();
         bump('inboxCleared');
         log('ReviewScreen: inbox task cancelled', taskIndex);
@@ -1643,7 +1638,7 @@ export default function ReviewScreen({
         const nextMeetings = inbox.meetings.slice();
         nextMeetings[meetingIndex] = {...current, cancelled: true};
         const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-        setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         cancelEditTarget();
         bump('inboxCleared');
         log('ReviewScreen: inbox meeting cancelled', meetingIndex);
@@ -1661,7 +1656,7 @@ export default function ReviewScreen({
       try {
         if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
-        setInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
+        setCachedInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
         refreshFromCache();
         bump('inboxCleared');
         log('ReviewScreen: filed inbox task', taskIndex, '->', target.path);
@@ -1679,7 +1674,7 @@ export default function ReviewScreen({
       try {
         if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
         const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
-        setInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
+        setCachedInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
         refreshFromCache();
         bump('inboxCleared');
         log('ReviewScreen: filed inbox meeting', meetingIndex, '->', target.path);
@@ -1724,7 +1719,7 @@ export default function ReviewScreen({
       await appendTaskToTarget(target, updated);
       const nextTasks = inbox.tasks.filter((_, i) => i !== index);
       const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-      setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+      setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
@@ -1732,7 +1727,7 @@ export default function ReviewScreen({
       await appendMeetingToTarget(target, updated);
       const nextMeetings = inbox.meetings.filter((_, i) => i !== index);
       const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-      setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+      setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
     }
@@ -1820,14 +1815,14 @@ export default function ReviewScreen({
           const nextTasks = inbox.tasks.slice();
           nextTasks[inboxZeroArmTarget.index] = {...current, linkedFile};
           const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-          setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+          setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         } else {
           const current = inbox.meetings[inboxZeroArmTarget.index];
           if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
           const nextMeetings = inbox.meetings.slice();
           nextMeetings[inboxZeroArmTarget.index] = {...current, linkedFile};
           const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-          setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+          setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         }
         log('ReviewScreen: linked inbox item', inboxZeroArmTarget.type, inboxZeroArmTarget.index, '->', relativePath);
       } catch (e) {
@@ -1855,7 +1850,7 @@ export default function ReviewScreen({
    * (docs/dev/technical-design-inbox-tab.md §1, 2026-09-03: Review's Inbox-to-zero
    * cards gain full row parity via the shared ui/TaskRow.tsx/ui/MeetingRow.tsx,
    * same as Daily view and Project/Area's own rows) - same
-   * save-shape (saveTasks/saveMeetings against `inbox` state, then setInbox)
+   * save-shape (saveTasks/saveMeetings against `inbox` state, then setCachedInbox)
    * as handleInboxTaskDone/handleInboxTaskCancel/handleInboxMeetingCancel
    * above, and (2026-09-22, Slice 3 of docs/dev/technical-design-shared-note-
    * pages.md) the same `openOrCreateTodoNote`/`openOrCreateMeetingNote`
@@ -1875,7 +1870,7 @@ export default function ReviewScreen({
         const nextTasks = inbox.tasks.slice();
         nextTasks[taskIndex] = {...current, text: nextText, ...deriveTaskFields(nextText), linkedFile: nextLinkedFile};
         const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-        setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         cancelEditTarget();
         log('ReviewScreen: inbox task edited', taskIndex);
         return true;
@@ -1910,7 +1905,7 @@ export default function ReviewScreen({
           const nextTasks = inbox.tasks.slice();
           nextTasks[taskIndex] = task;
           const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-          setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+          setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
         }
         log('ReviewScreen: inbox task note opened/created', taskIndex);
       } catch (e) {
@@ -1941,7 +1936,7 @@ export default function ReviewScreen({
         const nextMeetings = inbox.meetings.slice();
         nextMeetings[meetingIndex] = applyMeetingEdit(current, fields, nextLinkedFile);
         const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-        setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         cancelEditTarget();
         log('ReviewScreen: inbox meeting edited', meetingIndex);
         return true;
@@ -1969,7 +1964,7 @@ export default function ReviewScreen({
    */
   const handleAddInboxMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
     const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
     else refreshFromCache();
     log('ReviewScreen: added meeting', destinationLabel(destination));
   };
@@ -1992,7 +1987,7 @@ export default function ReviewScreen({
           const nextMeetings = inbox.meetings.slice();
           nextMeetings[meetingIndex] = meeting;
           const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-          setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+          setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         }
         log('ReviewScreen: inbox meeting note opened/created', meetingIndex);
       } catch (e) {
@@ -2012,7 +2007,7 @@ export default function ReviewScreen({
         if (!inbox.meetings[meetingIndex]) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
         const nextMeetings = toggleMeetingTrackingAt(inbox.meetings, meetingIndex, kind);
         const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-        setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         requestEinkRefresh();
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -2231,7 +2226,7 @@ export default function ReviewScreen({
     const cache = getCachedData();
     if (!cache) return;
     loadProjectFile('inbox', cache.paths.inboxFolder)
-      .then(setInbox)
+      .then(setCachedInbox)
       .catch(e => logError('ReviewScreen: inbox reload after week ahead failed', e instanceof Error ? e.message : String(e)));
   };
 

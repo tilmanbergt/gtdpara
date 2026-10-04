@@ -51,7 +51,7 @@ import {listFolderEntries} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {perfEnd, perfMark, perfStart} from '../utils/perf';
-import {loadProjectFile, saveFrontMatter} from './projectFile';
+import {loadProjectFile, ProjectFileState, saveFrontMatter} from './projectFile';
 import {effectiveInboxFolderFor, hiddenAreaFolderFor, migrateInboxIfNeeded} from './inboxMigration';
 
 export interface CachedItem {
@@ -127,7 +127,56 @@ export function getCachedData(): DataCache | null {
 
 export function clearCachedData(): void {
   cached = null;
+  setCachedInbox(null);
   notifyCacheChanged();
+}
+
+// ---- The Inbox (docs/dev/technical-design-files-0.6.md §3.3) ----
+// Inbox.txt lives outside `items` (it is no Project/Area), but every screen
+// shares this one copy: a screen's `setInbox(...)` writes here, and every
+// screen showing the Inbox re-renders from it (ui/useCachedInbox.ts). Its own
+// listener set, so an Inbox change doesn't re-render item-only screens.
+let cachedInbox: ProjectFileState | null = null;
+let inboxVersion = 0;
+const inboxListeners = new Set<() => void>();
+
+export function getCachedInbox(): ProjectFileState | null {
+  return cachedInbox;
+}
+
+export function getInboxVersion(): number {
+  return inboxVersion;
+}
+
+export function subscribeInbox(listener: () => void): () => void {
+  inboxListeners.add(listener);
+  return () => {
+    inboxListeners.delete(listener);
+  };
+}
+
+/**
+ * Replaces the shared Inbox state - same call shape as a React state setter
+ * (a value or an updater), so screens use it as their `setInbox`. Notifies
+ * only when the state object actually changes.
+ */
+export function setCachedInbox(
+  next: ProjectFileState | null | ((prev: ProjectFileState | null) => ProjectFileState | null),
+): void {
+  const value = typeof next === 'function' ? next(cachedInbox) : next;
+  if (value === cachedInbox) return;
+  cachedInbox = value;
+  inboxVersion += 1;
+  Array.from(inboxListeners).forEach(listener => listener());
+}
+
+/** Re-reads Inbox.txt into the shared Inbox state - for storage code that wrote the file itself (copy from Google, capture, close-out). Never throws: a failed read is logged and the old state kept. */
+export async function reloadCachedInbox(inboxFolder: string): Promise<void> {
+  try {
+    setCachedInbox(await loadProjectFile('inbox', inboxFolder));
+  } catch (e) {
+    logError('dataCache: Inbox reload failed', e instanceof Error ? e.message : String(e));
+  }
 }
 
 export function findCachedItem(path: string): CachedItem | undefined {
@@ -364,7 +413,10 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   ];
 
   const perfItems = perfStart();
-  const items = await Promise.all(folderItems.map(({kind, name, path}) => loadOneItem(kind, name, path)));
+  const [items] = await Promise.all([
+    Promise.all(folderItems.map(({kind, name, path}) => loadOneItem(kind, name, path))),
+    reloadCachedInbox(paths.inboxFolder),
+  ]);
   perfEnd('cache:loadItems', perfItems, {items: items.length});
 
   const next: DataCache = {scannedAt: Date.now(), paths, items};

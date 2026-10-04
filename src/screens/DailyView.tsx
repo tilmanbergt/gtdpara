@@ -174,7 +174,7 @@ import {
   DailyTaskGroup,
   groupDailyTasksByItem,
 } from '../storage/dailyAggregate';
-import {CachedItem, getCachedData, rebuildCache} from '../storage/dataCache';
+import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {focusBlockedReason, setItemFocus} from '../storage/focusSlots';
 import {appendMeetingToTarget, appendTaskToTarget} from '../storage/inboxFiling';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
@@ -212,6 +212,7 @@ import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
+import {useCachedInbox} from '../ui/useCachedInbox';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
@@ -428,7 +429,8 @@ export default function DailyView({
   // full resolved path set, not just `inboxPath` - same "keep both" shape
   // screens/InboxScreen.tsx's own `inboxPath`/`paths` pair uses.
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
-  const [inbox, setInbox] = useState<ProjectFileState | null>(null);
+  // The shared Inbox (storage/dataCache.ts, technical-design-files-0.6.md §3.3) - setCachedInbox writes it for every screen.
+  const inbox = useCachedInbox();
   const [loading, setLoading] = useState(true);
   // Explicit e-ink refresh once the initial load or a manual refresh
   // actually lands - see src/utils/screenRefresh.ts.
@@ -524,9 +526,10 @@ export default function DailyView({
       if (!cache || forceRebuild) {
         cache = await rebuildCache(loadedSettings);
       }
-      const loadedInbox = await loadProjectFile('inbox', cache.paths.inboxFolder);
+      // The rebuild above already read Inbox.txt into the shared cache.
+      const loadedInbox = (!forceRebuild && getCachedInbox()) || (await loadProjectFile('inbox', cache.paths.inboxFolder));
       setSettings(loadedSettings);
-      setInbox(loadedInbox);
+      setCachedInbox(loadedInbox);
       setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
     } catch (e) {
@@ -548,9 +551,9 @@ export default function DailyView({
   }, []);
 
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.2):
-  // Inbox.txt and settings are this screen's own copies (not in the shared
-  // cache), so re-read them quietly - no spinner, and state only changes
-  // (= re-render) if the file text / settings actually differ.
+  // settings are this screen's own copy, so re-read them quietly - no
+  // spinner, and state only changes (= re-render) if they actually differ.
+  // The Inbox is the shared cache copy (refreshed when gtdpara is reopened).
   // Also re-render once if the date changed while hidden (a tab kept
   // overnight must show the new day) - same-value setState is a no-op.
   const [, setShownDay] = useState(() => todayIso());
@@ -558,11 +561,9 @@ export default function DailyView({
     setShownDay(todayIso());
     (async () => {
       try {
-        const cache = getCachedData();
-        if (!cache) return;
-        const [loadedSettings, loadedInbox] = await Promise.all([loadSettings(), loadProjectFile('inbox', cache.paths.inboxFolder)]);
+        if (!getCachedData()) return;
+        const loadedSettings = await loadSettings();
         setSettings(prev => (prev && JSON.stringify(prev) === JSON.stringify(loadedSettings) ? prev : loadedSettings));
-        setInbox(prev => (prev && prev.rawContent === loadedInbox.rawContent ? prev : loadedInbox));
       } catch (e) {
         logError('DailyView: quiet reload on show failed', errorMessage(e));
       }
@@ -605,7 +606,7 @@ export default function DailyView({
    * item or task index no longer matches what's cached.
    *
    * `inboxOverride`/return value (2026-09-11, docs/dev/technical-design-now-
-   * focus-mode.md §5/§6's bulk `#now` clear): `setInbox` is async, so
+   * focus-mode.md §5/§6's bulk `#now` clear): `setCachedInbox` is async, so
    * chaining several `await saveEntryTasks(...)` calls back-to-back for
    * Inbox-sourced entries within one function (as clearing a whole `#now`
    * cohort at once needs to) would otherwise have every call after the first
@@ -624,7 +625,7 @@ export default function DailyView({
     inboxOverride?: ProjectFileState,
   ): Promise<ProjectFileState | null> => {
     const {nextInbox} = await mutateEntryTasks(entry, mutate, {inbox: inboxOverride ?? inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
     return nextInbox;
   };
 
@@ -634,7 +635,7 @@ export default function DailyView({
     mutate: (meetings: Meeting[]) => Meeting[],
   ): Promise<void> => {
     const {nextInbox} = await mutateEntryMeetings(entry, mutate, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
   };
 
   // One-edit-at-a-time guard (design doc §6) - lives here, not in the
@@ -749,7 +750,7 @@ export default function DailyView({
         // Non-Inbox items are already synchronously fresh in the cache
         // after the write above (storage/dataCache.ts's module-level
         // cache); Inbox needs the just-mutated value threaded through
-        // explicitly rather than reading the (still-stale, setInbox is
+        // explicitly rather than reading the (still-stale, setCachedInbox is
         // async) `inbox` React state.
         const inboxForCohort = entry.item.kind === 'inbox' ? doneResult ?? undefined : inbox ?? undefined;
         const cache = getCachedData();
@@ -1014,7 +1015,7 @@ export default function DailyView({
    */
   const handleAddTask = async (text: string, destination: Destination): Promise<void> => {
     const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
     log('DailyView: added task', destinationLabel(destination));
   };
 
@@ -1026,7 +1027,7 @@ export default function DailyView({
    */
   const handleAddMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
     const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
     log('DailyView: added meeting', destinationLabel(destination));
   };
 

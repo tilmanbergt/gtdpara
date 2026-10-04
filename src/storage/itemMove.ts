@@ -13,7 +13,7 @@
  */
 import {ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
-import {findCachedItem} from './dataCache';
+import {findCachedItem, reloadCachedInbox} from './dataCache';
 import {appendMeetingToTarget, appendTaskToTarget, InboxFilingTarget} from './inboxFiling';
 import {mutateEntryMeetings, mutateEntryTasks} from './itemMutations';
 import {loadProjectFile, saveMeetings, saveTasks} from './projectFile';
@@ -32,6 +32,7 @@ async function appendToInbox(paths: ResolvedParaPaths, add: {task?: Task; meetin
   const inbox = await loadProjectFile('inbox', paths.inboxFolder);
   if (add.task) await saveTasks('inbox', paths.inboxFolder, inbox.rawContent, [...inbox.tasks, add.task], inbox.taskExtraLines);
   if (add.meeting) await saveMeetings('inbox', paths.inboxFolder, inbox.rawContent, [...inbox.meetings, add.meeting], inbox.meetingExtraLines);
+  await reloadCachedInbox(paths.inboxFolder);
 }
 
 /** Moves tasks[taskIndex] of the cached item at `itemPath` to `target`. Appends first, removes second: a failure in between leaves a duplicate, never a loss. */

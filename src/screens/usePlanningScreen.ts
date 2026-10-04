@@ -21,7 +21,7 @@ import {deriveMeetingFields} from '../domain/markdown';
 import {PeriodScope} from '../domain/period';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting} from '../domain/types';
-import {CachedItem, getCachedData, rebuildCache} from '../storage/dataCache';
+import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {FocusScope, toggleItemFocus} from '../storage/focusSlots';
 import {appendMeetingToTarget} from '../storage/inboxFiling';
 import {
@@ -36,7 +36,7 @@ import {linkedFileStatus, resolveLinkedFilePath} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {saveItemGoal} from '../storage/periodGoals';
-import {loadProjectFile, ProjectFileState} from '../storage/projectFile';
+import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {WeeklyMeetingEntry} from '../storage/weeklyAggregate';
 import {openPath} from '../supernote/fileSystem';
@@ -53,6 +53,7 @@ import {useOnScreenShow} from '../ui/screenActivity';
 import {todayIso} from '../domain/meetingTime';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
+import {useCachedInbox} from '../ui/useCachedInbox';
 
 /** Stable identity of one listed meeting (source file + index) - what `editingKey` holds. */
 export const meetingKey = (entry: WeeklyMeetingEntry) => `${entry.item.path}#${entry.meetingIndex}`;
@@ -70,7 +71,8 @@ export function usePlanningScreen({logTag}: Options) {
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
-  const [inbox, setInbox] = useState<ProjectFileState | null>(null);
+  // The shared Inbox (storage/dataCache.ts, technical-design-files-0.6.md §3.3) - setCachedInbox writes it for every screen.
+  const inbox = useCachedInbox();
   const [loading, setLoading] = useState(true);
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
@@ -97,9 +99,10 @@ export function usePlanningScreen({logTag}: Options) {
         if (!cache || forceRebuild) {
           cache = await rebuildCache(loadedSettings);
         }
-        const loadedInbox = await loadProjectFile('inbox', cache.paths.inboxFolder);
+        // The rebuild above already read Inbox.txt into the shared cache.
+        const loadedInbox = (!forceRebuild && getCachedInbox()) || (await loadProjectFile('inbox', cache.paths.inboxFolder));
         setSettings(loadedSettings);
-        setInbox(loadedInbox);
+        setCachedInbox(loadedInbox);
         setInboxPath(cache.paths.inboxFolder);
         setPaths(cache.paths);
       } catch (e) {
@@ -121,9 +124,9 @@ export function usePlanningScreen({logTag}: Options) {
   }, []);
 
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.2):
-  // Inbox.txt and settings are this screen's own copies (not in the shared
-  // cache), so re-read them quietly - no spinner, and state only changes
-  // (= re-render) if the file text / settings actually differ.
+  // settings are this screen's own copy, so re-read them quietly - no
+  // spinner, and state only changes (= re-render) if they actually differ.
+  // The Inbox is the shared cache copy (refreshed when gtdpara is reopened).
   // Also re-render once if the date changed while hidden (a tab kept
   // overnight must show the new day) - same-value setState is a no-op.
   const [, setShownDay] = useState(() => todayIso());
@@ -131,11 +134,9 @@ export function usePlanningScreen({logTag}: Options) {
     setShownDay(todayIso());
     (async () => {
       try {
-        const cache = getCachedData();
-        if (!cache) return;
-        const [loadedSettings, loadedInbox] = await Promise.all([loadSettings(), loadProjectFile('inbox', cache.paths.inboxFolder)]);
+        if (!getCachedData()) return;
+        const loadedSettings = await loadSettings();
         setSettings(prev => (prev && JSON.stringify(prev) === JSON.stringify(loadedSettings) ? prev : loadedSettings));
-        setInbox(prev => (prev && prev.rawContent === loadedInbox.rawContent ? prev : loadedInbox));
       } catch (e) {
         logError(`${logTag}: quiet reload on show failed`, errorMessage(e));
       }
@@ -154,18 +155,18 @@ export function usePlanningScreen({logTag}: Options) {
     mutate: (meetings: Meeting[]) => Meeting[],
   ): Promise<void> => {
     const {nextInbox} = await mutateEntryMeetings(entry, mutate, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
   };
 
   const handleAddTask = async (text: string, destination: Destination): Promise<void> => {
     const {nextInbox} = await addTaskToDestination(buildTask(text), destination, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
     log(`${logTag}: added task`, destinationLabel(destination));
   };
 
   const handleAddMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
     const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, inboxPath});
-    if (nextInbox) setInbox(nextInbox);
+    if (nextInbox) setCachedInbox(nextInbox);
     log(`${logTag}: added meeting`, destinationLabel(destination));
   };
 

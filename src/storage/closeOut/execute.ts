@@ -13,7 +13,7 @@ import {isoDate, writeLifecycleDate} from '../../domain/lifecycleDates';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../../domain/settings';
 import {fileExists, folderExists, moveFile, moveFolder, writeTextFile} from '../../supernote/fileSystem';
 import {archiveTargetsFor} from '../archive';
-import {findCachedItem, frontMatterOf, getCachedData, removeCachedItem, resolveLivePaths, updateItemMeetings, updateItemTasks} from '../dataCache';
+import {findCachedItem, frontMatterOf, getCachedData, reloadCachedInbox, removeCachedItem, resolveLivePaths, updateItemMeetings, updateItemTasks} from '../dataCache';
 import {toLinkedFile} from '../linkedFiles';
 import {dataFilePath, loadProjectFile, saveMeetings, saveTasks} from '../projectFile';
 import {savePlan} from './planStore';
@@ -91,6 +91,7 @@ async function rewriteLinks(from: string, to: string, paths: ResolvedParaPaths):
     await saveMeetings('inbox', paths.inboxFolder, inbox.rawContent, meetings, inbox.meetingExtraLines);
     changed++;
   }
+  if (changed > 0) await reloadCachedInbox(paths.inboxFolder);
   return changed;
 }
 

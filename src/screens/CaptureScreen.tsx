@@ -70,7 +70,7 @@ import {PluginManager} from 'sn-plugin-lib';
 import {Destination, destinationLabel} from '../domain/destination';
 import {parseFlexibleTime, todayIso} from '../domain/meetingTime';
 import {findEnclosingItem} from '../domain/settings';
-import {getCachedData, rebuildCache} from '../storage/dataCache';
+import {getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {addMeetingToDestination, addTaskToDestination, buildMeeting, buildTask} from '../storage/itemMutations';
 import {resolveNotePath} from '../storage/noteLinks';
 import {loadProjectFile} from '../storage/projectFile';
@@ -245,19 +245,20 @@ export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.J
 
     try {
       // One shared write path (storage/itemMutations.ts, 2026-09-20) - the
-      // Inbox state is read fresh from disk here since this screen keeps no
-      // Inbox state of its own (nothing to hand the returned `nextInbox` to).
+      // Inbox state is read fresh from disk here; the returned `nextInbox`
+      // goes into the shared Inbox copy below.
       const inboxState = destination.type === 'inbox' ? await loadProjectFile('inbox', loaded.inboxPath) : null;
       const ctx = {inbox: inboxState, inboxPath: loaded.inboxPath};
-      if (kind === 'todo') {
-        await addTaskToDestination(buildTask(trimmedText, {notePath}), destination, ctx);
-      } else {
-        await addMeetingToDestination(
-          buildMeeting({title: trimmedText, date, time: resolvedTime}, {notePath}),
-          destination,
-          ctx,
-        );
-      }
+      const {nextInbox} =
+        kind === 'todo'
+          ? await addTaskToDestination(buildTask(trimmedText, {notePath}), destination, ctx)
+          : await addMeetingToDestination(
+              buildMeeting({title: trimmedText, date, time: resolvedTime}, {notePath}),
+              destination,
+              ctx,
+            );
+      // The shared Inbox copy (storage/dataCache.ts) - so Daily and Inbox show the capture.
+      if (nextInbox) setCachedInbox(nextInbox);
 
       // Cleanup only, never fatal to the capture itself - the Task/Meeting
       // is already saved by this point regardless of whether the native
