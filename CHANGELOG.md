@@ -11,6 +11,9 @@ or your project/area files are stored.
 ## [Unreleased]
 
 ### Changed
+- **Opening gtdpara only reads the files that changed** since it last read them, for example in
+  Obsidian or on your computer - faster, and screens no longer redraw when nothing changed.
+  **Reload all files** still reads everything.
 - The **Integrity Check** also reports a project close-out that was interrupted before the project was
   archived.
 

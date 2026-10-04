@@ -93,8 +93,8 @@ export default function AdvancedTab(p: Props): React.JSX.Element {
           </Pressable>
           {p.reloading && <ActivityIndicator style={styles.spinner} />}
           <Text style={[styles.hint, {color: textColor}]}>
-            Reads all projects, areas and the Inbox again. Use it after editing files outside gtdpara, for example on
-            your computer or in Obsidian.
+            Reads all projects, areas and the Inbox again. Opening gtdpara already reads files changed outside it (on
+            your computer, in Obsidian); use this when a change still doesn't show up.
           </Text>
         </View>
         <View style={styles.field}>

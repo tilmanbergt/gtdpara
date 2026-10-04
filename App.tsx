@@ -34,7 +34,7 @@ import {useStatus} from './src/ui/status/StatusProvider';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
 import {decideLanding} from './src/domain/returnContext';
-import {clearCachedData, rebuildCache, subscribeCache} from './src/storage/dataCache';
+import {clearCachedData, refreshCache, subscribeCache} from './src/storage/dataCache';
 import {InboxMigrationNotice, takeInboxMigrationNotice} from './src/storage/inboxMigration';
 import {clearCachedGmailInbox} from './src/storage/gmailInboxCache';
 import {setActiveProfileId} from './src/storage/profileKeys';
@@ -222,8 +222,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // now is the one this plugin itself last opened (openPath), neither jump
   // happens - the plugin resumes exactly where it was left.
   //
-  // Same spot also kicks off a background cache rebuild (design-overview.md
-  // §4's "background rescan when the plugin opens") - fire-and-forget, not
+  // Same spot also kicks off a background cache refresh (design-overview.md
+  // §2.3; since 0.6.0 only files changed on disk are read again, the first
+  // open builds the cache in full) - fire-and-forget, not
   // awaited, so a slow scan never delays landing on a tab. By the time the
   // user actually taps into something, storage/dataCache.ts is usually
   // already warm; if it isn't yet, each screen's own cache-miss fallback
@@ -325,8 +326,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         if (cancelled || routedByLassoButtonRef.current) return;
 
         setSettings(loadedSettings);
-        rebuildCache(loadedSettings).catch(e =>
-          logError('App: background cache rebuild failed', e instanceof Error ? e.message : String(e)),
+        // Only files changed outside gtdpara are read again (technical-design-files-0.6.md §3.2).
+        refreshCache(loadedSettings).catch(e =>
+          logError('App: background cache refresh failed', e instanceof Error ? e.message : String(e)),
         );
 
         // Where to land is one pure decision (domain/returnContext.ts's
