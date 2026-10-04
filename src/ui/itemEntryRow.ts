@@ -19,25 +19,46 @@ import {FONT} from './theme';
 
 export const COLUMN_WIDTH_PX = 678;
 const MAX_LINES = 2;
-// entryRow's own paddingVertical (6x2) - this row has no border, unlike
-// ui/FileBrowserPane.tsx's entry row (which reserves padding on both the
-// row wrapper and the text, hence its chrome being 20 not 12).
-const ITEM_ENTRY_CHROME_PX = 6 * 2;
 // Same FONT.medium line-height estimate ui/TaskRow.tsx's
 // TASK_ROW_LINE_HEIGHT_PX and ui/FileBrowserPane.tsx's
 // FILE_ENTRY_LINE_HEIGHT_PX already use - one shared constant across the
 // codebase for "one line of FONT.medium text," not re-derived per file.
 const ITEM_ENTRY_LINE_HEIGHT_PX = 22;
+/** Default vertical padding of an entry row (top and bottom each) - Review's lists. */
+export const ITEM_ENTRY_PADDING_PX = 6;
 
-export function itemEntryDisplayText(item: CachedItem): string {
-  return `${isFocused(item) ? '★ ' : ''}${item.name} ›`;
+/**
+ * How a list shows its entries. The Projects/Areas tabs show the
+ * abbreviation and use a bit more padding (docs/dev/technical-design-waiting-
+ * for-0.7.md P1/P2); Review's lists keep the defaults.
+ */
+export interface ItemEntryOptions {
+  /** Add `#ABBR` after the name when the item has an abbreviation. */
+  showAbbrev?: boolean;
+  /** Vertical padding (top and bottom each); defaults to ITEM_ENTRY_PADDING_PX. */
+  paddingPx?: number;
 }
 
-export function itemEntryLines(item: CachedItem, columnWidthPx: number): number {
+/** Space between the name and its `#ABBR`, as rendered by screens/ItemsList.tsx. */
+export const ABBREV_GAP = '  ';
+
+/** The abbreviation label shown after the name, or null when not shown. */
+export function itemEntryAbbrevLabel(item: CachedItem, opts: ItemEntryOptions = {}): string | null {
+  return opts.showAbbrev && item.abbrev ? `#${item.abbrev}` : null;
+}
+
+export function itemEntryDisplayText(item: CachedItem, opts: ItemEntryOptions = {}): string {
+  const abbrev = itemEntryAbbrevLabel(item, opts);
+  return `${isFocused(item) ? '★ ' : ''}${item.name}${abbrev ? ABBREV_GAP + abbrev : ''} ›`;
+}
+
+export function itemEntryLines(item: CachedItem, columnWidthPx: number, opts: ItemEntryOptions = {}): number {
   const availableWidth = Math.max(1, columnWidthPx);
-  return Math.min(MAX_LINES, activeLineEstimator.estimateLines(itemEntryDisplayText(item), availableWidth, FONT.medium));
+  return Math.min(MAX_LINES, activeLineEstimator.estimateLines(itemEntryDisplayText(item, opts), availableWidth, FONT.medium));
 }
 
-export function itemEntryHeight(item: CachedItem, columnWidthPx: number): number {
-  return ITEM_ENTRY_CHROME_PX + itemEntryLines(item, columnWidthPx) * ITEM_ENTRY_LINE_HEIGHT_PX;
+export function itemEntryHeight(item: CachedItem, columnWidthPx: number, opts: ItemEntryOptions = {}): number {
+  const padding = opts.paddingPx ?? ITEM_ENTRY_PADDING_PX;
+  // entryRow's own paddingVertical top + bottom - this row has no border.
+  return padding * 2 + itemEntryLines(item, columnWidthPx, opts) * ITEM_ENTRY_LINE_HEIGHT_PX;
 }
