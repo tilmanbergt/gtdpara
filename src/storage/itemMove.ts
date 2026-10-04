@@ -13,7 +13,8 @@
  */
 import {ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
-import {findCachedItem} from './dataCache';
+import {findCachedItem, reloadCachedInbox} from './dataCache';
+import {EntryMoveUi, moveEntryWithNote} from './entryMove';
 import {appendMeetingToTarget, appendTaskToTarget, InboxFilingTarget} from './inboxFiling';
 import {mutateEntryMeetings, mutateEntryTasks} from './itemMutations';
 import {loadProjectFile, saveMeetings, saveTasks} from './projectFile';
@@ -32,28 +33,58 @@ async function appendToInbox(paths: ResolvedParaPaths, add: {task?: Task; meetin
   const inbox = await loadProjectFile('inbox', paths.inboxFolder);
   if (add.task) await saveTasks('inbox', paths.inboxFolder, inbox.rawContent, [...inbox.tasks, add.task], inbox.taskExtraLines);
   if (add.meeting) await saveMeetings('inbox', paths.inboxFolder, inbox.rawContent, [...inbox.meetings, add.meeting], inbox.meetingExtraLines);
+  await reloadCachedInbox(paths.inboxFolder);
 }
 
-/** Moves tasks[taskIndex] of the cached item at `itemPath` to `target`. Appends first, removes second: a failure in between leaves a duplicate, never a loss. */
-export async function moveTaskTo(itemPath: string, taskIndex: number, target: MoveTarget, paths: ResolvedParaPaths): Promise<Task> {
+function targetFolder(target: MoveTarget, paths: ResolvedParaPaths): {path: string; name: string} {
+  return target.type === 'inbox' ? {path: paths.inboxFolder, name: 'Inbox'} : {path: target.path, name: target.name};
+}
+
+/**
+ * Moves tasks[taskIndex] of the cached item at `itemPath` to `target`, with
+ * its note (storage/entryMove.ts, after the user confirms). Appends first,
+ * removes second: a failure in between leaves a duplicate, never a loss.
+ * Returns the task as written to the target, or null when the user cancelled.
+ */
+export async function moveTaskTo(
+  itemPath: string,
+  taskIndex: number,
+  target: MoveTarget,
+  paths: ResolvedParaPaths,
+  ui: EntryMoveUi,
+): Promise<Task | null> {
   const item = sourceOf(itemPath);
   const task = item.tasks[taskIndex];
   if (!task) throw new Error('That todo changed on disk - Settings → Advanced → Reload all files.');
-  if (target.type === 'inbox') await appendToInbox(paths, {task});
-  else await appendTaskToTarget(target, task);
-  await mutateEntryTasks({item: {kind: item.kind, path: item.path}, taskIndex, task}, tasks => tasks.filter((_, i) => i !== taskIndex), NO_INBOX);
-  return task;
+  let written: Task | null = null;
+  await moveEntryWithNote({entry: task, entryKind: 'task', sourceFolder: item.path, target: targetFolder(target, paths)}, ui, async moved => {
+    if (target.type === 'inbox') await appendToInbox(paths, {task: moved});
+    else await appendTaskToTarget(target, moved);
+    await mutateEntryTasks({item: {kind: item.kind, path: item.path}, taskIndex, task}, tasks => tasks.filter((_, i) => i !== taskIndex), NO_INBOX);
+    written = moved;
+  });
+  return written;
 }
 
 /** Meeting counterpart of moveTaskTo. */
-export async function moveMeetingTo(itemPath: string, meetingIndex: number, target: MoveTarget, paths: ResolvedParaPaths): Promise<Meeting> {
+export async function moveMeetingTo(
+  itemPath: string,
+  meetingIndex: number,
+  target: MoveTarget,
+  paths: ResolvedParaPaths,
+  ui: EntryMoveUi,
+): Promise<Meeting | null> {
   const item = sourceOf(itemPath);
   const meeting = item.meetings[meetingIndex];
   if (!meeting) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
-  if (target.type === 'inbox') await appendToInbox(paths, {meeting});
-  else await appendMeetingToTarget(target, meeting);
-  await mutateEntryMeetings({item: {kind: item.kind, path: item.path}, meetingIndex, meeting}, ms => ms.filter((_, i) => i !== meetingIndex), NO_INBOX);
-  return meeting;
+  let written: Meeting | null = null;
+  await moveEntryWithNote({entry: meeting, entryKind: 'meeting', sourceFolder: item.path, target: targetFolder(target, paths)}, ui, async moved => {
+    if (target.type === 'inbox') await appendToInbox(paths, {meeting: moved});
+    else await appendMeetingToTarget(target, moved);
+    await mutateEntryMeetings({item: {kind: item.kind, path: item.path}, meetingIndex, meeting}, ms => ms.filter((_, i) => i !== meetingIndex), NO_INBOX);
+    written = moved;
+  });
+  return written;
 }
 
 /** Marks tasks[taskIndex] done or cancelled in place. */

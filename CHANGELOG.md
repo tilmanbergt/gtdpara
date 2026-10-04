@@ -10,6 +10,24 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- The **Integrity Check** finds notes with old file names that break links in Obsidian (`#`, `[`, `]`,
+  `^`) and offers **Fix file names**: one confirmation renames them all and updates their links.
+
+### Changed
+- **Opening gtdpara only reads the files that changed** since it last read them, for example in
+  Obsidian or on your computer - faster, and screens no longer redraw when nothing changed.
+  **Reload all files** still reads everything.
+- The **Integrity Check** also reports a project close-out that was interrupted before the project was
+  archived.
+
+### Fixed
+- **Moving a todo or meeting to another project, area or the Inbox moves its note with it** (after
+  asking) - Refile, a project tag in Quick Add, Inbox filing and the close-out checklist. Before, the
+  link pointed into the new folder where the note wasn't. A page in a shared note stays where it is
+  and the item keeps its link to that page.
+- **Reload all files** no longer throws away changes in Settings you haven't saved yet.
+
 ## [0.5.0] — 2026-10-03
 
 ### New

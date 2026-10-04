@@ -679,10 +679,9 @@ export function parseMeetingsSpan(content: string): ParsedMeetings {
   const extraLines: string[] = [];
   for (const line of lines) {
     if (line.trim().length === 0) continue;
-    // Indented lines are a recurring meeting's logged-occurrence sub-list
-    // (design-overview.md §3) - v1 doesn't create those, but a hand-written
-    // one must round-trip untouched rather than being torn from its parent
-    // meeting, so it's kept as its own extra line.
+    // Indented lines (e.g. the occurrence list under a hand-written series
+    // line - gtdpara has no recurring meetings) are kept as extra lines and
+    // written back untouched.
     if (/^\s/.test(line)) {
       extraLines.push(line);
       continue;
@@ -703,10 +702,8 @@ export function parseMeetingsSpan(content: string): ParsedMeetings {
       days: time ? 1 : days ? Number(days) : 1,
       ...deriveMeetingFields(title),
       cancelled: cancelledMark === '-',
-      recurrence: null,
       notePath,
       linkedFile,
-      occurrences: [],
     });
   }
   return {meetings, extraLines};

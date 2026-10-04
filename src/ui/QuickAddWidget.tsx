@@ -946,7 +946,7 @@ function QuickAddWidget({
    * them in the Meeting create draft (replacing whatever was in it), switches
    * to the Meeting tab, and ends the edit via the screen's own onCancelEdit
    * (highlight off, nothing saved, original untouched). Not carried over:
-   * linked file/note (they belong to the original), recurrence, and the
+   * linked file/note (they belong to the original) and the
    * #prepped/#reviewed tick tags (a copy starts un-ticked -
    * meetingDisplayTitle strips them).
    *

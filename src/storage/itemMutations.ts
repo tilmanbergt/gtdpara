@@ -73,10 +73,8 @@ export function buildMeeting(fields: MeetingInput, opts?: {notePath?: string}): 
     days: fields.time ? 1 : Math.max(1, fields.days ?? 1),
     ...deriveMeetingFields(fields.title),
     cancelled: false,
-    recurrence: null,
     notePath: opts?.notePath ?? '',
     linkedFile: '',
-    occurrences: [],
   };
 }
 
@@ -86,7 +84,7 @@ export function buildMeeting(fields: MeetingInput, opts?: {notePath?: string}): 
  * monthly-view.md §3.3). Every screen's "save meeting edit" and "quick-file
  * meeting edit" used to copy title/date/time by hand (10 copies); a new
  * meeting field now needs exactly one change, here. Everything not edited
- * (cancelled/notePath/recurrence/occurrences) is carried over from `meeting`.
+ * (cancelled/notePath) is carried over from `meeting`.
  */
 export function applyMeetingEdit(meeting: Meeting, fields: MeetingInput, linkedFile: string): Meeting {
   return {

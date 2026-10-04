@@ -18,10 +18,8 @@ export function meeting(date: string, title: string, extra: Partial<Meeting> = {
     days: 1,
     tags: [],
     cancelled: false,
-    recurrence: null,
     notePath: '',
     linkedFile: '',
-    occurrences: [],
     ...extra,
   };
 }

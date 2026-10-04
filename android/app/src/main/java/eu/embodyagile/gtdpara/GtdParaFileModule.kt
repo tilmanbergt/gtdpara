@@ -6,6 +6,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.WritableNativeArray
@@ -114,6 +115,42 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
         } catch (error: Throwable) {
             Log.e(TAG, "listFolderEntries: failed path=$folderPath", error)
             promise.reject("E_LIST", error.message, error)
+        }
+    }
+
+    /**
+     * Last-modified time and size of each path, in one bridge call - the
+     * cheap "did anything change?" check before re-reading data files when
+     * gtdpara is reopened (docs/dev/technical-design-files-0.6.md §3.1).
+     * A missing path reports exists=false, lastModified=0, size=-1; it is
+     * never an error. Only reads metadata, never content.
+     */
+    @ReactMethod
+    fun statFiles(paths: ReadableArray?, promise: Promise) {
+        PluginRuntimeGuard.trace("GtdParaFile.statFiles")
+        if (paths == null) {
+            promise.reject("E_PATH", "No paths given")
+            return
+        }
+        val startedAt = System.currentTimeMillis()
+        try {
+            val result: WritableArray = WritableNativeArray()
+            for (i in 0 until paths.size()) {
+                val path = paths.getString(i) ?: continue
+                val file = File(path)
+                val exists = file.exists()
+                val entry: WritableMap = WritableNativeMap()
+                entry.putString("path", path)
+                entry.putBoolean("exists", exists)
+                entry.putDouble("lastModified", if (exists) file.lastModified().toDouble() else 0.0)
+                entry.putDouble("size", if (exists) file.length().toDouble() else -1.0)
+                result.pushMap(entry)
+            }
+            Log.d(TAG, "statFiles: done count=${result.size()} elapsedMs=${System.currentTimeMillis() - startedAt}")
+            promise.resolve(result)
+        } catch (error: Throwable) {
+            Log.e(TAG, "statFiles: failed", error)
+            promise.reject("E_STAT", error.message, error)
         }
     }
 

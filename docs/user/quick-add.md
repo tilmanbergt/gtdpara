@@ -34,7 +34,7 @@ To empty the Inbox, open each item and either finish it, cancel it, or move it w
 Tap a todo or meeting in any list to open it in Quick Add. Change what you need, then **Save** - or **Cancel**. Only one item is edited at a time.
 
 - The trash icon removes the item from your lists. It stays in the file, marked as cancelled.
-- **Refile** moves it to another project or area; pick the target in the Files pane. With an abbreviation tag in the text, the button reads **File:** followed by that project's name and moves it directly.
+- **Refile** moves it to another project or area; pick the target in the Files pane. With an abbreviation tag in the text, the button reads **File:** followed by that project's name and moves it directly. If the item has a note, gtdpara asks first: its own note moves along into the new project's `Todos` or `Meetings` folder. A page in a shared note stays in that note, and the item keeps its link to that page.
 - **New from this** (meetings) starts a new meeting with the same title, for example the next session of a series.
 
 ## Notes and files on a todo or meeting

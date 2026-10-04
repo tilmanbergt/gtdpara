@@ -137,7 +137,7 @@ import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTra
 import {NoteCreationDefinition} from '../domain/noteTemplate';
 import {ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
-import {findCachedItem, getCachedData, rebuildCache} from '../storage/dataCache';
+import {findCachedItem, getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {
   appendMeetingToTarget,
   appendTaskToTarget,
@@ -146,11 +146,13 @@ import {
   InboxFilingTarget,
   resolveFilingPick,
 } from '../storage/inboxFiling';
+import {moveEntryWithNote} from '../storage/entryMove';
+import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
-import {loadProjectFile, ProjectFileState, saveMeetings, saveTasks} from '../storage/projectFile';
+import {loadProjectFile, saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings, saveSettings} from '../storage/settingsStorage';
 import {FolderEntry, openPath} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
@@ -172,6 +174,7 @@ import LoadErrorNotice from '../ui/LoadErrorNotice';
 import {FONT, useThemeColors} from '../ui/theme';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
+import {useCachedInbox} from '../ui/useCachedInbox';
 
 // Right column width this whole screen's Tasks/Meetings panes render in
 // (this screen's own `leftPane`/`rightPane`, the identical plain `flex:1`
@@ -227,12 +230,15 @@ export default function InboxScreen({
   // the File actions' write-through inside storage/inboxFiling.ts.
   const items = useCachedItems();
   const confirmNoteCreate = useNoteCreateConfirm('InboxScreen.noteCreateConfirm');
+  // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
+  const moveUi = useEntryMoveUi('InboxScreen');
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's calls and the Files pane's `resources` root all
   // need the full resolved path set, not just `inboxPath` - same "keep both"
   // shape screens/ProjectDataPanel.tsx's `path`/`paths` pair uses.
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
-  const [inbox, setInbox] = useState<ProjectFileState | null>(null);
+  // The shared Inbox (storage/dataCache.ts, technical-design-files-0.6.md §3.3) - setCachedInbox writes it for every screen.
+  const inbox = useCachedInbox();
   const [loading, setLoading] = useState(true);
   // Explicit e-ink refresh once the initial load or a manual refresh
   // actually lands - see src/utils/screenRefresh.ts.
@@ -287,7 +293,7 @@ export default function InboxScreen({
       }
       setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
-      setInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
+      setCachedInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
     } catch (e) {
       const message = errorMessage(e);
       logError('InboxScreen: load failed', message);
@@ -314,7 +320,7 @@ export default function InboxScreen({
     if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
     const nextTasks = mutate(inbox.tasks.slice());
     const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-    setInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+    setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
   };
 
   /** Meeting counterpart of saveInboxTasks above. */
@@ -322,7 +328,7 @@ export default function InboxScreen({
     if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
     const nextMeetings = mutate(inbox.meetings.slice());
     const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-    setInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+    setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
   };
 
   const toggleHideDone = () => {
@@ -454,8 +460,9 @@ export default function InboxScreen({
   const handleFileTask = (taskIndex: number, target: InboxFilingTarget) => {
     runTaskAction(async () => {
       if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-      const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
-      setInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
+      const result = await fileInboxTask(inbox, inboxPath, taskIndex, target, moveUi);
+      if (!result) return; // cancelled in the note confirm
+      setCachedInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
       log('InboxScreen: filed task', taskIndex, '->', target.path);
     });
   };
@@ -534,8 +541,8 @@ export default function InboxScreen({
    * and re-read the stale stored task/meeting here via fileInboxTask/
    * fileInboxMeeting, which is also why the tag never actually disappeared).
    * Builds the updated object the same way commitTaskEdit/commitMeetingEdit
-   * do (spread the stored item first so done/cancelled/notePath/recurrence/
-   * occurrences survive, then overlay the edited fields), appends that to
+   * do (spread the stored item first so done/cancelled/notePath
+   * survive, then overlay the edited fields), appends that to
    * the target directly via appendTaskToTarget/appendMeetingToTarget (not
    * fileInboxTask/fileInboxMeeting - those re-read inbox.tasks[index]
    * themselves, exactly the stale copy this is avoiding), then removes the
@@ -558,14 +565,20 @@ export default function InboxScreen({
       const stored = inbox.tasks[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      await appendTaskToTarget(target, updated);
-      await saveInboxTasks(tasks => tasks.filter((_, i) => i !== index));
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: inboxPath, target}, moveUi, async entry => {
+        await appendTaskToTarget(target, entry);
+        await saveInboxTasks(tasks => tasks.filter((_, i) => i !== index));
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      await appendMeetingToTarget(target, updated);
-      await saveInboxMeetings(meetings => meetings.filter((_, i) => i !== index));
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: inboxPath, target}, moveUi, async entry => {
+        await appendMeetingToTarget(target, entry);
+        await saveInboxMeetings(meetings => meetings.filter((_, i) => i !== index));
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
     }
@@ -610,8 +623,9 @@ export default function InboxScreen({
   const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
     runMeetingAction(async () => {
       if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-      const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
-      setInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
+      const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target, moveUi);
+      if (!result) return; // cancelled in the note confirm
+      setCachedInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
       log('InboxScreen: filed meeting', meetingIndex, '->', target.path);
     });
   };

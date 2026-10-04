@@ -16,7 +16,7 @@ Notes that gtdpara creates for todos and meetings go into `Todos` and `Meetings`
 
 ## File names
 
-The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Project and area names can't contain these characters at all. Files you named yourself are left as they are.
+The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Project and area names can't contain these characters at all. Files you named yourself are left as they are. Notes created by older versions of gtdpara can still have such names: **Run Integrity Check** in Settings → Advanced lists them, and **Fix file names** renames them all at once and updates their links (see [Settings](settings.md)).
 
 ## The Inbox folder
 
@@ -64,7 +64,7 @@ Turn the back garden into a vegetable garden before winter.
 
 ## Editing by hand
 
-You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Afterwards, tap **Reload all files** in Settings → Advanced so gtdpara reads them again. Keep the section headings (`## Tasks`, `## Meetings`) as they are.
+You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`) as they are.
 
 ## What gtdpara keeps elsewhere
 

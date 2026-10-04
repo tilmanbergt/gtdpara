@@ -10,11 +10,9 @@
  * Kept current the two ways the design doc calls for:
  *
  * 1. A full rebuild (rebuildCache) - rereads every project.txt/area.txt
- *    from scratch. Triggered automatically in the background when the
- *    plugin opens or is brought back to the foreground (App.tsx), and on
- *    demand via a manual "🔄 Rebuild cache" action (Home). This is what
- *    picks up a change made outside the plugin (Obsidian, a synced edit),
- *    or a folder added/renamed/removed since the last build.
+ *    from scratch. On demand via Settings → Advanced → "Reload all files",
+ *    after a Settings save, and whenever refreshCache (4. below) can't work
+ *    incrementally (first open, folders changed).
  * 2. Write-through (updateItemTasks/updateItemMeetings) - every
  *    plugin-initiated save (adding/toggling/cancelling a task or meeting,
  *    linking a note) updates its item's cache entry in the very same
@@ -33,6 +31,14 @@
  *    fresh array identity per change, so no screen has to remember a manual
  *    refresh step.
  *
+ * 4. Incremental refresh (refreshCache, 0.6.0, docs/dev/technical-design-
+ *    files-0.6.md §3.2) - what App.tsx runs on every open now: lists the
+ *    Project/Area folders, stats every data file plus Inbox.txt in one
+ *    native call, and re-reads only files whose stamp (exists, modified
+ *    time, size) differs from the one recorded when they were read. Notifies
+ *    only when something really changed. "Reload all files" stays a full
+ *    rebuild.
+ *
  * Still fully disposable: rebuildCache always reproduces the cache
  * correctly from the files, which remain the only real data - this is a
  * responsiveness layer on top, never a second source of truth. A single
@@ -47,11 +53,11 @@ import {ExistingAbbrev, generateDefaultAbbrev} from '../domain/abbrev';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths, withInboxFolder} from '../domain/settings';
 import {FrontMatterFields} from '../domain/markdown';
 import {ItemStatus, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
-import {listFolderEntries} from '../supernote/fileSystem';
+import {FileStat, listFolderEntries, statFiles} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {perfEnd, perfMark, perfStart} from '../utils/perf';
-import {loadProjectFile, saveFrontMatter} from './projectFile';
+import {dataFilePath, loadProjectFile, ProjectFileState, saveFrontMatter} from './projectFile';
 import {effectiveInboxFolderFor, hiddenAreaFolderFor, migrateInboxIfNeeded} from './inboxMigration';
 
 export interface CachedItem {
@@ -96,6 +102,38 @@ export interface DataCache {
 let cached: DataCache | null = null;
 /** De-dupes concurrent rebuilds - see rebuildCache's own doc comment. */
 let rebuildInFlight: Promise<DataCache> | null = null;
+/** De-dupes concurrent refreshes - see refreshCache. */
+let refreshInFlight: Promise<DataCache> | null = null;
+
+/** A data file's state when it was last read into the cache (technical-design-files-0.6.md §3.2). Compared for equality, not "newer than". */
+export interface FileStamp {
+  exists: boolean;
+  lastModified: number;
+  size: number;
+}
+
+/** Data file path (project.txt/area.txt/Inbox.txt) -> its stamp at the last read. Refilled by every rebuild; a file without a stamp counts as changed. */
+const fileStamps = new Map<string, FileStamp>();
+
+function stampOf(stat: FileStat): FileStamp {
+  return {exists: stat.exists, lastModified: stat.lastModified, size: stat.size};
+}
+
+function sameStamp(a: FileStamp | undefined, b: FileStamp | undefined): boolean {
+  return !!a && !!b && a.exists === b.exists && a.lastModified === b.lastModified && a.size === b.size;
+}
+
+/** Stats `paths` in one native call. Null when the native build has no statFiles or the call fails - callers then fall back to reading everything. */
+async function statStamps(paths: string[]): Promise<Map<string, FileStamp> | null> {
+  try {
+    const stats = await statFiles(paths);
+    if (!stats) return null;
+    return new Map(stats.map(stat => [stat.path, stampOf(stat)]));
+  } catch (e) {
+    logError('dataCache: statFiles failed', e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
 
 /** Bumped by every mutation below - see the module doc comment's change-notification note. */
 let cacheVersion = 0;
@@ -127,7 +165,57 @@ export function getCachedData(): DataCache | null {
 
 export function clearCachedData(): void {
   cached = null;
+  fileStamps.clear();
+  setCachedInbox(null);
   notifyCacheChanged();
+}
+
+// ---- The Inbox (docs/dev/technical-design-files-0.6.md §3.3) ----
+// Inbox.txt lives outside `items` (it is no Project/Area), but every screen
+// shares this one copy: a screen's `setInbox(...)` writes here, and every
+// screen showing the Inbox re-renders from it (ui/useCachedInbox.ts). Its own
+// listener set, so an Inbox change doesn't re-render item-only screens.
+let cachedInbox: ProjectFileState | null = null;
+let inboxVersion = 0;
+const inboxListeners = new Set<() => void>();
+
+export function getCachedInbox(): ProjectFileState | null {
+  return cachedInbox;
+}
+
+export function getInboxVersion(): number {
+  return inboxVersion;
+}
+
+export function subscribeInbox(listener: () => void): () => void {
+  inboxListeners.add(listener);
+  return () => {
+    inboxListeners.delete(listener);
+  };
+}
+
+/**
+ * Replaces the shared Inbox state - same call shape as a React state setter
+ * (a value or an updater), so screens use it as their `setInbox`. Notifies
+ * only when the state object actually changes.
+ */
+export function setCachedInbox(
+  next: ProjectFileState | null | ((prev: ProjectFileState | null) => ProjectFileState | null),
+): void {
+  const value = typeof next === 'function' ? next(cachedInbox) : next;
+  if (value === cachedInbox) return;
+  cachedInbox = value;
+  inboxVersion += 1;
+  Array.from(inboxListeners).forEach(listener => listener());
+}
+
+/** Re-reads Inbox.txt into the shared Inbox state - for storage code that wrote the file itself (copy from Google, capture, close-out). Never throws: a failed read is logged and the old state kept. */
+export async function reloadCachedInbox(inboxFolder: string): Promise<void> {
+  try {
+    setCachedInbox(await loadProjectFile('inbox', inboxFolder));
+  } catch (e) {
+    logError('dataCache: Inbox reload failed', e instanceof Error ? e.message : String(e));
+  }
 }
 
 export function findCachedItem(path: string): CachedItem | undefined {
@@ -304,7 +392,9 @@ export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
     return rebuildInFlight;
   }
   const perfToken = perfStart();
-  rebuildInFlight = doRebuildCache(settings).finally(() => {
+  // A refresh still running finishes first, so the two never write the cache at the same time.
+  const pending = refreshInFlight ? refreshInFlight.catch(() => undefined) : Promise.resolve();
+  rebuildInFlight = pending.then(() => doRebuildCache(settings)).finally(() => {
     rebuildInFlight = null;
     perfEnd('cache:rebuild', perfToken);
   });
@@ -324,6 +414,27 @@ export async function resolveLivePaths(settings: GtdParaSettings): Promise<Resol
     return withInboxFolder(configured, fromCache.inboxFolder === fromCache.base ? configured.base : configured.inboxFolder);
   }
   return withInboxFolder(configured, await effectiveInboxFolderFor(configured));
+}
+
+interface FolderItem {
+  kind: 'project' | 'area';
+  name: string;
+  path: string;
+}
+
+/** Lists the Projects and Areas folders (2 calls) - the item folders the cache holds. */
+async function scanItemFolders(paths: ResolvedParaPaths, hiddenAreaFolder: string | null): Promise<FolderItem[]> {
+  const [projectEntries, areaEntries] = await Promise.all([
+    withTimeout(listFolderEntries(paths.projects), SCAN_TIMEOUT_MS, `scanning projects (${paths.projects})`),
+    withTimeout(listFolderEntries(paths.areas), SCAN_TIMEOUT_MS, `scanning areas (${paths.areas})`),
+  ]);
+  return [
+    ...projectEntries.filter(e => e.isFolder).map(e => ({kind: 'project' as const, name: e.name, path: e.path})),
+    ...areaEntries
+      // The Inbox folder lives under Areas but is never an Area (§3.2).
+      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== hiddenAreaFolder)
+      .map(e => ({kind: 'area' as const, name: e.name, path: e.path})),
+  ];
 }
 
 async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
@@ -348,23 +459,19 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
     return configuredPaths.inboxFolder;
   });
   const paths = withInboxFolder(configuredPaths, inboxFolder);
-  const hiddenAreaFolder = hiddenAreaFolderFor(configuredPaths);
+  const folderItems = await scanItemFolders(paths, hiddenAreaFolderFor(configuredPaths));
 
-  const [projectEntries, areaEntries] = await Promise.all([
-    withTimeout(listFolderEntries(paths.projects), SCAN_TIMEOUT_MS, `scanning projects (${paths.projects})`),
-    withTimeout(listFolderEntries(paths.areas), SCAN_TIMEOUT_MS, `scanning areas (${paths.areas})`),
-  ]);
-
-  const folderItems: Array<{kind: 'project' | 'area'; name: string; path: string}> = [
-    ...projectEntries.filter(e => e.isFolder).map(e => ({kind: 'project' as const, name: e.name, path: e.path})),
-    ...areaEntries
-      // The Inbox folder lives under Areas but is never an Area (§3.2).
-      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== hiddenAreaFolder)
-      .map(e => ({kind: 'area' as const, name: e.name, path: e.path})),
-  ];
+  // Stamps first, then the reads: a file changed in between just gets read
+  // again on the next refresh (technical-design-files-0.6.md §3.2).
+  const stamps = await statStamps([...folderItems.map(f => dataFilePath(f.kind, f.path)), paths.inbox]);
+  fileStamps.clear();
+  stamps?.forEach((stamp, filePath) => fileStamps.set(filePath, stamp));
 
   const perfItems = perfStart();
-  const items = await Promise.all(folderItems.map(({kind, name, path}) => loadOneItem(kind, name, path)));
+  const [items] = await Promise.all([
+    Promise.all(folderItems.map(({kind, name, path}) => loadOneItem(kind, name, path))),
+    reloadCachedInbox(paths.inboxFolder),
+  ]);
   perfEnd('cache:loadItems', perfItems, {items: items.length});
 
   const next: DataCache = {scannedAt: Date.now(), paths, items};
@@ -376,6 +483,134 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   // abbrev.
   await migrateMissingAbbrevs(items);
   log('rebuildCache: done', `${items.length} items`);
+  return next;
+}
+
+/**
+ * Incremental refresh (docs/dev/technical-design-files-0.6.md §3.2) - what
+ * App.tsx runs on every plugin open. Re-reads only the data files that
+ * changed on disk since they were read (Obsidian, sync, a file copied in),
+ * picks up added and removed Project/Area folders, and the Inbox. Falls back
+ * to a full rebuild when there is no cache yet, the folders in Settings
+ * differ from the cached ones (or the Inbox still sits at its old place), or
+ * the native build can't stat files.
+ *
+ * Subscribers are notified only when something really changed: a file whose
+ * stamp differs but whose text is the same (gtdpara's own saves don't update
+ * the stamp) is re-read once and then kept as it was.
+ *
+ * De-duped like rebuildCache; joins a rebuild already running.
+ */
+export function refreshCache(settings: GtdParaSettings): Promise<DataCache> {
+  if (rebuildInFlight) return rebuildInFlight;
+  if (refreshInFlight) {
+    perfMark('cache:refreshJoined');
+    return refreshInFlight;
+  }
+  const perfToken = perfStart();
+  refreshInFlight = doRefreshCache(settings).finally(() => {
+    refreshInFlight = null;
+    perfEnd('cache:refresh', perfToken);
+  });
+  return refreshInFlight;
+}
+
+function samePaths(cachedPaths: ResolvedParaPaths, configured: ResolvedParaPaths): boolean {
+  return (
+    cachedPaths.base === configured.base &&
+    cachedPaths.projects === configured.projects &&
+    cachedPaths.areas === configured.areas &&
+    // Differs while an old root Inbox hasn't moved yet: the full rebuild retries the move.
+    cachedPaths.inboxFolder === configured.inboxFolder
+  );
+}
+
+async function doRefreshCache(settings: GtdParaSettings): Promise<DataCache> {
+  const current = cached;
+  const configuredPaths = resolvePaths(settings);
+  if (!current || !samePaths(current.paths, configuredPaths)) {
+    log('refreshCache: full rebuild', current ? 'folders changed' : 'no cache yet');
+    return doRebuildCache(settings);
+  }
+  if (!(await ensureFileReadPermission())) {
+    throw new Error('File read permission was not granted.');
+  }
+  const paths = current.paths;
+  const folderItems = await scanItemFolders(paths, hiddenAreaFolderFor(configuredPaths));
+  const dataFiles = folderItems.map(f => dataFilePath(f.kind, f.path));
+  const stamps = await statStamps([...dataFiles, paths.inbox]);
+  if (!stamps) {
+    log('refreshCache: full rebuild', 'files cannot be checked');
+    return doRebuildCache(settings);
+  }
+
+  const oldByPath = new Map(current.items.map(item => [item.path, item]));
+  const toRead = folderItems
+    .map((folder, i) => ({folder, dataFile: dataFiles[i], old: oldByPath.get(folder.path)}))
+    .filter(
+      ({folder, dataFile, old}) =>
+        !old || old.kind !== folder.kind || !!old.loadError || !sameStamp(fileStamps.get(dataFile), stamps.get(dataFile)),
+    );
+  const inboxStampChanged = !sameStamp(fileStamps.get(paths.inbox), stamps.get(paths.inbox));
+
+  const perfItems = perfStart();
+  const [readItems, readInbox] = await Promise.all([
+    Promise.all(toRead.map(({folder}) => loadOneItem(folder.kind, folder.name, folder.path))),
+    inboxStampChanged
+      ? loadProjectFile('inbox', paths.inboxFolder).catch(e => {
+          logError('refreshCache: Inbox read failed', e instanceof Error ? e.message : String(e));
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
+  perfEnd('cache:refreshItems', perfItems, {items: readItems.length});
+
+  if (cached !== current) {
+    // Replaced meanwhile (Settings saved, Reload all files) - that one wins.
+    log('refreshCache: cache replaced meanwhile, result dropped');
+    return cached ?? current;
+  }
+
+  // Keep the old object when the text is the same (our own save, a touch):
+  // nothing to re-render, only the stamp moves on.
+  const replacement = new Map<string, CachedItem>();
+  let changed = 0;
+  let added = 0;
+  toRead.forEach(({dataFile, old}, i) => {
+    const item = readItems[i];
+    if (!item.loadError) {
+      const stamp = stamps.get(dataFile);
+      if (stamp) fileStamps.set(dataFile, stamp);
+    }
+    if (!old) added += 1;
+    else if (old.kind === item.kind && !old.loadError && !item.loadError && old.rawContent === item.rawContent) return;
+    else changed += 1;
+    replacement.set(item.path, item);
+  });
+  const nextItems = folderItems.map(folder => replacement.get(folder.path) ?? (oldByPath.get(folder.path) as CachedItem));
+  const kept = new Set(folderItems.map(f => f.path));
+  const removed = current.items.filter(item => !kept.has(item.path)).length;
+
+  let inboxChanged = false;
+  if (readInbox) {
+    const inboxStamp = stamps.get(paths.inbox);
+    if (inboxStamp) fileStamps.set(paths.inbox, inboxStamp);
+    if (readInbox.rawContent !== getCachedInbox()?.rawContent) {
+      setCachedInbox(readInbox);
+      inboxChanged = true;
+    }
+  }
+
+  log('refreshCache:', `${changed} changed, ${added} added, ${removed} removed, inbox ${inboxChanged ? 'changed' : 'unchanged'}`, `(${toRead.length} read)`);
+  perfMark('cache:refreshed', {changed, added, removed, inbox: inboxChanged ? 1 : 0});
+  if (changed === 0 && added === 0 && removed === 0) return current;
+
+  const next: DataCache = {scannedAt: Date.now(), paths, items: nextItems};
+  cached = next;
+  notifyCacheChanged();
+  for (const item of replacement.values()) {
+    if (!item.loadError && item.abbrev === null) await assignDefaultAbbrevIfMissing(item);
+  }
   return next;
 }
 

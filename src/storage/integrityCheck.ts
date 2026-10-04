@@ -38,19 +38,107 @@ import {
   runWholeRunChecks,
   ScannedItemSummary,
 } from '../domain/integrityCheck';
+import {FileFix, NoteRef, planFileNameFixes, unsafeFolderNames} from '../domain/fileNameFix';
+import {invalidFileNameChars} from '../domain/fileName';
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
-import {AREA_FILE_NAME, GtdParaKind, PROJECT_FILE_NAME} from '../domain/types';
+import {AREA_FILE_NAME, GtdParaKind, Meeting, PROJECT_FILE_NAME, Task} from '../domain/types';
 import {fileExists, folderExists, listFolderEntries, writeIntegrityCheckReport} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {resolveLivePaths} from './dataCache';
 import {hiddenAreaFolderFor} from './inboxMigration';
+import {classifyNotePath} from './noteLinks';
 import {loadProjectFile} from './projectFile';
 
 export interface IntegrityCheckSummary {
   itemsScanned: number;
   findings: IntegrityFinding[];
   reportFileName: string;
+  /** Note files with names unsafe for Obsidian that "Fix file names" can rename (docs/dev/technical-design-files-0.6.md §3.5). */
+  fileNameFixes: FileFix[];
+}
+
+interface LoadedEntries {
+  target: ScanTarget;
+  tasks: Task[];
+  meetings: Meeting[];
+}
+
+/** The last path segment of a notePath (an anchor's keyword included - it is only a cheap pre-filter). */
+function lastSegment(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1);
+}
+
+/**
+ * Every note link whose file name may be unsafe, resolved against the disk
+ * (own note or shared page; missing files are left to the other checks).
+ */
+async function collectUnsafeNoteRefs(loaded: LoadedEntries[]): Promise<NoteRef[]> {
+  const refs: NoteRef[] = [];
+  for (const {target, tasks, meetings} of loaded) {
+    const entries: Array<{entityKind: 'task' | 'meeting'; notePath: string; label: string}> = [
+      ...tasks.map(t => ({entityKind: 'task' as const, notePath: t.notePath, label: t.text})),
+      ...meetings.map(m => ({entityKind: 'meeting' as const, notePath: m.notePath, label: `${m.date} ${m.title}`})),
+    ];
+    for (const entry of entries) {
+      if (!entry.notePath || invalidFileNameChars(lastSegment(entry.notePath)).length === 0) continue;
+      const note = await classifyNotePath(target.path, entry.notePath);
+      if (note.kind === 'none' || !note.exists) continue;
+      refs.push({
+        itemKind: target.kind,
+        itemPath: target.path,
+        inArchive: target.inArchive,
+        entityKind: entry.entityKind,
+        entityLabel: entry.label,
+        notePath: entry.notePath,
+        file: note.absolutePath,
+        keyword: note.kind === 'shared' ? note.anchor.keyword : null,
+      });
+    }
+  }
+  return refs;
+}
+
+/** Findings for unsafe note file and folder names (checkId `unsafeFileName`). */
+function fileNameFindings(
+  fixes: FileFix[],
+  reportOnly: ReturnType<typeof planFileNameFixes>['reportOnly'],
+  folders: ReturnType<typeof unsafeFolderNames>,
+): IntegrityFinding[] {
+  const chars = (list: string[]) => list.map(c => `"${c}"`).join(', ');
+  return [
+    ...fixes.flatMap(fix =>
+      fix.refs.map(({ref}) => ({
+        checkId: 'unsafeFileName',
+        itemKind: ref.itemKind,
+        itemPath: ref.itemPath,
+        entityKind: ref.entityKind,
+        entityLabel: ref.entityLabel,
+        notePath: ref.notePath,
+        message: `The note "${fix.oldName}" has ${chars(fix.chars)} in its name, which breaks links in Obsidian. "Fix file names" in Settings → Advanced renames it to "${fix.newStem}${fix.ext}" and updates this link.`,
+      })),
+    ),
+    ...reportOnly.flatMap(item =>
+      item.refs.map(ref => ({
+        checkId: 'unsafeFileName',
+        itemKind: ref.itemKind,
+        itemPath: ref.itemPath,
+        entityKind: ref.entityKind,
+        entityLabel: ref.entityLabel,
+        notePath: ref.notePath,
+        message: `The note "${lastSegment(item.file)}" has ${chars(item.chars)} in its name, which breaks links in Obsidian. Not renamed: ${item.reason}.`,
+      })),
+    ),
+    ...folders.map(folder => ({
+      checkId: 'unsafeFileName',
+      itemKind: folder.itemKind,
+      itemPath: folder.itemPath,
+      entityKind: 'item' as const,
+      entityLabel: folder.name,
+      notePath: '',
+      message: `The folder name "${folder.name}" has ${chars(folder.chars)} in it, which breaks links in Obsidian. gtdpara doesn't rename project or area folders (their name is how other items refer to them) - rename it by hand if needed.`,
+    })),
+  ];
 }
 
 interface ScanTarget {
@@ -115,7 +203,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
   targets.push({kind: 'inbox', path: paths.inboxFolder, name: 'Inbox', inArchive: false});
 
   const perTargetResults = await Promise.all(
-    targets.map(async (target): Promise<{findings: IntegrityFinding[]; summary: ScannedItemSummary | null}> => {
+    targets.map(async (target): Promise<{findings: IntegrityFinding[]; summary: ScannedItemSummary | null; loaded: LoadedEntries | null}> => {
       try {
         const file = await loadProjectFile(target.kind, target.path);
         const findings = await runRegisteredChecks(
@@ -139,7 +227,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
           area: file.area,
           abbrev: file.abbrev,
         };
-        return {findings, summary};
+        return {findings, summary, loaded: {target, tasks: file.tasks, meetings: file.meetings}};
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         logError('runIntegrityCheck: item load failed', target.path, message);
@@ -159,6 +247,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
           // has no area/abbrev worth comparing against everything else, and
           // its loadError finding above already surfaces the real problem.
           summary: null,
+          loaded: null,
         };
       }
     }),
@@ -174,11 +263,17 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
     paths.base,
     configuredPaths.inboxFolder,
   );
-  const findings = [...perItemFindings, ...wholeRunFindings, ...leftoverFindings];
+  // Unsafe file names (docs/dev/technical-design-files-0.6.md §3.5).
+  const loaded = perTargetResults.map(result => result.loaded).filter((l): l is LoadedEntries => l !== null);
+  const {fixes, reportOnly} = planFileNameFixes(await collectUnsafeNoteRefs(loaded));
+  const folders = unsafeFolderNames(
+    loaded.filter(l => !l.target.inArchive).map(l => ({itemKind: l.target.kind, itemPath: l.target.path, name: l.target.name})),
+  );
+  const findings = [...perItemFindings, ...wholeRunFindings, ...leftoverFindings, ...fileNameFindings(fixes, reportOnly, folders)];
 
   const report = formatIntegrityReport(findings, targets.length, new Date());
   const reportFileName = await writeIntegrityCheckReport(report);
 
   log('runIntegrityCheck: done', `${targets.length} items scanned`, `${findings.length} findings`);
-  return {itemsScanned: targets.length, findings, reportFileName};
+  return {itemsScanned: targets.length, findings, reportFileName, fileNameFixes: fixes};
 }

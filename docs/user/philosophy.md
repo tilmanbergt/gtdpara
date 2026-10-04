@@ -4,7 +4,7 @@ gtdpara is built around a few convictions. They explain why some things are ther
 
 ## Your files, no lock-in
 
-Every project and area is a folder, and its todos and meetings live in one small text file inside it (`project.txt` or `area.txt`). You can open these files in any text editor, change them by hand, back them up or move them to another tool. The plugin keeps no hidden database that your data depends on. If you stop using gtdpara, your folders, notes and lists are still there and still readable.
+Every project and area is a folder, and its todos and meetings live in one small text file inside it (`project.txt` or `area.txt`). You can open these files in any text editor, change them by hand, back them up or move them to another tool. The plugin keeps no hidden database that your data depends on. If you stop using gtdpara, your folders, notes and lists are still there and still readable. Editing them elsewhere, for example in Obsidian, is expected: gtdpara reads them again when you reopen it.
 
 ## Calm and made for e-ink
 

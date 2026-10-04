@@ -41,6 +41,7 @@ import {CloseOutPdfJob, startCloseOutPdf} from '../storage/closeOut/pdf';
 import {loadPlan, savePlan} from '../storage/closeOut/planStore';
 import {findCachedItem} from '../storage/dataCache';
 import {cancelMeeting, closeTask, moveMeetingTo, moveTaskTo, MoveTarget} from '../storage/itemMove';
+import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {PdfExportCancelled} from '../storage/pdfExport';
 import {loadSettings} from '../storage/settingsStorage';
 import {setDoneDate} from '../storage/statusControl';
@@ -189,6 +190,8 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
   );
 
   // ---- step 1: checklist actions ----
+  // A todo/meeting with a note: confirm, and the note moves along (technical-design-files-0.6.md §3.4).
+  const moveUi = useEntryMoveUi('closeOut');
   const moveTarget = useCallback(
     (to: 'area' | 'inbox'): MoveTarget => {
       if (to === 'inbox' || !ctx?.item.area) return {type: 'inbox'};
@@ -203,14 +206,16 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       moveTodo: (index, to) =>
         run(async () => {
           if (!ctx) return;
-          const task = await moveTaskTo(projectPath, index, moveTarget(to), ctx.paths);
+          const task = await moveTaskTo(projectPath, index, moveTarget(to), ctx.paths, moveUi);
+          if (!task) return; // cancelled in the note confirm
           await updatePlan(p => withMovedItem(p, {kind: 'todo', label: task.text, to: to === 'area' && ctx.item.area ? `area:${ctx.item.area}` : 'inbox'}));
         }),
       cancelMeeting: index => run(() => cancelMeeting(projectPath, index)),
       moveMeeting: (index, to) =>
         run(async () => {
           if (!ctx) return;
-          const meeting = await moveMeetingTo(projectPath, index, moveTarget(to), ctx.paths);
+          const meeting = await moveMeetingTo(projectPath, index, moveTarget(to), ctx.paths, moveUi);
+          if (!meeting) return; // cancelled in the note confirm
           await updatePlan(p => withMovedItem(p, {kind: 'meeting', label: `${meeting.date} ${meeting.title}`, to: to === 'area' && ctx.item.area ? `area:${ctx.item.area}` : 'inbox'}));
         }),
       setArea: areaName =>
@@ -222,7 +227,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
         }),
       setDoneAt: date => run(() => setDoneDate(projectPath, date)),
     }),
-    [ctx, moveTarget, projectPath, run, updatePlan],
+    [ctx, moveTarget, moveUi, projectPath, run, updatePlan],
   );
 
   // ---- steps 2-3 ----

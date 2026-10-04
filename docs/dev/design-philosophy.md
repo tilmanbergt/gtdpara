@@ -108,7 +108,24 @@ and pre-filled context (title, date, related items, a link back to where it came
 note is already whole rather than a fragment whose context you'd have to reconstruct later.
 Closing out a project carries the same idea to its end: one consolidated, readable record.
 
-## 7. Embodied interaction
+## 7. The files are the interface
+
+Everything gtdpara knows lives in plain files in your own folders, and those files are a real
+interface, not an internal format. They are read and edited elsewhere - on the computer, or in
+Obsidian through a folder sync - and that is a normal case, not an exception:
+
+- Lines gtdpara doesn't understand are kept exactly as they are.
+- The files are the truth; gtdpara's cache only remembers what it read and checks the files again
+  when it is reopened.
+- File names gtdpara creates avoid characters that break links elsewhere (`#`, `[`, `]`, `^`,
+  and the ones file systems forbid).
+- The folder layout stays readable without gtdpara: one folder per project or area, its data file
+  and its notes next to it.
+
+When gtdpara changes a file on its own - moving a note with its todo, renaming an old file name -
+it says so first.
+
+## 8. Embodied interaction
 
 Quality of engagement matters as much as absence of clutter. The pen is the Supernote's own
 gesture: handwriting lives in real notes, and the lasso turns handwriting into a todo or meeting.
@@ -116,7 +133,7 @@ Elsewhere the app uses taps, and tapping a checkbox and striking through a line 
 the same but experientially nothing alike - a reason to prefer real notes and pen-based flows
 wherever the platform allows them.
 
-## 8. One page, one intention
+## 9. One page, one intention
 
 The design-audit discipline: for every screen, and every distinct element on it, name the single
 intention it serves. If a second, unrelated intention has crept onto the same surface, that's the

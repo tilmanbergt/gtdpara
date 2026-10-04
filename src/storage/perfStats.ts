@@ -22,12 +22,10 @@ export function collectPerfStats(): unknown {
   const tasks = {total: 0, open: 0, done: 0, cancelled: 0, overdue: 0, dueToday: 0, withNote: 0, withLinkedFile: 0};
   const meetings = {
     total: 0,
-    recurring: 0,
     past: 0,
     today: 0,
     future: 0,
     cancelled: 0,
-    occurrences: 0,
     withNote: 0,
     withLinkedFile: 0,
   };
@@ -61,12 +59,10 @@ export function collectPerfStats(): unknown {
 
     for (const meeting of item.meetings) {
       meetings.total += 1;
-      meetings.occurrences += meeting.occurrences.length;
       if (meeting.notePath) meetings.withNote += 1;
       if (meeting.linkedFile) meetings.withLinkedFile += 1;
       if (meeting.cancelled) meetings.cancelled += 1;
-      if (meeting.recurrence) meetings.recurring += 1;
-      else if (meeting.date < today) meetings.past += 1;
+      if (meeting.date < today) meetings.past += 1;
       else if (meeting.date === today) meetings.today += 1;
       else meetings.future += 1;
     }

@@ -245,6 +245,15 @@ export function archiveStarted(plan: CloseOutPlan): boolean {
   return plan.journal.length > 0;
 }
 
+/**
+ * An archive run that started but never reached its last op (`stamp`) - the
+ * project may be half moved (Integrity Check "closeOutInterrupted",
+ * docs/dev/technical-design-files-0.6.md §3.6). Opening its close-out resumes it.
+ */
+export function closeOutInterrupted(plan: CloseOutPlan): boolean {
+  return archiveStarted(plan) && !isJournalDone(plan, 'stamp');
+}
+
 const STEP_NUMBER: Record<CloseOutStep, number> = {checklist: 1, contents: 2, outcomes: 3, pdf: 4, archive: 5};
 
 /** One-line close-out status for lists (Review's Done step): "not started", "step 3 of 5 · Outcomes", "archive interrupted - resume". */

@@ -31,7 +31,7 @@ Want to look around first without touching your own files? Go to **Settings → 
 - **Review**: the Weekly Review, one step at a time
 - **Settings**: folders, focus counts, Tag Rules, advanced options, About
 
-**?** opens this help, starting at the page for the tab you are on. **✕ Close** in the help closes it again; the tab behind it stays exactly as it was. ✕ closes the plugin. To read all files again after you changed them outside gtdpara, use **Reload all files** in Settings → Advanced.
+**?** opens this help, starting at the page for the tab you are on. **✕ Close** in the help closes it again; the tab behind it stays exactly as it was. ✕ closes the plugin. When you open gtdpara, it reads the files you changed outside it again. To read all files again, use **Reload all files** in Settings → Advanced.
 
 ## Opening gtdpara from a note
 
