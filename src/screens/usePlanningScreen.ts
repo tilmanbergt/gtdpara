@@ -24,6 +24,8 @@ import {Meeting} from '../domain/types';
 import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {FocusScope, toggleItemFocus} from '../storage/focusSlots';
 import {appendMeetingToTarget} from '../storage/inboxFiling';
+import {moveEntryWithNote} from '../storage/entryMove';
+import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {
   addMeetingToDestination,
   addTaskToDestination,
@@ -68,6 +70,8 @@ export function usePlanningScreen({logTag}: Options) {
   // so nothing here needs a manual "refresh after save" step.
   const items = useCachedItems();
   const confirmNoteCreate = useNoteCreateConfirm(`${logTag}.noteCreateConfirm`);
+  // Moving a meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
+  const moveUi = useEntryMoveUi(logTag);
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
@@ -211,9 +215,11 @@ export function usePlanningScreen({logTag}: Options) {
   ): Promise<void> => {
     if (payload.kind !== 'meeting') return;
     const updated = applyMeetingEdit(entry.meeting, payload.fields, payload.linkedFile);
-    await appendMeetingToTarget(target, updated);
-    await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
-    cancelEditTarget();
+    const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: entry.item.path, target}, moveUi, async next => {
+      await appendMeetingToTarget(target, next);
+      await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
+    });
+    if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
   };
 
   /** The row's prep/review checkpoint icon (docs/dev/technical-design-meeting-tracking.md). */

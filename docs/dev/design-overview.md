@@ -713,6 +713,13 @@ Design: `docs/dev/technical-design-split-by-tag.md`.
 - **The stored link decides on reopen.** `classifyNotePath` (`storage/noteLinks.ts`) tells own notes from shared anchors (existence-verified; an anchor's file part ends in `.note`). An item with a link always reopens in the linked file, whatever the rule would pick now; the rule only decides for an item's first note. Lazy keyword rename and chronological insertion are unchanged. Absolute links (lasso source notes) are never recreated.
 - Inbox items keep getting own notes (`forceOwnTarget`), now with the confirm.
 
+### 2.40 Files changed elsewhere (0.6.0, 2026-10-04)
+
+Design: `docs/dev/technical-design-files-0.6.md`. Incremental refresh on open and the shared Inbox: §2.3.
+
+- **Moving an entry with its note.** Every move of a todo/meeting to another Project, Area or the Inbox (Inbox filing `fileInboxTask/Meeting`, quick-file on edit in Inbox/Review/Daily/Week/Month/Current, Current's Refile, close-out's `itemMove.moveTaskTo/moveMeetingTo`) runs its own append-then-remove write inside `storage/entryMove.ts`'s `moveEntryWithNote(move, ui, write)`. It classifies the stored `notePath` (`classifyNotePath`), plans with `domain/noteRelocation.ts` (`none` for no note or an absolute link, `missing`, `own`, `shared`), confirms in the status slot when a note file is affected (`ui/useEntryMoveUi.ts`: `useStatusConfirm` + a success message; texts in `domain/fileChangeText.ts`), moves an own note first to the same relative place in the target (`Todos/x.note`, collision-free name), then calls `write` with the new `notePath`. A shared page stays; its anchor becomes absolute (`/…/Meetings/Coaching 2026.note#kw`). ✕ writes nothing; a failed note move stops before any data file.
+- `ui/useStatusConfirm.ts` is the generic status-slot confirm; `useNoteCreateConfirm` wraps it.
+
 ## 3. Architectural guidelines for future changes
 
 These are the rules this codebase has settled on. A change that doesn't fit one of these should probably explain why in its own comment, the same way the existing code explains its own deliberate deviations.
@@ -770,11 +777,10 @@ repository, in the maintainers' internal list; bugs and ideas from users go to G
 This section only lists open points that touch the architecture or the rules in §3, so a design
 for a related change starts from them.
 
-- **Moving items: one helper, several copies.** `storage/itemMove.ts` (§2.32) moves a todo or
-  meeting between Projects, Areas and the Inbox via the cache. Daily, Inbox and Current
-  (`ProjectDataPanel`) still append-then-remove themselves with
-  `appendTaskToTarget`/`appendMeetingToTarget`. Switching `ProjectDataPanel` changes how it
-  refreshes, so it is a change of its own. Refiling also doesn't move a linked note yet.
+- **Moving items: one note step, several writes.** Since 0.6.0 every move goes through
+  `moveEntryWithNote` (§2.40), but the append-then-remove write itself still lives at each call
+  site (screen-local state in Inbox/Review/Current, the cache in Daily/Week/close-out). One shared
+  write would remove that duplication; switching `ProjectDataPanel` changes how it refreshes.
 - **Edit and arming state per screen.** The "one edit at a time" / Files-pane arming logic and
   the small error-wrapper around actions are re-implemented in Inbox, Current and Review (simpler
   copies in Daily and Week). A shared hook would be the place for future changes to it.

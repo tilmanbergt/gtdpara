@@ -146,6 +146,8 @@ import {
   InboxFilingTarget,
   resolveFilingPick,
 } from '../storage/inboxFiling';
+import {moveEntryWithNote} from '../storage/entryMove';
+import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
@@ -228,6 +230,8 @@ export default function InboxScreen({
   // the File actions' write-through inside storage/inboxFiling.ts.
   const items = useCachedItems();
   const confirmNoteCreate = useNoteCreateConfirm('InboxScreen.noteCreateConfirm');
+  // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
+  const moveUi = useEntryMoveUi('InboxScreen');
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's calls and the Files pane's `resources` root all
   // need the full resolved path set, not just `inboxPath` - same "keep both"
@@ -456,7 +460,8 @@ export default function InboxScreen({
   const handleFileTask = (taskIndex: number, target: InboxFilingTarget) => {
     runTaskAction(async () => {
       if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-      const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
+      const result = await fileInboxTask(inbox, inboxPath, taskIndex, target, moveUi);
+      if (!result) return; // cancelled in the note confirm
       setCachedInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
       log('InboxScreen: filed task', taskIndex, '->', target.path);
     });
@@ -560,14 +565,20 @@ export default function InboxScreen({
       const stored = inbox.tasks[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      await appendTaskToTarget(target, updated);
-      await saveInboxTasks(tasks => tasks.filter((_, i) => i !== index));
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: inboxPath, target}, moveUi, async entry => {
+        await appendTaskToTarget(target, entry);
+        await saveInboxTasks(tasks => tasks.filter((_, i) => i !== index));
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      await appendMeetingToTarget(target, updated);
-      await saveInboxMeetings(meetings => meetings.filter((_, i) => i !== index));
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: inboxPath, target}, moveUi, async entry => {
+        await appendMeetingToTarget(target, entry);
+        await saveInboxMeetings(meetings => meetings.filter((_, i) => i !== index));
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
     }
@@ -612,7 +623,8 @@ export default function InboxScreen({
   const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
     runMeetingAction(async () => {
       if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-      const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
+      const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target, moveUi);
+      if (!result) return; // cancelled in the note confirm
       setCachedInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
       log('InboxScreen: filed meeting', meetingIndex, '->', target.path);
     });

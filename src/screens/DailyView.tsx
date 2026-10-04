@@ -177,6 +177,8 @@ import {
 import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {focusBlockedReason, setItemFocus} from '../storage/focusSlots';
 import {appendMeetingToTarget, appendTaskToTarget} from '../storage/inboxFiling';
+import {moveEntryWithNote} from '../storage/entryMove';
+import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
 import {linkedFileStatus, resolveLinkedFilePath} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
@@ -422,6 +424,8 @@ export default function DailyView({
   // there is no manual "refresh after save" step left to forget.
   const items = useCachedItems();
   const confirmNoteCreate = useNoteCreateConfirm('DailyView.noteCreateConfirm');
+  // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
+  const moveUi = useEntryMoveUi('DailyView');
   const [settings, setSettings] = useState<GtdParaSettings | null>(null);
   const [inboxPath, setInboxPath] = useState<string | null>(null);
   // storage/linkedFiles.ts's resolveLinkedFilePath (the read-only
@@ -954,15 +958,19 @@ export default function DailyView({
         ...deriveTaskFields(payload.text),
         linkedFile: payload.linkedFile,
       };
-      await appendTaskToTarget(target, updated);
-      await saveEntryTasks(entry, tasks => tasks.filter((_, index) => index !== entry.taskIndex));
-      cancelEditTarget();
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: entry.item.path, target}, moveUi, async next => {
+        await appendTaskToTarget(target, next);
+        await saveEntryTasks(entry, tasks => tasks.filter((_, index) => index !== entry.taskIndex));
+      });
+      if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
     } else if (editTarget?.type === 'meeting' && editingMeetingEntry && payload.kind === 'meeting') {
       const entry = editingMeetingEntry;
       const updated: Meeting = applyMeetingEdit(entry.meeting, payload.fields, payload.linkedFile);
-      await appendMeetingToTarget(target, updated);
-      await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
-      cancelEditTarget();
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: entry.item.path, target}, moveUi, async next => {
+        await appendMeetingToTarget(target, next);
+        await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
+      });
+      if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
     }
   };
 

@@ -18,6 +18,10 @@ or your project/area files are stored.
   archived.
 
 ### Fixed
+- **Moving a todo or meeting to another project, area or the Inbox moves its note with it** (after
+  asking) - Refile, a project tag in Quick Add, Inbox filing and the close-out checklist. Before, the
+  link pointed into the new folder where the note wasn't. A page in a shared note stays where it is
+  and the item keeps its link to that page.
 - **Reload all files** no longer throws away changes in Settings you haven't saved yet.
 
 ## [0.5.0] — 2026-10-03

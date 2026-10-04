@@ -82,3 +82,44 @@ export function noteCreationConfirmText(plan: NoteCreationPlan, fullDisplay: str
       };
   }
 }
+
+/** A status-slot confirm: one line, tap-to-expand detail, the confirm button (✕ cancels). */
+export interface ConfirmText {
+  text: string;
+  detail: string;
+  actionLabel: string;
+}
+
+/**
+ * Confirm before a todo/meeting with a note moves to another Project, Area or
+ * the Inbox (docs/dev/technical-design-files-0.6.md §3.4). `what` is "todo" or
+ * "meeting", `title` its text, `targetName` where it goes. For an own note,
+ * `noteFile` is its file name and `fromDisplay`/`toDisplay` the folders; for
+ * a shared page, `noteFile` is the shared note's name and `fromDisplay` its
+ * full display path.
+ */
+export function noteMoveConfirmText(
+  args:
+    | {kind: 'own'; what: string; title: string; targetName: string; noteFile: string; fromDisplay: string; toDisplay: string}
+    | {kind: 'shared'; what: string; title: string; targetName: string; noteFile: string; fromDisplay: string},
+): ConfirmText {
+  if (args.kind === 'own') {
+    return {
+      text: `Move "${args.title}" to ${args.targetName}? Its note ${args.noteFile} moves along.`,
+      detail: `Moves the ${args.what} to ${args.targetName} and its note ${args.noteFile} from ${args.fromDisplay} to ${args.toDisplay}.`,
+      actionLabel: 'Move',
+    };
+  }
+  return {
+    text: `Move "${args.title}" to ${args.targetName}? Its page stays in ${args.noteFile}.`,
+    detail:
+      `Moves the ${args.what} to ${args.targetName}. Its page stays in the shared note ${args.fromDisplay} - ` +
+      `pages in a shared note are not moved - and the ${args.what} keeps its link to that page.`,
+    actionLabel: 'Move',
+  };
+}
+
+/** Success text after a move that took the note along. */
+export function noteMoveDoneText(title: string, targetName: string): string {
+  return `Moved "${title}" to ${targetName}, with its note.`;
+}

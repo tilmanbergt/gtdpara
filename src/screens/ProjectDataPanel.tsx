@@ -97,6 +97,8 @@ import {NoteCreationDefinition} from '../domain/noteTemplate';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {CachedItem, ensureItemCached, findCachedItem, getCachedData, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
 import {appendMeetingToTarget, appendTaskToTarget, resolveFilingPick} from '../storage/inboxFiling';
+import {moveEntryWithNote} from '../storage/entryMove';
+import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
@@ -437,6 +439,8 @@ export default function ProjectDataPanel({
    * handler here that closes over something declared later in this
    * component function.
    */
+  // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
+  const moveUi = useEntryMoveUi('ProjectDataPanel');
   const handleRefilePick = useCallback(
     (rootKey: string, relativePath: string) => {
       if (!paths || !armTarget || armTarget.intent !== 'refile' || !state) return;
@@ -447,19 +451,25 @@ export default function ProjectDataPanel({
         if (armTarget.type === 'task') {
           const task = state.tasks[armTarget.index];
           if (!task) throw new Error('That task changed on disk - Settings → Advanced → Reload all files.');
-          await appendTaskToTarget(target, task);
-          await withTasks(state.tasks.filter((_, index) => index !== armTarget.index));
+          const moved = await moveEntryWithNote({entry: task, entryKind: 'task', sourceFolder: path, target}, moveUi, async next => {
+            await appendTaskToTarget(target, next);
+            await withTasks(state.tasks.filter((_, index) => index !== armTarget.index));
+          });
+          if (!moved) return; // cancelled in the note confirm
         } else {
           const meeting = state.meetings[armTarget.index];
           if (!meeting) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
-          await appendMeetingToTarget(target, meeting);
-          await withMeetings(state.meetings.filter((_, index) => index !== armTarget.index));
+          const moved = await moveEntryWithNote({entry: meeting, entryKind: 'meeting', sourceFolder: path, target}, moveUi, async next => {
+            await appendMeetingToTarget(target, next);
+            await withMeetings(state.meetings.filter((_, index) => index !== armTarget.index));
+          });
+          if (!moved) return; // cancelled in the note confirm
         }
         log('ProjectDataPanel: refiled', armTarget.type, armTarget.index, '->', target.path);
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [paths, armTarget, state, path, withTasks, withMeetings],
+    [paths, armTarget, state, path, withTasks, withMeetings, moveUi],
   );
 
   /**
@@ -498,14 +508,20 @@ export default function ProjectDataPanel({
       const stored = state.tasks[index];
       if (!stored) throw new Error('That task changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      await appendTaskToTarget(target, updated);
-      await withTasks(state.tasks.filter((_, i) => i !== index));
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: path, target}, moveUi, async next => {
+        await appendTaskToTarget(target, next);
+        await withTasks(state.tasks.filter((_, i) => i !== index));
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = state.meetings[index];
       if (!stored) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      await appendMeetingToTarget(target, updated);
-      await withMeetings(state.meetings.filter((_, i) => i !== index));
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: path, target}, moveUi, async next => {
+        await appendMeetingToTarget(target, next);
+        await withMeetings(state.meetings.filter((_, i) => i !== index));
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
     }

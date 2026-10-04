@@ -36,6 +36,7 @@
 import {ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {ensureItemCached, updateItemMeetings, updateItemTasks} from './dataCache';
+import {EntryMoveUi, moveEntryWithNote} from './entryMove';
 import {ProjectFileState, saveMeetings, saveTasks} from './projectFile';
 
 /** A refile target is always a Project or Area - never Inbox (there's no "un-file back to Inbox" flow) and never Resources (that's for linking, a different picker root entirely). */
@@ -101,18 +102,22 @@ export async function fileInboxTask(
   inboxPath: string,
   taskIndex: number,
   target: InboxFilingTarget,
-): Promise<{inboxRawContent: string; inboxTasks: Task[]}> {
+  ui: EntryMoveUi,
+): Promise<{inboxRawContent: string; inboxTasks: Task[]} | null> {
   const task = inbox.tasks[taskIndex];
   if (!task) {
     throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
   }
 
-  await appendTaskToTarget(target, task);
-
-  const nextInboxTasks = inbox.tasks.filter((_, index) => index !== taskIndex);
-  const nextInboxRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextInboxTasks, inbox.taskExtraLines);
-
-  return {inboxRawContent: nextInboxRaw, inboxTasks: nextInboxTasks};
+  let result: {inboxRawContent: string; inboxTasks: Task[]} | null = null;
+  // The note moves along (technical-design-files-0.6.md §3.4); null = cancelled, nothing written.
+  await moveEntryWithNote({entry: task, entryKind: 'task', sourceFolder: inboxPath, target}, ui, async moved => {
+    await appendTaskToTarget(target, moved);
+    const nextInboxTasks = inbox.tasks.filter((_, index) => index !== taskIndex);
+    const nextInboxRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextInboxTasks, inbox.taskExtraLines);
+    result = {inboxRawContent: nextInboxRaw, inboxTasks: nextInboxTasks};
+  });
+  return result;
 }
 
 /** Meeting counterpart of fileInboxTask above - see its doc comment. */
@@ -121,22 +126,19 @@ export async function fileInboxMeeting(
   inboxPath: string,
   meetingIndex: number,
   target: InboxFilingTarget,
-): Promise<{inboxRawContent: string; inboxMeetings: Meeting[]}> {
+  ui: EntryMoveUi,
+): Promise<{inboxRawContent: string; inboxMeetings: Meeting[]} | null> {
   const meeting = inbox.meetings[meetingIndex];
   if (!meeting) {
     throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
   }
 
-  await appendMeetingToTarget(target, meeting);
-
-  const nextInboxMeetings = inbox.meetings.filter((_, index) => index !== meetingIndex);
-  const nextInboxRaw = await saveMeetings(
-    'inbox',
-    inboxPath,
-    inbox.rawContent,
-    nextInboxMeetings,
-    inbox.meetingExtraLines,
-  );
-
-  return {inboxRawContent: nextInboxRaw, inboxMeetings: nextInboxMeetings};
+  let result: {inboxRawContent: string; inboxMeetings: Meeting[]} | null = null;
+  await moveEntryWithNote({entry: meeting, entryKind: 'meeting', sourceFolder: inboxPath, target}, ui, async moved => {
+    await appendMeetingToTarget(target, moved);
+    const nextInboxMeetings = inbox.meetings.filter((_, index) => index !== meetingIndex);
+    const nextInboxRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextInboxMeetings, inbox.meetingExtraLines);
+    result = {inboxRawContent: nextInboxRaw, inboxMeetings: nextInboxMeetings};
+  });
+  return result;
 }

@@ -206,6 +206,8 @@ import {
   InboxFilingTarget,
   resolveFilingPick,
 } from '../storage/inboxFiling';
+import {moveEntryWithNote} from '../storage/entryMove';
+import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
 import {MeetingRelevantTodo, relatedItemsFor} from '../storage/meetingNoteAggregate';
 import {openOrCreateMeetingNote, openOrCreateTodoNote, refreshMeetingNoteBlock} from '../storage/meetingNoteContent';
@@ -652,6 +654,8 @@ export default function ReviewScreen({
   // already left Review (D13).
   const statusApi = useStatusApi();
   const confirmNoteCreate = useNoteCreateConfirm('ReviewScreen.noteCreateConfirm');
+  // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
+  const moveUi = useEntryMoveUi('ReviewScreen');
   const gmailArchiveError = gmailArchiveErrorState;
   const setGmailArchiveError = useCallback(
     (text: string | null) => {
@@ -1655,7 +1659,8 @@ export default function ReviewScreen({
     (async () => {
       try {
         if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const result = await fileInboxTask(inbox, inboxPath, taskIndex, target);
+        const result = await fileInboxTask(inbox, inboxPath, taskIndex, target, moveUi);
+        if (!result) return; // cancelled in the note confirm
         setCachedInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
         refreshFromCache();
         bump('inboxCleared');
@@ -1673,7 +1678,8 @@ export default function ReviewScreen({
     (async () => {
       try {
         if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target);
+        const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target, moveUi);
+        if (!result) return; // cancelled in the note confirm
         setCachedInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
         refreshFromCache();
         bump('inboxCleared');
@@ -1716,18 +1722,24 @@ export default function ReviewScreen({
       const stored = inbox.tasks[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      await appendTaskToTarget(target, updated);
-      const nextTasks = inbox.tasks.filter((_, i) => i !== index);
-      const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-      setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: inboxPath, target}, moveUi, async entry => {
+        await appendTaskToTarget(target, entry);
+        const nextTasks = inbox.tasks.filter((_, i) => i !== index);
+        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
+        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      await appendMeetingToTarget(target, updated);
-      const nextMeetings = inbox.meetings.filter((_, i) => i !== index);
-      const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-      setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: inboxPath, target}, moveUi, async entry => {
+        await appendMeetingToTarget(target, entry);
+        const nextMeetings = inbox.meetings.filter((_, i) => i !== index);
+        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
+        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
+      });
+      if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
     }
