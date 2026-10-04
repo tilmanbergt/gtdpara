@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-04
+
 ### New
 - The **Integrity Check** finds notes with old file names that break links in Obsidian (`#`, `[`, `]`,
   `^`) and offers **Fix file names**: one confirmation renames them all and updates their links.
