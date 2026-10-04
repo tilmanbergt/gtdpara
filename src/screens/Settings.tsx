@@ -655,10 +655,24 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   const [integrityResult, setIntegrityResult] = useState<{kind: 'success' | 'warning' | 'error'; text: string} | null>(null);
   useStatus('Settings.integrity', integrityResult ? {...integrityResult, onDismiss: () => setIntegrityResult(null)} : null);
   useErrorStatus('Settings.templatesSaveError', templatesSaveError, () => setTemplatesSaveError(null));
+  /** The MyStyle .png listing alone - also what "Reload all files" refreshes here, so unsaved edits in the form fields stay (0.6.0 Q2). */
+  const loadMyStylePngs = useCallback(
+    (isCancelled: () => boolean = () => false): Promise<void> =>
+      listFolderEntries(MYSTYLE_FOLDER)
+        .then(entries => {
+          if (isCancelled()) return;
+          const pngs = entries.filter(entry => !entry.isFolder && /\.png$/i.test(entry.name)).map(entry => entry.name);
+          setMyStylePngs(pngs);
+        })
+        .catch(e => {
+          if (!isCancelled()) setMyStyleError(e instanceof Error ? e.message : String(e));
+        }),
+    [],
+  );
+
   /**
    * Loads settings + the MyStyle .png listing together - the two mount-only
-   * loads this screen always had, merged into one callback so "Reload all
-   * files" (handleReloadAllFiles) can run it again. `loading` now gates on both loads finishing (via
+   * loads this screen always had. `loading` now gates on both loads finishing (via
    * Promise.all) rather than only the settings one - the PNG listing used to
    * resolve independently with no loading-state involvement at all, but
    * folding it in means `useEinkRefreshOnLoad(loading)` below fires once
@@ -679,22 +693,14 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       setValues(loaded);
       setFocusCountText(focusCountsToText(loaded));
     });
-    const pngsDone = listFolderEntries(MYSTYLE_FOLDER)
-      .then(entries => {
-        if (cancelled) return;
-        const pngs = entries.filter(entry => !entry.isFolder && /\.png$/i.test(entry.name)).map(entry => entry.name);
-        setMyStylePngs(pngs);
-      })
-      .catch(e => {
-        if (!cancelled) setMyStyleError(e instanceof Error ? e.message : String(e));
-      });
+    const pngsDone = loadMyStylePngs(() => cancelled);
     Promise.all([settingsDone, pngsDone]).finally(() => {
       if (!cancelled) setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadMyStylePngs]);
 
   useEffect(() => {
     return loadAll();
@@ -1202,8 +1208,9 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
    * Settings → Advanced → "Reload all files" (docs/dev/technical-design-cleanup-0.5.md
    * S8, replacing the tab bar's 🔄): re-reads every Project/Area from its
    * file (the cache), drops the kept tabs so each loads again - Inbox
-   * included - on its next visit, and reloads this screen's own data. Uses
-   * the saved settings, not unsaved edits on the Folders tab.
+   * included - on its next visit, and re-lists the MyStyle backgrounds. The
+   * form fields are left alone, so unsaved edits stay. Uses the saved
+   * settings, not unsaved edits on the Folders tab.
    */
   const handleReloadAllFiles = async () => {
     setReloadResult(null);
@@ -1213,7 +1220,9 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       const saved = await loadSettings();
       const cache = await rebuildCache(saved);
       dropKeptTabs();
-      loadAll();
+      // Only the MyStyle listing - the form fields keep any unsaved edits.
+      setMyStyleError(null);
+      loadMyStylePngs();
       log('Settings: reload all files - done', cache.items.length);
       setReloadResult({kind: 'success', text: `Reloaded ${cache.items.length} projects and areas from the files.`});
     } catch (e) {

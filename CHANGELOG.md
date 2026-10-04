@@ -10,6 +10,9 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Fixed
+- **Reload all files** no longer throws away changes in Settings you haven't saved yet.
+
 ## [0.5.0] — 2026-10-03
 
 ### New
