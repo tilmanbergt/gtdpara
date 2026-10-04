@@ -35,6 +35,7 @@
  * production wiring lives one layer down, same split as the rest of the
  * domain/storage boundary in this codebase.
  */
+import {closeOutInterrupted, parsePlan} from './closeOut/plan';
 import {joinNotePath, parseSharedNoteAnchor} from './sharedNotePages';
 import {legacyInboxLeftovers, ListedEntry} from './inboxMigration';
 import {GtdParaKind, Meeting, Task} from './types';
@@ -314,11 +315,36 @@ export async function checkDefaultResourceFolderMissing(input: IntegrityCheckInp
   ];
 }
 
+/**
+ * A project whose close-out archive run started but didn't finish
+ * (domain/closeOut/plan.ts's closeOutInterrupted) - found in Projects (folder
+ * not moved yet) or in Archive (moved, but not stamped). No disk I/O needed:
+ * the plan lives in the project file itself.
+ */
+export async function checkCloseOutInterrupted(input: IntegrityCheckInput): Promise<IntegrityFinding[]> {
+  if (input.itemKind !== 'project') return [];
+  const {plan, found} = parsePlan(input.rawContent);
+  if (!found || !closeOutInterrupted(plan)) return [];
+  const name = input.itemPath.replace(/\/+$/, '').split('/').pop() ?? input.itemPath;
+  return [
+    {
+      checkId: 'closeOutInterrupted',
+      itemKind: input.itemKind,
+      itemPath: input.itemPath,
+      entityKind: 'item',
+      entityLabel: name,
+      notePath: '',
+      message: `The close-out of "${name}" was interrupted - open its close-out (Review → Done projects) to finish it.`,
+    },
+  ];
+}
+
 export const INTEGRITY_CHECKS: Record<string, IntegrityCheck> = {
   hashNotePath: checkHashNotePath,
   duplicateHeadings: checkDuplicateHeadingsAsync,
   linkedFileMissing: checkLinkedFileMissing,
   defaultResourceFolderMissing: checkDefaultResourceFolderMissing,
+  closeOutInterrupted: checkCloseOutInterrupted,
 };
 
 /** Runs every registered per-item check against one item's already-parsed state. */

@@ -10,6 +10,10 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- The **Integrity Check** also reports a project close-out that was interrupted before the project was
+  archived.
+
 ### Fixed
 - **Reload all files** no longer throws away changes in Settings you haven't saved yet.
 
