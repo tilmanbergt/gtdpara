@@ -23,13 +23,14 @@
  * (§5's history): back then, ANY open task belonging to a focused Project/
  * Area showed here regardless of its own tags, which meant a busy focused
  * project could flood Daily. Now focus only ever surfaces that item's #next
- * task(s), not everything it has open. UNLESS a task is tagged Waiting For,
- * Someday, or Maybe (technical-design-tags.md §3), in which case it's
- * excluded outright, full stop, even if it would otherwise qualify by due
- * date or focus membership - that exclusion still wins over everything
- * else, so the only flow-state badge a task on Daily can ever display is
- * still Next (ui/TaskBadges.tsx only renders that one in the 'flat'
- * context). Weekly focus was originally excluded from this leg entirely
+ * task(s), not everything it has open. A task tagged Someday or Maybe
+ * (technical-design-tags.md §3) is excluded outright, even if it would
+ * otherwise qualify by due date or focus membership. A Waiting For task has
+ * its own rule instead (docs/dev/technical-design-waiting-for-0.7.md W1):
+ * it shows when it has no date or its date is today or earlier - from any
+ * Project, Area or the Inbox, focused or not - and stays hidden while its
+ * date is still in the future (domain/flowState.ts's
+ * isWaitingForShownOnDaily). Weekly focus was originally excluded from this leg entirely
  * ("reserved for a future week view") - widened 2026-09-16 once Tilman
  * pointed out that a weekly-focused item's #next task wasn't actually
  * surfaced anywhere else either: `storage/weeklyAggregate.ts`'s Week-view
@@ -69,10 +70,9 @@
  * optional `contextTag` param below is a *hard* filter, not an additive one
  * - when set, every rule above is replaced (not widened) for that call:
  * only tasks/meetings whose `tags` include it show at all. Among those
- * matches, flow-state eligibility is relaxed from the normal rule (which
- * excludes Waiting For/Someday/Maybe outright) to allow Next, due-today-or-
- * earlier, Waiting For, and Someday through - Maybe still never qualifies,
- * tag match or not. Meetings keep their existing today/tomorrow/not-
+ * matches, every open task qualifies whatever its flow state or date
+ * (Waiting For with a future date and Someday included) - only Maybe never
+ * qualifies, tag match or not. Meetings keep their existing today/tomorrow/not-
  * cancelled checks unchanged, just ANDed with the tag match.
  *
  * Project/Area-aware (docs/dev/technical-design-project-area-abbreviations.md,
@@ -95,6 +95,7 @@
 import {entriesInRange, entryDate, MeetingSpanDay} from '../domain/meetingSpan';
 import {resolveAbbrevPath} from '../domain/abbrev';
 import {isFocused} from '../domain/destination';
+import {isWaitingForShownOnDaily} from '../domain/flowState';
 import {isoDateOffset, meetingTimestampMs, todayIso} from '../domain/meetingTime';
 import {GtdParaKind, Meeting, Task} from '../domain/types';
 import {CachedItem} from './dataCache';
@@ -195,9 +196,14 @@ function buildDailyAggregateImpl(
         tasks.push({item, taskIndex, task});
         return;
       }
-      // Waiting For / Someday / Maybe never show on Daily - see the module
-      // doc comment. This check wins over the inclusion rule below.
-      if (task.flowState === 'waiting-for' || task.flowState === 'someday' || task.flowState === 'maybe') return;
+      // Someday / Maybe never show on Daily; Waiting For has its own rule
+      // (no date or date reached, any item) - see the module doc comment.
+      // Both checks win over the inclusion rule below.
+      if (task.flowState === 'someday' || task.flowState === 'maybe') return;
+      if (task.flowState === 'waiting-for') {
+        if (isWaitingForShownOnDaily(task, todayDate)) tasks.push({item, taskIndex, task});
+        return;
+      }
       const isDueSoonOrOverdue = task.dueDate !== null && task.dueDate <= tomorrowDate;
       const isFocusedNext = task.flowState === 'next' && isFocused(cachedItem);
       if (isDueSoonOrOverdue || isFocusedNext) {
@@ -220,7 +226,11 @@ function buildDailyAggregateImpl(
         tasks.push({item, taskIndex, task});
         return;
       }
-      if (task.flowState === 'waiting-for' || task.flowState === 'someday' || task.flowState === 'maybe') return;
+      if (task.flowState === 'someday' || task.flowState === 'maybe') return;
+      if (task.flowState === 'waiting-for') {
+        if (isWaitingForShownOnDaily(task, todayDate)) tasks.push({item, taskIndex, task});
+        return;
+      }
       // #next stays unconditional here (no daily-focus leg to combine it
       // with - see the module doc comment's "Inbox" note); due-date leg
       // widened to match the main loop above.
@@ -341,9 +351,8 @@ export interface DailyTaskGroup {
  * convention as ItemsList.tsx/destinationCandidates), then whatever order
  * entries arrived in (Array.prototype.sort is stable, so a plain
  * compare-by-focused over the already-built entries is enough). Within a
- * group, task order is preserved exactly as buildDailyAggregate produced it -
- * there's no existing task sort to preserve, and none is introduced here
- * either.
+ * group, task order is the order buildDailyAggregate produced (file order),
+ * except that Waiting For todos move to the end of their group.
  */
 function groupDailyTasksByItemImpl(entries: DailyTaskEntry[]): DailyTaskGroup[] {
   const byPath = new Map<string, DailyTaskGroup>();
@@ -355,6 +364,11 @@ function groupDailyTasksByItemImpl(entries: DailyTaskEntry[]): DailyTaskGroup[] 
     }
     group.entries.push(entry);
   }
+  // Waiting For todos go last inside their group (docs/dev/technical-design-
+  // waiting-for-0.7.md W2) - stable sort, so everything else keeps its order.
+  // taskIndex is untouched, so every row action still hits the right task.
+  const isWaiting = (entry: DailyTaskEntry) => Number(entry.task.flowState === 'waiting-for');
+  for (const group of byPath.values()) group.entries.sort((a, b) => isWaiting(a) - isWaiting(b));
   return Array.from(byPath.values()).sort((a, b) => {
     if (a.item.kind === 'inbox' && b.item.kind !== 'inbox') return -1;
     if (b.item.kind === 'inbox' && a.item.kind !== 'inbox') return 1;
