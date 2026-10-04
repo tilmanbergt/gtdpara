@@ -103,7 +103,7 @@ export default function AdvancedTab(p: Props): React.JSX.Element {
           </Pressable>
           {p.integrityCheckRunning && <ActivityIndicator style={styles.spinner} />}
           <Text style={[styles.hint, {color: textColor}]}>
-            Scans every Project/Area/Archive/Inbox for known notePath problems and writes a report to EXPORT/gtdpara/debug.
+            Scans every Project/Area/Archive/Inbox for broken note links and note names that break Obsidian links, and writes a report to EXPORT/gtdpara/debug.
           </Text>
         </View>
         <Switch

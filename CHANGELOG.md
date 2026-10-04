@@ -10,6 +10,10 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- The **Integrity Check** finds notes with old file names that break links in Obsidian (`#`, `[`, `]`,
+  `^`) and offers **Fix file names**: one confirmation renames them all and updates their links.
+
 ### Changed
 - **Opening gtdpara only reads the files that changed** since it last read them, for example in
   Obsidian or on your computer - faster, and screens no longer redraw when nothing changed.

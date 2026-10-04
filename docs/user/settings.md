@@ -25,7 +25,7 @@ How new notes look, see [Note templates](note-templates.md). A rule is saved wit
 - **Profiles**: switch between configurations and create the demo space, see [Profiles](profiles-and-demo.md)
 - **Experimental**: switch the Google Calendar and Gmail integrations on or off
 - **Reload all files**: reads all projects, areas and the Inbox again, for every tab. Opening gtdpara already reads files changed outside it, for example on your computer or in Obsidian; use this when a change still doesn't show up.
-- **Run Integrity Check**: looks for broken note links and similar file problems, including Inbox files left in `Note` by an unfinished move and a project close-out that was interrupted, and writes a report to `EXPORT/gtdpara/debug`
+- **Run Integrity Check**: looks for broken note links and similar file problems, including Inbox files left in `Note` by an unfinished move and a project close-out that was interrupted and note file names that break links in Obsidian, and writes a report to `EXPORT/gtdpara/debug`. When it finds such names, its message offers **Fix file names (n)**: after one confirmation it renames all of them and updates their links
 - **Keep tabs in memory**: Daily, Week, Month, Current, Projects and Areas stay loaded, so switching tabs is fast. Turn it off if something looks outdated.
 - **Performance tracing**: for measuring speed; leave it off normally
 
