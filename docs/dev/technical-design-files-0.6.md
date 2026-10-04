@@ -1,6 +1,6 @@
 # Technical design: files changed elsewhere (0.6.0)
 
-Status: **designed, waiting for Tilman's approval** - 2026-10-04.
+Status: **implemented** (S1-S9, S11; S10 only after the device check) - 2026-10-04. As built: §7.
 Branch: `feature/files-0.6`. Scope agreed in chat on 2026-10-03/04 (backlog proposal "0.6.0
 files changed elsewhere").
 
@@ -301,3 +301,15 @@ On the device (demo space):
   the change is missed until "Reload all files". Accepted; the help says so.
 - O3: Links inside notes to a renamed note (§3.5) - device check decides whether the fix needs a
   warning line.
+
+## 7. As built (2026-10-04)
+
+Commits on `feature/files-0.6`, one per step (S10 not needed off-device; decided by the device check, §5 item 8).
+
+- **S1-S5** as designed.
+- **S3 limitation:** the Integrity Check scans the Archive one level deep (`4 Archive/<name>`), while the close-out archives into `4 Archive/<year>/<name>`. A run that moved the folder but didn't stamp it is therefore not found; only one stopped *before* the folder move is reported. Fixing that means scanning year folders - left for later.
+- **S6 Inbox in the cache:** kept as module state next to the cache (`getCachedInbox`/`setCachedInbox`/`subscribeInbox`/`reloadCachedInbox` in `storage/dataCache.ts`) with its own listener set, instead of a `DataCache.inbox` field - an Inbox change doesn't re-render item-only screens. Screens call `setCachedInbox` directly (a module function, so no hook dependency). The quiet Inbox re-read on tab show is gone. Storage writers call `reloadCachedInbox` after writing; Capture hands over its `nextInbox`.
+- **S7 refresh:** stamps live in a module map (data file path -> `{exists, lastModified, size}`) rather than a `CachedItem.stamp` field, so write-through and `ensureItemCached` need no change. Stats are taken *before* the reads. A file whose stamp moved but whose text is unchanged (gtdpara's own saves) keeps its cached object, so it doesn't notify - this also covers §3.2's "own writes re-read once" without a redraw. Inbox changes notify only Inbox subscribers. A `rebuildCache` requested while a refresh runs waits for it. Help pages now say reopening reads changed files; "Reload all files" is the fallback.
+- **S8 move with note:** instead of one `moveEntry` that owns the whole write, `moveEntryWithNote(move, ui, write)` (`storage/entryMove.ts`) does plan -> confirm -> note move and then calls the call site's own append-then-remove `write`. The call sites keep their state handling (screen-local state, `withTasks`, cache), which made the change small and kept every screen's refresh as it was. `fileInboxTask/Meeting` and `itemMove.moveTaskTo/moveMeetingTo` take the `ui` and return `null` when cancelled. An own note goes to the same relative place in the target (`Todos/x.note`). A missing own note moves nothing and asks nothing. A failed data write after the note moved is logged (no rollback); the entry written to the target already points to the moved note. The success message only appears when a note file moved. `ui/useEntryMoveUi.ts` = `useStatusConfirm` + success message; `useNoteCreateConfirm` wraps `useStatusConfirm`.
+- **S9 file names:** the check is a run-level step in `storage/integrityCheck.ts` (it needs `classifyNotePath`), not a registered domain check. Only links whose last segment contains a rule character are classified (cheap pre-filter). A file also linked from the Archive is report-only as a whole, so archived links never break. "Fix file names (n)" is an action on the Integrity Check's result message; the result replaces it. Link rewrites read each item's file from disk and only change links that still read exactly as planned.
+- **Tests added:** `meetingsRoundTrip`, `closeOutInterrupted`, `refreshCache` (8 cases), `noteRelocation`, `entryMove`, `useEntryMoveUi`, `fileNameFix` (domain + storage). 247 tests.
