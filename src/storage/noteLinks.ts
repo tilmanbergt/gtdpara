@@ -102,9 +102,9 @@ export function meetingNoteBaseName(meeting: Pick<Meeting, 'date' | 'title'>): s
  * are exactly the ones a Daily row shows in its text. Fixed 2026-09-21: the
  * raw `task.text` used to end up in the file name, flow-state tag included.
  *
- * Unlike ui/TaskBadges.tsx's `displayTaskText`, which strips a functional tag
- * only where a badge already conveys it, this strips them all unconditionally
- * - a file name has no badges. `RESERVED_BARE_TAGS` (domain/flowState.ts) is
+ * Unlike domain/taskLabels.ts's `displayTaskText`, which strips a functional tag
+ * only where a label already conveys it, this strips them all unconditionally
+ * - a file name has no labels. `RESERVED_BARE_TAGS` (domain/flowState.ts) is
  * the same list `isContextTag` uses to decide what is *not* a free tag, so
  * "functional" can't drift between the two.
  */

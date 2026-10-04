@@ -1,6 +1,6 @@
 /**
- * One task row - checkbox, tap-to-edit, badges (ui/TaskBadges.tsx),
- * note-link (📓/+📓), a linked-file clip, and an optional "File" action.
+ * One task row - checkbox, tap-to-edit, labels after the title
+ * (ui/TaskLabels.tsx, domain/taskLabels.ts), note-link (📓/+📓), a linked-file clip, and an optional "File" action.
  * Consolidates the three near-duplicate row implementations this codebase
  * had grown (screens/DailyView.tsx's Open-tasks rows, screens/
  * ProjectDataPanel.tsx's TodosSection rows, screens/ReviewScreen.tsx's
@@ -9,7 +9,7 @@
  * needed the union of what all three already did (edit + note-link + File),
  * duplicating a fourth time stopped making sense. Same "extract once a
  * second caller needs the same shape" bar this codebase has used for every
- * other shared component (ui/TaskQuickAdd.tsx, ui/TaskBadges.tsx, etc.).
+ * other shared component (ui/TaskQuickAdd.tsx, ui/TaskLabels.tsx, etc.).
  *
  * Editing (docs/dev/technical-design-pagination-edit-reuse.md §5): this row no
  * longer renders its own edit form (ui/TaskEditCard.tsx is gone). `isEditing`
@@ -54,8 +54,13 @@
  * nested `<Text onPress>`, filled when it matches the active `contextTag`.
  * `onPress` on a tag segment doesn't propagate to the row's own
  * onStartEdit - React Native resolves a touch to the innermost element
- * carrying its own onPress, same mechanism ui/TaskBadges.tsx's own nested
- * Pressables already rely on sitting next to this row's tap-to-edit text.
+ * carrying its own onPress, same mechanism the `#next`/`#now` label's
+ * double-tap (ui/TaskLabels.tsx) relies on.
+ *
+ * Title and labels are ONE <Text> (docs/dev/technical-design-waiting-for-0.7.md
+ * §3.3): what's drawn (title, then labels as nested spans) and the height a
+ * caller reserves both come from ui/taskRowLayout.ts's `taskRowLayout`, so a
+ * label can't wrap onto a line the row doesn't have.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -63,83 +68,37 @@ import {isContextTag} from '../domain/flowState';
 import {splitTextWithTags} from '../domain/markdown';
 import {Task} from '../domain/types';
 import {ClipIcon} from './icons';
-import TaskBadges, {displayTaskText, TaskBadgeContext} from './TaskBadges';
-import {activeLineEstimator} from './textLineEstimator';
+import {TaskLabelContext} from '../domain/taskLabels';
+import TaskLabels from './TaskLabels';
+import {TASK_COLUMN_WIDTH_PX, taskRowLayout} from './taskRowLayout';
 import {COLORS, FONT} from './theme';
 import {perfCount} from '../utils/perf';
+
+/** Kept as an alias so callers' `context` props read as before. */
+export type TaskBadgeContext = TaskLabelContext;
 
 /**
  * Row-height prediction (docs/dev/technical-design-pagination-fixed-height.md
  * §2.2) - a caller building a ui/PagedSection.tsx computes `taskRowHeight`
- * per task to sum toward its fixed viewportHeight, then passes the SAME
- * task/columnWidthPx/context here as this row's `height`/`numberOfLines`
- * props (below), so the reserved height and the text clamp always agree.
- * This row has never shown more than 2 lines - the estimator only decides
- * whether a given title needs 1 or 2, never whether to grow past 2.
+ * per task to sum toward its viewport, then passes the SAME task/
+ * columnWidthPx/context here as this row's `height`/`numberOfLines` props, so
+ * the reserved height and the text clamp always agree. The line count comes
+ * from ui/taskRowLayout.ts and covers the title AND its labels (0.7.0); a row
+ * never shows more than 2 lines.
  */
-const MAX_LINES = 2;
-// Checkbox glyph width + its marginRight (styles.checkbox below).
-const CHECKBOX_WIDTH_PX = 28;
-// Conservative fixed width reserved for badges sharing the title's wrap
-// line (styles.rowTextLine's flexWrap - TaskBadges renders inline, not in
-// its own column) - up to two glyph badges plus their margins/borders in
-// practice, biased toward over- rather than under-predicting lines, per
-// ui/textLineEstimator.ts's own doc comment on why that's the safer
-// direction to lean.
-const BADGE_ALLOWANCE_PX = 70;
-// Bugfix (2026-09-15, found via screens/DailyView.tsx's Batch 5 smoke test -
-// a long title's real render wrapped to 2 lines while taskRowLines()
-// predicted 1, and because styles.row had no overflow clipping, the extra
-// line bled visually down into the NEXT row instead of clipping in place).
-// Root cause: the note-icon (styles.noteAction, always rendered - every
-// task shows either 📓 or +📓) and the clip-icon (styles.clipAction, shown
-// whenever `linkedFile` is set or `onArmLink` is passed) are both siblings
-// of `rowTextWrap` inside `styles.row`'s flexDirection:'row' - real Yoga
-// layout subtracts their width from what `rowTextWrap` (flex:1) actually
-// gets, but the width estimate below only ever subtracted
-// CHECKBOX_WIDTH_PX/BADGE_ALLOWANCE_PX, never these two. Conservative
-// (assumes both showing at once, biased toward over- not under-predicting,
-// same direction BADGE_ALLOWANCE_PX already leans): note icon
-// (marginLeft 8 + paddingHorizontal 4x2 + a 2-glyph "+📓" ~30) + clip icon
-// (marginLeft 8 + paddingHorizontal 4x2 + icon+"+" ~32) ≈ 90.
-const TRAILING_ICON_ALLOWANCE_PX = 90;
-// Reverted 2026-09-16 (Round 5) - Round 4 above re-derived these two as a
-// `chrome + n*line` linear fit through exactly two measured row totals
-// (59px/89.5px), which DOES reproduce both totals exactly, but Tilman's
-// on-device check found it made every row - including definitely-1-line
-// ones like "Bahn buchen" - show a uniform gap underneath the text, worse
-// than before. Root cause: a 2-point linear fit has no way to know whether
-// a real Android text block's height actually scales linearly with line
-// count - it just forces *some* (chrome, line) split that hits both
-// totals, and here that meant `chrome` (28.5, rounded to 29) landing
-// nearly double this row's real fixed, non-text CSS overhead
-// (`paddingVertical:7`×2 + `borderBottomWidth:1` = 15px). Since `chrome`
-// is added once to every row regardless of predicted line count, that
-// ~14px of algebraic-fit-but-not-real overhead was pure wasted space under
-// every single row, 1-line or 2-line alike - exactly the symptom reported.
-// Reverted to the original 20/22 rather than re-fit again - see
-// screens/DailyView.tsx's own `TASK_ROW_SLOT_PX` for the replacement
-// approach tried there (a single measured whole-row slot, doubled for a
-// 2-line row, no chrome/line decomposition at all). Deliberately scoped to
-// Daily only for now, not migrated here, so ProjectDataPanel.tsx/
-// InboxScreen.tsx/ReviewScreen.tsx (the other callers of `taskRowHeight`/
-// these two exports) are unaffected either way - worth revisiting the same
-// way here if Daily's slot model holds up.
+// Chrome/line split: see the 2026-09-16 revert note in git history - the
+// original 20/22 (42 px one line, 64 px two lines) are the measured-good values.
 export const TASK_ROW_CHROME_PX = 20;
 export const TASK_ROW_LINE_HEIGHT_PX = 22;
-const ROW_CHROME_PX = TASK_ROW_CHROME_PX;
-const LINE_HEIGHT_PX = TASK_ROW_LINE_HEIGHT_PX;
 
-/** Predicted line count for `task`'s displayed text at `columnWidthPx` - clamped to MAX_LINES. */
-export function taskRowLines(task: Task, columnWidthPx: number, context: TaskBadgeContext): number {
-  const text = displayTaskText(task, context, false);
-  const availableWidth = Math.max(1, columnWidthPx - CHECKBOX_WIDTH_PX - TRAILING_ICON_ALLOWANCE_PX - BADGE_ALLOWANCE_PX);
-  return Math.min(MAX_LINES, activeLineEstimator.estimateLines(text, availableWidth, FONT.medium));
+/** Predicted lines for `task`'s title plus labels at `columnWidthPx` (1-2). */
+export function taskRowLines(task: Task, columnWidthPx: number, context: TaskBadgeContext, contextActive = false): number {
+  return taskRowLayout(task, columnWidthPx, context, contextActive).lines;
 }
 
 /** The row's real rendered height at `columnWidthPx`, for a caller building a ui/PagedSection.tsx. */
-export function taskRowHeight(task: Task, columnWidthPx: number, context: TaskBadgeContext): number {
-  return ROW_CHROME_PX + taskRowLines(task, columnWidthPx, context) * LINE_HEIGHT_PX;
+export function taskRowHeight(task: Task, columnWidthPx: number, context: TaskBadgeContext, contextActive = false): number {
+  return TASK_ROW_CHROME_PX + taskRowLines(task, columnWidthPx, context, contextActive) * TASK_ROW_LINE_HEIGHT_PX;
 }
 
 /** Segments `text` into plain runs and tappable tag spans - see the module doc comment. Returns `text` unchanged (no splitting) when `onToggleContext` isn't passed, since only Daily's instances need this at all. */
@@ -181,7 +140,7 @@ interface Props {
   onOpenLinkedFile?: (linkedFile: string) => void;
   /** Only passed by callers that support starting a link from this row (Current tab, Inbox) - its absence (Daily, Review) is what makes the clip read-only there. */
   onArmLink?: () => void;
-  /** Threaded straight to ui/TaskBadges.tsx's own onToggleNow (docs/dev/technical-design-now-focus-mode.md §3) - double-tapping the Next/Now badge flips #now. Only passed by callers where that's meaningful (Daily, both normal and focus mode); its absence elsewhere just leaves that badge single-tap-reveal-only, same as every other badge. */
+  /** Double-tapping the `#next`/`#now` label flips #now (ui/TaskLabels.tsx, docs/dev/technical-design-now-focus-mode.md §3). Only passed where that's meaningful (Daily, both normal and focus mode); without it the label doesn't react to touch. */
   onToggleNow?: () => void;
   /** The active Daily context filter tag, if any - a matching tag segment renders filled/selected. Only meaningful together with onToggleContext (see the module doc comment); pass null (not omit) when Daily's context is off but rows should still render tags as tappable-but-unselected. */
   contextTag?: string | null;
@@ -197,6 +156,8 @@ interface Props {
    * keeps today's `minHeight: 64`/`numberOfLines={2}` behavior exactly. */
   height?: number;
   numberOfLines?: number;
+  /** Width the caller computed `height` for - the title is shortened to fit the labels at this width. Defaults to the usual two-column width. */
+  columnWidthPx?: number;
   textColor: string;
   borderColor: string;
 }
@@ -218,6 +179,7 @@ export default function TaskRow({
   context,
   height,
   numberOfLines,
+  columnWidthPx = TASK_COLUMN_WIDTH_PX,
   textColor,
   borderColor,
 }: Props): React.JSX.Element {
@@ -226,9 +188,10 @@ export default function TaskRow({
   // (technical-design-context-tags.md §6) - derived from contextTag rather
   // than a separate prop, since the two always agree (DailyView always
   // passes contextTag alongside onToggleContext - null while its own
-  // context is off, a tag string while active). Feeds ui/TaskBadges.tsx's
-  // Someday visual cue and, in step, which flow tag displayTaskText strips.
+  // context is off, a tag string while active). Decides the `#someday`
+  // label and, in step, which flow tag the title loses.
   const contextActive = contextTag != null;
+  const layout = taskRowLayout(task, columnWidthPx, context, contextActive);
   return (
     <View style={styles.wrap}>
       <View
@@ -256,21 +219,12 @@ export default function TaskRow({
         </Pressable>
         <View style={styles.rowTextWrap}>
           <Pressable onPress={onStartEdit}>
-            <View style={styles.rowTextLine}>
-              <Text
-                style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]}
-                numberOfLines={numberOfLines ?? 2}>
-                {renderTaggableText(displayTaskText(task, context, contextActive), contextTag, onToggleContext)}
-              </Text>
-              <TaskBadges
-                task={task}
-                context={context}
-                textColor={textColor}
-                borderColor={borderColor}
-                onToggleNow={onToggleNow}
-                contextActive={contextActive}
-              />
-            </View>
+            <Text
+              style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]}
+              numberOfLines={numberOfLines ?? layout.lines}>
+              {renderTaggableText(layout.title, contextTag, onToggleContext)}
+              <TaskLabels labels={layout.labels} onToggleNow={onToggleNow} />
+            </Text>
           </Pressable>
         </View>
         {task.notePath ? (
@@ -315,17 +269,16 @@ export function ReadOnlyTaskRow({
   textColor: string;
   borderColor: string;
 }): React.JSX.Element {
+  const layout = taskRowLayout(task, TASK_COLUMN_WIDTH_PX, context);
   return (
     <View style={styles.wrap}>
       <View style={[styles.row, {borderBottomColor: borderColor}]}>
         <Text style={styles.checkbox}>{task.done ? '☑' : '☐'}</Text>
         <View style={styles.rowTextWrap}>
-          <View style={styles.rowTextLine}>
-            <Text style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]} numberOfLines={2}>
-              {displayTaskText(task, context, false)}
-            </Text>
-            <TaskBadges task={task} context={context} textColor={textColor} borderColor={borderColor} contextActive={false} />
-          </View>
+          <Text style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]} numberOfLines={layout.lines}>
+            {layout.title}
+            <TaskLabels labels={layout.labels} />
+          </Text>
         </View>
       </View>
     </View>
@@ -358,7 +311,7 @@ const styles = StyleSheet.create({
     // own paired `minHeight`, see that prop's doc comment.
     minHeight: 64,
     // Defensive (2026-09-15, same DailyView Batch 5 bugfix as
-    // TRAILING_ICON_ALLOWANCE_PX above): without this, a row whose real
+    // TRAILING_ICON_ALLOWANCE_PX in ui/taskRowLayout.ts): without this, a row whose real
     // content is still somehow taller than its reserved height (a
     // misprediction the width-reservation fix above doesn't fully rule
     // out) renders its overflow at default 'visible', bleeding down into
@@ -381,11 +334,6 @@ const styles = StyleSheet.create({
   },
   rowTextWrap: {
     flex: 1,
-  },
-  rowTextLine: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'baseline',
   },
   rowText: {
     fontSize: FONT.medium,

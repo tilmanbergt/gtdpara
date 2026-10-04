@@ -39,8 +39,8 @@ export const FONT = {
  * device it now reads identically to ordinary black body text. Where a
  * color-era screen would have reached for colored text, use
  * `fontWeight: '700'` and/or `textDecorationLine: 'underline'` instead
- * (see `ui/TaskBadges.tsx`'s doc comment for the same "grayscale-safe by
- * construction" principle applied to its glyph badges).
+ * (see `ui/TaskLabels.tsx`'s doc comment for the same "grayscale-safe by
+ * construction" principle applied to todo labels).
  */
 export const COLORS = {
   background: '#ffffff',
