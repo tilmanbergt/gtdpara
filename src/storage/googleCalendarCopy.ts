@@ -31,14 +31,10 @@ export function buildMeetingFromEvent(event: GoogleCalendarEvent, opts?: {highli
     days: event.time ? 1 : Math.max(1, event.days ?? 1),
     ...deriveMeetingFields(title),
     cancelled: false,
-    // No recurrence is ever created from a copy, even for an occurrence of
-    // a recurring Google event - decided: copy just takes that occurrence's
-    // own start date/time as a plain one-off (this app's Meeting UI only
-    // ever creates one-offs anyway, §2's outstanding-scope "Recurrence UI").
-    recurrence: null,
+    // A copy of one occurrence of a recurring Google event is a plain
+    // one-off meeting on that occurrence's date/time (gtdpara has no series).
     notePath: '',
     linkedFile: '',
-    occurrences: [],
   };
 }
 

@@ -476,8 +476,8 @@ export default function ProjectDataPanel({
    * only took `target` and re-read the stale stored task/meeting straight
    * off `state`, which is also why the tag never actually disappeared).
    * Builds the updated object the same way commitTaskEdit/commitMeetingEdit
-   * do (spread the stored item first so done/cancelled/notePath/recurrence/
-   * occurrences survive, then overlay the edited fields), otherwise still
+   * do (spread the stored item first so done/cancelled/notePath
+   * survive, then overlay the edited fields), otherwise still
    * mirrors handleRefilePick's own append-then-remove-from-here body above,
    * but keyed off `editTarget` rather than `armTarget`, and deliberately
    * NOT run through `runWidgetAction` (which swallows errors internally) -

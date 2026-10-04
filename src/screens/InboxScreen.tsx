@@ -534,8 +534,8 @@ export default function InboxScreen({
    * and re-read the stale stored task/meeting here via fileInboxTask/
    * fileInboxMeeting, which is also why the tag never actually disappeared).
    * Builds the updated object the same way commitTaskEdit/commitMeetingEdit
-   * do (spread the stored item first so done/cancelled/notePath/recurrence/
-   * occurrences survive, then overlay the edited fields), appends that to
+   * do (spread the stored item first so done/cancelled/notePath
+   * survive, then overlay the edited fields), appends that to
    * the target directly via appendTaskToTarget/appendMeetingToTarget (not
    * fileInboxTask/fileInboxMeeting - those re-read inbox.tasks[index]
    * themselves, exactly the stale copy this is avoiding), then removes the

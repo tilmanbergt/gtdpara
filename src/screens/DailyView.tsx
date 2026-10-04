@@ -929,7 +929,7 @@ export default function DailyView({
    * `target` and moved entry.task/entry.meeting as-is, which is also why the
    * tag never actually disappeared). Builds the updated object the same way
    * commitTaskEdit/commitMeetingEdit do (spread the stored item first so
-   * done/cancelled/notePath/recurrence/occurrences survive, then overlay the
+   * done/cancelled/notePath survive, then overlay the
    * edited fields), then appends to the resolved target
    * (appendTaskToTarget/appendMeetingToTarget - reused as-is from
    * storage/inboxFiling.ts, source-agnostic), then removes the entry from

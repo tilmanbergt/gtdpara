@@ -126,44 +126,13 @@ export interface Task {
   linkedFile: string;
 }
 
-export type RecurrenceKind =
-  | 'weekly'
-  | 'everyNWeeks'
-  | 'monthlyByDay'
-  | 'monthlyByWeekday';
-
 /**
- * The narrow recurrence grammar from design-overview.md §3
- * ("Recurrence: minimal, not RRULE"). A meeting with no Recurrence is a
- * one-off, plain-date meeting.
- */
-export interface Recurrence {
-  kind: RecurrenceKind;
-  /** 0 = Sunday .. 6 = Saturday. Used by weekly/everyNWeeks/monthlyByWeekday. */
-  weekday?: number;
-  /** Used by everyNWeeks, e.g. 2 for "every 2 weeks". */
-  intervalWeeks?: number;
-  /** Used by monthlyByDay, e.g. 15 for "every month 15". */
-  dayOfMonth?: number;
-  /** Used by monthlyByWeekday, e.g. 1 for "first tuesday". */
-  ordinal?: number;
-}
-
-/** One logged occurrence of a recurring meeting: which page it landed on. */
-export interface MeetingOccurrence {
-  /** ISO date, e.g. "2026-09-03". */
-  date: string;
-  page: number;
-}
-
-/**
- * v1 only creates/edits one-off meetings (recurrence is parsed defensively
- * if a hand-written recurring line is already there, so it round-trips
- * without being corrupted, but the UI has no recurrence picker yet -
- * design-overview.md's full recurrence/note-linking model is the target,
- * this is a deliberately smaller first slice of it). `cancelled` works the
- * same soft-delete way as Task.cancelled: hidden from the normal view,
- * never removed from the file.
+ * A one-off meeting - recurring meetings are out of scope by decision
+ * (design-philosophy: every entry is a conscious choice). A hand-written
+ * series line, and its indented occurrence lines, are not parsed; they are
+ * kept as unknown lines (domain/markdown.ts's `extraLines`) and survive every
+ * save untouched. `cancelled` works the same soft-delete way as
+ * Task.cancelled: hidden from the normal view, never removed from the file.
  */
 export interface Meeting {
   title: string;
@@ -184,14 +153,10 @@ export interface Meeting {
   days: number;
   tags: string[];
   cancelled: boolean;
-  /** null = one-off meeting (bare date, no recurrence line) - always null for anything created in v1. */
-  recurrence: Recurrence | null;
   /** Relative path (from this Project/Area's own folder) to a linked .note file, e.g. "Meetings/2026-09-03 - Kickoff Call.note". Empty until a note is created for this meeting. */
   notePath: string;
   /** Base-root-relative path to a linked existing file, or '' if none - see Task.linkedFile's doc comment for why this is being added here now. */
   linkedFile: string;
-  /** Only meaningful for recurring meetings; empty for one-offs (page 1 *is* the meeting). */
-  occurrences: MeetingOccurrence[];
 }
 
 /**

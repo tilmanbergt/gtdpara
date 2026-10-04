@@ -1698,7 +1698,7 @@ export default function ReviewScreen({
    * full "why"): `payload` is the widget's fully-composed, tag-stripped
    * current edit-session text/fields, so this builds the updated task/
    * meeting by spreading the stored inbox item first (done/cancelled/
-   * notePath/recurrence/occurrences survive) then overlaying the edited
+   * notePath survive) then overlaying the edited
    * fields - "Save, but file elsewhere", not a plain move of the stale
    * last-saved copy. Appends directly via appendTaskToTarget/
    * appendMeetingToTarget rather than fileInboxTask/fileInboxMeeting (those
