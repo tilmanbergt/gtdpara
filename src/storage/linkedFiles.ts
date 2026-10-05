@@ -20,11 +20,28 @@
  * omitted/null for an Area's own locate calls - the check is inert.
  */
 import {ResolvedParaPaths} from '../domain/settings';
-import {listFolderEntries} from '../supernote/fileSystem';
+import {parsePageAnchor, stripPageAnchor} from '../domain/sharedNotePages';
+import {listFolderEntries, openPath} from '../supernote/fileSystem';
 
-/** Turns a stored linkedFile value into an absolute path. */
+/**
+ * Turns a stored linkedFile value into an absolute path (without any page).
+ * Lasso capture (docs/dev/technical-design-lasso-0.8.md) links the source
+ * page as `<file>#page=<n>`, and a source outside the base folder (a PDF
+ * in Document/) is stored absolute (starting with '/').
+ */
 export function resolveLinkedFilePath(paths: ResolvedParaPaths, linkedFile: string): string {
-  return `${paths.base}/${linkedFile}`;
+  const file = stripPageAnchor(linkedFile);
+  return file.startsWith('/') ? file : `${paths.base}/${file}`;
+}
+
+/** The 0-based page a linkedFile points to, or -1 (open as the host likes). */
+export function linkedFilePage(linkedFile: string): number {
+  return parsePageAnchor(linkedFile)?.page ?? -1;
+}
+
+/** Opens a linkedFile - at its page when it carries one. */
+export function openLinkedFile(paths: ResolvedParaPaths, linkedFile: string): Promise<void> {
+  return openPath(resolveLinkedFilePath(paths, linkedFile), linkedFilePage(linkedFile));
 }
 
 /**

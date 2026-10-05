@@ -2,8 +2,8 @@
  * The left column of the capture screen (docs/dev/technical-design-lasso-0.8.md
  * §3.7, screen design A/C): "This lasso" first when the screen came from
  * the lasso, then the open marks grouped by note (this note first). A mark
- * shows its picture until recognition has more than 3 characters, then the
- * text; page and time are always shown. Paged, never scrolled.
+ * always shows its picture (checkpoint B); the line below it gives page,
+ * date and time and the recognition status. Paged, never scrolled.
  */
 import React from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
@@ -21,21 +21,31 @@ type ColumnRow =
 
 const GROUP_H = 34;
 const LASSO_H = 76;
-const PICTURE_H = 132;
-const TEXT_H = 82;
+const MARK_H = 132;
 const PICTURE_IMAGE_H = 86;
 
-/** Recognized text worth showing instead of the picture (more than 3 characters). */
-export function rowText(r: MarkRecognition | undefined): string | null {
-  const text = r?.text.trim() ?? '';
-  return text.length > 3 ? text : null;
+/** The recognition status shown under a mark. */
+export function markStatus(r: MarkRecognition | undefined): string {
+  if (r?.missing) {return 'picture missing';}
+  switch (r?.state) {
+    case 'recognizing':
+      return 'recognizing…';
+    case 'done':
+      return 'recognized';
+    case 'empty':
+    case 'failed':
+      return 'no text';
+    default:
+      return 'not recognized';
+  }
 }
 
-/** 'p3 · 10:42' today, 'p3 · 03.10.' on other days. */
-export function markMeta(open: OpenMark, today: string): string {
+/** 'p3 · 5.10. 10:42 · recognized' - date always, without leading zeros. */
+export function markMeta(open: OpenMark, r: MarkRecognition | undefined): string {
   const [date, time] = open.mark.createdAt.split(' ');
-  const when = date === today ? time : `${date.slice(8, 10)}.${date.slice(5, 7)}.`;
-  return `p${open.mark.page + 1} · ${when}`;
+  const day = Number(date.slice(8, 10));
+  const month = Number(date.slice(5, 7));
+  return `p${open.mark.page + 1} · ${day}.${month}. ${time ?? ''}`.trimEnd() + ` · ${markStatus(r)}`;
 }
 
 interface Props {
@@ -50,7 +60,6 @@ interface Props {
   onSelect: (key: string) => void;
   recognition: Map<string, MarkRecognition>;
   pictureUri: (id: string) => string | null;
-  today: string;
   textColor: string;
   borderColor: string;
 }
@@ -68,7 +77,7 @@ export default function MarksColumn(props: Props): React.JSX.Element {
   }
 
   const rowHeight = (row: ColumnRow) =>
-    row.kind === 'group' ? GROUP_H : row.kind === 'lasso' ? LASSO_H : rowText(recognition.get(row.key)) ? TEXT_H : PICTURE_H;
+    row.kind === 'group' ? GROUP_H : row.kind === 'lasso' ? LASSO_H : MARK_H;
 
   const renderRow = (row: ColumnRow) => {
     if (row.kind === 'group') {
@@ -94,29 +103,24 @@ export default function MarksColumn(props: Props): React.JSX.Element {
       );
     }
     const r = recognition.get(row.key);
-    const text = rowText(r);
     const uri = props.pictureUri(row.key);
+    const boxText = row.open.mark.text?.trim() ?? '';
     return (
       <Pressable
         key={row.key}
         onPress={() => onSelect(row.key)}
-        style={[styles.row, {height: text ? TEXT_H : PICTURE_H, borderColor}, selected && styles.selected]}>
-        {text ? (
-          <Text style={[styles.text, {color: fg}]} numberOfLines={2}>
-            {text}
-          </Text>
-        ) : uri && !r?.missing ? (
+        style={[styles.row, {height: MARK_H, borderColor}, selected && styles.selected]}>
+        {uri && !r?.missing ? (
           <View style={styles.pictureBox}>
             <Image source={{uri}} style={styles.picture} resizeMode="contain" />
           </View>
         ) : (
-          <Text style={[styles.text, styles.italic, {color: fg}]} numberOfLines={2}>
-            {r?.state === 'recognizing' ? 'recognizing…' : r?.missing ? 'picture missing - type it' : 'no text found - type it'}
+          <Text style={[styles.text, !boxText && styles.italic, {color: fg}]} numberOfLines={3}>
+            {boxText || 'no picture - type it'}
           </Text>
         )}
         <Text style={[styles.meta, {color: fg}]} numberOfLines={1}>
-          {markMeta(row.open, props.today)}
-          {!text && r?.state === 'recognizing' ? ' · recognizing…' : ''}
+          {markMeta(row.open, r)}
         </Text>
       </Pressable>
     );

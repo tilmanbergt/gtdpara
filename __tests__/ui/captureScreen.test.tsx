@@ -1,7 +1,7 @@
 // docs/dev/technical-design-lasso-0.8.md §3.7: the shared capture / marks screen.
 const mockCalls: string[] = [];
-const mockAdded: Array<{text: string; notePath: string; dest: {type: string}}> = [];
-const mockState = {marksInbox: [] as unknown[]};
+const mockAdded: Array<{text: string; notePath: string; linkedFile: string; dest: {type: string}}> = [];
+const mockState = {marksInbox: [] as unknown[], stored: {} as Record<string, string>, recognized: [] as string[]};
 
 jest.mock('react-native-svg', () => {
   const ReactLib = require('react');
@@ -42,10 +42,18 @@ jest.mock('../../src/storage/dataCache', () => {
 jest.mock('../../src/ui/useCachedItems', () => ({useCachedItems: () => []}));
 jest.mock('../../src/ui/useCachedInbox', () => ({useCachedInbox: () => ({marks: mockState.marksInbox})}));
 jest.mock('../../src/storage/itemMutations', () => ({
-  buildTask: (text: string, opts: {notePath?: string}) => ({text, notePath: opts?.notePath ?? ''}),
-  buildMeeting: (f: object, opts: {notePath?: string}) => ({...f, notePath: opts?.notePath ?? ''}),
-  addTaskToDestination: async (task: {text: string; notePath: string}, dest: {type: string}) => {
-    mockAdded.push({text: task.text, notePath: task.notePath, dest});
+  buildTask: (text: string, opts: {notePath?: string; linkedFile?: string}) => ({
+    text,
+    notePath: opts?.notePath ?? '',
+    linkedFile: opts?.linkedFile ?? '',
+  }),
+  buildMeeting: (f: object, opts: {notePath?: string; linkedFile?: string}) => ({
+    ...f,
+    notePath: opts?.notePath ?? '',
+    linkedFile: opts?.linkedFile ?? '',
+  }),
+  addTaskToDestination: async (task: {text: string; notePath: string; linkedFile: string}, dest: {type: string}) => {
+    mockAdded.push({text: task.text, notePath: task.notePath, linkedFile: task.linkedFile, dest});
     return {nextInbox: null};
   },
   addMeetingToDestination: async () => ({nextInbox: null}),
@@ -61,7 +69,8 @@ jest.mock('../../src/storage/marks', () => ({
   outcomeNeedsScreen: () => false,
   runPendingIconChanges: async () => undefined,
   setMarkOutcome: jest.fn(),
-  recognizeMark: async (open: {mark: {id: string}}) => ({
+  storedMarkText: async (open: {mark: {id: string}}) => mockState.stored[open.mark.id] ?? null,
+  recognizeMark: async (open: {mark: {id: string}}) => (mockState.recognized.push(open.mark.id), {
     text: open.mark.id.endsWith('1') ? 'Room for offsite?' : 'Ask HR',
     error: null,
     ms: 1,
@@ -136,6 +145,8 @@ beforeEach(() => {
   mockCalls.length = 0;
   mockAdded.length = 0;
   mockState.marksInbox = [];
+  mockState.stored = {};
+  mockState.recognized = [];
 });
 
 it('lasso without marks: no column, bullets split, saves with a page link and closes', async () => {
@@ -146,7 +157,9 @@ it('lasso without marks: no column, bullets split, saves with a page link and cl
   expect(values).toEqual(expect.arrayContaining(['book room', 'agenda to Tom']));
   await press(r, 'Save 2 & close');
   expect(mockAdded.map(a => a.text)).toEqual(['book room', 'agenda to Tom']);
-  expect(mockAdded[0].notePath).toBe('/Note/2 Areas/0 Inbox/Todos/Test.note#page=2');
+  // The source page is the item's linked file (checkpoint B), not its working note.
+  expect(mockAdded[0].notePath).toBe('');
+  expect(mockAdded[0].linkedFile).toBe('/Note/2 Areas/0 Inbox/Todos/Test.note#page=2');
   expect(mockCalls).toEqual(expect.arrayContaining(['lassoState:2', 'closePluginView']));
 });
 
@@ -163,7 +176,48 @@ it('marks: first mark selected and recognized, Save & next finishes it and moves
   expect(r.root.findAllByType(TextInput).map(i => i.props.value)).toContain('Room for offsite?');
   await press(r, 'Save & next');
   expect(mockAdded.map(a => a.text)).toEqual(['Room for offsite?']);
-  expect(mockAdded[0].notePath).toBe('/Note/x/A.note#page=1');
+  expect(mockAdded[0].notePath).toBe('');
+  expect(mockAdded[0].linkedFile).toBe('/Note/x/A.note#page=1');
   expect(mockCalls).toContain('finish:m-20261005-100000-001:done');
   expect(texts(r).join(' ')).toContain('A.note · p2');
+});
+
+it('marks: text kept from an earlier open is used, not recognized again; the column shows date and status', async () => {
+  mockState.marksInbox = [
+    {id: 'm-20261005-100000-001', createdAt: '2026-10-05 10:00', notePath: '/Note/x/A.note', page: 0, text: null},
+  ];
+  mockState.stored = {'m-20261005-100000-001': 'Stored text'};
+  const r = render({source: 'marks', scope: {type: 'all'}, returnTo: 'inbox'});
+  await flush();
+  await flush();
+  expect(r.root.findAllByType(TextInput).map(i => i.props.value)).toContain('Stored text');
+  expect(mockState.recognized).toEqual([]);
+});
+
+it('✂ Split at cursor: a caret splits there, a selection becomes the next item', async () => {
+  const r = render({source: 'lasso'});
+  await flush();
+  await press(r, '☑ Split lines');
+  const field = () => r.root.findAllByType(TextInput).find(i => i.props.multiline)!;
+  await act(async () => {
+    field().props.onChangeText('book room agenda to Tom slides');
+  });
+  await press(r, '✂ Split at cursor');
+  // No cursor known yet: nothing is split (the hint goes to the status slot).
+  expect(field().props.value).toBe('book room agenda to Tom slides');
+  await act(async () => {
+    field().props.onSelectionChange({nativeEvent: {selection: {start: 10, end: 23}}});
+  });
+  await press(r, '✂ Split at cursor');
+  const values = () => r.root.findAllByType(TextInput).map(i => i.props.value);
+  expect(values()).toEqual(expect.arrayContaining(['book room slides', 'agenda to Tom']));
+  // In rows: the focused row is split, the new item right below it.
+  const row = () => r.root.findAllByType(TextInput).find(i => i.props.value === 'book room slides')!;
+  await act(async () => {
+    row().props.onFocus();
+    row().props.onSelectionChange({nativeEvent: {selection: {start: 9, end: 9}}});
+  });
+  await press(r, '✂ Split at cursor');
+  const rows = values().filter(v => ['book room', 'slides', 'agenda to Tom'].includes(v));
+  expect(rows).toEqual(['book room', 'slides', 'agenda to Tom']);
 });

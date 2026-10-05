@@ -36,7 +36,7 @@
  * domain/storage boundary in this codebase.
  */
 import {closeOutInterrupted, parsePlan} from './closeOut/plan';
-import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor} from './sharedNotePages';
+import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, stripPageAnchor} from './sharedNotePages';
 import {legacyInboxLeftovers, ListedEntry} from './inboxMigration';
 import {GtdParaKind, Meeting, Task} from './types';
 
@@ -279,7 +279,9 @@ export async function checkLinkedFileMissing(input: IntegrityCheckInput, io: Int
     // branch must never fire here. Deliberately NOT reusing joinNotePath's
     // leading-slash convention; a forced leading slash would make it return
     // the target as-is and silently drop basePath entirely.
-    const absolutePath = `${input.basePath.replace(/\/+$/, '')}/${linkedFile}`;
+    // A lasso source link (0.8) can be absolute and carry `#page=<n>`.
+    const file = stripPageAnchor(linkedFile);
+    const absolutePath = file.startsWith('/') ? file : `${input.basePath.replace(/\/+$/, '')}/${file}`;
     if (await io.fileExists(absolutePath)) return;
     findings.push({
       checkId: 'linkedFileMissing',

@@ -148,13 +148,13 @@ import {
 } from '../storage/inboxFiling';
 import {moveEntryWithNote} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
+import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {loadProjectFile, saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings, saveSettings} from '../storage/settingsStorage';
-import {FolderEntry, openPath} from '../supernote/fileSystem';
+import {FolderEntry} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPane';
@@ -761,7 +761,7 @@ export default function InboxScreen({
   const onOpenLinkedFile = useCallback(
     (linkedFile: string) => {
       if (!paths) return;
-      openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
+      openLinkedFile(paths, linkedFile).catch(e =>
         logError('InboxScreen: open linked file failed', errorMessage(e)),
       );
     },

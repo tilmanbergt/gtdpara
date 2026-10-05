@@ -4,6 +4,7 @@ import {
   joinItems,
   prepareCaptureText,
   splitByHand,
+  splitAtSelection,
   splitItems,
 } from '../../src/domain/captureText';
 
@@ -66,5 +67,40 @@ describe('toggling by hand', () => {
     expect(joinItems(['a', ' b ', ''])).toBe('a b');
     expect(splitItems('x\r\ny')).toEqual(['x', 'y']);
     expect(collapseText(' a \n\t b ')).toBe('a b');
+  });
+});
+
+describe('boxes and dots inside a line (no line breaks from the recognizer)', () => {
+  it('splits the shape seen on the device', () => {
+    expect(prepareCaptureText('☐ Buy fresh flowers☐ Call Anna today☐ Book room', 'todo')).toEqual({
+      items: ['Buy fresh flowers', 'Call Anna today', 'Book room'],
+      split: true,
+    });
+    expect(prepareCaptureText('Team: • room • agenda', 'todo').items).toEqual(['Team: room', 'Team: agenda']);
+  });
+  it('leaves dashes and the middle dot inside a line alone', () => {
+    expect(prepareCaptureText('Anna - budget e-mail · Fri', 'todo')).toEqual({items: ['Anna - budget e-mail · Fri'], split: false});
+  });
+  it('does not split a meeting title', () => {
+    expect(prepareCaptureText('☐ a☐ b', 'meeting').split).toBe(false);
+  });
+});
+
+describe('splitAtSelection', () => {
+  it('cuts at the cursor', () => {
+    expect(splitAtSelection('book room agenda to Tom', 10, 10)).toEqual(['book room', 'agenda to Tom']);
+  });
+  it('removes a bullet at the start of the new item', () => {
+    expect(splitAtSelection('book room - agenda', 10, 10)).toEqual(['book room', 'agenda']);
+  });
+  it('cuts out a selection as the next item', () => {
+    const text = 'book room agenda to Tom slides';
+    expect(splitAtSelection(text, 10, 23)).toEqual(['book room slides', 'agenda to Tom']);
+    expect(splitAtSelection(text, 23, 10)).toEqual(['book room slides', 'agenda to Tom']);
+  });
+  it('refuses when one side would be empty', () => {
+    expect(splitAtSelection('abc', 0, 0)).toBeNull();
+    expect(splitAtSelection('abc', 3, 3)).toBeNull();
+    expect(splitAtSelection('abc', 0, 3)).toBeNull();
   });
 });

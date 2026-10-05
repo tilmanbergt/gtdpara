@@ -16,8 +16,9 @@
  *
  * Saving a mark removes its `## Marks` line, turns the bookmark into the
  * check icon and deletes its private data (storage/marks.ts finishMark).
- * Save & next: in direct capture a cleared form for a typed extra item; on a
- * mark the next mark. Typed but unsaved text of a mark is dropped when
+ * Save & next: the next open mark in the column; only when there is none, a
+ * cleared form for a typed extra item. The source page is linked as the
+ * item's linked file (the clip), not as its working note. Typed but unsaved text of a mark is dropped when
  * another row is selected (its recognized text comes back).
  */
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
@@ -26,7 +27,6 @@ import {PluginManager} from 'sn-plugin-lib';
 import {prepareCaptureText} from '../domain/captureText';
 import {Destination, destinationLabel} from '../domain/destination';
 import {collectOpenMarks, fileNameOf, groupMarks, markDate, MarkScope, OpenMark} from '../domain/marks';
-import {todayIso} from '../domain/meetingTime';
 import {findEnclosingItem, ResolvedParaPaths} from '../domain/settings';
 import {buildPageAnchor} from '../domain/sharedNotePages';
 import {getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
@@ -39,6 +39,7 @@ import {
   runPendingIconChanges,
   setMarkOutcome,
 } from '../storage/marks';
+import {toLinkedFile} from '../storage/linkedFiles';
 import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {FolderEntry, getCurrentNotePath, getPrivateDataDir, getPrivateTempDir, openPath} from '../supernote/fileSystem';
@@ -235,7 +236,16 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
   // ---- saving ----
   const sourcePath = selectedMark ? selectedMark.absPath : loaded?.currentNotePath ?? null;
   const sourcePage = selectedMark ? selectedMark.mark.page : lassoPage;
-  const linkPath = linkToPage && sourcePath ? (sourcePage != null ? buildPageAnchor(sourcePath, sourcePage) : sourcePath) : '';
+  // The source page becomes the item's LINKED FILE (the clip), never its
+  // working note: the note icon keeps creating the item's own note.
+  // Base-relative when the source lies under the base folder, else absolute.
+  const linkedSource =
+    linkToPage && sourcePath && loaded
+      ? (() => {
+          const file = toLinkedFile(loaded.paths, sourcePath);
+          return sourcePage != null ? buildPageAnchor(file, sourcePage) : file;
+        })()
+      : '';
 
   const inboxContext = async (dest: Destination) => {
     if (!loaded) {throw new Error('Not loaded yet.');}
@@ -244,13 +254,13 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
   };
 
   const onAddTask = async (text: string, dest: Destination) => {
-    const {nextInbox} = await addTaskToDestination(buildTask(text, {notePath: linkPath}), dest, await inboxContext(dest));
+    const {nextInbox} = await addTaskToDestination(buildTask(text, {linkedFile: linkedSource}), dest, await inboxContext(dest));
     if (nextInbox) {setCachedInbox(nextInbox);}
     log('CaptureScreen: todo saved', destinationLabel(dest), selectedMark ? 'mark' : 'lasso');
   };
   const onAddMeeting = async (fields: MeetingQuickAddFields, dest: Destination) => {
     const {nextInbox} = await addMeetingToDestination(
-      buildMeeting({title: fields.title, date: fields.date, time: fields.time, endTime: fields.endTime, days: fields.days}, {notePath: linkPath}),
+      buildMeeting({title: fields.title, date: fields.date, time: fields.time, endTime: fields.endTime, days: fields.days}, {linkedFile: linkedSource}),
       dest,
       await inboxContext(dest),
     );
@@ -310,7 +320,9 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
     setLassoSaved(n => n + 1);
     if (mode === 'view') {return openDestination(savedTo);}
     if (mode === 'close') {return close();}
-    // 'next': the widget cleared the form for a typed extra item; destination and link stay.
+    // 'next': with open marks, on to the first one (this note's first);
+    // without, the cleared form for a typed extra item (destination and link stay).
+    if (ordered.length > 0) {selectMark(ordered[0]);}
   };
 
   // ---- extras ----
@@ -394,7 +406,6 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
   }
 
   const showColumn = !fromLasso || marks.length > 0;
-  const today = todayIso();
   const markPicture = (id: string) => (loaded.dataDir ? fileUri(`${loaded.dataDir}/marks/${id}/picture.png`) : null);
   let pictureUri: string | null = null;
   if (selectedKey === LASSO_KEY) {pictureUri = loaded.lassoPicture ? fileUri(loaded.lassoPicture) : null;}
@@ -465,7 +476,6 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
               onSelect={handleSelect}
               recognition={recognition}
               pictureUri={markPicture}
-              today={today}
               textColor={textColor}
               borderColor={borderColor}
             />
@@ -488,6 +498,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
                 captureSeed={seed}
                 fixedDestination={destination}
                 onCaptureDestinationChange={setDestination}
+                captureOwnDestination={selectedMark ? selectedMark.owner : loaded.lassoDestination}
                 onCaptureSaved={onCaptureSaved}
                 onAddTask={onAddTask}
                 onAddMeeting={onAddMeeting}

@@ -8,6 +8,8 @@ const mockState = {
   iconPlaced: true,
   addFails: false,
   calls: [] as string[],
+  data: null as null | Record<string, unknown>,
+  written: [] as Array<Record<string, unknown>>,
 };
 
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
@@ -42,13 +44,14 @@ jest.mock('../../src/supernote/fileSystem', () => ({
 jest.mock('../../src/storage/markData', () => ({
   markDataFolder: async (id: string) => `/private/data/marks/${id}`,
   markPicturePath: async (id: string) => `/private/data/marks/${id}/picture.png`,
-  writeMarkData: async () => {
+  writeMarkData: async (data: Record<string, unknown>) => {
     mockState.calls.push('data');
+    mockState.written.push(data);
   },
   deleteMarkData: async () => {
     mockState.calls.push('dataDeleted');
   },
-  readMarkData: async () => null,
+  readMarkData: async () => mockState.data,
 }));
 jest.mock('../../src/storage/markStore', () => {
   const actual = jest.requireActual('../../src/storage/markStore');
@@ -70,7 +73,8 @@ jest.mock('../../src/storage/dataCache', () => ({
 }));
 
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';
-import {createMarkFromLasso, outcomeNeedsScreen} from '../../src/storage/marks';
+import {createMarkFromLasso, outcomeNeedsScreen, recognizeMark} from '../../src/storage/marks';
+import {recognizeStrokes} from '../../src/supernote/strokeRecognition';
 
 const paths = resolvePaths(DEFAULT_SETTINGS);
 const stroke = {thickness: 1, penColor: 0, penType: 10, layerNum: 0, points: [1, 2], pressures: [1]};
@@ -93,6 +97,8 @@ beforeEach(() => {
   mockState.iconPlaced = true;
   mockState.addFails = false;
   mockState.calls = [];
+  mockState.data = null;
+  mockState.written = [];
 });
 
 const NOW = new Date(2026, 9, 5, 10, 42, 12);
@@ -129,4 +135,22 @@ it('takes the icon and data back when the line cannot be written', async () => {
   const outcome = await createMarkFromLasso(NOW);
   expect(outcome).toEqual({kind: 'failed', detail: 'disk full'});
   expect(mockState.calls.slice(-2)).toEqual(['icon-remove', 'dataDeleted']);
+});
+
+describe('recognizeMark keeps the text (checkpoint B)', () => {
+  const open = {mark: {id: 'm-1', createdAt: '2026-10-05 10:42', notePath: 'Plan.note', page: 0, text: null}, owner: {type: 'inbox'}, absPath: '/x/Plan.note'} as never;
+  const data = {id: 'm-1', strokes: [stroke], textBoxText: '', page: 0, displaySize: {width: 1404, height: 1872}};
+  it('recognizes once and writes the text into the mark data', async () => {
+    mockState.data = data;
+    (recognizeStrokes as jest.Mock).mockResolvedValueOnce({text: 'Call Anna', error: null, ms: 5});
+    expect((await recognizeMark(open)).text).toBe('Call Anna');
+    expect(mockState.written).toEqual([expect.objectContaining({id: 'm-1', recognizedText: 'Call Anna'})]);
+  });
+  it('uses the kept text without asking the recognizer again', async () => {
+    mockState.data = {...data, recognizedText: 'Call Anna'};
+    (recognizeStrokes as jest.Mock).mockClear();
+    expect((await recognizeMark(open)).text).toBe('Call Anna');
+    expect(recognizeStrokes).not.toHaveBeenCalled();
+    expect(mockState.written).toEqual([]);
+  });
 });

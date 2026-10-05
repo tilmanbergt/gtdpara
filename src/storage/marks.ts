@@ -204,8 +204,9 @@ export function listOpenMarks(scope: MarkScope): OpenMark[] {
 }
 
 /**
- * Recognizes a mark from its saved strokes (shifted copies, §3.4). A mark
- * that only holds text-box text needs no recognition. `missing` = the
+ * Recognizes a mark from its saved strokes (shifted copies, §3.4) - once:
+ * the result is kept in its mark.json and returned from there next time. A
+ * mark that only holds text-box text needs no recognition. `missing` = the
  * private data is gone (e.g. after reinstalling) - the line still works,
  * the text has to be typed.
  */
@@ -214,7 +215,17 @@ export async function recognizeMark(open: OpenMark): Promise<RecognitionResult &
   if (!data) {
     return {text: open.mark.text ?? '', error: open.mark.text ? null : 'mark data missing', ms: 0, missing: true};
   }
+  if (data.recognizedText) {
+    return {text: data.recognizedText, error: null, ms: 0, missing: false};
+  }
   const result = await recognizeStrokes(data.strokes, data.textBoxText, data.displaySize ?? data.pageSize, data.page);
+  if (result.text.trim()) {
+    try {
+      await writeMarkData({...data, recognizedText: result.text});
+    } catch (e) {
+      logWarn('marks: keeping recognized text failed', open.mark.id, e instanceof Error ? e.message : String(e));
+    }
+  }
   return {...result, missing: false};
 }
 
@@ -275,4 +286,11 @@ export async function cleanMarkDataOrphans(): Promise<void> {
   } catch (e) {
     logWarn('marks: orphan cleanup failed', e instanceof Error ? e.message : String(e));
   }
+}
+
+/** Recognized text kept from an earlier open (null when there is none yet). Cheap: one small file read. */
+export async function storedMarkText(open: OpenMark): Promise<string | null> {
+  if (open.mark.text) {return open.mark.text;}
+  const data = await readMarkData(open.mark.id);
+  return data?.recognizedText || null;
 }

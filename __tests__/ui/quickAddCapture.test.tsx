@@ -121,8 +121,9 @@ describe('QuickAddWidget capture', () => {
     expect(visibleInputs(r)).toContain('Next mark');
   });
 
-  it('offers File to chips and reports the choice; a typed #ABBR wins', async () => {
+  it('offers File to chips (unfocused ones behind More…) and reports the choice; a typed #ABBR wins', async () => {
     const {r, added, destChanges} = setup({key: 'x', items: ['order soil'], split: false});
+    await press(r, 'More…');
     await press(r, '#TO Team offsite');
     expect(destChanges).toEqual([{type: 'item', kind: 'project', name: 'Team offsite', path: '/Note/1 Projects/Team offsite'}]);
     act(() => {

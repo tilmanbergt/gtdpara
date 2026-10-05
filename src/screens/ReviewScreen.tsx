@@ -208,7 +208,7 @@ import {
 } from '../storage/inboxFiling';
 import {moveEntryWithNote} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
+import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {MeetingRelevantTodo, relatedItemsFor} from '../storage/meetingNoteAggregate';
 import {openOrCreateMeetingNote, openOrCreateTodoNote, refreshMeetingNoteBlock} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
@@ -2164,7 +2164,7 @@ export default function ReviewScreen({
 
   const onOpenInboxLinkedFile = (linkedFile: string) => {
     if (!paths) return;
-    openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
+    openLinkedFile(paths, linkedFile).catch(e =>
       logError('ReviewScreen: open linked file failed', e instanceof Error ? e.message : String(e)),
     );
   };

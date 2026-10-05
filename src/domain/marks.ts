@@ -385,6 +385,12 @@ export interface MarkDataFile {
   textBoxText: string;
   strokes: StoredStroke[];
   icon: {box: PxRect; placed: boolean} | null;
+  /**
+   * The text recognition returned the first time (checkpoint B, 2026-10-05):
+   * kept here so a mark is recognized once, not on every open. Private data -
+   * the `## Marks` line itself never gets it.
+   */
+  recognizedText?: string;
 }
 
 /** Parses mark.json; null when it isn't one. */

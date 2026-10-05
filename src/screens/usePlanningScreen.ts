@@ -34,14 +34,13 @@ import {
   buildTask,
   mutateEntryMeetings,
 } from '../storage/itemMutations';
-import {linkedFileStatus, resolveLinkedFilePath} from '../storage/linkedFiles';
+import {linkedFileStatus, openLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {saveItemGoal} from '../storage/periodGoals';
 import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {WeeklyMeetingEntry} from '../storage/weeklyAggregate';
-import {openPath} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {MeetingRowLayout, MeetingRowProps, MeetingTrackingConfig} from '../ui/MeetingRow';
@@ -246,7 +245,7 @@ export function usePlanningScreen({logTag}: Options) {
 
   const onOpenLinkedFile = (linkedFile: string) => {
     if (!paths) return;
-    openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
+    openLinkedFile(paths, linkedFile).catch(e =>
       logError(`${logTag}: open linked file failed`, errorMessage(e)),
     );
   };

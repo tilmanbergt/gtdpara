@@ -14,6 +14,7 @@ import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../../domain/set
 import {fileExists, folderExists, moveFile, moveFolder, writeTextFile} from '../../supernote/fileSystem';
 import {archiveTargetsFor} from '../archive';
 import {findCachedItem, frontMatterOf, getCachedData, reloadCachedInbox, removeCachedItem, resolveLivePaths, updateItemMeetings, updateItemTasks} from '../dataCache';
+import {stripPageAnchor} from '../../domain/sharedNotePages';
 import {toLinkedFile} from '../linkedFiles';
 import {dataFilePath, loadProjectFile, saveMeetings, saveTasks} from '../projectFile';
 import {savePlan} from './planStore';
@@ -58,36 +59,42 @@ export function archiveOpsFor(projectPath: string, settings: GtdParaSettings): A
   });
 }
 
-/** Rewrites every todo/meeting linkedFile equal to `from` - in every cached Project/Area and the Inbox. */
+/**
+ * Rewrites every todo/meeting linkedFile equal to `from` - in every cached
+ * Project/Area and the Inbox. A lasso source link to a page (`<file>#page=<n>`,
+ * 0.8) counts as a link to that file and keeps its page.
+ */
 async function rewriteLinks(from: string, to: string, paths: ResolvedParaPaths): Promise<number> {
   let changed = 0;
+  const hits = (linked: string) => stripPageAnchor(linked) === from;
+  const moved = (linked: string) => (linked === from ? to : `${to}${linked.slice(stripPageAnchor(linked).length)}`);
   for (const listed of getCachedData()?.items ?? []) {
     let item = findCachedItem(listed.path);
     if (!item) continue;
-    if (item.tasks.some(t => t.linkedFile === from)) {
-      const tasks = item.tasks.map(t => (t.linkedFile === from ? {...t, linkedFile: to} : t));
+    if (item.tasks.some(t => hits(t.linkedFile))) {
+      const tasks = item.tasks.map(t => (hits(t.linkedFile) ? {...t, linkedFile: moved(t.linkedFile)} : t));
       const raw = await saveTasks(item.kind, item.path, item.rawContent, tasks, item.taskExtraLines);
       updateItemTasks(item.path, raw, tasks, item.taskExtraLines);
       changed++;
       item = findCachedItem(listed.path);
       if (!item) continue;
     }
-    if (item.meetings.some(m => m.linkedFile === from)) {
-      const meetings = item.meetings.map(m => (m.linkedFile === from ? {...m, linkedFile: to} : m));
+    if (item.meetings.some(m => hits(m.linkedFile))) {
+      const meetings = item.meetings.map(m => (hits(m.linkedFile) ? {...m, linkedFile: moved(m.linkedFile)} : m));
       const raw = await saveMeetings(item.kind, item.path, item.rawContent, meetings, item.meetingExtraLines);
       updateItemMeetings(item.path, raw, meetings, item.meetingExtraLines);
       changed++;
     }
   }
   let inbox = await loadProjectFile('inbox', paths.inboxFolder);
-  if (inbox.tasks.some(t => t.linkedFile === from)) {
-    const tasks = inbox.tasks.map(t => (t.linkedFile === from ? {...t, linkedFile: to} : t));
+  if (inbox.tasks.some(t => hits(t.linkedFile))) {
+    const tasks = inbox.tasks.map(t => (hits(t.linkedFile) ? {...t, linkedFile: moved(t.linkedFile)} : t));
     await saveTasks('inbox', paths.inboxFolder, inbox.rawContent, tasks, inbox.taskExtraLines);
     changed++;
     inbox = await loadProjectFile('inbox', paths.inboxFolder);
   }
-  if (inbox.meetings.some(m => m.linkedFile === from)) {
-    const meetings = inbox.meetings.map(m => (m.linkedFile === from ? {...m, linkedFile: to} : m));
+  if (inbox.meetings.some(m => hits(m.linkedFile))) {
+    const meetings = inbox.meetings.map(m => (hits(m.linkedFile) ? {...m, linkedFile: moved(m.linkedFile)} : m));
     await saveMeetings('inbox', paths.inboxFolder, inbox.rawContent, meetings, inbox.meetingExtraLines);
     changed++;
   }
