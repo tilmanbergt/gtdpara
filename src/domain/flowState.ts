@@ -52,7 +52,7 @@ export function slugifyWaitingOn(input: string): string {
     .replace(/^-|-$/g, '');
 }
 
-/** `meier-sohn` -> `Meier Sohn`, for badge display (ui/TaskBadges.tsx). Empty slug -> empty string. */
+/** `meier-sohn` -> `Meier Sohn`, for the `#w/f` label (domain/taskLabels.ts). Empty slug -> empty string. */
 export function titleCaseSlug(slug: string): string {
   return slug
     .split('-')
@@ -147,7 +147,7 @@ export function deriveNow(tags: string[]): boolean {
   return hasBareTag(tags, 'now');
 }
 
-/** Adds/removes `#now` - the #now counterpart to setFlowStateTag/setDueTag, a thin wrapper over setBareTag. Only ever called from ui/TaskBadges.tsx's double-tap gesture today. */
+/** Adds/removes `#now` - the #now counterpart to setFlowStateTag/setDueTag, a thin wrapper over setBareTag. Called for the double-tap on a row's `#next`/`#now` label (ui/TaskLabels.tsx) and to strip `#now` for display (domain/taskLabels.ts). */
 export function setNowTag(text: string, value: boolean): string {
   return setBareTag(text, 'now', value);
 }
@@ -185,6 +185,18 @@ export function contextTagsOf(tags: readonly string[]): string[] {
     if (isContextTag(tag) && !out.includes(tag)) out.push(tag);
   }
   return out;
+}
+
+/**
+ * Whether an open Waiting For todo shows on Daily (docs/dev/technical-design-
+ * waiting-for-0.7.md W1): yes when it has no date, or its date is today or
+ * earlier; no while its date is still in the future. Not tied to focus - a
+ * Waiting For todo from any Project, Area or the Inbox qualifies. False for
+ * any other flow state.
+ */
+export function isWaitingForShownOnDaily(task: Task, todayDate: string): boolean {
+  if (task.flowState !== 'waiting-for') return false;
+  return task.dueDate === null || task.dueDate <= todayDate;
 }
 
 export interface TaskGroup {

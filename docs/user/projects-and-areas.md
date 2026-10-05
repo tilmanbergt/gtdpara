@@ -34,7 +34,7 @@ A project can support one area. Tap **Assign to Area…** in the status section,
 
 ## Abbreviations
 
-Every project and area gets a short abbreviation, suggested from its name (for example `GR`). You can change it; it must be unique. Use it as a tag to file items directly - see [Quick Add](quick-add.md).
+Every project and area gets a short abbreviation, suggested from its name (for example `GR`). You can change it; it must be unique. The Projects and Areas tabs show it after each name (`Garden renovation #GR`). Use it as a tag to file items directly - see [Quick Add](quick-add.md).
 
 ## Files and linked files
 

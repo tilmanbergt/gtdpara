@@ -6,13 +6,13 @@ Tags are words with a `#` in front, written straight into a todo or meeting. The
 
 Each todo has at most one of these. The chips in Quick Add set them for you.
 
-- `#next`: the next physical step. Shows on Daily when its project or area is in focus.
-- `#waiting-for:name`: you are waiting for someone, for example `#waiting-for:lena`. Never on Daily; you find them in the **Waiting For** group of their project, area or the Inbox.
+- `#next`: the next physical step. Shows on Daily when its project or area is in focus. Label: `#next`.
+- `#waiting-for:name`: you are waiting for someone, for example `#waiting-for:lena`. Shows on Daily until you get it (label `#w/f Lena`); give it a due date to keep it off Daily until that day. You also find them in the **Waiting For** group of their project, area or the Inbox.
 - `#someday` and `#maybe`: parked ideas. Never on Daily; a project with only these counts as stalled in the Review.
 
 ## Due dates
 
-`#due:2026-10-15` sets a due date. Quick Add writes it for you. Todos due today, tomorrow or earlier show on Daily.
+`#due:2026-10-15` sets a due date. Quick Add writes it for you. Todos due today, tomorrow or earlier show on Daily. The label reads `#due 15.10.`, with `!` when overdue. For a Waiting for todo the date is when to follow up: it shows on Daily from that day on.
 
 ## Now
 

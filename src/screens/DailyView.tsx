@@ -201,7 +201,7 @@ import {MiniTabDef} from '../ui/MiniTabs';
 import PagedSection from '../ui/PagedSection';
 import {PAGE_SIZE} from '../ui/pagination';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
-import {displayTaskText} from '../ui/TaskBadges';
+import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
 import {common} from '../ui/commonStyles';
@@ -693,7 +693,7 @@ export default function DailyView({
   };
 
   /**
-   * The Next/Now badge's double-tap (ui/TaskBadges.tsx's onToggleNow,
+   * The `#next`/`#now` label's double-tap (ui/TaskLabels.tsx's onToggleNow,
    * threaded through ui/TaskRow.tsx) - flips `#now` on `entry.task` via the
    * same setNowTag-then-deriveTaskFields round-trip every other tag mutator
    * on this screen uses (see commitTaskEdit above). Wired both from normal
@@ -1155,7 +1155,7 @@ export default function DailyView({
         onToggleContext={toggleContext}
         context="flat"
         height={heightPx}
-        numberOfLines={heightPx != null ? taskRowLines(entry.task, COLUMN_WIDTH_PX, 'flat') : undefined}
+        numberOfLines={heightPx != null ? taskRowLines(entry.task, COLUMN_WIDTH_PX, 'flat', dailyContext != null) : undefined}
         textColor={textColor}
         borderColor={borderColor}
       />
@@ -1225,7 +1225,7 @@ export default function DailyView({
         </Pressable>
       );
     }
-    return renderTaskEntry(row.entry, taskRowHeight(row.entry.task, COLUMN_WIDTH_PX, 'flat'));
+    return renderTaskEntry(row.entry, taskRowHeight(row.entry.task, COLUMN_WIDTH_PX, 'flat', dailyContext != null));
   };
 
   // Row markup itself is the shared ui/MeetingRow.tsx - see renderTaskEntry's
@@ -1713,7 +1713,7 @@ export default function DailyView({
                 <PagedSection
                   header="Next todos"
                   rows={taskRows}
-                  rowHeight={row => (row.kind === 'header' ? GROUP_HEADER_ROW_PX : taskRowHeight(row.entry.task, COLUMN_WIDTH_PX, 'flat'))}
+                  rowHeight={row => (row.kind === 'header' ? GROUP_HEADER_ROW_PX : taskRowHeight(row.entry.task, COLUMN_WIDTH_PX, 'flat', dailyContext != null))}
                   resetKey={contextResetKey}
                   isCountableRow={row => row.kind === 'entry'}
                   renderRow={renderFlatTaskRow}

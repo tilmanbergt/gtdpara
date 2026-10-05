@@ -10,6 +10,18 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- **Waiting for todos show on Daily**, from every project, area and the Inbox, last in their group -
+  until their date, if they have one: then they stay off Daily until that day.
+- **Todos show text labels instead of small icons**: `#next`, `#now`, `#w/f Lena`, `#due 5.10.` (with
+  `!` when overdue), always visible, no tapping to read them. Double-tap `#next` to mark a todo `#now`.
+  A long title is shortened with … so the labels always fit.
+- The **Projects** and **Areas** tabs show each abbreviation after the name, and their rows are a bit
+  taller, so taps land on the right one.
+
+### Fixed
+- The **waiting for name** in a todo row could be cut off or drawn under the next row.
+
 ## [0.6.0] — 2026-10-04
 
 ### New

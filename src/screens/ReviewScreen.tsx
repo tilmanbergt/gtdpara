@@ -263,7 +263,7 @@ import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {ReviewEnd, ReviewHub} from '../ui/ReviewHub';
 import ReviewMasterDetail from '../ui/ReviewMasterDetail';
-import {displayTaskText} from '../ui/TaskBadges';
+import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {ReadOnlyTaskRow, taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
 import {activeLineEstimator} from '../ui/textLineEstimator';

@@ -72,7 +72,14 @@ import {log} from '../utils/log';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import ClipboardTextInput from '../ui/ClipboardTextInput';
 import PagedSection from '../ui/PagedSection';
-import {COLUMN_WIDTH_PX, itemEntryHeight, itemEntryLines} from '../ui/itemEntryRow';
+import {
+  ABBREV_GAP,
+  COLUMN_WIDTH_PX,
+  ItemEntryOptions,
+  itemEntryAbbrevLabel,
+  itemEntryHeight,
+  itemEntryLines,
+} from '../ui/itemEntryRow';
 import {common} from '../ui/commonStyles';
 import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {useErrorStatus} from '../ui/status/StatusProvider';
@@ -92,6 +99,14 @@ const CREATE_PLACEHOLDER: Record<'project' | 'area', string> = {
 // 2026-09-16, docs/dev/technical-design-review-master-detail.md) so Review's
 // master-detail left lists can render rows with identical sizing/display
 // logic instead of a second copy.
+
+// The Projects/Areas tabs show each entry's abbreviation and give rows a bit
+// more room than Review's lists (docs/dev/technical-design-waiting-for-0.7.md
+// P1/P2: 8 px padding instead of 6, 38 px instead of 34 per one-line row,
+// against wrong taps). ENTRY_PADDING_PX and styles.entryRow must match.
+const ENTRY_PADDING_PX = 8;
+const ENTRY_OPTS: ItemEntryOptions = {showAbbrev: true, paddingPx: ENTRY_PADDING_PX};
+const entryHeight = (item: CachedItem) => itemEntryHeight(item, COLUMN_WIDTH_PX, ENTRY_OPTS);
 
 // --- Fresh screen budget for this screen's two-column area (docs/dev/design-
 // device-rendering.md §6) ---
@@ -255,7 +270,8 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
   const groups = groupByStatus(kind, entries);
 
   const renderEntry = (item: CachedItem): React.ReactNode => {
-    const heightPx = itemEntryHeight(item, COLUMN_WIDTH_PX);
+    const heightPx = entryHeight(item);
+    const abbrev = itemEntryAbbrevLabel(item, ENTRY_OPTS);
     return (
       <Pressable
         key={item.path}
@@ -269,9 +285,11 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
         style={[styles.entryRow, {height: heightPx, minHeight: heightPx}]}>
         <Text
           style={[styles.entry, styles.entryLink, {color: textColor}]}
-          numberOfLines={itemEntryLines(item, COLUMN_WIDTH_PX)}>
+          numberOfLines={itemEntryLines(item, COLUMN_WIDTH_PX, ENTRY_OPTS)}>
           {isFocused(item) ? '★ ' : ''}
-          {item.name} ›
+          {item.name}
+          {abbrev ? ABBREV_GAP : ''}
+          {abbrev ? <Text style={styles.entryAbbrev}>{abbrev}</Text> : null} ›
         </Text>
       </Pressable>
     );
@@ -331,7 +349,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
             <PagedSection
               header="Active"
               rows={groups.active}
-              rowHeight={item => itemEntryHeight(item, COLUMN_WIDTH_PX)}
+              rowHeight={entryHeight}
               renderRow={renderEntry}
               emptyHint="Nothing active."
               textColor={textColor}
@@ -353,7 +371,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
                   <PagedSection
                     header="On Hold"
                     rows={groups.onHold}
-                    rowHeight={item => itemEntryHeight(item, COLUMN_WIDTH_PX)}
+                    rowHeight={entryHeight}
                     renderRow={renderEntry}
                     emptyHint="Nothing on hold."
                     textColor={textColor}
@@ -364,7 +382,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
                   <PagedSection
                     header="Done — awaiting review"
                     rows={groups.done}
-                    rowHeight={item => itemEntryHeight(item, COLUMN_WIDTH_PX)}
+                    rowHeight={entryHeight}
                     renderRow={renderEntry}
                     emptyHint="Nothing done yet."
                     textColor={textColor}
@@ -382,7 +400,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
               <PagedSection
                 header="On Hold"
                 rows={groups.onHold}
-                rowHeight={item => itemEntryHeight(item, COLUMN_WIDTH_PX)}
+                rowHeight={entryHeight}
                 viewportHeight={FULL_VIEWPORT_PX}
                 renderRow={renderEntry}
                 emptyHint="Nothing on hold."
@@ -436,7 +454,7 @@ const styles = StyleSheet.create({
     // variable-height row inside its own reserved box makes a
     // shorter-than-reserved row visually "float" instead of sitting at the
     // top with any misprediction slack at the bottom).
-    paddingVertical: 6,
+    paddingVertical: ENTRY_PADDING_PX,
   },
   entry: {
     fontSize: FONT.medium,
@@ -457,6 +475,11 @@ const styles = StyleSheet.create({
   },
   entryLink: {
     fontWeight: '500',
+  },
+  // The abbreviation reads as a tag after the name: smaller, normal weight.
+  entryAbbrev: {
+    fontSize: FONT.small,
+    fontWeight: '400',
   },
   createRow: {
     flexDirection: 'row',

@@ -170,7 +170,7 @@ export type TextSegment = {kind: 'text'; value: string} | {kind: 'tag'; value: s
  * context-tags.md §7) - the basis for ui/TaskRow.tsx/ui/MeetingRow.tsx
  * rendering individual `#tag`s as their own tap targets without
  * reimplementing any of the flow-state/due-tag display stripping
- * `ui/TaskBadges.tsx`'s `displayTaskText` already does (callers run this
+ * `domain/taskLabels.ts`'s `displayTaskText` already does (callers run this
  * over that function's *output*, not the raw `Task.text`). A `{kind: 'tag'}`
  * segment's `value` is the lowercased tag text with no leading `#` - same
  * normalization `extractTags` applies - so it can be compared directly
