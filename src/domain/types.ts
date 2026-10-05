@@ -176,6 +176,26 @@ export interface WeeklyGoal {
 }
 
 /**
+ * One open "Mark for later" (docs/dev/technical-design-lasso-0.8.md §3.1):
+ * a lasso selection stored for later processing. Lives as one line in the
+ * `## Marks` section of the project.txt / area.txt / Inbox.txt that owns
+ * the note (domain/marks.ts `markOwner`). The picture and stroke data live
+ * in gtdpara's private folder, keyed by `id` (storage/markData.ts).
+ */
+export interface Mark {
+  /** 'm-20261005-104212-351' - also the Obsidian block id at the end of the line. */
+  id: string;
+  /** 'YYYY-MM-DD HH:mm', local time of the mark. */
+  createdAt: string;
+  /** The note as written in the line: relative to the owner's folder, or absolute. */
+  notePath: string;
+  /** 0-based page index (the line shows page + 1). */
+  page: number;
+  /** Text known at mark time (text boxes); null for handwriting. */
+  text: string | null;
+}
+
+/**
  * One Project/Area's goal for a single calendar month (docs/dev/technical-design-
  * monthly-view.md §2.2) - the monthly twin of `WeeklyGoal`, stored in a
  * `## Monthly Goals` span as `- YYYY-MM: text`. One entry per month at most.

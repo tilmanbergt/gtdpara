@@ -133,8 +133,8 @@ import {AbbrevFileMatch, resolveAbbrevFileTarget} from '../domain/abbrev';
 import {copyCutRange, Selection, spliceAtSelection} from '../domain/clipboardText';
 import {describeAddedDate} from '../domain/dateLabel';
 import {Destination, destinationLabel} from '../domain/destination';
-import {setFlowStateTag, slugifyWaitingOn} from '../domain/flowState';
-import {extractContextTags, insertTagAtPosition, removeTagFromText, setDueTag, stripSpaceAfterHash} from '../domain/markdown';
+import {composeTaskText} from '../domain/quickAddCompose';
+import {extractContextTags, insertTagAtPosition, removeTagFromText, stripSpaceAfterHash} from '../domain/markdown';
 import {formatMeetingWhen, MeetingField, todayIso, validateMeetingFields} from '../domain/meetingTime';
 import {isHighlight, setHighlight} from '../domain/monthHighlight';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
@@ -729,17 +729,10 @@ function QuickAddWidget({
     Keyboard.dismiss();
     const trimmed = taskDraft.text.trim();
     if (!trimmed) return;
-    let finalText = setFlowStateTag(
-      trimmed,
-      taskDraft.flowState,
-      taskDraft.flowState === 'waiting-for' ? slugifyWaitingOn(taskDraft.waitingOnText) : undefined,
-    );
-    finalText = setDueTag(finalText, taskDraft.dueDate.trim() || null);
-    // Abbreviation quick-file (feature_abbrev_quick_file, 2026-09-18 bugfix):
-    // the matched #tag did its job (picking the destination) and is stripped
-    // from the saved text, same as every other one-shot tag this widget
-    // composes in (flow-state, due).
-    if (taskAbbrevTarget) finalText = removeTagFromText(finalText, taskAbbrevTarget.tag);
+    // Flow-state, due and - for abbreviation quick-file (feature_abbrev_quick_file,
+    // 2026-09-18 bugfix) - removing the matched #tag, which did its job picking the
+    // destination: domain/quickAddCompose.ts, shared with the lasso capture panel.
+    const finalText = composeTaskText(taskDraft, taskAbbrevTarget ? taskAbbrevTarget.tag : null);
     setError(null);
     setPending(true);
     onAddTask(finalText, taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination)
@@ -766,12 +759,7 @@ function QuickAddWidget({
       setError('A todo needs some text.', 'text');
       return Promise.resolve(false);
     }
-    let finalText = setFlowStateTag(
-      trimmed,
-      editFields.fields.flowState,
-      editFields.fields.flowState === 'waiting-for' ? slugifyWaitingOn(editFields.fields.waitingOnText) : undefined,
-    );
-    finalText = setDueTag(finalText, editFields.fields.dueDate.trim() || null);
+    const finalText = composeTaskText(editFields.fields);
     setError(null);
     setPending(true);
     return (onSaveEditTask ?? (() => Promise.resolve()))(finalText, editFields.fields.linkedFile)
@@ -1583,13 +1571,7 @@ function QuickAddWidget({
     if (editFields.kind === 'task') {
       const trimmed = editFields.fields.text.trim();
       if (!trimmed) return;
-      let finalText = setFlowStateTag(
-        trimmed,
-        editFields.fields.flowState,
-        editFields.fields.flowState === 'waiting-for' ? slugifyWaitingOn(editFields.fields.waitingOnText) : undefined,
-      );
-      finalText = setDueTag(finalText, editFields.fields.dueDate.trim() || null);
-      finalText = removeTagFromText(finalText, abbrevTarget.tag);
+      const finalText = composeTaskText(editFields.fields, abbrevTarget.tag);
       setError(null);
       setPending(true);
       onQuickFile(abbrevTarget, {kind: 'task', text: finalText, linkedFile: editFields.fields.linkedFile})
