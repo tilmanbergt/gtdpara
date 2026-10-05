@@ -51,7 +51,7 @@ export interface IconInsertResult {
 
 async function insertOnce(page: number, box: PxRect, id: string): Promise<string | null> {
   const created = (await PluginCommAPI.createElement(ELEMENT_TYPE_GEO)) as SdkResponse<SdkElement & Record<string, unknown>>;
-  if (!created?.success || !created.result) return 'createElement: ' + errText(created, 'failed');
+  if (!created?.success || !created.result) {return 'createElement: ' + errText(created, 'failed');}
   const el = created.result;
   try {
     el.userData = markUserData(id);
@@ -91,8 +91,8 @@ export async function insertBookmark(page: number, lassoRect: PxRect, id: string
   }
   const placed = error === null;
   const saved = placed ? await saveCurrentNote() : false;
-  if (placed) log('markIcons: bookmark placed', id, `page=${page}`, `retried=${retried}`, `saved=${saved}`);
-  else logWarn('markIcons: bookmark not placed', id, error);
+  if (placed) {log('markIcons: bookmark placed', id, `page=${page}`, `retried=${retried}`, `saved=${saved}`);}
+  else {logWarn('markIcons: bookmark not placed', id, error);}
   return {placed, box, retried, saved, error};
 }
 
@@ -115,7 +115,7 @@ interface FoundIcon {
 
 async function pageElements(path: string, page: number): Promise<SdkElement[]> {
   const r = (await PluginFileAPI.getElements(page, path)) as SdkResponse<SdkElement[]>;
-  if (!r?.success) throw new Error('getElements: ' + errText(r, 'failed'));
+  if (!r?.success) {throw new Error('getElements: ' + errText(r, 'failed'));}
   return Array.isArray(r.result) ? r.result : [];
 }
 
@@ -145,19 +145,19 @@ async function findIcon(ref: IconRef): Promise<FoundIcon | null> {
     return {page, element: hit, unique, pageElements: els};
   };
   const onStored = await tryPage(ref.page);
-  if (onStored) return onStored;
+  if (onStored) {return onStored;}
   const total = await pageCount(ref.path);
-  if (total == null) return null;
+  if (total == null) {return null;}
   for (let p = 0; p < Math.min(total, MAX_PAGES_SCANNED); p++) {
-    if (p === ref.page) continue;
+    if (p === ref.page) {continue;}
     const found = await tryPage(p);
-    if (found) return found;
+    if (found) {return found;}
   }
   return null;
 }
 
 function boundsOf(points: PxPoint[]): PxRect | null {
-  if (points.length === 0) return null;
+  if (points.length === 0) {return null;}
   let left = Infinity;
   let top = Infinity;
   let right = -Infinity;
@@ -212,7 +212,7 @@ export async function changeMarkIcon(ref: IconRef, change: IconChange, currentPa
         : ((await PluginFileAPI.deleteElements(ref.path, found.page, [num])) as SdkResponse<unknown>);
     } else {
       const box = boundsOf(found.element.geometry?.points ?? []);
-      if (!box) return {ok: false, retry: false, detail: 'icon has no shape'};
+      if (!box) {return {ok: false, retry: false, detail: 'icon has no shape'};}
       const modified: SdkElement = {
         ...found.element,
         userData: markDoneUserData(ref.id),
@@ -227,7 +227,7 @@ export async function changeMarkIcon(ref: IconRef, change: IconChange, currentPa
       logWarn('markIcons: change failed', ref.id, change, inOpenNote ? 'open note' : 'file', detail);
       return {ok: false, retry: true, detail};
     }
-    if (inOpenNote) await saveCurrentNote();
+    if (inOpenNote) {await saveCurrentNote();}
     log('markIcons: changed', ref.id, change, inOpenNote ? 'open note' : 'file', `page=${found.page}`);
     return {ok: true, retry: false, detail: change};
   } catch (e) {
@@ -235,6 +235,6 @@ export async function changeMarkIcon(ref: IconRef, change: IconChange, currentPa
     logWarn('markIcons: change threw', ref.id, change, detail);
     return {ok: false, retry: true, detail};
   } finally {
-    if (found) recycleElements(found.pageElements);
+    if (found) {recycleElements(found.pageElements);}
   }
 }

@@ -4,7 +4,7 @@
  * @format
  */
 
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import TabBar, {AppTab} from './src/ui/TabBar';
@@ -21,6 +21,8 @@ import ReviewScreen from './src/screens/ReviewScreen';
 import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen from './src/screens/CaptureScreen';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
+import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
+import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import HelpOverlay from './src/ui/HelpOverlay';
 import {helpStartPage, LastHelpPage} from './src/domain/helpTopics';
 import {USER_DOCS} from './src/generated/userDocs';
@@ -126,9 +128,24 @@ export default function App(): React.JSX.Element {
 // remounts the whole shell via this key, so no kept-alive tab, draft or
 // screen state from the previous data set survives; the normal start path
 // (reorient) then runs against the new profile's settings.
+//
+// "Mark for later" (docs/dev/technical-design-lasso-0.8.md §3.6) runs from
+// index.js without this view; when it needs to say something it stores an
+// outcome and opens the view - drawn here on top of whatever the shell shows,
+// so the shell (and its kept tabs) stays as it was.
 function AppRoot(): React.JSX.Element {
   const [epoch, setEpoch] = useState(0);
-  return <AppShell key={epoch} onProfileSwitched={() => setEpoch(e => e + 1)} />;
+  const markOutcome = useSyncExternalStore(subscribeMarkOutcome, getMarkOutcome);
+  return (
+    <>
+      <AppShell key={epoch} onProfileSwitched={() => setEpoch(e => e + 1)} />
+      {markOutcome && outcomeNeedsScreen(markOutcome) ? (
+        <View style={StyleSheet.absoluteFill}>
+          <MarkOutcomeScreen outcome={markOutcome} />
+        </View>
+      ) : null}
+    </>
+  );
 }
 
 function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.JSX.Element {

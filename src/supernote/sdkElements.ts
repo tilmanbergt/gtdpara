@@ -69,7 +69,7 @@ export interface SdkElement {
 export function recycleElements(elements: Array<{uuid?: string} | null | undefined>): void {
   for (const el of elements) {
     try {
-      if (el?.uuid) PluginCommAPI.recycleElement(el.uuid);
+      if (el?.uuid) {PluginCommAPI.recycleElement(el.uuid);}
     } catch (e) {
       logWarn('sdkElements: recycle failed', errorMessage(e));
     }
@@ -78,10 +78,10 @@ export function recycleElements(elements: Array<{uuid?: string} | null | undefin
 
 /** Fills an empty accessor: one batch setRange first, else one add() per value. */
 export async function fillAccessor<T>(acc: Accessor<T>, values: T[]): Promise<boolean> {
-  if (values.length === 0) return true;
+  if (values.length === 0) {return true;}
   try {
     const ok = await acc.setRange(0, values.length - 1, values);
-    if (ok && (await acc.size()) === values.length) return true;
+    if (ok && (await acc.size()) === values.length) {return true;}
   } catch {
     // fall through to add()
   }
@@ -91,9 +91,9 @@ export async function fillAccessor<T>(acc: Accessor<T>, values: T[]): Promise<bo
   } catch {
     size = 0;
   }
-  if (size > values.length) return false;
+  if (size > values.length) {return false;}
   for (let i = size; i < values.length; i++) {
-    if (!(await acc.add(i, values[i]))) return false;
+    if (!(await acc.add(i, values[i]))) {return false;}
   }
   return true;
 }

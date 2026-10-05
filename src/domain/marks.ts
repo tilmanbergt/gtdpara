@@ -66,9 +66,9 @@ export function formatMarkLine(mark: Mark): string {
 
 export function parseMarkLine(line: string): Mark | null {
   const m = MARK_LINE_RE.exec(line.trim());
-  if (!m) return null;
+  if (!m) {return null;}
   const page = Number(m[4]) - 1;
-  if (!Number.isFinite(page) || page < 0) return null;
+  if (!Number.isFinite(page) || page < 0) {return null;}
   const text = m[5]?.trim() ?? '';
   return {id: m[6], createdAt: `${m[1]} ${m[2]}`, notePath: m[3], page, text: text || null};
 }
@@ -78,10 +78,10 @@ export function parseMarkLines(lines: string[]): {marks: Mark[]; extraLines: str
   const marks: Mark[] = [];
   const extraLines: string[] = [];
   for (const line of lines) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {continue;}
     const mark = parseMarkLine(line);
-    if (mark) marks.push(mark);
-    else extraLines.push(line);
+    if (mark) {marks.push(mark);}
+    else {extraLines.push(line);}
   }
   return {marks, extraLines};
 }
@@ -100,14 +100,14 @@ function collapseLineText(text: string): string {
 
 /** Path as written into the line: relative when the note lies inside `ownerFolder`, else absolute. */
 export function markLinkPath(ownerFolder: string | null, absNotePath: string): string {
-  if (!ownerFolder) return absNotePath;
+  if (!ownerFolder) {return absNotePath;}
   const prefix = `${ownerFolder.replace(/\/+$/, '')}/`;
   return absNotePath.startsWith(prefix) ? absNotePath.slice(prefix.length) : absNotePath;
 }
 
 /** Inverse of markLinkPath. */
 export function resolveMarkPath(ownerFolder: string, notePath: string): string {
-  if (notePath.startsWith('/')) return notePath;
+  if (notePath.startsWith('/')) {return notePath;}
   return `${ownerFolder.replace(/\/+$/, '')}/${notePath}`;
 }
 
@@ -160,8 +160,8 @@ export function groupMarks(marks: OpenMark[], currentPath: string | null): MarkG
   const byPath = new Map<string, OpenMark[]>();
   for (const m of marks) {
     const list = byPath.get(m.absPath);
-    if (list) list.push(m);
-    else byPath.set(m.absPath, [m]);
+    if (list) {list.push(m);}
+    else {byPath.set(m.absPath, [m]);}
   }
   const groups: MarkGroup[] = [];
   for (const [absPath, list] of byPath) {
@@ -177,8 +177,8 @@ export function groupMarks(marks: OpenMark[], currentPath: string | null): MarkG
     g.marks.reduce((min, m) => (m.mark.createdAt < min ? m.mark.createdAt : min), '9999');
   groups.sort((a, b) => {
     if (currentPath) {
-      if (a.absPath === currentPath && b.absPath !== currentPath) return -1;
-      if (b.absPath === currentPath && a.absPath !== currentPath) return 1;
+      if (a.absPath === currentPath && b.absPath !== currentPath) {return -1;}
+      if (b.absPath === currentPath && a.absPath !== currentPath) {return 1;}
     }
     return oldest(a).localeCompare(oldest(b)) || a.absPath.localeCompare(b.absPath);
   });
@@ -213,10 +213,10 @@ export function markDoneUserData(id: string): string {
 
 /** 'gtdpara:mark:<id>[:done]' -> {id, done}; anything else -> null. */
 export function parseMarkUserData(value: unknown): {id: string; done: boolean} | null {
-  if (typeof value !== 'string' || !value.startsWith(MARK_USERDATA_PREFIX)) return null;
+  if (typeof value !== 'string' || !value.startsWith(MARK_USERDATA_PREFIX)) {return null;}
   let rest = value.slice(MARK_USERDATA_PREFIX.length);
   const done = rest.endsWith(DONE_SUFFIX);
-  if (done) rest = rest.slice(0, -DONE_SUFFIX.length);
+  if (done) {rest = rest.slice(0, -DONE_SUFFIX.length);}
   return rest ? {id: rest, done} : null;
 }
 
@@ -303,11 +303,11 @@ export function shiftStrokes(strokes: StoredStroke[], origin = SHIFT_ORIGIN_EMR)
   let minY = Infinity;
   for (const s of strokes) {
     for (let i = 0; i + 1 < s.points.length; i += 2) {
-      if (s.points[i] < minX) minX = s.points[i];
-      if (s.points[i + 1] < minY) minY = s.points[i + 1];
+      if (s.points[i] < minX) {minX = s.points[i];}
+      if (s.points[i + 1] < minY) {minY = s.points[i + 1];}
     }
   }
-  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return strokes.map(s => ({...s, points: [...s.points]}));
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {return strokes.map(s => ({...s, points: [...s.points]}));}
   const dx = origin - minX;
   const dy = origin - minY;
   return strokes.map(s => ({
@@ -333,7 +333,7 @@ export function joinInReadingOrder(pieces: TextPiece[], lineTolerance = 20): str
   const unplaced = pieces.filter(p => !p.rect && p.text.trim().length > 0);
   placed.sort((a, b) => {
     const dy = a.rect!.top - b.rect!.top;
-    if (Math.abs(dy) > lineTolerance) return dy;
+    if (Math.abs(dy) > lineTolerance) {return dy;}
     return a.rect!.left - b.rect!.left;
   });
   return [...placed, ...unplaced].map(p => p.text.trim()).join('\n');
@@ -360,10 +360,10 @@ export interface MarkDataFile {
 
 /** Parses mark.json; null when it isn't one. */
 export function parseMarkDataFile(text: string | null): MarkDataFile | null {
-  if (!text) return null;
+  if (!text) {return null;}
   try {
     const parsed = JSON.parse(text) as MarkDataFile;
-    if (!parsed || typeof parsed.id !== 'string' || !Array.isArray(parsed.strokes)) return null;
+    if (!parsed || typeof parsed.id !== 'string' || !Array.isArray(parsed.strokes)) {return null;}
     return parsed;
   } catch {
     return null;

@@ -54,7 +54,7 @@ export async function readMarkData(id: string): Promise<MarkDataFile | null> {
 
 /** Deletes the mark's folder. Never throws. */
 export async function deleteMarkData(id: string): Promise<void> {
-  if (!isMarkId(id)) return;
+  if (!isMarkId(id)) {return;}
   try {
     const ok = await deletePrivateDataTree(await markDataFolder(id));
     log('markData: deleted', id, `ok=${ok}`);
@@ -76,7 +76,7 @@ export async function listMarkDataIds(): Promise<string[]> {
 /** Age in ms of a mark id ('m-YYYYMMDD-HHmmss-NNN', local time); null when unreadable. */
 export function markIdAgeMs(id: string, now: Date): number | null {
   const m = /^m-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-\d{3}$/.exec(id);
-  if (!m) return null;
+  if (!m) {return null;}
   const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime();
   return now.getTime() - t;
 }
@@ -91,13 +91,13 @@ const ORPHAN_MIN_AGE_MS = 24 * 60 * 60 * 1000;
 export async function cleanOrphanedMarkData(openIds: Set<string>, now = new Date()): Promise<string[]> {
   const deleted: string[] = [];
   for (const id of await listMarkDataIds()) {
-    if (openIds.has(id)) continue;
+    if (openIds.has(id)) {continue;}
     const age = markIdAgeMs(id, now);
-    if (age === null || age < ORPHAN_MIN_AGE_MS) continue;
+    if (age === null || age < ORPHAN_MIN_AGE_MS) {continue;}
     await deleteMarkData(id);
     deleted.push(id);
   }
-  if (deleted.length) log('markData: orphans deleted', deleted.length);
+  if (deleted.length) {log('markData: orphans deleted', deleted.length);}
   return deleted;
 }
 

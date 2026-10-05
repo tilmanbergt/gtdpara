@@ -39,7 +39,7 @@ export function splitItems(text: string): string[] {
 }
 
 function withHeading(heading: string, item: string): string {
-  if (!heading) return item;
+  if (!heading) {return item;}
   return /[:\-–—]$/.test(heading) ? `${heading} ${item}` : `${heading}: ${item}`;
 }
 

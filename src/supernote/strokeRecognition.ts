@@ -47,19 +47,19 @@ async function buildStrokes(strokes: StoredStroke[], page: number): Promise<SdkE
   try {
     for (const s of strokes) {
       const created = (await PluginCommAPI.createElement(ELEMENT_TYPE_STROKE)) as SdkResponse<SdkElement>;
-      if (!created?.success || !created.result) throw new Error('createElement: ' + errText(created, 'failed'));
+      if (!created?.success || !created.result) {throw new Error('createElement: ' + errText(created, 'failed'));}
       const el = created.result;
       built.push(el);
       el.pageNum = page;
-      if (s.layerNum != null) el.layerNum = s.layerNum;
-      if (s.thickness != null) el.thickness = s.thickness;
-      if (!el.stroke?.points) throw new Error('created stroke has no points accessor');
-      if (s.penColor != null) el.stroke.penColor = s.penColor;
-      if (s.penType != null) el.stroke.penType = s.penType;
+      if (s.layerNum != null) {el.layerNum = s.layerNum;}
+      if (s.thickness != null) {el.thickness = s.thickness;}
+      if (!el.stroke?.points) {throw new Error('created stroke has no points accessor');}
+      if (s.penColor != null) {el.stroke.penColor = s.penColor;}
+      if (s.penType != null) {el.stroke.penType = s.penType;}
       const pts = [];
-      for (let i = 0; i + 1 < s.points.length; i += 2) pts.push({x: s.points[i], y: s.points[i + 1]});
-      if (!(await fillAccessor(el.stroke.points, pts))) throw new Error('could not fill stroke points');
-      if (el.stroke.pressures && s.pressures.length > 0) await fillAccessor(el.stroke.pressures, s.pressures);
+      for (let i = 0; i + 1 < s.points.length; i += 2) {pts.push({x: s.points[i], y: s.points[i + 1]});}
+      if (!(await fillAccessor(el.stroke.points, pts))) {throw new Error('could not fill stroke points');}
+      if (el.stroke.pressures && s.pressures.length > 0) {await fillAccessor(el.stroke.pressures, s.pressures);}
     }
   } catch (e) {
     recycleElements(built);
@@ -80,18 +80,18 @@ export function recognizeStrokes(
   page = 0,
 ): Promise<RecognitionResult> {
   const boxText = textBoxText.trim();
-  if (strokes.length === 0) return Promise.resolve({text: boxText, error: null, ms: 0});
+  if (strokes.length === 0) {return Promise.resolve({text: boxText, error: null, ms: 0});}
   return serial(async () => {
     const t0 = Date.now();
     let built: SdkElement[] = [];
     let recognized = '';
     let error: string | null = null;
     try {
-      if (!size) throw new Error('no page size');
+      if (!size) {throw new Error('no page size');}
       built = await buildStrokes(shiftStrokes(strokes), page);
       const r = (await PluginCommAPI.recognizeElements(built, size)) as SdkResponse<string>;
-      if (r?.success) recognized = (r.result ?? '').trim();
-      else error = errText(r, 'recognition failed');
+      if (r?.success) {recognized = (r.result ?? '').trim();}
+      else {error = errText(r, 'recognition failed');}
     } catch (e) {
       error = errorMessage(e);
     } finally {
@@ -99,8 +99,8 @@ export function recognizeStrokes(
     }
     const text = [recognized, boxText].filter(part => part.length > 0).join('\n');
     const ms = Date.now() - t0;
-    if (error) logWarn('strokeRecognition: failed', `strokes=${strokes.length}`, `ms=${ms}`, error);
-    else log('strokeRecognition: done', `strokes=${strokes.length}`, `chars=${text.length}`, `ms=${ms}`);
+    if (error) {logWarn('strokeRecognition: failed', `strokes=${strokes.length}`, `ms=${ms}`, error);}
+    else {log('strokeRecognition: done', `strokes=${strokes.length}`, `chars=${text.length}`, `ms=${ms}`);}
     return {text, error, ms};
   });
 }

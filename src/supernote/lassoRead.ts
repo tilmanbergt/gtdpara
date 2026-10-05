@@ -47,7 +47,7 @@ async function timed<T>(timings: Record<string, number>, key: string, fn: () => 
 }
 
 async function readStroke(el: SdkElement): Promise<StoredStroke | null> {
-  if (!el.stroke?.points) return null;
+  if (!el.stroke?.points) {return null;}
   const n = await el.stroke.points.size();
   const pts: PxPoint[] = n > 0 ? await el.stroke.points.getRange(0, n) : [];
   let pressures: number[] = [];
@@ -56,7 +56,7 @@ async function readStroke(el: SdkElement): Promise<StoredStroke | null> {
     pressures = m > 0 ? await el.stroke.pressures.getRange(0, m) : [];
   }
   const points: number[] = [];
-  for (const p of pts) points.push(Math.round(p.x), Math.round(p.y));
+  for (const p of pts) {points.push(Math.round(p.x), Math.round(p.y));}
   return {
     thickness: el.thickness ?? null,
     penColor: el.stroke.penColor ?? null,
@@ -87,19 +87,19 @@ export async function readLasso(): Promise<LassoSnapshot> {
   try {
     const pathR = (await timed(timings, 'path', () => PluginCommAPI.getCurrentFilePath())) as SdkResponse<string>;
     snap.path = pathR?.success && pathR.result ? pathR.result : null;
-    if (!snap.path) errors.push('getCurrentFilePath: ' + errText(pathR, 'no path'));
+    if (!snap.path) {errors.push('getCurrentFilePath: ' + errText(pathR, 'no path'));}
 
     const pageR = (await timed(timings, 'page', () => PluginCommAPI.getCurrentPageNum())) as SdkResponse<number>;
     snap.page = pageR?.success && typeof pageR.result === 'number' ? pageR.result : null;
-    if (snap.page == null) errors.push('getCurrentPageNum: ' + errText(pageR, 'no page'));
+    if (snap.page == null) {errors.push('getCurrentPageNum: ' + errText(pageR, 'no page'));}
 
     const rectR = (await timed(timings, 'rect', () => PluginCommAPI.getLassoRect())) as SdkResponse<PxRect>;
     snap.rect = rectR?.success && rectR.result ? rectR.result : null;
-    if (!snap.rect) errors.push('getLassoRect: ' + errText(rectR, 'no rect'));
+    if (!snap.rect) {errors.push('getLassoRect: ' + errText(rectR, 'no rect'));}
 
     const elR = (await timed(timings, 'elements', () => PluginCommAPI.getLassoElements())) as SdkResponse<SdkElement[]>;
     elements = elR?.success && Array.isArray(elR.result) ? elR.result : [];
-    if (!elR?.success) errors.push('getLassoElements: ' + errText(elR, 'failed'));
+    if (!elR?.success) {errors.push('getLassoElements: ' + errText(elR, 'failed'));}
     snap.elementCount = elements.length;
 
     const dispR = (await timed(timings, 'displaySize', () => PluginCommAPI.getPageDisplaySize())) as SdkResponse<Size>;
@@ -122,10 +122,10 @@ export async function readLasso(): Promise<LassoSnapshot> {
 
     const t = Date.now();
     for (const el of elements) {
-      if (el.type !== ELEMENT_TYPE_STROKE) continue;
+      if (el.type !== ELEMENT_TYPE_STROKE) {continue;}
       try {
         const stroke = await readStroke(el);
-        if (stroke && stroke.points.length > 0) snap.strokes.push(stroke);
+        if (stroke && stroke.points.length > 0) {snap.strokes.push(stroke);}
       } catch (e) {
         errors.push('stroke: ' + errorMessage(e));
       }

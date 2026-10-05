@@ -18,7 +18,7 @@
  * re-runs this load, instead of silently reusing the previous capture's
  * stale text/kind/destination state. If recognition ever again looks like
  * it "didn't happen," `log`'s output (adb logcat -d -s ReactNativeJS:V)
- * from `runRecognition` (element count + page size) and `load` (the
+ * from `runRecognition` (element/stroke counts, timing, host error) and `load` (the
  * recognized string) is the first thing to check.
  * The user then manually picks Todo or Meeting (no auto-detection -
  * recognized handwriting is too unreliable to guess the type from), and
@@ -76,7 +76,9 @@ import {resolveNotePath} from '../storage/noteLinks';
 import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {FolderEntry, getCurrentNotePath} from '../supernote/fileSystem';
-import {getLassoElements, getPageDisplaySize, recognizeElements, setLassoBoxState} from '../supernote/lasso';
+import {setLassoBoxState} from '../supernote/lasso';
+import {readLasso} from '../supernote/lassoRead';
+import {recognizeStrokes} from '../supernote/strokeRecognition';
 import {log, logError} from '../utils/log';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import DateInput from '../ui/DateInput';
@@ -131,11 +133,25 @@ export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.J
   // Shared by the initial load and the "🔁 Retry recognition" button - both
   // just want a fresh elements→size→text pass, without disturbing anything
   // else already chosen on screen (kind, destination, link-to-source).
+  //
+  // 0.8 (docs/dev/technical-design-lasso-0.8.md §2.1, §3.4): the lasso is read
+  // once into plain data and the strokes are recognized as shifted copies -
+  // passing the live elements with the page size failed for text low on the
+  // page (the "second lasso recognizes nothing" bug). Text boxes are taken
+  // as they are.
   const runRecognition = useCallback(async (): Promise<string> => {
-    const elements = await getLassoElements();
-    const size = await getPageDisplaySize();
-    log('CaptureScreen: runRecognition elements=' + elements.length, JSON.stringify(size));
-    const recognized = await recognizeElements(elements, size);
+    const snap = await readLasso();
+    const elementCount = snap.elementCount;
+    const result = await recognizeStrokes(snap.strokes, snap.textBoxText, snap.displaySize ?? snap.pageSize, snap.page ?? 0);
+    log(
+      'CaptureScreen: runRecognition',
+      `elements=${elementCount}`,
+      `strokes=${snap.strokes.length}`,
+      `chars=${result.text.length}`,
+      `ms=${result.ms}`,
+      result.error ?? '',
+    );
+    const recognized = result.text;
     // Empty elements is caught as fatal by the caller (nothing was lassoed
     // at all); a non-empty lasso that still recognized to nothing is a
     // narrower, non-fatal case worth surfacing explicitly - a silently
@@ -144,7 +160,7 @@ export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.J
     // outcome look like nothing happened rather than like a real, visible
     // recognition failure.
     setRecognitionWarning(
-      elements.length > 0 && recognized.trim().length === 0
+      elementCount > 0 && recognized.trim().length === 0
         ? 'No text was recognized from the lasso selection - type it manually, or try again.'
         : null,
     );

@@ -51,22 +51,22 @@ async function readFresh(ref: MarkFileRef): Promise<string> {
 
 async function writeAndApply(ref: MarkFileRef, next: string): Promise<void> {
   await writeTextFile(dataFilePath(ref.kind, ref.folder), next);
-  if (ref.kind === 'inbox') applyInboxRawContent(next);
-  else applyItemRawContent(ref.folder, next);
+  if (ref.kind === 'inbox') {applyInboxRawContent(next);}
+  else {applyItemRawContent(ref.folder, next);}
 }
 
 /** Pure: `content` with `mark` added to its Marks span (unchanged if the id is already there). */
 export function addMarkToContent(content: string, kind: GtdParaKind, mark: Mark): string {
   const base = ensureSkeleton(content, kind);
   const {marks, extraLines} = parseMarksSpan(base);
-  if (marks.some(m => m.id === mark.id)) return content;
+  if (marks.some(m => m.id === mark.id)) {return content;}
   return writeMarksIntoContent(base, [...marks, mark], extraLines);
 }
 
 /** Pure: `content` without mark `id` (null when the id isn't there). */
 export function removeMarkFromContent(content: string, id: string): string | null {
   const {marks, extraLines} = parseMarksSpan(content);
-  if (!marks.some(m => m.id === id)) return null;
+  if (!marks.some(m => m.id === id)) {return null;}
   return writeMarksIntoContent(
     content,
     marks.filter(m => m.id !== id),
@@ -80,7 +80,7 @@ export function addMarkLine(ref: MarkFileRef, mark: Mark): Promise<void> {
     try {
       const raw = await readFresh(ref);
       const next = addMarkToContent(raw, ref.kind, mark);
-      if (next === raw) return;
+      if (next === raw) {return;}
       await writeAndApply(ref, next);
       log('markStore: mark added', ref.kind, mark.id);
     } catch (e) {

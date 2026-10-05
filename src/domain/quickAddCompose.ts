@@ -22,13 +22,13 @@ export interface TaskComposeFields {
  */
 export function composeTaskText(fields: TaskComposeFields, abbrevTag: string | null = null): string {
   const trimmed = fields.text.trim();
-  if (!trimmed) return '';
+  if (!trimmed) {return '';}
   let finalText = setFlowStateTag(
     trimmed,
     fields.flowState,
     fields.flowState === 'waiting-for' ? slugifyWaitingOn(fields.waitingOnText) : undefined,
   );
   finalText = setDueTag(finalText, fields.dueDate.trim() || null);
-  if (abbrevTag) finalText = removeTagFromText(finalText, abbrevTag);
+  if (abbrevTag) {finalText = removeTagFromText(finalText, abbrevTag);}
   return finalText;
 }

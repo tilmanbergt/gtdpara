@@ -11,12 +11,12 @@ jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), log
 jest.mock('../../src/supernote/pluginPermissions', () => ({ensureFileReadPermission: jest.fn(async () => true)}));
 jest.mock('../../src/supernote/fileSystem', () => ({
   listFolderEntries: async (folder: string) => {
-    if (folder.endsWith('1 Projects')) return [{name: 'Garden', path: `${folder}/Garden`, isFolder: true}];
+    if (folder.endsWith('1 Projects')) {return [{name: 'Garden', path: `${folder}/Garden`, isFolder: true}];}
     return [];
   },
   readTextFile: async (path: string) => mockFiles.get(path) ?? null,
   writeTextFile: async (path: string, content: string) => {
-    if (mockWriteDelay) await new Promise(r => setTimeout(r, mockWriteDelay));
+    if (mockWriteDelay) {await new Promise(r => setTimeout(r, mockWriteDelay));}
     mockWrites.push(path);
     mockFiles.set(path, content);
   },
