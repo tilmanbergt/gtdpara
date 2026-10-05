@@ -416,6 +416,8 @@ function reviewFallbackItem(ref: ReviewItemRef): CachedItem {
     weeklyGoalsExtraLines: [],
     monthlyGoals: [],
     monthlyGoalsExtraLines: [],
+    marks: [],
+    marksExtraLines: [],
     status: 'active',
     dailyFocus: false,
     weeklyFocus: false,

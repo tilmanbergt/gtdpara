@@ -11,7 +11,8 @@
  * unchanged.
  */
 import {deriveFlowState, deriveNow, deriveWaitingOn, isContextTag} from './flowState';
-import {FlowState, GtdParaKind, ItemStatus, Meeting, MonthlyGoal, Task, WeeklyGoal} from './types';
+import {MARKS_HEADING, parseMarkLines, serializeMarkLines} from './marks';
+import {FlowState, GtdParaKind, ItemStatus, Mark, Meeting, MonthlyGoal, Task, WeeklyGoal} from './types';
 
 const SCOPE_HEADING = '## Scope';
 const TASKS_HEADING = '## Tasks';
@@ -828,6 +829,24 @@ export function writeMonthlyGoalsIntoContent(
   extraLines: string[] = [],
 ): string {
   return writeKeyedGoalsIntoContent(content, MONTHLY_GOALS_HEADING, goals.map(g => ({key: g.monthKey, text: g.text})), extraLines);
+}
+
+/**
+ * Parses the `## Marks` span (docs/dev/technical-design-lasso-0.8.md §3.1):
+ * one line per open "Mark for later". Other lines in the section are kept.
+ */
+export function parseMarksSpan(content: string): {marks: Mark[]; extraLines: string[]} {
+  const {lines} = getSpan(content, MARKS_HEADING);
+  return parseMarkLines(lines);
+}
+
+/**
+ * Rebuilds only the Marks span; everything else in `content` is untouched.
+ * Created lazily (appended at the end) like Weekly Goals - `ensureSkeleton`
+ * never writes it. With no marks left the heading stays, empty.
+ */
+export function writeMarksIntoContent(content: string, marks: Mark[], extraLines: string[] = []): string {
+  return setSpan(content, MARKS_HEADING, serializeMarkLines(marks, extraLines));
 }
 
 /** Sets/clears `monthKey`'s goal - see setKeyedGoal. */

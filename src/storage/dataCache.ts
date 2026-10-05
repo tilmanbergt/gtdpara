@@ -52,12 +52,12 @@
 import {ExistingAbbrev, generateDefaultAbbrev} from '../domain/abbrev';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths, withInboxFolder} from '../domain/settings';
 import {FrontMatterFields} from '../domain/markdown';
-import {ItemStatus, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
+import {ItemStatus, Mark, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
 import {FileStat, listFolderEntries, statFiles} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {perfEnd, perfMark, perfStart} from '../utils/perf';
-import {dataFilePath, loadProjectFile, ProjectFileState, saveFrontMatter} from './projectFile';
+import {dataFilePath, loadProjectFile, parseProjectFileContent, ProjectFileState, saveFrontMatter} from './projectFile';
 import {effectiveInboxFolderFor, hiddenAreaFolderFor, migrateInboxIfNeeded} from './inboxMigration';
 
 export interface CachedItem {
@@ -77,6 +77,9 @@ export interface CachedItem {
   /** From the `## Monthly Goals` span (docs/dev/technical-design-monthly-view.md §2.2). */
   monthlyGoals: MonthlyGoal[];
   monthlyGoalsExtraLines: string[];
+  /** From the `## Marks` span (docs/dev/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines whose note lives in this item's folder. */
+  marks: Mark[];
+  marksExtraLines: string[];
   /** From the frontmatter block - see domain/markdown.ts's parseFrontMatter, storage/focusSlots.ts and storage/statusControl.ts. */
   status: ItemStatus;
   dailyFocus: boolean;
@@ -265,6 +268,8 @@ async function loadOneItem(kind: 'project' | 'area', name: string, path: string)
       weeklyGoalsExtraLines: [],
       monthlyGoals: [],
       monthlyGoalsExtraLines: [],
+      marks: [],
+      marksExtraLines: [],
       status: 'active',
       dailyFocus: false,
       weeklyFocus: false,
@@ -728,6 +733,28 @@ export function updateItemRawContent(path: string, rawContent: string): void {
   if (!item) return;
   item.rawContent = rawContent;
   notifyCacheChanged();
+}
+
+/**
+ * Write-through for a file that was written outside the item's own save
+ * paths - storage/markStore.ts adds or removes a `## Marks` line after
+ * reading the file fresh from disk (the Mark button runs while this cache
+ * may be old). The whole text is parsed again, so the next task/meeting
+ * save (which builds on `item.rawContent`) keeps the mark line.
+ * No-op when there is no cache or the item isn't in it.
+ */
+export function applyItemRawContent(path: string, rawContent: string): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  Object.assign(item, parseProjectFileContent(rawContent));
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/** The Inbox twin of applyItemRawContent - only when the Inbox is cached at all. */
+export function applyInboxRawContent(rawContent: string): void {
+  if (cachedInbox === null) return;
+  setCachedInbox(parseProjectFileContent(rawContent));
 }
 
 /** The flat frontmatter fields `CachedItem`/`ProjectFileState` carry - what `frontMatterOf` reads. */
