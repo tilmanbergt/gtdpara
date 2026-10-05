@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-05
+
 ### Changed
 - **Waiting for todos show on Daily**, from every project, area and the Inbox, last in their group -
   until their date, if they have one: then they stay off Daily until that day.
