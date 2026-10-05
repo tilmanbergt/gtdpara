@@ -10,7 +10,7 @@ import {RESERVED_BARE_TAGS, setFlowStateTag, stripBareTags} from '../domain/flow
 import {setDueTag} from '../domain/markdown';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {NoteContext, resolveNoteTemplate} from '../domain/noteTemplate';
-import {joinNotePath, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
+import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaSettings} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {createNote, ensureFolderExists, fileExists, insertKeyWord, MYSTYLE_FOLDER} from '../supernote/fileSystem';
@@ -219,6 +219,9 @@ export async function insertNoteKeywords(absolutePath: string, keywords: readonl
  * it turns up.
  */
 export async function resolveNotePath(itemPath: string, notePath: string): Promise<string> {
+  // A page link (lasso 0.8) names the file before `#page=`.
+  const pageAnchor = parsePageAnchor(notePath);
+  if (pageAnchor) return joinNotePath(itemPath, pageAnchor.filePath);
   // Kept to at most one existence check (only for anchor-shaped paths): this
   // runs on every note refresh. `classifyNotePath` below is the full reading
   // (it also checks own notes) for the open-or-create planning step.
@@ -235,7 +238,7 @@ export async function resolveNotePath(itemPath: string, notePath: string): Promi
 /** What an item's stored notePath points to - see `classifyNotePath`. */
 export type NotePathClass =
   | {kind: 'none'}
-  | {kind: 'own'; absolutePath: string; exists: boolean; isAbsoluteLink: boolean}
+  | {kind: 'own'; absolutePath: string; exists: boolean; isAbsoluteLink: boolean; page?: number}
   | {kind: 'shared'; anchor: SharedNoteAnchor; absolutePath: string; exists: boolean};
 
 /**
@@ -255,6 +258,18 @@ export type NotePathClass =
  */
 export async function classifyNotePath(itemPath: string, notePath: string): Promise<NotePathClass> {
   if (!notePath) return {kind: 'none'};
+  // A page link (lasso 0.8, `<note>#page=<n>`): the note itself, opened at that page.
+  const pageAnchor = parsePageAnchor(notePath);
+  if (pageAnchor) {
+    const target = joinNotePath(itemPath, pageAnchor.filePath);
+    return {
+      kind: 'own',
+      absolutePath: target,
+      exists: await fileExists(target),
+      isAbsoluteLink: pageAnchor.filePath.startsWith('/'),
+      page: pageAnchor.page,
+    };
+  }
   const literal = joinNotePath(itemPath, notePath);
   const isAbsoluteLink = notePath.startsWith('/');
   const anchor = parseSharedNoteAnchor(notePath);

@@ -1,462 +1,505 @@
 /**
- * Lasso capture (design-overview.md §4's "Lasso capture" / original vision's
- * "lasso → recognize → classify Todo/Meeting → pick destination, defaulting
- * to Inbox when outside any Project/Area"). Reached only via App.tsx's
- * button listener routing a LASSO_BUTTON_ID press here - see App.tsx's own
- * comments for the button-event race this depends on.
+ * Capture and marks processing - one screen (docs/dev/technical-design-lasso-0.8.md
+ * §3.7, screen designs A-C).
  *
- * Flow: on mount, read the active lasso selection (supernote/lasso.ts) and
- * run handwriting recognition on it, into an editable text field (OCR can
- * be wrong or empty - editing, or "🔁 Retry recognition" below the field,
- * are the fallbacks, not an error state; a non-empty lasso that still comes
- * back with no recognized text shows an inline warning rather than failing
- * silently, since a silent empty field gave no signal of what went wrong).
- * "On mount" is load-bearing here: App.tsx renders this component with a
- * `key` that changes on every Lasso-button press specifically so a *second*
- * capture (while the plugin's JS instance is still alive from the first -
- * see App.tsx's own comment on captureNonceRef) gets a fresh mount and
- * re-runs this load, instead of silently reusing the previous capture's
- * stale text/kind/destination state. If recognition ever again looks like
- * it "didn't happen," `log`'s output (adb logcat -d -s ReactNativeJS:V)
- * from `runRecognition` (element/stroke counts, timing, host error) and `load` (the
- * recognized string) is the first thing to check.
- * The user then manually picks Todo or Meeting (no auto-detection -
- * recognized handwriting is too unreliable to guess the type from), and
- * optionally a "link to source note" checkbox (off by default) that points
- * the new Task/Meeting's notePath at the note being lassoed from - using
- * storage/noteLinks.ts's absolute-path notePath extension, since the source
- * note isn't necessarily anywhere under the destination folder.
+ * Opened two ways (App.tsx, `mode === 'capture'`):
+ * - from the lasso toolbar's "Capture Todo/Meeting" (`source: 'lasso'`): the
+ *   lasso is read once, its picture shown, its strokes recognized as shifted
+ *   copies (supernote/strokeRecognition.ts - the fix for text low on the page);
+ *   open marks are listed in the left column too;
+ * - from a "marks to process" card (`source: 'marks'`, a scope and where to
+ *   go back to): the marks only.
  *
- * Destination (docs/dev/technical-design-filing-unification.md §8, 2026-09-07
- * filing unification - previously an overridable Inbox/Project/Area picker,
- * matching CaptureScreen's own original vision quoted above but going
- * against the wider app's push to make filing happen in one place): always
- * the current note's enclosing Project/Area, or Inbox if it has none - no
- * override, no choice. `load()`'s `defaultDestination` *is* the destination
- * now, not just a picker's starting value - "file it properly" happens
- * afterward, on the Inbox tab or Weekly Review's Inbox-to-zero step, the
- * same as every other capture surface in the app.
+ * Left: ui/capture/MarksColumn.tsx (hidden when there is nothing to list
+ * besides the lasso). Right: the picture, then QuickAddWidget
+ * variant="capture" (flow, due, Split lines, tags, File to, Save buttons).
  *
- * Leaving this screen is always one of three explicit actions (no implicit
- * "back to Home" - that previously left it ambiguous whether/where anything
- * landed, and made a stale reorient() elsewhere in the app look like it had
- * saved into the wrong place): "Save & View" saves and jumps straight into
- * the chosen destination (the Project/Area's own ItemDetail, or Daily view
- * for Inbox, since Inbox has no ItemDetail of its own); "Save & Close" saves
- * and closes the plugin outright; "Cancel" discards and closes the plugin
- * without saving. All three close over the same performSave() so the
- * save logic itself only exists once.
- *
- * Saving a Project/Area destination goes through the same saveTasks/
- * saveMeetings + updateItemTasks/updateItemMeetings write-through pair every
- * other mutation in this app uses (design-overview.md §3, "write-through is
- * not optional"). Saving to Inbox uses the same saveTasks/saveMeetings
- * functions with kind: 'inbox' and itemPath = the base root - Inbox.txt
- * isn't part of storage/dataCache.ts's Project/Area `items` array (it's a
- * single flat file, not a scanned folder), so there's no cache entry to
- * write through; DailyView's own Inbox section just reads it fresh.
+ * Saving a mark removes its `## Marks` line, turns the bookmark into the
+ * check icon and deletes its private data (storage/marks.ts finishMark).
+ * Save & next: in direct capture a cleared form for a typed extra item; on a
+ * mark the next mark. Typed but unsaved text of a mark is dropped when
+ * another row is selected (its recognized text comes back).
  */
-import React, {useCallback, useEffect, useState} from 'react';
-import {
-  ActivityIndicator,
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {ActivityIndicator, Image, Keyboard, Pressable, StyleSheet, Text, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
+import {prepareCaptureText} from '../domain/captureText';
 import {Destination, destinationLabel} from '../domain/destination';
-import {parseFlexibleTime, todayIso} from '../domain/meetingTime';
-import {findEnclosingItem} from '../domain/settings';
+import {collectOpenMarks, fileNameOf, groupMarks, markDate, MarkScope, OpenMark} from '../domain/marks';
+import {todayIso} from '../domain/meetingTime';
+import {findEnclosingItem, ResolvedParaPaths} from '../domain/settings';
+import {buildPageAnchor} from '../domain/sharedNotePages';
 import {getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {addMeetingToDestination, addTaskToDestination, buildMeeting, buildTask} from '../storage/itemMutations';
-import {resolveNotePath} from '../storage/noteLinks';
+import {
+  cleanMarkDataOrphans,
+  createMarkFromLasso,
+  finishMark,
+  outcomeNeedsScreen,
+  runPendingIconChanges,
+  setMarkOutcome,
+} from '../storage/marks';
 import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
-import {FolderEntry, getCurrentNotePath} from '../supernote/fileSystem';
+import {FolderEntry, getCurrentNotePath, getPrivateDataDir, getPrivateTempDir, openPath} from '../supernote/fileSystem';
 import {setLassoBoxState} from '../supernote/lasso';
-import {readLasso} from '../supernote/lassoRead';
+import {LassoSnapshot, readLasso, saveLassoPreview} from '../supernote/lassoRead';
 import {recognizeStrokes} from '../supernote/strokeRecognition';
-import {log, logError} from '../utils/log';
-import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
-import DateInput from '../ui/DateInput';
-import {COLORS, FONT, useThemeColors} from '../ui/theme';
+import MarksColumn, {LASSO_KEY} from '../ui/capture/MarksColumn';
+import {useRecognitionQueue} from '../ui/capture/useRecognitionQueue';
+import QuickAddWidget, {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields} from '../ui/QuickAddWidget';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
+import {COLORS, FONT, useThemeColors} from '../ui/theme';
+import {useCachedInbox} from '../ui/useCachedInbox';
+import {useCachedItems} from '../ui/useCachedItems';
+import {log, logError} from '../utils/log';
+import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
+
+export type CaptureReturnTo = 'inbox' | 'current' | 'review' | 'closeOut';
+
+export type CaptureRequest =
+  | {source: 'lasso'}
+  | {source: 'marks'; scope: MarkScope; returnTo: CaptureReturnTo};
 
 interface Props {
+  request: CaptureRequest;
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
   onOpenDaily: () => void;
+  /** Back to the tabs (marks source: the screen the marks were opened from). */
+  onExit: () => void;
 }
 
-type Kind = 'todo' | 'meeting';
-
-interface LoadedState {
-  /** The Inbox folder (cache paths.inboxFolder) - where an Inbox capture is written. */
-  inboxPath: string;
+interface Loaded {
+  paths: ResolvedParaPaths;
   currentNotePath: string | null;
-  /** The one, non-overridable destination - see the module doc comment's "Destination" note. */
-  defaultDestination: Destination;
+  /** Lasso source only. */
+  lasso: LassoSnapshot | null;
+  lassoPicture: string | null;
+  lassoDestination: Destination;
+  dataDir: string | null;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+type LassoRecognition = {state: 'recognizing' | 'done'; text: string; error: string | null};
 
-export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.JSX.Element {
+function fileUri(path: string): string {
+  return path.startsWith('file://') ? path : `file://${path}`;
+}
+
+export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}: Props): React.JSX.Element {
   const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const fromLasso = request.source === 'lasso';
+  const scope: MarkScope = request.source === 'marks' ? request.scope : {type: 'all'};
 
-  const [loaded, setLoaded] = useState<LoadedState | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  // Explicit e-ink refresh once this screen's own load actually lands - see
-  // src/utils/screenRefresh.ts.
-  useEinkRefreshOnLoad(loading);
-
-  const [text, setText] = useState('');
-  const [recognizing, setRecognizing] = useState(false);
-  const [recognitionWarning, setRecognitionWarning] = useState<string | null>(null);
-  const [kind, setKind] = useState<Kind>('todo');
-  const [date, setDate] = useState(() => todayIso());
-  const [time, setTime] = useState('');
-  const [linkToSource, setLinkToSource] = useState(false);
-
-  const [saving, setSaving] = useState(false);
+  useEinkRefreshOnLoad(loaded === null && loadError === null);
+  const [lassoRec, setLassoRec] = useState<LassoRecognition>({state: 'recognizing', text: '', error: null});
+  const [lassoSaved, setLassoSaved] = useState(0);
+  const [selectedKey, setSelectedKey] = useState<string>(fromLasso ? LASSO_KEY : '');
+  const [destination, setDestination] = useState<Destination>({type: 'inbox'});
+  const [linkToPage, setLinkToPage] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Save error and recognition warning -> the central status slot at the
-  // top of this screen (docs/dev/technical-design-status-slot.md D11).
+  const [info, setInfo] = useState<string | null>(null);
+  const [discardAsk, setDiscardAsk] = useState<OpenMark | null>(null);
+  const [busy, setBusy] = useState(false);
+  // True while a saved/discarded mark is being finished: its line leaves the
+  // list before the next one is selected, and the "select the first" effect
+  // below must not jump in between.
+  const advancingRef = useRef(false);
   useErrorStatus('CaptureScreen.error', error, () => setError(null));
-  useStatus(
-    'CaptureScreen.recognition',
-    recognitionWarning ? {kind: 'warning', text: recognitionWarning, onDismiss: () => setRecognitionWarning(null)} : null,
-  );
+  useStatus('CaptureScreen.info', info ? {kind: 'info', text: info, onDismiss: () => setInfo(null)} : null);
 
-  // Shared by the initial load and the "🔁 Retry recognition" button - both
-  // just want a fresh elements→size→text pass, without disturbing anything
-  // else already chosen on screen (kind, destination, link-to-source).
-  //
-  // 0.8 (docs/dev/technical-design-lasso-0.8.md §2.1, §3.4): the lasso is read
-  // once into plain data and the strokes are recognized as shifted copies -
-  // passing the live elements with the page size failed for text low on the
-  // page (the "second lasso recognizes nothing" bug). Text boxes are taken
-  // as they are.
-  const runRecognition = useCallback(async (): Promise<string> => {
-    const snap = await readLasso();
-    const elementCount = snap.elementCount;
-    const result = await recognizeStrokes(snap.strokes, snap.textBoxText, snap.displaySize ?? snap.pageSize, snap.page ?? 0);
-    log(
-      'CaptureScreen: runRecognition',
-      `elements=${elementCount}`,
-      `strokes=${snap.strokes.length}`,
-      `chars=${result.text.length}`,
-      `ms=${result.ms}`,
-      result.error ?? '',
-    );
-    const recognized = result.text;
-    // Empty elements is caught as fatal by the caller (nothing was lassoed
-    // at all); a non-empty lasso that still recognized to nothing is a
-    // narrower, non-fatal case worth surfacing explicitly - a silently
-    // empty text field gives no signal of *why* it's empty, which is
-    // exactly what made the previous version's occasional empty-recognition
-    // outcome look like nothing happened rather than like a real, visible
-    // recognition failure.
-    setRecognitionWarning(
-      elementCount > 0 && recognized.trim().length === 0
-        ? 'No text was recognized from the lasso selection - type it manually, or try again.'
-        : null,
-    );
-    return recognized;
-  }, []);
-
+  // ---- load ----
   const load = useCallback(async () => {
-    setLoading(true);
     setLoadError(null);
     try {
-      const [settings, currentNotePath] = await Promise.all([loadSettings(), getCurrentNotePath()]);
-
-      // Warms the shared cache (for performSave's later ensureItemCached
-      // call) - the return value itself is no longer needed here now that
-      // the destination picker (which used to list its Projects/Areas) is
-      // gone (docs/dev/technical-design-filing-unification.md §8).
-      // The cache's paths carry the effective Inbox location
-      // (docs/dev/technical-design-inbox-as-area.md §3.3) - never address
-      // the Inbox through resolvePaths(settings) directly.
+      const settings = await loadSettings();
       const cache = getCachedData() ?? (await rebuildCache(settings));
-      const paths = cache.paths;
-
-      const enclosing = currentNotePath ? findEnclosingItem(paths, currentNotePath) : null;
-      const defaultDestination: Destination = enclosing
+      let lasso: LassoSnapshot | null = null;
+      let lassoPicture: string | null = null;
+      if (fromLasso) {
+        lasso = await readLasso();
+        try {
+          lassoPicture = await saveLassoPreview(`${await getPrivateTempDir()}/lasso-${Date.now()}.png`);
+        } catch (e) {
+          log('CaptureScreen: no lasso picture', e instanceof Error ? e.message : String(e));
+        }
+      }
+      const currentNotePath = lasso?.path ?? (await getCurrentNotePath());
+      const enclosing = currentNotePath ? findEnclosingItem(cache.paths, currentNotePath) : null;
+      const lassoDestination: Destination = enclosing
         ? {type: 'item', kind: enclosing.kind, name: enclosing.name, path: enclosing.path}
         : {type: 'inbox'};
-
-      const recognized = await runRecognition();
-      log('CaptureScreen: load recognized', JSON.stringify(recognized));
-
-      setLoaded({inboxPath: paths.inboxFolder, currentNotePath, defaultDestination});
-      setText(recognized);
+      let dataDir: string | null = null;
+      try {
+        dataDir = await getPrivateDataDir();
+      } catch (e) {
+        log('CaptureScreen: no private data folder', e instanceof Error ? e.message : String(e));
+      }
+      setLoaded({paths: cache.paths, currentNotePath, lasso, lassoPicture, lassoDestination, dataDir});
+      if (fromLasso) {setDestination(lassoDestination);}
+      // Housekeeping, not awaited by the user.
+      runPendingIconChanges(currentNotePath);
+      if (!fromLasso) {cleanMarkDataOrphans();}
+      if (lasso) {
+        const r = await recognizeStrokes(lasso.strokes, lasso.textBoxText, lasso.displaySize ?? lasso.pageSize, lasso.page ?? 0);
+        setLassoRec({state: 'done', text: r.text, error: r.error});
+        if (lasso.elementCount > 0 && !r.text.trim()) {
+          setInfo('No text was recognized from the lasso - type it.');
+        }
+        log('CaptureScreen: lasso recognized', `chars=${r.text.length}`, `ms=${r.ms}`, r.error ?? '');
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       logError('CaptureScreen: load failed', message);
       setLoadError(message);
-    } finally {
-      setLoading(false);
     }
-  }, [runRecognition]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     load();
   }, [load]);
 
-  const handleRetryRecognition = () => {
+  // ---- marks ----
+  const items = useCachedItems();
+  const inbox = useCachedInbox();
+  const marks = useMemo(
+    () => (loaded ? collectOpenMarks(items, inbox, loaded.paths.inboxFolder, scope) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loaded, items, inbox],
+  );
+  const ordered = useMemo(
+    () => groupMarks(marks, loaded?.currentNotePath ?? null).flatMap(g => g.marks),
+    [marks, loaded?.currentNotePath],
+  );
+  const selectedMark = ordered.find(m => m.mark.id === selectedKey) ?? null;
+  const recognition = useRecognitionQueue(ordered, selectedMark ? selectedMark.mark.id : null);
+
+  // Marks source: start with the first mark; when the selected one is gone, the next.
+  useEffect(() => {
+    if (!loaded || fromLasso || advancingRef.current) {return;}
+    if (!selectedMark && ordered.length > 0) {selectMark(ordered[0]);}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, ordered.length, selectedMark]);
+
+  const lassoPage = loaded?.lasso?.page ?? null;
+  const marksOnThisPage =
+    loaded && lassoPage != null ? marks.filter(m => m.absPath === loaded.currentNotePath && m.mark.page === lassoPage).length : 0;
+  useEffect(() => {
+    if (marksOnThisPage > 0) {setInfo(`${marksOnThisPage} open mark${marksOnThisPage === 1 ? '' : 's'} on this page`);}
+  }, [marksOnThisPage]);
+
+  function selectMark(open: OpenMark) {
+    setSelectedKey(open.mark.id);
+    setDestination(open.owner);
+    setDiscardAsk(null);
+    requestEinkRefresh();
+  }
+  const handleSelect = (key: string) => {
     Keyboard.dismiss();
-    setRecognizing(true);
-    setError(null);
-    (async () => {
+    if (key === LASSO_KEY) {
+      setSelectedKey(LASSO_KEY);
+      if (loaded) {setDestination(loaded.lassoDestination);}
+      requestEinkRefresh();
+      return;
+    }
+    const open = ordered.find(m => m.mark.id === key);
+    if (open) {selectMark(open);}
+  };
+
+  // ---- the seed for the panel ----
+  const selectedText = selectedMark ? recognition.get(selectedMark.mark.id)?.text ?? '' : '';
+  const seed: CaptureSeed | null = useMemo(() => {
+    if (selectedKey === LASSO_KEY) {
+      // Once something was saved from the lasso, coming back to its row gives an empty form.
+      const raw = lassoSaved > 0 ? '' : lassoRec.text;
+      const todo = prepareCaptureText(raw, 'todo');
+      return {
+        key: LASSO_KEY,
+        items: todo.items,
+        split: todo.split,
+        meetingTitle: prepareCaptureText(raw, 'meeting').items[0],
+      };
+    }
+    if (!selectedMark) {return null;}
+    const todo = prepareCaptureText(selectedText, 'todo');
+    return {
+      key: selectedMark.mark.id,
+      items: todo.items,
+      split: todo.split,
+      date: markDate(selectedMark.mark),
+      meetingTitle: prepareCaptureText(selectedText, 'meeting').items[0],
+    };
+  }, [selectedKey, lassoRec.text, lassoSaved, selectedMark, selectedText]);
+
+  // ---- saving ----
+  const sourcePath = selectedMark ? selectedMark.absPath : loaded?.currentNotePath ?? null;
+  const sourcePage = selectedMark ? selectedMark.mark.page : lassoPage;
+  const linkPath = linkToPage && sourcePath ? (sourcePage != null ? buildPageAnchor(sourcePath, sourcePage) : sourcePath) : '';
+
+  const inboxContext = async (dest: Destination) => {
+    if (!loaded) {throw new Error('Not loaded yet.');}
+    const inboxState = dest.type === 'inbox' ? await loadProjectFile('inbox', loaded.paths.inboxFolder) : null;
+    return {inbox: inboxState, inboxPath: loaded.paths.inboxFolder};
+  };
+
+  const onAddTask = async (text: string, dest: Destination) => {
+    const {nextInbox} = await addTaskToDestination(buildTask(text, {notePath: linkPath}), dest, await inboxContext(dest));
+    if (nextInbox) {setCachedInbox(nextInbox);}
+    log('CaptureScreen: todo saved', destinationLabel(dest), selectedMark ? 'mark' : 'lasso');
+  };
+  const onAddMeeting = async (fields: MeetingQuickAddFields, dest: Destination) => {
+    const {nextInbox} = await addMeetingToDestination(
+      buildMeeting({title: fields.title, date: fields.date, time: fields.time, endTime: fields.endTime, days: fields.days}, {notePath: linkPath}),
+      dest,
+      await inboxContext(dest),
+    );
+    if (nextInbox) {setCachedInbox(nextInbox);}
+    log('CaptureScreen: meeting saved', destinationLabel(dest), selectedMark ? 'mark' : 'lasso');
+  };
+
+  const openDestination = (dest: Destination) => {
+    if (dest.type === 'inbox') {onOpenDaily();}
+    else {onOpenItem(dest.kind, {name: dest.name, path: dest.path, isFolder: true});}
+  };
+  const close = () => {
+    if (fromLasso) {PluginManager.closePluginView();}
+    else {onExit();}
+  };
+
+  /** The mark after `id` in list order (null at the end). */
+  const markAfter = (id: string): OpenMark | null => {
+    const i = ordered.findIndex(m => m.mark.id === id);
+    return i >= 0 && i + 1 < ordered.length ? ordered[i + 1] : null;
+  };
+  const afterMarkGone = (next: OpenMark | null) => {
+    advancingRef.current = false;
+    if (next) {selectMark(next);}
+    else if (fromLasso) {handleSelect(LASSO_KEY);}
+    else {onExit();}
+  };
+
+  const onCaptureSaved = async (mode: CaptureSaveMode) => {
+    const savedTo = destination;
+    if (selectedMark) {
+      const open = selectedMark;
+      const next = markAfter(open.mark.id);
+      advancingRef.current = true;
       try {
-        setText(await runRecognition());
+        setBusy(true);
+        const r = await finishMark(open, 'done', loaded?.currentNotePath ?? null);
+        if (!r.iconOk) {
+          setInfo(`Saved. The bookmark in ${fileNameOf(open.absPath)} p${open.mark.page + 1} stays as it is (${r.iconDetail}).`);
+        }
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        logError('CaptureScreen: retry recognition failed', message);
-        setError(message);
+        setError(`Saved, but the mark could not be removed from its list: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
-        setRecognizing(false);
+        setBusy(false);
       }
-    })();
-  };
-
-  /**
-   * Validates the current fields and writes the Task/Meeting to its
-   * destination (Inbox or a Project/Area). Returns true on success (leaving
-   * it to the caller to decide what "success" navigates to - see the three
-   * handlers below), false if validation or the save itself failed (error
-   * state is already set either way, caller just needs to not proceed).
-   */
-  const performSave = async (): Promise<boolean> => {
-    if (!loaded) return false;
-    setError(null);
-
-    // Always loaded.defaultDestination - never overridable, see the module
-    // doc comment's "Destination" note.
-    const destination = loaded.defaultDestination;
-
-    const trimmedText = text.trim();
-    if (!trimmedText) {
-      setError('Nothing to save - the text is empty.');
-      return false;
+      advancingRef.current = false;
+      if (mode === 'view') {return openDestination(savedTo);}
+      if (mode === 'close') {return close();}
+      return afterMarkGone(next);
     }
-    let resolvedTime = '';
-    if (kind === 'meeting') {
-      if (!DATE_RE.test(date)) {
-        setError('Date must be YYYY-MM-DD.');
-        return false;
-      }
-      const timeResult = parseFlexibleTime(time);
-      if (!timeResult.ok) {
-        setError(timeResult.error);
-        return false;
-      }
-      resolvedTime = timeResult.value;
-    }
-
-    const notePath = linkToSource && loaded.currentNotePath ? loaded.currentNotePath : '';
-
-    try {
-      // One shared write path (storage/itemMutations.ts, 2026-09-20) - the
-      // Inbox state is read fresh from disk here; the returned `nextInbox`
-      // goes into the shared Inbox copy below.
-      const inboxState = destination.type === 'inbox' ? await loadProjectFile('inbox', loaded.inboxPath) : null;
-      const ctx = {inbox: inboxState, inboxPath: loaded.inboxPath};
-      const {nextInbox} =
-        kind === 'todo'
-          ? await addTaskToDestination(buildTask(trimmedText, {notePath}), destination, ctx)
-          : await addMeetingToDestination(
-              buildMeeting({title: trimmedText, date, time: resolvedTime}, {notePath}),
-              destination,
-              ctx,
-            );
-      // The shared Inbox copy (storage/dataCache.ts) - so Daily and Inbox show the capture.
-      if (nextInbox) setCachedInbox(nextInbox);
-
-      // Cleanup only, never fatal to the capture itself - the Task/Meeting
-      // is already saved by this point regardless of whether the native
-      // lasso box clears successfully.
+    // The lasso: it goes once the first item is saved.
+    if (lassoSaved === 0) {
       await setLassoBoxState(2).catch(e =>
-        logError('CaptureScreen: setLassoBoxState cleanup failed', e instanceof Error ? e.message : String(e)),
+        logError('CaptureScreen: removing the lasso failed', e instanceof Error ? e.message : String(e)),
       );
+    }
+    setLassoSaved(n => n + 1);
+    if (mode === 'view') {return openDestination(savedTo);}
+    if (mode === 'close') {return close();}
+    // 'next': the widget cleared the form for a typed extra item; destination and link stay.
+  };
 
-      log('CaptureScreen: saved', kind, destinationLabel(destination));
-      return true;
+  // ---- extras ----
+  const handleMarkForLater = async () => {
+    Keyboard.dismiss();
+    setBusy(true);
+    const outcome = await createMarkFromLasso();
+    setBusy(false);
+    if (outcomeNeedsScreen(outcome)) {setMarkOutcome(outcome);}
+    else {PluginManager.closePluginView();}
+  };
+  const handleOpenPage = async () => {
+    if (!selectedMark) {return;}
+    try {
+      await openPath(selectedMark.absPath, selectedMark.mark.page);
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      logError('CaptureScreen: save failed', message);
-      setError(message);
-      return false;
+      setError(e instanceof Error ? e.message : String(e));
     }
   };
-
-  const withSaving = (after: () => void) => {
-    if (saving) return;
-    Keyboard.dismiss();
-    setSaving(true);
-    (async () => {
-      const ok = await performSave();
-      setSaving(false);
-      if (ok) after();
-    })();
+  const runDiscard = async (open: OpenMark) => {
+    setDiscardAsk(null);
+    const next = markAfter(open.mark.id);
+    advancingRef.current = true;
+    try {
+      setBusy(true);
+      const r = await finishMark(open, 'remove', loaded?.currentNotePath ?? null);
+      setInfo(
+        r.iconOk
+          ? `Discarded the mark in ${fileNameOf(open.absPath)} p${open.mark.page + 1}.`
+          : `Discarded. The bookmark in ${fileNameOf(open.absPath)} p${open.mark.page + 1} stays (${r.iconDetail}).`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      advancingRef.current = false;
+      return;
+    } finally {
+      setBusy(false);
+    }
+    afterMarkGone(next);
   };
+  const discardLabel = discardAsk
+    ? (recognition.get(discardAsk.mark.id)?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 40) || `p${discardAsk.mark.page + 1}`
+    : '';
+  useStatus(
+    'CaptureScreen.discard',
+    discardAsk
+      ? {
+          kind: 'confirm',
+          text: `Discard mark "${discardLabel}" and remove its bookmark from ${fileNameOf(discardAsk.absPath)} p${discardAsk.mark.page + 1}?`,
+          detail: 'The handwriting in the note stays as it is.',
+          actions: [{label: 'Discard', primary: true, onPress: () => runDiscard(discardAsk)}],
+          onCancel: () => setDiscardAsk(null),
+        }
+      : null,
+  );
 
-  const handleSaveAndView = () =>
-    withSaving(() => {
-      if (!loaded) return;
-      const destination = loaded.defaultDestination;
-      if (destination.type === 'inbox') {
-        onOpenDaily();
-      } else {
-        onOpenItem(destination.kind, {name: destination.name, path: destination.path, isFolder: true});
-      }
-    });
-
-  const handleSaveAndClose = () => withSaving(() => PluginManager.closePluginView());
-
-  const handleCancel = () => {
-    Keyboard.dismiss();
-    PluginManager.closePluginView();
-  };
-
-  if (loading) {
+  // ---- render ----
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <Text style={[styles.heading, {color: textColor}]}>{fromLasso ? 'New from Lasso' : 'Marks'}</Text>
+        <Text style={[styles.hint, {color: textColor}]}>⚠ {loadError}</Text>
+        <View style={styles.extrasRow}>
+          <Pressable style={[styles.button, {borderColor}]} onPress={load} hitSlop={8}>
+            <Text style={[styles.buttonText, {color: textColor}]}>↻ Retry</Text>
+          </Pressable>
+          <Pressable style={[styles.button, {borderColor}]} onPress={close} hitSlop={8}>
+            <Text style={[styles.buttonText, {color: textColor}]}>✕ Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+  if (!loaded) {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator />
-        <Text style={[styles.hint, {color: textColor}]}>Reading lasso selection…</Text>
+        <Text style={[styles.hint, {color: textColor}]}>{fromLasso ? 'Reading lasso selection…' : 'Loading marks…'}</Text>
       </View>
     );
   }
 
-  if (loadError || !loaded) {
-    return (
-      <View style={styles.container}>
-        <Text style={[styles.heading, {color: textColor}]}>New from Lasso</Text>
-        <Text style={[styles.error, {color: textColor}]}>
-          ⚠ {loadError || 'Could not read the lasso selection.'}
-        </Text>
-        <View style={styles.footerRow}>
-          <Pressable style={[styles.footerButton, {borderColor}]} onPress={load} hitSlop={8}>
-            <Text style={[styles.footerButtonText, {color: textColor}]}>↻ Retry</Text>
-          </Pressable>
-          <Pressable style={[styles.footerButton, {borderColor}]} onPress={handleCancel} hitSlop={8}>
-            <Text style={[styles.footerButtonText, {color: textColor}]}>✕ Close</Text>
-          </Pressable>
-        </View>
-      </View>
-    );
+  const showColumn = !fromLasso || marks.length > 0;
+  const today = todayIso();
+  const markPicture = (id: string) => (loaded.dataDir ? fileUri(`${loaded.dataDir}/marks/${id}/picture.png`) : null);
+  let pictureUri: string | null = null;
+  if (selectedKey === LASSO_KEY) {pictureUri = loaded.lassoPicture ? fileUri(loaded.lassoPicture) : null;}
+  else if (selectedMark) {pictureUri = markPicture(selectedMark.mark.id);}
+  let headerSource = '';
+  if (selectedMark) {headerSource = `${fileNameOf(selectedMark.absPath)} · p${selectedMark.mark.page + 1}`;}
+  else if (loaded.currentNotePath) {
+    headerSource = `${fileNameOf(loaded.currentNotePath)}${lassoPage != null ? ` · p${lassoPage + 1}` : ''}`;
   }
+  const selectedState = selectedMark ? recognition.get(selectedMark.mark.id)?.state : undefined;
+  const recognizing =
+    selectedKey === LASSO_KEY ? lassoRec.state === 'recognizing' : !!selectedMark && (!selectedState || selectedState === 'recognizing' || selectedState === 'waiting');
+  const nothingSelected = !fromLasso && !selectedMark;
+  let title = 'Marks';
+  if (fromLasso) {title = 'New from Lasso';}
+  else if (request.source === 'marks' && request.scope.type === 'item') {title = 'Marks here';}
+
+  const extras = (
+    <View>
+      {sourcePath ? (
+        <Pressable onPress={() => setLinkToPage(v => !v)} hitSlop={8} style={styles.checkboxRow} accessibilityRole="checkbox">
+          <Text style={[styles.checkbox, {color: textColor}]}>{linkToPage ? '☑' : '☐'}</Text>
+          <Text style={[styles.buttonText, {color: textColor}]}>{selectedMark ? 'Link to source page' : 'Link to this page'}</Text>
+        </Pressable>
+      ) : null}
+      <View style={styles.extrasRow}>
+        {selectedMark ? (
+          <>
+            <Pressable style={[styles.button, {borderColor}]} onPress={handleOpenPage} disabled={busy} hitSlop={8}>
+              <Text style={[styles.buttonText, {color: textColor}]}>Open page</Text>
+            </Pressable>
+            <Pressable style={[styles.button, {borderColor}]} onPress={() => setDiscardAsk(selectedMark)} disabled={busy} hitSlop={8}>
+              <Text style={[styles.buttonText, {color: textColor}]}>Discard…</Text>
+            </Pressable>
+          </>
+        ) : null}
+        {!selectedMark && fromLasso && lassoSaved === 0 ? (
+          <Pressable style={[styles.button, styles.dashed, {borderColor}]} onPress={handleMarkForLater} disabled={busy} hitSlop={8}>
+            <Text style={[styles.buttonText, {color: textColor}]}>Mark for later</Text>
+          </Pressable>
+        ) : null}
+        <View style={styles.spacer} />
+        <Pressable style={[styles.button, {borderColor}]} onPress={close} disabled={busy} hitSlop={8}>
+          <Text style={[styles.buttonText, {color: textColor}]}>{fromLasso ? (lassoSaved === 0 ? 'Cancel' : 'Done') : 'Close'}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.heading, {color: textColor}]}>New from Lasso</Text>
-
+      <View style={styles.headerRow}>
+        <Text style={[styles.heading, {color: textColor}]}>{title}</Text>
+        <Text style={[styles.headerSource, {color: textColor}]} numberOfLines={1}>
+          {headerSource}
+        </Text>
+      </View>
       <View style={styles.body}>
-        <Text style={[styles.sectionTitle, {color: textColor}]}>Text</Text>
-        <TextInput
-          style={[styles.textArea, {color: textColor, borderColor}]}
-          value={text}
-          onChangeText={text => {
-            setText(text);
-            setRecognitionWarning(null);
-          }}
-          placeholder="Recognized text (edit if needed)"
-          placeholderTextColor={placeholderColor}
-          multiline
-          autoCapitalize="none"
-        />
-        <View style={styles.retryRow}>
-          <Pressable onPress={handleRetryRecognition} disabled={recognizing} hitSlop={8}>
-            {recognizing ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={[styles.retryText, {color: textColor}]}>🔁 Retry recognition</Text>
-            )}
-          </Pressable>
-        </View>
-
-        <Text style={[styles.sectionTitle, styles.sectionSpacing, {color: textColor}]}>Type</Text>
-        <View style={styles.kindRow}>
-          <Pressable
-            style={[styles.kindButton, {borderColor}, kind === 'todo' && styles.kindButtonSelected]}
-            onPress={() => setKind('todo')}>
-            <Text style={[styles.kindButtonText, {color: textColor}]}>📋 Todo</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.kindButton, {borderColor}, kind === 'meeting' && styles.kindButtonSelected]}
-            onPress={() => setKind('meeting')}>
-            <Text style={[styles.kindButtonText, {color: textColor}]}>📅 Meeting</Text>
-          </Pressable>
-        </View>
-
-        {kind === 'meeting' && (
-          <View style={styles.meetingFieldsRow}>
-            {/* Shared date field with the -1/Today/+1/+7 strip
-                (ui/DateInput.tsx) - same 130px width and 6px gap as the time
-                field beside it. */}
-            <DateInput
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderColor={placeholderColor}
+        {showColumn ? (
+          <View style={[styles.column, {borderColor}]}>
+            <MarksColumn
+              marks={marks}
+              currentPath={loaded.currentNotePath}
+              withLasso={fromLasso}
+              lassoText={lassoRec.text}
+              lassoSaved={lassoSaved}
+              selectedKey={selectedKey}
+              onSelect={handleSelect}
+              recognition={recognition}
+              pictureUri={markPicture}
+              today={today}
               textColor={textColor}
               borderColor={borderColor}
-              width={130}
-              containerStyle={styles.meetingDateWrap}
-            />
-            <TextInput
-              style={[styles.meetingFieldInput, {color: textColor, borderColor}]}
-              value={time}
-              onChangeText={setTime}
-              placeholder="HH:mm (optional)"
-              placeholderTextColor={placeholderColor}
-              autoCapitalize="none"
             />
           </View>
-        )}
-
-        <Text style={[styles.sectionTitle, styles.sectionSpacing, {color: textColor}]}>Destination</Text>
-        {/* Never a picker - always loaded.defaultDestination (the source
-            note's enclosing Project/Area, or Inbox), no override possible.
-            See the module doc comment's "Destination" note. */}
-        <View style={[styles.destinationRow, {borderColor}]}>
-          <Text style={[styles.rowText, {color: textColor}]}>{destinationLabel(loaded.defaultDestination)}</Text>
-        </View>
-
-        {loaded.currentNotePath && (
-          <Pressable
-            style={styles.checkboxRow}
-            onPress={() => setLinkToSource(prev => !prev)}
-            hitSlop={8}>
-            <Text style={styles.checkbox}>{linkToSource ? '☑' : '☐'}</Text>
-            <Text style={[styles.rowText, {color: textColor}]}>🔗 Link to source note</Text>
-          </Pressable>
-        )}
-
-
-        <View style={styles.footerRow}>
-          <Pressable
-            style={[styles.footerButton, styles.footerButtonPrimary]}
-            onPress={handleSaveAndView}
-            disabled={saving}
-            hitSlop={8}>
-            {saving ? <ActivityIndicator color="#ffffff" /> : (
-              <Text style={styles.footerButtonPrimaryText}>💾 Save &amp; View</Text>
-            )}
-          </Pressable>
-          <Pressable
-            style={[styles.footerButton, {borderColor}]}
-            onPress={handleSaveAndClose}
-            disabled={saving}
-            hitSlop={8}>
-            <Text style={[styles.footerButtonText, {color: textColor}]}>💾 Save &amp; Close</Text>
-          </Pressable>
-          <Pressable style={[styles.footerButton, {borderColor}]} onPress={handleCancel} disabled={saving} hitSlop={8}>
-            <Text style={[styles.footerButtonText, {color: textColor}]}>✕ Cancel</Text>
-          </Pressable>
+        ) : null}
+        <View style={styles.panel}>
+          {nothingSelected ? (
+            <>
+              <Text style={[styles.hint, {color: textColor}]}>No open marks left.</Text>
+              {extras}
+            </>
+          ) : (
+            <>
+              <View style={[styles.pictureBox, {borderColor: isDarkMode ? COLORS.borderDark : COLORS.textLight}]}>
+                {pictureUri ? <Image source={{uri: pictureUri}} style={styles.picture} resizeMode="contain" /> : null}
+                {recognizing ? <Text style={styles.pictureNote}>recognizing…</Text> : null}
+              </View>
+              <QuickAddWidget
+                variant="capture"
+                captureSeed={seed}
+                fixedDestination={destination}
+                onCaptureDestinationChange={setDestination}
+                onCaptureSaved={onCaptureSaved}
+                onAddTask={onAddTask}
+                onAddMeeting={onAddMeeting}
+                initialDate={selectedMark ? markDate(selectedMark.mark) : undefined}
+                captureExtras={extras}
+                placeholder="Todo text"
+                textColor={textColor}
+                borderColor={borderColor}
+                placeholderColor={placeholderColor}
+              />
+            </>
+          )}
         </View>
       </View>
     </View>
@@ -464,151 +507,23 @@ export default function CaptureScreen({onOpenItem, onOpenDaily}: Props): React.J
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    // Was 40 - the status slot above this screen (App.tsx) now uses the
-    // top space (docs/dev/technical-design-status-slot.md D11).
-    paddingTop: 8,
-    paddingHorizontal: 16,
-  },
-  centered: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heading: {
-    fontSize: FONT.large,
-    fontWeight: '700',
-    marginBottom: 20,
-  },
-  hint: {
-    fontSize: FONT.medium,
-    opacity: 0.6,
-    marginTop: 12,
-  },
-  body: {
-    flex: 1,
-  },
-  sectionTitle: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  sectionSpacing: {
-    marginTop: 20,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    fontSize: FONT.medium,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  retryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  warning: {
-    fontSize: FONT.small,
-    flex: 1,
-    marginRight: 8,
-  },
-  retryText: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-  },
-  kindRow: {
-    flexDirection: 'row',
-  },
-  // e-ink note: the selected state is a thick border, not a filled
-  // background - a solid dark fill (this used to be #2f6feb) reads as a
-  // near-black blob on an e-ink panel and makes the label text on top of it
-  // unreadable, unlike on a color LCD.
-  kindButton: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    marginRight: 8,
-  },
-  kindButtonSelected: {
-    borderWidth: 3,
-    borderColor: COLORS.accent,
-  },
-  kindButtonText: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-  },
-  meetingFieldsRow: {
-    flexDirection: 'row',
-    marginTop: 10,
-  },
-  /** Wrapper margin for the date field (DateInput takes layout via containerStyle) - same gap meetingFieldInput's own marginRight gives the time field. */
-  meetingDateWrap: {
-    marginRight: 6,
-  },
-  meetingFieldInput: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    fontSize: FONT.small,
-    marginRight: 6,
-    width: 130,
-  },
-  destinationRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  rowText: {
-    fontSize: FONT.medium,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  checkbox: {
-    fontSize: FONT.medium,
-    marginRight: 8,
-  },
-  error: {
-    fontSize: FONT.small,
-    marginTop: 12,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  footerButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  footerButtonPrimary: {
-    backgroundColor: COLORS.accent,
-    borderColor: COLORS.accent,
-  },
-  footerButtonText: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-  },
-  footerButtonPrimaryText: {
-    color: COLORS.accentText,
-    fontSize: FONT.small,
-    fontWeight: '600',
-  },
+  container: {flex: 1, paddingHorizontal: 16, paddingTop: 8},
+  centered: {justifyContent: 'center', alignItems: 'center'},
+  headerRow: {flexDirection: 'row', alignItems: 'baseline', marginBottom: 8},
+  heading: {fontSize: FONT.large, fontWeight: '700', marginRight: 16},
+  headerSource: {flex: 1, fontSize: FONT.small, textAlign: 'right'},
+  hint: {fontSize: FONT.medium, marginTop: 12},
+  body: {flex: 1, flexDirection: 'row'},
+  column: {flex: 1, borderRightWidth: 1, paddingRight: 8, marginRight: 12},
+  panel: {flex: 2},
+  pictureBox: {height: 180, borderWidth: 1, marginBottom: 10, backgroundColor: '#ffffff', justifyContent: 'center'},
+  picture: {width: '100%', height: '100%'},
+  pictureNote: {position: 'absolute', right: 8, bottom: 4, fontSize: FONT.small, color: '#555555'},
+  checkboxRow: {flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8},
+  checkbox: {fontSize: FONT.large, marginRight: 8},
+  extrasRow: {flexDirection: 'row', alignItems: 'center', marginTop: 4},
+  button: {borderWidth: 1, borderRadius: 4, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8},
+  dashed: {borderStyle: 'dashed'},
+  buttonText: {fontSize: FONT.small, fontWeight: '600'},
+  spacer: {flex: 1},
 });

@@ -294,6 +294,8 @@ export interface CaptureSeed {
   split: boolean;
   /** Meeting date default (the mark's day). */
   date?: string;
+  /** Meeting title when the user switches to Meeting (one line); defaults to the items joined. */
+  meetingTitle?: string;
 }
 
 interface Props {
@@ -512,7 +514,9 @@ function QuickAddWidget({
   const seedKeyRef = useRef<string | null>(null);
   // The user typed since the last seed - recognition then never overwrites.
   const captureTouchedRef = useRef(false);
-  const seedSignature = captureSeed ? `${captureSeed.key}\u0000${captureSeed.split}\u0000${captureSeed.items.join('\n')}` : null;
+  const seedSignature = captureSeed
+    ? `${captureSeed.key}\u0000${captureSeed.split}\u0000${captureSeed.items.join('\n')}\u0000${captureSeed.meetingTitle ?? ''}`
+    : null;
   useEffect(() => {
     if (!isCapture || !captureSeed) return;
     const newKey = captureSeed.key !== seedKeyRef.current;
@@ -523,10 +527,10 @@ function QuickAddWidget({
     const split = captureSeed.split && items.length > 1;
     if (newKey) {
       setTaskDraft({...makeTaskDraft(), text: split ? '' : items[0]});
-      setMeetingDraft({...makeMeetingDraft(captureSeed.date ?? initialDate), title: joinItems(items)});
+      setMeetingDraft({...makeMeetingDraft(captureSeed.date ?? initialDate), title: captureSeed.meetingTitle ?? joinItems(items)});
     } else {
       setTaskDraft(d => ({...d, text: split ? '' : items[0]}));
-      setMeetingDraft(d => ({...d, title: joinItems(items)}));
+      setMeetingDraft(d => ({...d, title: captureSeed.meetingTitle ?? joinItems(items)}));
     }
     setSplitRows(split ? items : null);
     setSplitPage(0);

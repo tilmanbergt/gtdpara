@@ -36,7 +36,7 @@
  * domain/storage boundary in this codebase.
  */
 import {closeOutInterrupted, parsePlan} from './closeOut/plan';
-import {joinNotePath, parseSharedNoteAnchor} from './sharedNotePages';
+import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor} from './sharedNotePages';
 import {legacyInboxLeftovers, ListedEntry} from './inboxMigration';
 import {GtdParaKind, Meeting, Task} from './types';
 
@@ -104,6 +104,22 @@ export async function checkHashNotePath(input: IntegrityCheckInput, io: Integrit
 
   const inspect = async (entityKind: 'task' | 'meeting', notePath: string, entityLabel: string) => {
     if (!notePath.includes('#')) return;
+    // A page link (lasso 0.8): only its file part has to exist.
+    const pageAnchor = parsePageAnchor(notePath);
+    if (pageAnchor) {
+      const target = joinNotePath(input.itemPath, pageAnchor.filePath);
+      if (await io.fileExists(target)) return;
+      findings.push({
+        checkId: 'hashNotePath',
+        itemKind: input.itemKind,
+        itemPath: input.itemPath,
+        entityKind,
+        entityLabel,
+        notePath,
+        message: `The linked note "${target}" was not found - it may have been deleted or moved. Re-link or clear this note reference by hand.`,
+      });
+      return;
+    }
 
     const anchor = parseSharedNoteAnchor(notePath);
     const anchorCandidate = anchor ? joinNotePath(input.itemPath, anchor.filePath) : null;

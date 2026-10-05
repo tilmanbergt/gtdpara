@@ -20,12 +20,24 @@ import {isEmptyLasso, readLasso, saveLassoPreview} from '../supernote/lassoRead'
 import {setLassoBoxState} from '../supernote/lasso';
 import {changeMarkIcon, insertBookmark} from '../supernote/markIcons';
 import {ensureFolderExists, readTextFile} from '../supernote/fileSystem';
-import {MARK_DATA_VERSION, markCreatedAt, markOwner, newMarkId, PxRect} from '../domain/marks';
+import {collectOpenMarks, MARK_DATA_VERSION, markCreatedAt, markOwner, MarkScope, newMarkId, OpenMark, PxRect} from '../domain/marks';
+import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import {Mark} from '../domain/types';
 import {log, logError, logWarn} from '../utils/log';
-import {findCachedItem, getCachedData, resolveLivePaths} from './dataCache';
-import {deleteMarkData, markDataFolder, markPicturePath, readMarkData, writeMarkData} from './markData';
-import {addMarkLine, markFileRef, markNotePathFor} from './markStore';
+import {findCachedItem, getCachedData, getCachedInbox, resolveLivePaths} from './dataCache';
+import {
+  addPendingIconChange,
+  cleanOrphanedMarkData,
+  deleteMarkData,
+  markDataFolder,
+  markPicturePath,
+  PendingIconChange,
+  readMarkData,
+  readPendingIconChanges,
+  writeMarkData,
+  writePendingIconChanges,
+} from './markData';
+import {addMarkLine, markFileRef, markNotePathFor, removeMarkLine} from './markStore';
 import {dataFilePath} from './projectFile';
 import {loadSettings} from './settingsStorage';
 
@@ -180,4 +192,87 @@ export async function retryBookmark(id: string): Promise<boolean> {
     }
   }
   return icon.placed;
+}
+
+// ---- processing marks (docs/dev/technical-design-lasso-0.8.md §3.7, §3.8, §3.10) ----
+
+/** Open marks in `scope`, from the cache (empty while there is none). */
+export function listOpenMarks(scope: MarkScope): OpenMark[] {
+  const cache = getCachedData();
+  if (!cache) return [];
+  return collectOpenMarks(cache.items, getCachedInbox(), cache.paths.inboxFolder, scope);
+}
+
+/**
+ * Recognizes a mark from its saved strokes (shifted copies, §3.4). A mark
+ * that only holds text-box text needs no recognition. `missing` = the
+ * private data is gone (e.g. after reinstalling) - the line still works,
+ * the text has to be typed.
+ */
+export async function recognizeMark(open: OpenMark): Promise<RecognitionResult & {missing: boolean}> {
+  const data = await readMarkData(open.mark.id);
+  if (!data) {
+    return {text: open.mark.text ?? '', error: open.mark.text ? null : 'mark data missing', ms: 0, missing: true};
+  }
+  const result = await recognizeStrokes(data.strokes, data.textBoxText, data.displaySize ?? data.pageSize, data.page);
+  return {...result, missing: false};
+}
+
+export interface FinishResult {
+  /** The line was still there (false: already removed, e.g. by hand). */
+  removed: boolean;
+  iconOk: boolean;
+  iconDetail: string;
+}
+
+/**
+ * After Save ('done': bookmark becomes the check icon) or Discard ('remove':
+ * icon removed): removes the `## Marks` line first (the mark is processed
+ * once that is written), then changes the icon - a failure there is queued
+ * for later, never an error - and deletes the private data.
+ * Throws only when the line can't be written.
+ */
+export async function finishMark(open: OpenMark, change: 'done' | 'remove', currentPath: string | null): Promise<FinishResult> {
+  const cache = getCachedData();
+  const inboxFolder = cache?.paths.inboxFolder ?? (await resolveLivePaths(await loadSettings())).inboxFolder;
+  const removed = await removeMarkLine(markFileRef(open.owner, {inboxFolder}), open.mark.id);
+  const icon = await changeMarkIcon({id: open.mark.id, path: open.absPath, page: open.mark.page}, change, currentPath);
+  if (!icon.ok && icon.retry) {
+    await addPendingIconChange({id: open.mark.id, path: open.absPath, page: open.mark.page, change});
+  }
+  await deleteMarkData(open.mark.id);
+  log('marks: finished', open.mark.id, change, `removed=${removed}`, `icon=${icon.ok}`, icon.detail);
+  return {removed, iconOk: icon.ok, iconDetail: icon.detail};
+}
+
+/** Retries queued icon changes for the note open right now (only that note can be changed safely). Never throws. */
+export async function runPendingIconChanges(currentPath: string | null): Promise<void> {
+  if (!currentPath) return;
+  try {
+    const pending = await readPendingIconChanges();
+    if (pending.length === 0) return;
+    const left: PendingIconChange[] = [];
+    for (const p of pending) {
+      if (p.path !== currentPath) {
+        left.push(p);
+        continue;
+      }
+      const r = await changeMarkIcon({id: p.id, path: p.path, page: p.page}, p.change, currentPath);
+      if (!r.ok && r.retry) left.push(p);
+    }
+    if (left.length !== pending.length) await writePendingIconChanges(left);
+  } catch (e) {
+    logWarn('marks: pending icon changes failed', e instanceof Error ? e.message : String(e));
+  }
+}
+
+/** Deletes private data of marks that have no line any more (older than a day). Never throws. */
+export async function cleanMarkDataOrphans(): Promise<void> {
+  try {
+    if (!getCachedData()) return;
+    const open = new Set(listOpenMarks({type: 'all'}).map(m => m.mark.id));
+    await cleanOrphanedMarkData(open);
+  } catch (e) {
+    logWarn('marks: orphan cleanup failed', e instanceof Error ? e.message : String(e));
+  }
 }

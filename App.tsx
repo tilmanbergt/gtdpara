@@ -19,7 +19,8 @@ import MonthView from './src/screens/MonthView';
 import InboxScreen from './src/screens/InboxScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
 import CloseOutWizard from './src/screens/CloseOutWizard';
-import CaptureScreen from './src/screens/CaptureScreen';
+import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
+import {MarkScope} from './src/domain/marks';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
@@ -301,6 +302,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // does, so the remount no longer depends on `setMode`'s own bailout
   // behavior.
   const [captureNonce, setCaptureNonce] = useState(0);
+  // What the capture screen shows (docs/dev/technical-design-lasso-0.8.md §3.7):
+  // the lasso (lasso button) or open marks (a "marks to process" card).
+  const [captureRequest, setCaptureRequest] = useState<CaptureRequest>({source: 'lasso'});
 
   // Mirror of `activeTab` for reorient() below, which is created once in the
   // mount effect and would otherwise only ever see the first render's value
@@ -464,6 +468,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         } else if (event?.id === LASSO_BUTTON_ID) {
           log('App: lasso button pressed - opening capture screen');
           routedByLassoButtonRef.current = true;
+          setCaptureRequest({source: 'lasso'});
           setCaptureNonce(n => n + 1);
           hasLandedRef.current = true;
           setMode('capture');
@@ -490,6 +495,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     onEnterFocusMode: () => void;
     handleArchived: (kind: 'project' | 'area') => void;
     openCloseOut: (path: string, closeOutMode: 'full' | 'quick') => void;
+    openMarks: (scope: MarkScope, returnTo: CaptureReturnTo) => void;
   } | null>(null);
   const stableNav = useMemo(
     () => ({
@@ -498,6 +504,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       onEnterFocusMode: () => navRef.current?.onEnterFocusMode(),
       handleArchived: (kind: 'project' | 'area') => navRef.current?.handleArchived(kind),
       startCloseOutFull: (path: string) => navRef.current?.openCloseOut(path, 'full'),
+      openMarks: (scope: MarkScope, returnTo: CaptureReturnTo) => navRef.current?.openMarks(scope, returnTo),
     }),
     [],
   );
@@ -804,12 +811,32 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       .catch(e => logError('App: refreshSettings failed', e instanceof Error ? e.message : String(e)));
   };
 
+  // Marks processing (docs/dev/technical-design-lasso-0.8.md §3.7, §3.10): the
+  // capture screen with the marks of `scope`; Close goes back to the tabs as
+  // they were (Inbox, Current, Review or the close-out wizard).
+  const openMarks = (scope: MarkScope, returnTo: CaptureReturnTo) => {
+    log('App: opening marks', scope.type, returnTo);
+    setCaptureRequest({source: 'marks', scope, returnTo});
+    setCaptureNonce(n => n + 1);
+    setMode('capture');
+  };
+  const exitCapture = () => {
+    setMode('tabs');
+    requestEinkRefresh();
+  };
+
   if (mode === 'capture') {
     // The lasso-capture overlay gets the status slot at its top too (D11).
     return (
       <View style={styles.root}>
         <StatusFrame>
-          <CaptureScreen key={captureNonce} onOpenItem={stableOpenItem} onOpenDaily={openDaily} />
+          <CaptureScreen
+            key={captureNonce}
+            request={captureRequest}
+            onOpenItem={stableOpenItem}
+            onOpenDaily={openDaily}
+            onExit={exitCapture}
+          />
         </StatusFrame>
       </View>
     );
@@ -840,7 +867,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   }
 
   const handleClose = () => PluginManager.closePluginView();
-  navRef.current = {openInbox, openSettingsCalendar, onEnterFocusMode, handleArchived, openCloseOut};
+  navRef.current = {openInbox, openSettingsCalendar, onEnterFocusMode, handleArchived, openCloseOut, openMarks};
 
   // Tabs that are never kept alive - rendered while visible, in both modes.
   const nonKeptBody = (

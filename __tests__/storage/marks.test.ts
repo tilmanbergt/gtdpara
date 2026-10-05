@@ -19,6 +19,7 @@ jest.mock('../../src/supernote/lassoRead', () => ({
     return target;
   },
 }));
+jest.mock('../../src/supernote/strokeRecognition', () => ({recognizeStrokes: jest.fn()}));
 jest.mock('../../src/supernote/lasso', () => ({
   setLassoBoxState: async () => {
     mockState.calls.push('lassoGone');

@@ -140,6 +140,35 @@ export interface OpenMark {
   absPath: string;
 }
 
+/** Which marks a processing screen shows: all, or those of one project/area. */
+export type MarkScope = {type: 'all'} | {type: 'item'; path: string};
+
+/** Open marks of the Inbox and the given items, with owner and absolute note path. */
+export function collectOpenMarks(
+  items: Array<{kind: 'project' | 'area'; name: string; path: string; marks: Mark[]}>,
+  inbox: {marks: Mark[]} | null,
+  inboxFolder: string,
+  scope: MarkScope,
+): OpenMark[] {
+  const out: OpenMark[] = [];
+  if (scope.type === 'all' && inbox) {
+    for (const mark of inbox.marks) {
+      out.push({mark, owner: {type: 'inbox'}, absPath: resolveMarkPath(inboxFolder, mark.notePath)});
+    }
+  }
+  for (const item of items) {
+    if (scope.type === 'item' && item.path !== scope.path) continue;
+    for (const mark of item.marks) {
+      out.push({
+        mark,
+        owner: {type: 'item', kind: item.kind, name: item.name, path: item.path},
+        absPath: resolveMarkPath(item.path, mark.notePath),
+      });
+    }
+  }
+  return out;
+}
+
 export interface MarkGroup {
   absPath: string;
   /** File name without folder, e.g. 'Offsite prep.note'. */
