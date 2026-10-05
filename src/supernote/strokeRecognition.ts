@@ -101,6 +101,28 @@ export function recognizeStrokes(
     const ms = Date.now() - t0;
     if (error) {logWarn('strokeRecognition: failed', `strokes=${strokes.length}`, `ms=${ms}`, error);}
     else {log('strokeRecognition: done', `strokes=${strokes.length}`, `chars=${text.length}`, `ms=${ms}`);}
+    // TEMPORARY diagnostic (0.8 checkpoint B, multi-line lists): the SHAPE of
+    // the recognizer's raw answer - letters and digits masked as 'x', so no
+    // content is logged - plus every line's first character as a code point.
+    // Remove once the line-break question is settled.
+    log('strokeRecognition: shape', JSON.stringify(maskText(recognized)), lineStarts(recognized));
     return {text, error, ms};
   });
+}
+
+/** TEMPORARY diagnostic: letters/digits -> 'x'; spaces, line breaks, symbols (boxes, bullets) stay. */
+function maskText(text: string): string {
+  return Array.from(text)
+    .map(ch => (/[0-9]/.test(ch) || ch.toLowerCase() !== ch.toUpperCase() ? 'x' : ch))
+    .join('');
+}
+
+/** TEMPORARY diagnostic: per line (split on any line-break character) the first non-space character as U+XXXX. */
+function lineStarts(text: string): string {
+  const lines = text.split(/\r\n|\r|\n|\u2028|\u2029|\u0085/);
+  const starts = lines.map(line => {
+    const first = Array.from(line.trimStart())[0];
+    return first ? `U+${first.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}` : '-';
+  });
+  return `lines=${lines.length} starts=${starts.join(',')}`;
 }
