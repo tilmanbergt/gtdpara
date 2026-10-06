@@ -83,6 +83,7 @@ import {
 import {common} from '../ui/commonStyles';
 import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {useErrorStatus} from '../ui/status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 const CREATE_LABEL: Record<'project' | 'area', string> = {
   project: '+ Create Project',
@@ -213,7 +214,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
       const next = await rebuildCache(settings);
       setCache(next);
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       log('ItemsList: rebuild failed', message);
       setError(message);
     } finally {
@@ -257,7 +258,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
         setCache(next);
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       log('ItemsList: create failed', kind, message);
       setCreateError(message);
     } finally {

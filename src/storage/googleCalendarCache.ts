@@ -41,6 +41,7 @@ import {ensureInternetPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {CachedItem} from './dataCache';
 import {onActiveProfileChange, profileScopedKey} from './profileKeys';
+import {errorMessage} from '../utils/errorMessage';
 
 const PERSIST_KEY = 'gtdpara:googleCalendarCache:v1';
 
@@ -80,14 +81,14 @@ export function getGoogleCalendarCache(): GoogleCalendarCacheState | null {
 export function clearGoogleCalendarCache(): void {
   cached = null;
   AsyncStorage.removeItem(profileScopedKey(PERSIST_KEY)).catch(e => {
-    logError('clearGoogleCalendarCache: failed to clear persisted cache', e instanceof Error ? e.message : String(e));
+    logError('clearGoogleCalendarCache: failed to clear persisted cache', errorMessage(e));
   });
 }
 
 /** Fire-and-forget write of a successful fetch's result - never persists an error state (see this file's top doc comment). Failures are logged, not thrown - persistence is a nice-to-have, never something a refresh should fail over. */
 function persistToDisk(state: PersistedGoogleCalendarCache): void {
   AsyncStorage.setItem(profileScopedKey(PERSIST_KEY), JSON.stringify(state)).catch(e => {
-    logError('persistToDisk: failed to persist Google Calendar cache', e instanceof Error ? e.message : String(e));
+    logError('persistToDisk: failed to persist Google Calendar cache', errorMessage(e));
   });
 }
 
@@ -108,7 +109,7 @@ async function hydrateFromDisk(): Promise<void> {
     cached = {fetchedAt: parsed.fetchedAt, events: parsed.events};
     log('hydrateFromDisk: restored persisted Google Calendar cache', `${parsed.events.length} events`);
   } catch (e) {
-    logError('hydrateFromDisk: failed to restore persisted cache', e instanceof Error ? e.message : String(e));
+    logError('hydrateFromDisk: failed to restore persisted cache', errorMessage(e));
   }
 }
 
@@ -266,7 +267,7 @@ async function doRefresh(icsUrl: string): Promise<GoogleCalendarCacheState> {
     log('refreshGoogleCalendar: done', `${events.length} events`);
     return cached;
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = errorMessage(e);
     logError('refreshGoogleCalendar: error', message);
     cached = {fetchedAt: previousFetchedAt, events: previousEvents, error: message};
     return cached;

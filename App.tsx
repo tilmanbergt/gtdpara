@@ -62,6 +62,7 @@ import {perfBegin, perfConfigure, perfEnable, perfMark, usePerfRender} from './s
 import {collectPerfStats} from './src/storage/perfStats';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from './src/utils/screenRefresh';
 import {FONT, useThemeColors} from './src/ui/theme';
+import {errorMessage} from './src/utils/errorMessage';
 
 // Performance tracing (docs/dev/technical-design-perf-tracing.md). Wired once at
 // module load: the cold-start trace starts here, as early as App's own code
@@ -217,7 +218,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   useEffect(() => {
     getPrivateTempDir()
       .then(dir => deleteTempTree(dir))
-      .catch(e => log('App: private temp clean-up skipped', e instanceof Error ? e.message : String(e)));
+      .catch(e => log('App: private temp clean-up skipped', errorMessage(e)));
   }, []);
 
   // Re-checks the current note's Project/Area and jumps straight there - on
@@ -350,7 +351,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         setSettings(loadedSettings);
         // Only files changed outside gtdpara are read again (technical-design-files-0.6.md §3.2).
         refreshCache(loadedSettings).catch(e =>
-          logError('App: background cache refresh failed', e instanceof Error ? e.message : String(e)),
+          logError('App: background cache refresh failed', errorMessage(e)),
         );
 
         // Where to land is one pure decision (domain/returnContext.ts's
@@ -427,7 +428,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         hasLandedRef.current = true;
         setMode('tabs');
       } catch (e) {
-        log('App: reorient failed', e instanceof Error ? e.message : String(e));
+        log('App: reorient failed', errorMessage(e));
         // A failed *first* attempt still needs to leave loading somehow;
         // a failed later attempt (already showing something) is left alone
         // rather than yanking the user back to Daily on a transient error.
@@ -607,7 +608,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setWhatsNewAcknowledged(true);
     patchSettings({lastSeenVersion: BUILD_INFO.version})
       .then(setSettings)
-      .catch(e => logError('App: storing lastSeenVersion failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('App: storing lastSeenVersion failed', errorMessage(e)));
   };
   const openSettingsAbout = () => {
     setSettingsTab('about');
@@ -710,7 +711,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     const next = {...settings, focusModeActive: true};
     setSettings(next);
     saveSettings(next).catch(e =>
-      logError('App: saving focusModeActive=true failed', e instanceof Error ? e.message : String(e)),
+      logError('App: saving focusModeActive=true failed', errorMessage(e)),
     );
     setMode('focus');
   };
@@ -727,7 +728,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       const next = {...settings, focusModeActive: false};
       setSettings(next);
       saveSettings(next).catch(e =>
-        logError('App: saving focusModeActive=false failed', e instanceof Error ? e.message : String(e)),
+        logError('App: saving focusModeActive=false failed', errorMessage(e)),
       );
     }
     setActiveTab('daily');
@@ -815,7 +816,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   const refreshSettings = () => {
     loadSettings()
       .then(setSettings)
-      .catch(e => logError('App: refreshSettings failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('App: refreshSettings failed', errorMessage(e)));
   };
 
   // Marks processing (docs/dev/technical-design-lasso-0.8.md §3.7, §3.10): the

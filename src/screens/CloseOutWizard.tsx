@@ -59,6 +59,7 @@ import WizardFrame from '../ui/wizard/WizardFrame';
 import {logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   projectPath: string;
@@ -85,7 +86,7 @@ const IDLE_ARCHIVE: ArchiveRunState = {running: false, steps: null, ok: null, er
 const PROGRESS_PAINT_MS = 1000;
 
 function message(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  return errorMessage(e);
 }
 
 export default function CloseOutWizard({projectPath, mode: requestedMode, onExit}: Props): React.JSX.Element {

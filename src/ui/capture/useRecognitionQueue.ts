@@ -10,6 +10,7 @@ import {useEffect, useRef, useState} from 'react';
 import {OpenMark} from '../../domain/marks';
 import {recognizeMark, storedMarkText} from '../../storage/marks';
 import {logWarn} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 export type RecognitionState = 'waiting' | 'recognizing' | 'done' | 'empty' | 'failed';
 
@@ -115,7 +116,7 @@ export function useRecognitionQueue(marks: OpenMark[], selectedId: string | null
         return {state, text, missing: r.missing} as MarkRecognition;
       })
       .catch(e => {
-        logWarn('useRecognitionQueue: failed', nextId, e instanceof Error ? e.message : String(e));
+        logWarn('useRecognitionQueue: failed', nextId, errorMessage(e));
         return {state: 'failed', text: ''} as MarkRecognition;
       })
       .then(result => {

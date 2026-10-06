@@ -15,6 +15,7 @@ import {GMAIL_ATTACHMENTS_SUBFOLDER, GMAIL_EMAILS_SUBFOLDER} from '../gmailAttac
 import {resolveLinkedFilePath} from '../linkedFiles';
 import {readAllKeywords} from '../sharedNotePages';
 import {log, logError} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 const MAX_DEPTH = 6;
 
@@ -74,7 +75,7 @@ export async function scanProject(item: ScanItem, paths: ResolvedParaPaths, onPr
       onProgress?.(`Reading pages of ${rel}`);
       sharedKeywords[rel] = (await readAllKeywords(`${root}/${rel}`)).keywords;
     } catch (e) {
-      logError('closeOut scan: keywords failed', rel, e instanceof Error ? e.message : String(e));
+      logError('closeOut scan: keywords failed', rel, errorMessage(e));
     }
   }
 

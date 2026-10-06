@@ -63,6 +63,7 @@ import {common} from './commonStyles';
 import {COLORS, FONT} from './theme';
 import {useErrorStatus, useStatus, useStatusApi} from './status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   kind: 'project' | 'area';
@@ -183,7 +184,7 @@ export default function ItemStatusPanel({
         abbrev: item.abbrev,
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ItemStatusPanel: load failed', kind, path, message);
       setLoadError(message);
     }
@@ -297,15 +298,15 @@ export default function ItemStatusPanel({
                 onArchived?.();
               })
               .catch(e => {
-                logError('ItemStatusPanel: archive failed', e instanceof Error ? e.message : String(e));
-                setArchiveError(e instanceof Error ? e.message : String(e));
+                logError('ItemStatusPanel: archive failed', errorMessage(e));
+                setArchiveError(errorMessage(e));
               })
               .finally(() => setArchiving(false));
           },
         });
       } catch (e) {
-        logError('ItemStatusPanel: archive confirm setup failed', e instanceof Error ? e.message : String(e));
-        setArchiveError(e instanceof Error ? e.message : String(e));
+        logError('ItemStatusPanel: archive confirm setup failed', errorMessage(e));
+        setArchiveError(errorMessage(e));
       }
     })();
   }, [state, kind, name, path, onArchived, statusApi]);
@@ -322,7 +323,7 @@ export default function ItemStatusPanel({
         );
         setState(prev => (prev ? {...prev, rawContent: result.rawContent, area: result.area} : prev));
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ItemStatusPanel: assign area failed', message);
         setAreaError(message);
       } finally {
@@ -340,7 +341,7 @@ export default function ItemStatusPanel({
       const result = await unassignProject(currentItem(kind, name, path, state));
       setState(prev => (prev ? {...prev, rawContent: result.rawContent, area: result.area} : prev));
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ItemStatusPanel: unassign area failed', message);
       setAreaError(message);
     }
@@ -440,8 +441,8 @@ function StatusSection({
     setPending(true);
     onChange(value)
       .catch(e => {
-        logError('StatusSection: change failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('StatusSection: change failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(false));
   };

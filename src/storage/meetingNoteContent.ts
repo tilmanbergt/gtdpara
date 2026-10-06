@@ -152,6 +152,7 @@ import {
   renameKeywordAt,
   writeRecreatedNotice,
 } from './sharedNotePages';
+import {errorMessage} from '../utils/errorMessage';
 
 /**
  * `linkedFile`'s bare file name (e.g. "Kickoff deck.pdf" from
@@ -354,7 +355,7 @@ export async function populateNoteFromDefinition(
     // failure itself stays in the log. Nothing to retry when there was no link.
     const withoutLinks = elements.filter(el => !linkElements.has(el));
     if (withoutLinks.length === elements.length) throw e;
-    log('note refresh: insert with link failed, retrying without link:', e instanceof Error ? e.message : String(e));
+    log('note refresh: insert with link failed, retrying without link:', errorMessage(e));
     if (withoutLinks.length > 0) {
       await insertElements(notePath, page, withoutLinks);
     }

@@ -600,7 +600,7 @@ export default function ProjectDataPanel({
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
-  const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
+  const runWidgetAction = widgetAction.run;
 
   const handleAddTask = (text: string, destination: Destination): Promise<void> =>
     runWidgetAction(async () => {

@@ -171,6 +171,7 @@ import {PinIcon} from './icons';
 import {common} from './commonStyles';
 import {FONT} from './theme';
 import {useStatus, useErrorStatus} from './status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 // Right column width this pane renders in when it's the left half of a
 // two-column screen (screens/ItemDetail.tsx, screens/InboxScreen.tsx, both
@@ -536,7 +537,7 @@ export default function FileBrowserPane({
           if (quiet) requestEinkRefresh();
         }
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('FileBrowserPane: load failed', current.path, message);
         if (!cancelled) setError(message);
       } finally {
@@ -644,7 +645,7 @@ export default function FileBrowserPane({
     try {
       await openPath(entry.path);
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('FileBrowserPane: open failed', entry.path, message);
       setOpenError(`Couldn't open ${entry.name}: ${message}`);
     }

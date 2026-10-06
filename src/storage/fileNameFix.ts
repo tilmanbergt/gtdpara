@@ -19,6 +19,7 @@ import {log, logError} from '../utils/log';
 import {findCachedItem, reloadCachedInbox, updateItemMeetings, updateItemTasks} from './dataCache';
 import {collisionFreeName} from './fileNaming';
 import {loadProjectFile, saveMeetings, saveTasks} from './projectFile';
+import {errorMessage} from '../utils/errorMessage';
 
 export interface FileNameFixResult {
   renamed: number;
@@ -79,7 +80,7 @@ export async function applyFileNameFixes(fixes: FileFix[]): Promise<FileNameFixR
         items.set(ref.itemPath, item);
       }
     } catch (e) {
-      const error = e instanceof Error ? e.message : String(e);
+      const error = errorMessage(e);
       logError('applyFileNameFixes: rename failed', fix.file, error);
       result.failed.push({file: fix.file, error});
     }
@@ -89,7 +90,7 @@ export async function applyFileNameFixes(fixes: FileFix[]): Promise<FileNameFixR
     try {
       result.linksUpdated += await rewriteItem(item);
     } catch (e) {
-      const error = e instanceof Error ? e.message : String(e);
+      const error = errorMessage(e);
       // The files are renamed already - the Integrity Check now reports these links as missing.
       logError('applyFileNameFixes: link rewrite failed', item.path, error, JSON.stringify([...item.tasks, ...item.meetings]));
       result.failed.push({file: item.path, error});

@@ -33,6 +33,7 @@
  */
 import {NativeModules} from 'react-native';
 import {ensureInternetPermission} from '../supernote/pluginPermissions';
+import {errorMessage} from '../utils/errorMessage';
 
 const {GmailImapModule} = NativeModules;
 
@@ -92,7 +93,7 @@ export type GmailErrorKind = 'permission' | 'auth' | 'network' | 'other';
  * (no `instanceof` on purpose - unreliable for Error subclasses under Hermes).
  */
 export function describeGmailFailure(e: unknown): Error & {kind: GmailErrorKind} {
-  const raw = e instanceof Error ? e.message : String(e);
+  const raw = errorMessage(e);
   let kind: GmailErrorKind = 'other';
   let message: string;
   if (/no NETWORK permission|Internet access was not allowed/i.test(raw)) {

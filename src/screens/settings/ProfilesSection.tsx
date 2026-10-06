@@ -15,6 +15,7 @@ import PillButton from '../../ui/PillButton';
 import {useStatus} from '../../ui/status/StatusProvider';
 import {FONT, SPACING} from '../../ui/theme';
 import {logError} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 interface Props {
   activeProfileId: string;
@@ -27,7 +28,7 @@ interface Props {
 type Message = {kind: 'success' | 'error'; text: string} | null;
 
 function errorText(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  return errorMessage(e);
 }
 
 export default function ProfilesSection({activeProfileId, onSwitchProfile, textColor, borderColor}: Props): React.JSX.Element {

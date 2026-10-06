@@ -304,6 +304,7 @@ import {COLORS, FONT, RADII, SPACING, useThemeColors} from '../ui/theme';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
 import {useStatusConfirm} from '../ui/useStatusConfirm';
+import {errorMessage} from '../utils/errorMessage';
 
 type PathKey = 'projects' | 'areas' | 'inboxFolder' | 'resources' | 'archive';
 
@@ -672,7 +673,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
         text: fileNameFixDoneText(result.renamed, result.linksUpdated, result.failed.length),
       });
     } catch (e) {
-      setIntegrityResult({kind: 'error', text: `Fix file names failed: ${e instanceof Error ? e.message : String(e)}`});
+      setIntegrityResult({kind: 'error', text: `Fix file names failed: ${errorMessage(e)}`});
     } finally {
       setIntegrityCheckRunning(false);
     }
@@ -703,7 +704,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
           setMyStylePngs(pngs);
         })
         .catch(e => {
-          if (!isCancelled()) setMyStyleError(e instanceof Error ? e.message : String(e));
+          if (!isCancelled()) setMyStyleError(errorMessage(e));
         }),
     [],
   );
@@ -884,7 +885,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     try {
       await persistDefinitions(list, editingDefIndex === null ? nextNoteDefinitionId : undefined);
     } catch (e) {
-      setTemplatesSaveError(e instanceof Error ? e.message : String(e));
+      setTemplatesSaveError(errorMessage(e));
     }
   };
 
@@ -899,7 +900,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     try {
       await persistDefinitions(list);
     } catch (e) {
-      setTemplatesSaveError(e instanceof Error ? e.message : String(e));
+      setTemplatesSaveError(errorMessage(e));
     }
   };
 
@@ -1045,7 +1046,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       const text = await Clipboard.getString();
       updateIcsUrl(text.trim());
     } catch (e) {
-      setClipboardError(e instanceof Error ? e.message : String(e));
+      setClipboardError(errorMessage(e));
     }
   };
 
@@ -1061,7 +1062,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       const text = await Clipboard.getString();
       update('gmailAppPassword', text.trim());
     } catch (e) {
-      setClipboardError(e instanceof Error ? e.message : String(e));
+      setClipboardError(errorMessage(e));
     }
   };
 
@@ -1167,7 +1168,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     } catch (e) {
       // Without this, a failed AsyncStorage write used to fail completely
       // silently - the button would look like it did nothing at all.
-      setSaveError(e instanceof Error ? e.message : String(e));
+      setSaveError(errorMessage(e));
     }
   };
 
@@ -1193,7 +1194,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       const stored = await loadSettings();
       await saveSettings({...stored, perfTracing: next});
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      setSaveError(errorMessage(e));
     }
   };
 
@@ -1208,7 +1209,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       const stored = await loadSettings();
       await saveSettings({...stored, keepTabsAlive: next});
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      setSaveError(errorMessage(e));
     }
   };
 
@@ -1223,7 +1224,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     try {
       await patchSettings({[key]: next[key]});
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      setSaveError(errorMessage(e));
     }
   };
 
@@ -1234,7 +1235,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     try {
       await patchSettings({debugLogging: next});
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      setSaveError(errorMessage(e));
     }
   };
 
@@ -1264,7 +1265,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       log('Settings: reload all files - done', cache.items.length);
       setReloadResult({kind: 'success', text: `Reloaded ${cache.items.length} projects and areas from the files.`});
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('Settings: reload all files failed', message);
       setReloadResult({kind: 'error', text: `Reload failed: ${message}`});
     } finally {
@@ -1288,7 +1289,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
             },
       );
     } catch (e) {
-      setIntegrityResult({kind: 'error', text: `Integrity Check failed: ${e instanceof Error ? e.message : String(e)}`});
+      setIntegrityResult({kind: 'error', text: `Integrity Check failed: ${errorMessage(e)}`});
     } finally {
       setIntegrityCheckRunning(false);
     }

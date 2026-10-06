@@ -31,6 +31,7 @@ import {AREA_FILE_NAME, GtdParaKind, INBOX_FILE_NAME, Meeting, PROJECT_FILE_NAME
 import {ensureFolderExists, folderExists, listFolderEntries, moveFile, moveFolder, moveFolderMerge} from '../supernote/fileSystem';
 import {log, logError, logWarn} from '../utils/log';
 import {loadProjectFile, saveMeetings, saveTasks} from './projectFile';
+import {errorMessage} from '../utils/errorMessage';
 
 export type InboxMigrationOutcome =
   | {state: 'none'}
@@ -212,7 +213,7 @@ export async function migrateInboxIfNeeded(paths: ResolvedParaPaths): Promise<In
     log('InboxMigration: done', {noteFolders, filesWithRewrittenLinks: linksRewritten});
     return finish({state: 'moved', noteFolders, linksRewritten}, true);
   } catch (e) {
-    logError('InboxMigration: failed', e instanceof Error ? e.message : String(e));
+    logError('InboxMigration: failed', errorMessage(e));
     return finish({state: 'failed'}, true);
   }
 }
@@ -225,7 +226,7 @@ export async function effectiveInboxFolderFor(paths: ResolvedParaPaths): Promise
     const targetHas = targetEntries.some(e => !e.isFolder && e.name === INBOX_FILE_NAME);
     return effectiveInboxFolder(paths.base, paths.inboxFolder, rootHas, targetHas);
   } catch (e) {
-    logWarn('InboxMigration: could not check the Inbox location', e instanceof Error ? e.message : String(e));
+    logWarn('InboxMigration: could not check the Inbox location', errorMessage(e));
     return paths.inboxFolder;
   }
 }

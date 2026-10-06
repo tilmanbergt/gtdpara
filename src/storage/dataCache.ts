@@ -59,6 +59,7 @@ import {log, logError} from '../utils/log';
 import {perfEnd, perfMark, perfStart} from '../utils/perf';
 import {dataFilePath, loadProjectFile, parseProjectFileContent, ProjectFileState, saveFrontMatter} from './projectFile';
 import {effectiveInboxFolderFor, hiddenAreaFolderFor, migrateInboxIfNeeded} from './inboxMigration';
+import {errorMessage} from '../utils/errorMessage';
 
 export interface CachedItem {
   kind: 'project' | 'area';
@@ -133,7 +134,7 @@ async function statStamps(paths: string[]): Promise<Map<string, FileStamp> | nul
     if (!stats) return null;
     return new Map(stats.map(stat => [stat.path, stampOf(stat)]));
   } catch (e) {
-    logError('dataCache: statFiles failed', e instanceof Error ? e.message : String(e));
+    logError('dataCache: statFiles failed', errorMessage(e));
     return null;
   }
 }
@@ -217,7 +218,7 @@ export async function reloadCachedInbox(inboxFolder: string): Promise<void> {
   try {
     setCachedInbox(await loadProjectFile('inbox', inboxFolder));
   } catch (e) {
-    logError('dataCache: Inbox reload failed', e instanceof Error ? e.message : String(e));
+    logError('dataCache: Inbox reload failed', errorMessage(e));
   }
 }
 
@@ -252,7 +253,7 @@ async function loadOneItem(kind: 'project' | 'area', name: string, path: string)
     const file = await loadProjectFile(kind, path);
     return {kind, name, path, ...file};
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = errorMessage(e);
     logError('dataCache: item load failed', path, message);
     return {
       kind,
@@ -323,7 +324,7 @@ async function migrateMissingAbbrevs(items: CachedItem[]): Promise<void> {
       item.rawContent = rawContent;
       item.abbrev = generated;
     } catch (e) {
-      logError('migrateMissingAbbrevs: failed for', item.path, e instanceof Error ? e.message : String(e));
+      logError('migrateMissingAbbrevs: failed for', item.path, errorMessage(e));
       // Left null - picked up again on the next rebuild.
     }
   }
@@ -362,7 +363,7 @@ export async function assignDefaultAbbrevIfMissing(item: CachedItem): Promise<vo
     item.abbrev = generated;
     notifyCacheChanged();
   } catch (e) {
-    logError('assignDefaultAbbrevIfMissing: failed for', item.path, e instanceof Error ? e.message : String(e));
+    logError('assignDefaultAbbrevIfMissing: failed for', item.path, errorMessage(e));
     // Left null - migrateMissingAbbrevs picks it up on the next rebuild.
   }
 }
@@ -457,10 +458,10 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   // Timed out like the scans below, so a stuck listing can't hang the
   // rebuild; a move still running then simply finishes in the background.
   await withTimeout(migrateInboxIfNeeded(configuredPaths), INBOX_MIGRATION_TIMEOUT_MS, 'moving the Inbox').catch(e =>
-    logError('rebuildCache: Inbox move did not finish', e instanceof Error ? e.message : String(e)),
+    logError('rebuildCache: Inbox move did not finish', errorMessage(e)),
   );
   const inboxFolder = await withTimeout(effectiveInboxFolderFor(configuredPaths), SCAN_TIMEOUT_MS, 'locating the Inbox').catch(e => {
-    logError('rebuildCache: locating the Inbox failed', e instanceof Error ? e.message : String(e));
+    logError('rebuildCache: locating the Inbox failed', errorMessage(e));
     return configuredPaths.inboxFolder;
   });
   const paths = withInboxFolder(configuredPaths, inboxFolder);
@@ -563,7 +564,7 @@ async function doRefreshCache(settings: GtdParaSettings): Promise<DataCache> {
     Promise.all(toRead.map(({folder}) => loadOneItem(folder.kind, folder.name, folder.path))),
     inboxStampChanged
       ? loadProjectFile('inbox', paths.inboxFolder).catch(e => {
-          logError('refreshCache: Inbox read failed', e instanceof Error ? e.message : String(e));
+          logError('refreshCache: Inbox read failed', errorMessage(e));
           return null;
         })
       : Promise.resolve(null),

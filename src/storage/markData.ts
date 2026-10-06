@@ -18,6 +18,7 @@ import {
   writeTextFile,
 } from '../supernote/fileSystem';
 import {log, logError, logWarn} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 async function marksRoot(): Promise<string> {
   return `${await getPrivateDataDir()}/marks`;
@@ -47,7 +48,7 @@ export async function readMarkData(id: string): Promise<MarkDataFile | null> {
   try {
     return parseMarkDataFile(await readTextFile(await markJsonPath(id)));
   } catch (e) {
-    logWarn('markData: read failed', id, e instanceof Error ? e.message : String(e));
+    logWarn('markData: read failed', id, errorMessage(e));
     return null;
   }
 }
@@ -59,7 +60,7 @@ export async function deleteMarkData(id: string): Promise<void> {
     const ok = await deletePrivateDataTree(await markDataFolder(id));
     log('markData: deleted', id, `ok=${ok}`);
   } catch (e) {
-    logWarn('markData: delete failed', id, e instanceof Error ? e.message : String(e));
+    logWarn('markData: delete failed', id, errorMessage(e));
   }
 }
 
@@ -128,7 +129,7 @@ export async function writePendingIconChanges(list: PendingIconChange[]): Promis
   try {
     await writeTextFile(await pendingPath(), JSON.stringify(list));
   } catch (e) {
-    logError('markData: writing pending icons failed', e instanceof Error ? e.message : String(e));
+    logError('markData: writing pending icons failed', errorMessage(e));
   }
 }
 

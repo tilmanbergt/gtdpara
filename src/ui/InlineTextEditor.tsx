@@ -31,6 +31,7 @@ import {logError} from '../utils/log';
 import ClipboardTextInput from './ClipboardTextInput';
 import {FONT} from './theme';
 import {useErrorStatus} from './status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 export default function InlineTextEditor({
   initialText,
@@ -71,7 +72,7 @@ export default function InlineTextEditor({
         onClose();
       })
       .catch(e => {
-        const msg = e instanceof Error ? e.message : String(e);
+        const msg = errorMessage(e);
         logError(logLabel, msg);
         setError(msg);
         setSaving(false);

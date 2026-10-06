@@ -10,13 +10,13 @@ import {joinInReadingOrder, PxPoint, PxRect, StoredStroke, TextPiece} from '../d
 import {log, logWarn} from '../utils/log';
 import {
   ELEMENT_TYPE_STROKE,
-  errorMessage,
   errText,
   isTextBoxType,
   recycleElements,
   SdkElement,
   SdkResponse,
 } from './sdkElements';
+import {errorMessage} from '../utils/errorMessage';
 
 type Size = {width: number; height: number};
 

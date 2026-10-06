@@ -29,6 +29,7 @@ import {displayPath, ensureFolderExists, moveFile} from '../supernote/fileSystem
 import {log, logError} from '../utils/log';
 import {collisionFreeName} from './fileNaming';
 import {classifyNotePath} from './noteLinks';
+import {errorMessage} from '../utils/errorMessage';
 
 /** The screen side of a move: a status-slot confirm and a success message (ui/useEntryMoveUi.ts). */
 export interface EntryMoveUi {
@@ -118,7 +119,7 @@ export async function moveEntryWithNote<T extends Task | Meeting>(
   try {
     await write({...entry, notePath: relocatedNotePath(plan, newName)});
   } catch (e) {
-    logError('moveEntryWithNote: data write failed after the note moved', to, e instanceof Error ? e.message : String(e));
+    logError('moveEntryWithNote: data write failed after the note moved', to, errorMessage(e));
     throw e;
   }
   ui.done(noteMoveDoneText(title, target.name));

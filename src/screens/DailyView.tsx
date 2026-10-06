@@ -203,7 +203,6 @@ import {common} from '../ui/commonStyles';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
 import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {ExitFocusModeIcon} from '../ui/icons';
-import {useErrorStatus} from '../ui/status/StatusProvider';
 import {perfEnd, perfStart, usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
@@ -322,8 +321,7 @@ export default function DailyView({
   // actually lands - see src/utils/screenRefresh.ts.
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  useErrorStatus('DailyView.actionError', actionError, () => setActionError(null));
+  const toggleAction = useActionError('DailyView.actionError', 'DailyView: toggle failed');
   // Calendar column's 3-tab state (Batch 6, docs/dev/technical-design-
   // pagination-fixed-height.md §3.2) - collapses the old two-level
   // calendarMainTab ('meetings'|'google') + calendarDay ('today'|'tomorrow')
@@ -554,23 +552,16 @@ export default function DailyView({
   const widgetAction = useActionError('DailyView.widgetError', 'DailyView: widget action failed');
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
-  const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
+  const runWidgetAction = widgetAction.run;
 
   const handleToggleDone = (entry: DailyTaskEntry) => {
-    setActionError(null);
-    (async () => {
-      try {
-        await saveEntryTasks(entry, tasks => {
-          tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !tasks[entry.taskIndex].done};
-          return tasks;
-        });
-        log('DailyView: toggled', entry.item.path, entry.taskIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('DailyView: toggle failed', message);
-        setActionError(message);
-      }
-    })();
+    toggleAction.run(async () => {
+      await saveEntryTasks(entry, tasks => {
+        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !tasks[entry.taskIndex].done};
+        return tasks;
+      });
+      log('DailyView: toggled', entry.item.path, entry.taskIndex);
+    }, 'DailyView: toggle failed');
   };
 
   /**
@@ -587,22 +578,15 @@ export default function DailyView({
    * flips the tag.
    */
   const handleToggleNow = (entry: DailyTaskEntry) => {
-    setActionError(null);
-    (async () => {
-      try {
-        await saveEntryTasks(entry, tasks => {
-          const task = tasks[entry.taskIndex];
-          const nextText = setNowTag(task.text, !task.now);
-          tasks[entry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
-          return tasks;
-        });
-        log('DailyView: toggled #now', entry.item.path, entry.taskIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('DailyView: toggle #now failed', message);
-        setActionError(message);
-      }
-    })();
+    toggleAction.run(async () => {
+      await saveEntryTasks(entry, tasks => {
+        const task = tasks[entry.taskIndex];
+        const nextText = setNowTag(task.text, !task.now);
+        tasks[entry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
+        return tasks;
+      });
+      log('DailyView: toggled #now', entry.item.path, entry.taskIndex);
+    }, 'DailyView: toggle #now failed');
   };
 
   /**
@@ -622,58 +606,51 @@ export default function DailyView({
    * `inbox` React state doesn't update synchronously.
    */
   const handleFocusToggleDone = (entry: DailyTaskEntry) => {
-    setActionError(null);
-    (async () => {
-      try {
-        const wasDone = entry.task.done;
-        const doneResult = await saveEntryTasks(entry, tasks => {
-          tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !wasDone};
-          return tasks;
-        });
-        if (wasDone) return;
+    toggleAction.run(async () => {
+      const wasDone = entry.task.done;
+      const doneResult = await saveEntryTasks(entry, tasks => {
+        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !wasDone};
+        return tasks;
+      });
+      if (wasDone) return;
 
-        // Non-Inbox items are already synchronously fresh in the cache
-        // after the write above (storage/dataCache.ts's module-level
-        // cache); Inbox needs the just-mutated value threaded through
-        // explicitly rather than reading the (still-stale, setCachedInbox is
-        // async) `inbox` React state.
-        const inboxForCohort = entry.item.kind === 'inbox' ? doneResult ?? undefined : inbox ?? undefined;
-        const cache = getCachedData();
-        const cohort = buildNowEntries(
-          cache?.items ?? items,
-          inboxForCohort ? {tasks: inboxForCohort.tasks, meetings: inboxForCohort.meetings} : null,
-          inboxPath ?? '',
+      // Non-Inbox items are already synchronously fresh in the cache
+      // after the write above (storage/dataCache.ts's module-level
+      // cache); Inbox needs the just-mutated value threaded through
+      // explicitly rather than reading the (still-stale, setCachedInbox is
+      // async) `inbox` React state.
+      const inboxForCohort = entry.item.kind === 'inbox' ? doneResult ?? undefined : inbox ?? undefined;
+      const cache = getCachedData();
+      const cohort = buildNowEntries(
+        cache?.items ?? items,
+        inboxForCohort ? {tasks: inboxForCohort.tasks, meetings: inboxForCohort.meetings} : null,
+        inboxPath ?? '',
+      );
+      const stillOpen = cohort.filter(e => !e.task.done);
+      if (stillOpen.length > 0) return; // more #now tasks still open - no clear yet
+
+      // Every #now task is now done - snapshot first (so the
+      // Congratulations screen has something to render), then clear the
+      // whole cohort's #now tags together, sequentially, threading each
+      // write's result into the next (see this function's own doc
+      // comment).
+      setJustCompletedTasks(cohort);
+      let inboxState = inboxForCohort;
+      for (const doneEntry of cohort) {
+        const nextInbox = await saveEntryTasks(
+          doneEntry,
+          tasks => {
+            const task = tasks[doneEntry.taskIndex];
+            const nextText = setNowTag(task.text, false);
+            tasks[doneEntry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
+            return tasks;
+          },
+          inboxState,
         );
-        const stillOpen = cohort.filter(e => !e.task.done);
-        if (stillOpen.length > 0) return; // more #now tasks still open - no clear yet
-
-        // Every #now task is now done - snapshot first (so the
-        // Congratulations screen has something to render), then clear the
-        // whole cohort's #now tags together, sequentially, threading each
-        // write's result into the next (see this function's own doc
-        // comment).
-        setJustCompletedTasks(cohort);
-        let inboxState = inboxForCohort;
-        for (const doneEntry of cohort) {
-          const nextInbox = await saveEntryTasks(
-            doneEntry,
-            tasks => {
-              const task = tasks[doneEntry.taskIndex];
-              const nextText = setNowTag(task.text, false);
-              tasks[doneEntry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
-              return tasks;
-            },
-            inboxState,
-          );
-          if (nextInbox) inboxState = nextInbox;
-        }
-        log('DailyView: focus cohort cleared', cohort.length);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('DailyView: focus toggle done failed', message);
-        setActionError(message);
+        if (nextInbox) inboxState = nextInbox;
       }
-    })();
+      log('DailyView: focus cohort cleared', cohort.length);
+    }, 'DailyView: focus toggle done failed');
   };
 
   /** Picker's "Start focus session" button (§6 state C→A) - commits whatever's currently selected (already written live by handleToggleNow above) and switches the view. Nothing selected is simply left alone: focusState's own derivation below already falls back to rendering the Picker whenever nothing is #now, regardless of this flag, so there's nothing to specially guard against here (§6: "not specially prevented"). */

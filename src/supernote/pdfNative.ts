@@ -19,6 +19,7 @@ import {PluginFileAPI} from 'sn-plugin-lib';
 import {PdfSpec} from '../domain/pdf/pdfSpec';
 import {ensureFileReadPermission, ensureFileWritePermission} from './pluginPermissions';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 // ---- sn-plugin-lib wrappers ----
 
@@ -41,7 +42,7 @@ async function call<T>(name: string, fn: () => Promise<unknown>): Promise<ApiCal
     if (!ok) logError(`${name}: failed`, error);
     return {ok, result: ok ? ((raw?.result ?? null) as T | null) : null, error, ms};
   } catch (e) {
-    const error = e instanceof Error ? e.message : String(e);
+    const error = errorMessage(e);
     logError(`${name}: threw`, error);
     return {ok: false, result: null, error, ms: Date.now() - start};
   }

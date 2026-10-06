@@ -1,6 +1,7 @@
 import {PluginManager} from 'sn-plugin-lib';
 import {log, logError} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 export const FILE_READ_PERMISSION = 'plugin.permission.FILE:READ';
 export const FILE_WRITE_PERMISSION = 'plugin.permission.FILE:WRITE';
@@ -89,7 +90,7 @@ export async function ensurePluginPermission(
       logError(
         'ensurePluginPermission: error',
         permission,
-        e instanceof Error ? e.message : String(e),
+        errorMessage(e),
       );
       return false;
     }

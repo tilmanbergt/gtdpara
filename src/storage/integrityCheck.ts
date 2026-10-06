@@ -50,6 +50,7 @@ import {hiddenAreaFolderFor} from './inboxMigration';
 import {stripPageAnchor} from '../domain/sharedNotePages';
 import {classifyNotePath} from './noteLinks';
 import {loadProjectFile} from './projectFile';
+import {errorMessage} from '../utils/errorMessage';
 
 export interface IntegrityCheckSummary {
   itemsScanned: number;
@@ -217,7 +218,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
         };
         return {findings, summary, loaded: {target, tasks: file.tasks, meetings: file.meetings}};
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('runIntegrityCheck: item load failed', target.path, message);
         return {
           findings: [

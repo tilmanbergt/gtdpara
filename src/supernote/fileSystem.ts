@@ -3,6 +3,7 @@ import {PluginCommAPI, PluginFileAPI} from 'sn-plugin-lib';
 import {ensureFileDeletePermission, ensureFileReadPermission, ensureFileWritePermission} from './pluginPermissions';
 import {log, logError, logWarn} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 export interface FolderEntry {
   name: string;
@@ -235,7 +236,7 @@ function notifyFolderChanged(...paths: string[]): void {
       try {
         listener(folder);
       } catch (e) {
-        logError('notifyFolderChanged: listener threw', e instanceof Error ? e.message : String(e));
+        logError('notifyFolderChanged: listener threw', errorMessage(e));
       }
     });
   }
@@ -267,7 +268,7 @@ export async function listFolderEntries(folderPath: string): Promise<FolderEntry
     logError(
       'listFolderEntries: failed',
       folderPath,
-      e instanceof Error ? e.message : String(e),
+      errorMessage(e),
     );
     throw e;
   }
@@ -302,7 +303,7 @@ export async function statFiles(paths: string[]): Promise<FileStat[] | null> {
     perfEnd('io:stat', perfToken, {files: paths.length});
     return stats;
   } catch (e) {
-    logError('statFiles: failed', `${paths.length} paths`, e instanceof Error ? e.message : String(e));
+    logError('statFiles: failed', `${paths.length} paths`, errorMessage(e));
     throw e;
   }
 }
@@ -384,7 +385,7 @@ export async function openPath(path: string, page = -1): Promise<void> {
     await recordDebugLogEntry('openPath', false, Date.now() - start, {
       path,
       page,
-      errorMessage: e instanceof Error ? e.message : String(e),
+      errorMessage: errorMessage(e),
     });
     throw e;
   }
@@ -444,7 +445,7 @@ export async function readTextFile(path: string): Promise<string | null> {
     log('readTextFile: done', path, content == null ? 'missing' : `${content.length} chars`);
     return content;
   } catch (e) {
-    logError('readTextFile: failed', path, e instanceof Error ? e.message : String(e));
+    logError('readTextFile: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -470,7 +471,7 @@ export async function writeTextFile(path: string, content: string): Promise<void
     await GtdParaFile.writeTextFile(path, content);
     log('writeTextFile: done', path);
   } catch (e) {
-    logError('writeTextFile: failed', path, e instanceof Error ? e.message : String(e));
+    logError('writeTextFile: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -496,7 +497,7 @@ export async function ensureFolderExists(path: string): Promise<void> {
     await GtdParaFile.ensureFolder(path);
     log('ensureFolderExists: done', path);
   } catch (e) {
-    logError('ensureFolderExists: failed', path, e instanceof Error ? e.message : String(e));
+    logError('ensureFolderExists: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -528,7 +529,7 @@ export async function writeBinaryFile(path: string, base64Content: string): Prom
     log('writeBinaryFile: done', path);
     notifyFolderChanged(parentFolder(path));
   } catch (e) {
-    logError('writeBinaryFile: failed', path, e instanceof Error ? e.message : String(e));
+    logError('writeBinaryFile: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -559,7 +560,7 @@ export async function moveFolder(fromPath: string, toPath: string): Promise<void
     log('moveFolder: done', fromPath, '->', toPath);
     notifyFolderChanged(parentFolder(fromPath), parentFolder(toPath), fromPath);
   } catch (e) {
-    logError('moveFolder: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
+    logError('moveFolder: failed', fromPath, '->', toPath, errorMessage(e));
     throw e;
   }
 }
@@ -579,7 +580,7 @@ export async function moveFile(fromPath: string, toPath: string): Promise<void> 
     log('moveFile: done', fromPath, '->', toPath);
     notifyFolderChanged(parentFolder(fromPath), parentFolder(toPath));
   } catch (e) {
-    logError('moveFile: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
+    logError('moveFile: failed', fromPath, '->', toPath, errorMessage(e));
     throw e;
   }
 }
@@ -599,7 +600,7 @@ export async function moveFolderMerge(fromPath: string, toPath: string): Promise
     log('moveFolderMerge: done', fromPath, '->', toPath);
     notifyFolderChanged(parentFolder(fromPath), toPath, fromPath);
   } catch (e) {
-    logError('moveFolderMerge: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
+    logError('moveFolderMerge: failed', fromPath, '->', toPath, errorMessage(e));
     throw e;
   }
 }
@@ -632,7 +633,7 @@ export async function deleteTempTree(path: string): Promise<void> {
   try {
     await GtdParaFile.deleteTempTree(path);
   } catch (e) {
-    logError('deleteTempTree: failed', path, e instanceof Error ? e.message : String(e));
+    logError('deleteTempTree: failed', path, errorMessage(e));
   }
 }
 
@@ -663,7 +664,7 @@ export async function deletePrivateDataTree(path: string): Promise<boolean> {
   try {
     return await GtdParaFile.deletePrivateDataTree(path);
   } catch (e) {
-    logError('deletePrivateDataTree: failed', path, e instanceof Error ? e.message : String(e));
+    logError('deletePrivateDataTree: failed', path, errorMessage(e));
     return false;
   }
 }
@@ -693,7 +694,7 @@ export async function deleteEmptyFolder(path: string, reason: string): Promise<b
       logWarn('deleteEmptyFolder: folder is not empty, kept', path);
       return false;
     }
-    logError('deleteEmptyFolder: failed', path, e instanceof Error ? e.message : String(e));
+    logError('deleteEmptyFolder: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -712,7 +713,7 @@ export async function getNoteSystemTemplates(): Promise<NoteTemplate[]> {
     log('getNoteSystemTemplates: done', `${result.length} templates`);
     return result;
   } catch (e) {
-    logError('getNoteSystemTemplates: failed', e instanceof Error ? e.message : String(e));
+    logError('getNoteSystemTemplates: failed', errorMessage(e));
     throw e;
   }
 }
@@ -1049,7 +1050,7 @@ export async function getCurrentNotePath(): Promise<string | null> {
     log('getCurrentNotePath: done', response.result);
     return response.result;
   } catch (e) {
-    logError('getCurrentNotePath: failed', e instanceof Error ? e.message : String(e));
+    logError('getCurrentNotePath: failed', errorMessage(e));
     return null;
   }
 }

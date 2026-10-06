@@ -93,6 +93,7 @@ import {PAGE_SIZE} from './pagination';
 import {FONT} from './theme';
 import {useErrorStatus} from './status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 type FocusKind = 'project' | 'area';
 type FocusPanelTab = 'focus' | 'projects' | 'areas';
@@ -170,8 +171,8 @@ function DailyFocusPanel({
           setActiveTab('focus');
         })
         .catch(e => {
-          logError('DailyFocusPanel: pick failed', e instanceof Error ? e.message : String(e));
-          setPickError(e instanceof Error ? e.message : String(e));
+          logError('DailyFocusPanel: pick failed', errorMessage(e));
+          setPickError(errorMessage(e));
         });
     },
     [focusArm, projectsPath, areasPath, items, onToggle],
@@ -318,8 +319,8 @@ function FixedSlotSection({
     setPending(true);
     onToggle(item, false)
       .catch(e => {
-        logError('FixedSlotSection: remove failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('FixedSlotSection: remove failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(false));
   };

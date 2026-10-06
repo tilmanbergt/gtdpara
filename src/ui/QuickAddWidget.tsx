@@ -158,6 +158,7 @@ import {usePerfRender} from '../utils/perf';
 import {useAbbrevItems} from './useAbbrevItems';
 import {useOnScreenHide} from './screenActivity';
 import {common} from './commonStyles';
+import {errorMessage} from '../utils/errorMessage';
 
 /** Same shape MeetingQuickAdd.tsx used to export - QuickAddWidget is now this type's home; other files import it from here. */
 export interface MeetingQuickAddFields {
@@ -840,7 +841,7 @@ function QuickAddWidget({
         setTaskTagPage(0);
         recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags);
       })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -863,7 +864,7 @@ function QuickAddWidget({
         return true;
       })
       .catch(e => {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
         return false;
       })
       .finally(() => setPending(false));
@@ -904,7 +905,7 @@ function QuickAddWidget({
         setMeetingTagPage(0);
         recordTagsUsed(extractContextTags(trimmedTitle)).then(refreshRecentTags);
       })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -930,7 +931,7 @@ function QuickAddWidget({
         return true;
       })
       .catch(e => {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
         return false;
       })
       .finally(() => setPending(false));
@@ -1006,7 +1007,7 @@ function QuickAddWidget({
         setNoteTagPage(0);
         recordTagsUsed(tags).then(refreshRecentTags);
       })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -1815,7 +1816,7 @@ function QuickAddWidget({
       setPending(true);
       onQuickFile(abbrevTarget, {kind: 'task', text: finalText, linkedFile: editFields.fields.linkedFile})
         .then(() => recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags))
-        .catch(e => setError(e instanceof Error ? e.message : String(e)))
+        .catch(e => setError(errorMessage(e)))
         .finally(() => setPending(false));
     } else {
       const result = validateMeetingFields(editFields.fields.title, editFields.fields.date, editFields.fields.time);
@@ -1835,7 +1836,7 @@ function QuickAddWidget({
         linkedFile: editFields.fields.linkedFile,
       })
         .then(() => recordTagsUsed(extractContextTags(trimmedTitle)).then(refreshRecentTags))
-        .catch(e => setError(e instanceof Error ? e.message : String(e)))
+        .catch(e => setError(errorMessage(e)))
         .finally(() => setPending(false));
     }
   };
@@ -1912,7 +1913,7 @@ function QuickAddWidget({
           captureDestination,
         );
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
         setPending(false);
         return;
       }
@@ -1941,7 +1942,7 @@ function QuickAddWidget({
         saved += 1;
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       // Saved ones are gone from the list; the rest stays for another try.
       if (splitRows && saved > 0) setSplitRows(splitRows.filter(r => r.trim()).slice(saved));
       setError(saved > 0 ? `Saved ${saved} of ${texts.length}. ${message}` : message);

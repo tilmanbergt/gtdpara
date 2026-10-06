@@ -40,6 +40,7 @@ import {
 import {addMarkLine, markFileRef, markNotePathFor, removeMarkLine} from './markStore';
 import {dataFilePath} from './projectFile';
 import {loadSettings} from './settingsStorage';
+import {errorMessage} from '../utils/errorMessage';
 
 export type MarkOutcome =
   | {kind: 'saved'; id: string}
@@ -123,7 +124,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
     try {
       await setLassoBoxState(2);
     } catch (e) {
-      logWarn('marks: removing the lasso failed', e instanceof Error ? e.message : String(e));
+      logWarn('marks: removing the lasso failed', errorMessage(e));
     }
 
     const icon = snap.rect ? await insertBookmark(page, snap.rect, id) : null;
@@ -168,7 +169,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
     }
     return {kind: 'saved', id};
   } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e);
+    const detail = errorMessage(e);
     logError('marks: saving failed', id, detail);
     // Not saved: take back what is already there.
     if (iconPlaced && path && page != null) {await changeMarkIcon({id, path, page}, 'remove', path);}
@@ -223,7 +224,7 @@ export async function recognizeMark(open: OpenMark): Promise<RecognitionResult &
     try {
       await writeMarkData({...data, recognizedText: result.text});
     } catch (e) {
-      logWarn('marks: keeping recognized text failed', open.mark.id, e instanceof Error ? e.message : String(e));
+      logWarn('marks: keeping recognized text failed', open.mark.id, errorMessage(e));
     }
   }
   return {...result, missing: false};
@@ -273,7 +274,7 @@ export async function runPendingIconChanges(currentPath: string | null): Promise
     }
     if (left.length !== pending.length) await writePendingIconChanges(left);
   } catch (e) {
-    logWarn('marks: pending icon changes failed', e instanceof Error ? e.message : String(e));
+    logWarn('marks: pending icon changes failed', errorMessage(e));
   }
 }
 
@@ -284,7 +285,7 @@ export async function cleanMarkDataOrphans(): Promise<void> {
     const open = new Set(listOpenMarks({type: 'all'}).map(m => m.mark.id));
     await cleanOrphanedMarkData(open);
   } catch (e) {
-    logWarn('marks: orphan cleanup failed', e instanceof Error ? e.message : String(e));
+    logWarn('marks: orphan cleanup failed', errorMessage(e));
   }
 }
 

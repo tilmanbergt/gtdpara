@@ -44,6 +44,7 @@ import {useEffect, useRef} from 'react';
 import {NativePluginManager} from 'sn-plugin-lib';
 import {log, logError} from './log';
 import {perfMark} from './perf';
+import {errorMessage} from './errorMessage';
 
 const DEBOUNCE_MS = 150;
 let pending: ReturnType<typeof setTimeout> | null = null;
@@ -69,7 +70,7 @@ export function requestEinkRefresh(): void {
         try {
           NativePluginManager.invalidatePluginView();
         } catch (e) {
-          logError('requestEinkRefresh: invalidatePluginView failed', e instanceof Error ? e.message : String(e));
+          logError('requestEinkRefresh: invalidatePluginView failed', errorMessage(e));
         }
       });
     });

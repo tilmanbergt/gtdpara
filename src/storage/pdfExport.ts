@@ -36,6 +36,7 @@ import {
 } from '../supernote/pdfNative';
 import {deleteTempTree, ensureFolderExists, getPrivateTempDir} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 export type PdfExportPhase = 'render' | 'layout' | 'build';
 
@@ -102,7 +103,7 @@ export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfEx
     try {
       options.onProgress?.(p);
     } catch (e) {
-      logError('pdfExport: onProgress threw', e instanceof Error ? e.message : String(e));
+      logError('pdfExport: onProgress threw', errorMessage(e));
     }
   };
   const checkCancelled = () => {
@@ -150,7 +151,7 @@ export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfEx
               ? {ok: true, layers: [src.path], ...fitIntoPage(info.width, info.height, doc.textPage)}
               : {ok: false, reason: 'file missing or not a readable image'};
         } catch (e) {
-          images[i] = {ok: false, reason: e instanceof Error ? e.message : String(e)};
+          images[i] = {ok: false, reason: errorMessage(e)};
         }
       }
       renderDone++;

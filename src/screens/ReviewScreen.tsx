@@ -277,6 +277,7 @@ import {useCachedInbox} from '../ui/useCachedInbox';
 import MarksCard from '../ui/MarksCard';
 import {useOpenMarks} from '../ui/useOpenMarks';
 import {MarkScope} from '../domain/marks';
+import {errorMessage} from '../utils/errorMessage';
 
 const ALL_MARKS: MarkScope = {type: 'all'};
 
@@ -721,7 +722,7 @@ export default function ReviewScreen({
       setPaths(cache.paths);
       setCachedInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ReviewScreen: load failed', message);
       setError(message);
     } finally {
@@ -770,7 +771,7 @@ export default function ReviewScreen({
       setGmailMessages(messages);
       setGmailFetchedAt(getGmailFetchedAt());
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ReviewScreen: Gmail inbox load failed', message);
       setGmailError(message);
     } finally {
@@ -928,7 +929,7 @@ export default function ReviewScreen({
             onReviewRecorded?.();
           })
           .catch(e => {
-            const message = e instanceof Error ? e.message : String(e);
+            const message = errorMessage(e);
             logError('ReviewScreen: recording step visit failed', id, message);
             setSaveError(message);
             // Show what is really stored rather than the optimistic copy.
@@ -1342,7 +1343,7 @@ export default function ReviewScreen({
     archiving
       .then(() => log('ReviewScreen: archived Gmail message', message.uid))
       .catch(e => {
-        const reason = e instanceof Error ? e.message : String(e);
+        const reason = errorMessage(e);
         logError('ReviewScreen: background Gmail archive failed', message.uid, reason);
         // The cache already put the message back at its old position.
         setGmailMessages(getCachedGmailInbox());
@@ -1572,7 +1573,7 @@ export default function ReviewScreen({
         bump('inboxCleared');
         log('ReviewScreen: inbox task done', taskIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox task done failed', message);
         setInboxActionError(message);
       }
@@ -1605,7 +1606,7 @@ export default function ReviewScreen({
         bump('inboxCleared');
         log('ReviewScreen: inbox task cancelled', taskIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox task cancel failed', message);
         setInboxActionError(message);
       }
@@ -1628,7 +1629,7 @@ export default function ReviewScreen({
         bump('inboxCleared');
         log('ReviewScreen: inbox meeting cancelled', meetingIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox meeting cancel failed', message);
         setInboxActionError(message);
       }
@@ -1647,7 +1648,7 @@ export default function ReviewScreen({
         bump('inboxCleared');
         log('ReviewScreen: filed inbox task', taskIndex, '->', target.path);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: file task failed', message);
         setInboxActionError(message);
       }
@@ -1666,7 +1667,7 @@ export default function ReviewScreen({
         bump('inboxCleared');
         log('ReviewScreen: filed inbox meeting', meetingIndex, '->', target.path);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: file meeting failed', message);
         setInboxActionError(message);
       }
@@ -1819,7 +1820,7 @@ export default function ReviewScreen({
         }
         log('ReviewScreen: linked inbox item', inboxZeroArmTarget.type, inboxZeroArmTarget.index, '->', relativePath);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: link inbox item failed', message);
         setInboxActionError(message);
       } finally {
@@ -1868,7 +1869,7 @@ export default function ReviewScreen({
         log('ReviewScreen: inbox task edited', taskIndex);
         return true;
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox task edit failed', message);
         setInboxActionError(message);
         return false;
@@ -1902,7 +1903,7 @@ export default function ReviewScreen({
         }
         log('ReviewScreen: inbox task note opened/created', taskIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox task note open/create failed', message);
         setInboxActionError(message);
       }
@@ -1934,7 +1935,7 @@ export default function ReviewScreen({
         log('ReviewScreen: inbox meeting edited', meetingIndex);
         return true;
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox meeting edit failed', message);
         setInboxActionError(message);
         return false;
@@ -1984,7 +1985,7 @@ export default function ReviewScreen({
         }
         log('ReviewScreen: inbox meeting note opened/created', meetingIndex);
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox meeting note open/create failed', message);
         setInboxActionError(message);
       }
@@ -2003,7 +2004,7 @@ export default function ReviewScreen({
         setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
         requestEinkRefresh();
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ReviewScreen: inbox meeting tracking toggle failed', message);
         setInboxActionError(message);
       }
@@ -2105,7 +2106,7 @@ export default function ReviewScreen({
         setSettings(saved);
         onReviewRecorded?.();
       })
-      .catch(e => logError('ReviewScreen: empty-step stamp failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('ReviewScreen: empty-step stamp failed', errorMessage(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, loading, emptyBacklogKey, settings?.reviewSteps]);
   // Derived from editTarget rather than their own state - see the module
@@ -2144,7 +2145,7 @@ export default function ReviewScreen({
   const onOpenInboxLinkedFile = (linkedFile: string) => {
     if (!paths) return;
     openLinkedFile(paths, linkedFile).catch(e =>
-      logError('ReviewScreen: open linked file failed', e instanceof Error ? e.message : String(e)),
+      logError('ReviewScreen: open linked file failed', errorMessage(e)),
     );
   };
 
@@ -2220,7 +2221,7 @@ export default function ReviewScreen({
     if (!cache) return;
     loadProjectFile('inbox', cache.paths.inboxFolder)
       .then(setCachedInbox)
-      .catch(e => logError('ReviewScreen: inbox reload after week ahead failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('ReviewScreen: inbox reload after week ahead failed', errorMessage(e)));
   };
 
   const renderWeekAhead = () => (
@@ -3089,7 +3090,7 @@ function ReviewItemDetail({
     setError(null);
     setPending(true);
     fn()
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -3097,7 +3098,7 @@ function ReviewItemDetail({
     setError(null);
     setPromotingIndex(shelved.taskIndex);
     onPromoteToNext(shelved)
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPromotingIndex(null));
   };
 
@@ -3257,7 +3258,7 @@ function DoneOnHoldDetail({
     setError(null);
     setPending(true);
     fn()
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -3385,7 +3386,7 @@ function MeetingCloseOutDetail({
     setError(null);
     setPending(true);
     fn()
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -3641,7 +3642,7 @@ function GmailDetailPanel({
         if (!cancelled) setBodyText(body);
       })
       .catch(e => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+        if (!cancelled) setError(errorMessage(e));
       });
     return () => {
       cancelled = true;
@@ -3660,7 +3661,7 @@ function GmailDetailPanel({
       setLinkProgress(text);
       requestEinkRefresh();
     })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => {
         setLinkingKey(null);
         setLinkProgress(null);
@@ -3982,7 +3983,7 @@ function UnfocusedNextTaskDetail({
     setError(null);
     setPending(true);
     fn()
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -4191,8 +4192,8 @@ function PeriodFocusKindSection({
     setPending(true);
     onToggle(item, scope, false)
       .catch(e => {
-        logError('PeriodFocusKindSection: remove failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('PeriodFocusKindSection: remove failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(false));
   };
@@ -4203,8 +4204,8 @@ function PeriodFocusKindSection({
     onToggle(item, scope, true)
       .then(() => setExpanded(false))
       .catch(e => {
-        logError('PeriodFocusKindSection: add failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('PeriodFocusKindSection: add failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(false));
   };

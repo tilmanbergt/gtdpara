@@ -33,6 +33,7 @@ import {
   listInboxMessages,
 } from './gmailImapNative';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 /** Most recent messages fetched per refresh - a fixed, generous cap rather than paging, same reasoning as the rest of this step (a Weekly Review inbox triage is not expected to run against thousands of unread emails at once). */
 export const GMAIL_INBOX_FETCH_LIMIT = 30;
@@ -175,7 +176,7 @@ export function archiveGmailMessage(settings: GtdParaSettings, uid: string): Pro
       log('gmailInboxCache: archived', uid);
     } catch (e) {
       if (removed) restoreCachedGmailMessage(removed);
-      logError('gmailInboxCache: archive failed', uid, e instanceof Error ? e.message : String(e));
+      logError('gmailInboxCache: archive failed', uid, errorMessage(e));
       throw e;
     } finally {
       pendingArchiveUids.delete(uid);

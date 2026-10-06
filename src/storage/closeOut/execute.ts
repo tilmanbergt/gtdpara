@@ -20,6 +20,7 @@ import {dataFilePath, loadProjectFile, saveMeetings, saveTasks} from '../project
 import {savePlan} from './planStore';
 import {moveMarksToInbox} from '../markStore';
 import {log, logError} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 export type OpState = 'pending' | 'running' | 'done' | 'skipped' | 'failed';
 
@@ -201,7 +202,7 @@ export async function runCloseOutArchive(
       report();
     } catch (e) {
       step.state = 'failed';
-      step.error = e instanceof Error ? e.message : String(e);
+      step.error = errorMessage(e);
       logError('closeOut: op failed', op.id, step.error);
       report();
       return {ok: false, steps, archivedFolder: targetFolder};

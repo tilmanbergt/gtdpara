@@ -82,6 +82,7 @@ import {FocusLetter} from './FocusBadges';
 import {ItemGoalRow, ItemScopeRow} from './ItemContextRows';
 import {FONT} from './theme';
 import {useErrorStatus} from './status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   kind: 'project' | 'area';
@@ -128,7 +129,7 @@ export default function ItemFocusPanel({
       if (item.loadError) throw new Error(item.loadError);
       setState({...item});
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ItemFocusPanel: load failed', kind, path, message);
       setLoadError(message);
     }
@@ -163,8 +164,8 @@ export default function ItemFocusPanel({
     setPending(scope);
     toggleFocus(scope, next)
       .catch(e => {
-        logError('ItemFocusPanel: toggle failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('ItemFocusPanel: toggle failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(null));
   };

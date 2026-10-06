@@ -19,6 +19,7 @@ import {getRecentErrors, getRecentLogLines, isFileLoggingOn, LOG_FILE_NAME} from
 import {getCachedData} from './dataCache';
 import {describeInboxMigrationOutcome, getInboxMigrationOutcome} from './inboxMigration';
 import {collectPerfStats} from './perfStats';
+import {errorMessage} from '../utils/errorMessage';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -113,7 +114,7 @@ async function marksLine(): Promise<string> {
     const pending = (await readPendingIconChanges()).length;
     return `marks: open ${open.length} (inbox ${inbox} · items ${open.length - inbox}) · data ${data} · pending icons ${pending}`;
   } catch (e) {
-    return `marks: not available (${e instanceof Error ? e.message : String(e)})`;
+    return `marks: not available (${errorMessage(e)})`;
   }
 }
 

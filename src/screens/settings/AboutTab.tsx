@@ -24,6 +24,7 @@ function unreleasedHeader(): string {
   return BUILD_INFO.nextVersion ? `${BUILD_INFO.nextVersion} (in progress)` : 'Not yet released';
 }
 import {logError} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 const PROJECT_URL = 'github.com/tilmanbergt/gtdpara';
 
@@ -69,7 +70,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
       const name = path.slice(path.lastIndexOf('/') + 1);
       setResult({kind: 'success', text: `Saved ${shortFolder(DEBUG_LOG_FOLDER_PATH)}/${name} - check it before sharing.`});
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('AboutTab: export debug bundle failed', message);
       setResult({kind: 'error', text: `Export failed: ${message}`});
     } finally {

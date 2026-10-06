@@ -67,6 +67,7 @@ import {
   toRect,
 } from '../supernote/fileSystem';
 import {log} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 /** Every keyword currently on `filePath`, as `{page, keyword}` pairs (exported 2026-09-29 for the close-out scan - storage/closeOut/scan.ts) - one `getNoteTotalPageNum` + one `getKeyWords` call covering every page, never one call per page. Resolves `[]` for a brand-new (zero-page) file without calling `getKeyWords` at all - passing an empty `pageList` is untested API territory, so this sidesteps it rather than relying on it resolving sensibly. */
 export async function readAllKeywords(filePath: string): Promise<{keywords: PageKeyword[]; totalPages: number}> {
@@ -112,7 +113,7 @@ export async function ensureSharedNoteFile(folderPath: string, fileName: string,
       folderPath,
       fileName,
       background,
-      errorMessage: e instanceof Error ? e.message : String(e),
+      errorMessage: errorMessage(e),
     });
     throw e;
   }
@@ -146,7 +147,7 @@ export async function findKeywordPage(filePath: string, keyword: string): Promis
     await recordDebugLogEntry('findKeywordPage', false, Date.now() - start, {
       filePath,
       keyword,
-      errorMessage: e instanceof Error ? e.message : String(e),
+      errorMessage: errorMessage(e),
     });
     throw e;
   }
@@ -199,7 +200,7 @@ export async function insertChronologicalPage(
       filePath,
       keyword,
       isDated,
-      errorMessage: e instanceof Error ? e.message : String(e),
+      errorMessage: errorMessage(e),
     });
     throw e;
   }
@@ -260,7 +261,7 @@ export async function renameKeywordAt(
       oldKeyword,
       newKeyword,
       keepOldKeyword: !!opts.keepOldKeyword,
-      errorMessage: e instanceof Error ? e.message : String(e),
+      errorMessage: errorMessage(e),
     });
     throw e;
   }

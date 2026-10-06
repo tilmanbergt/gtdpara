@@ -12,6 +12,7 @@ import {logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 import PillButton from './PillButton';
 import {COLORS, FONT, useThemeColors} from './theme';
+import {errorMessage} from '../utils/errorMessage';
 
 function texts(outcome: MarkOutcome): {title: string; body: string} {
   switch (outcome.kind) {
@@ -38,7 +39,7 @@ export default function MarkOutcomeScreen({outcome}: {outcome: MarkOutcome}): Re
   const close = () => {
     setMarkOutcome(null);
     PluginManager.closePluginView().catch(e =>
-      logError('MarkOutcomeScreen: closePluginView failed', e instanceof Error ? e.message : String(e)),
+      logError('MarkOutcomeScreen: closePluginView failed', errorMessage(e)),
     );
   };
 

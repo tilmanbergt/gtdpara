@@ -50,6 +50,7 @@ import {saveScope} from '../storage/projectFile';
 import {logError} from '../utils/log';
 import {ItemGoalRow, ItemScopeRow} from './ItemContextRows';
 import {FONT} from './theme';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   item: CachedItem;
@@ -77,7 +78,7 @@ export default function ItemContextBlock({
         updateItemScope(item.path, nextRaw, text);
         onChanged?.();
       } catch (e) {
-        logError('ItemContextBlock: save scope failed', item.path, e instanceof Error ? e.message : String(e));
+        logError('ItemContextBlock: save scope failed', item.path, errorMessage(e));
         throw e;
       }
     },
@@ -90,7 +91,7 @@ export default function ItemContextBlock({
         await saveItemGoal(item, 'weekly', currentWeekKey, text);
         onChanged?.();
       } catch (e) {
-        logError('ItemContextBlock: save goal failed', item.path, e instanceof Error ? e.message : String(e));
+        logError('ItemContextBlock: save goal failed', item.path, errorMessage(e));
         throw e;
       }
     },

@@ -126,6 +126,7 @@ import {useErrorStatus} from '../ui/status/StatusProvider';
 import MarkWrap from '../ui/status/StatusMark';
 import {usePerfRender} from '../utils/perf';
 import {useOnScreenShow} from '../ui/screenActivity';
+import {errorMessage} from '../utils/errorMessage';
 
 /**
  * User-facing text for an invalid abbreviation candidate (domain/abbrev.ts's
@@ -143,7 +144,7 @@ function abbrevErrorMessage(validation: AbbrevValidation): string {
     case 'empty':
       return 'Enter an abbreviation.';
     case 'reserved':
-      return "That matches a flow-state tag - pick something else.";
+      return 'That matches a flow-state tag - pick something else.';
     case 'duplicate':
       return `Already used by "${validation.reason.usedBy}".`;
   }
@@ -269,7 +270,7 @@ export default function ItemDetail({
           prev ? {...prev, rawContent: nextRaw, defaultResourceFolder: subfolderRelativePath} : prev,
         );
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ItemDetail: set default resource folder failed', message);
         setError(message);
       }
@@ -591,8 +592,8 @@ function AbbrevPill({
     onSave(draft)
       .then(() => setEditing(false))
       .catch(e => {
-        logError('AbbrevPill: save failed', e instanceof Error ? e.message : String(e));
-        setSaveError(e instanceof Error ? e.message : String(e));
+        logError('AbbrevPill: save failed', errorMessage(e));
+        setSaveError(errorMessage(e));
       })
       .finally(() => setSaving(false));
   };

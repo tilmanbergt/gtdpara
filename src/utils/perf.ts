@@ -25,6 +25,7 @@
  */
 import {useEffect, useLayoutEffect} from 'react';
 import {InteractionManager} from 'react-native';
+import {errorMessage} from './errorMessage';
 
 export type PerfTraceKind = 'cold' | 'reopen' | 'tab' | 'nav';
 type Meta = Record<string, unknown>;
@@ -263,7 +264,7 @@ function endTrace(trace: Trace, t: number, interrupted: boolean): void {
     try {
       trace.stats = config.collectStats();
     } catch (e) {
-      trace.stats = {error: e instanceof Error ? e.message : String(e)};
+      trace.stats = {error: errorMessage(e)};
     }
   }
   pending.push(trace);
@@ -289,7 +290,7 @@ async function flush(): Promise<void> {
       try {
         await config.writeFile(fileNameOf(trace), serialize(trace));
       } catch (e) {
-        config.onError?.(e instanceof Error ? e.message : String(e));
+        config.onError?.(errorMessage(e));
       }
     }
   } finally {

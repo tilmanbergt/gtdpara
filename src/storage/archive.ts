@@ -25,6 +25,7 @@ import {deleteEmptyFolder, displayPath, folderExists, moveFolder, moveFolderMerg
 import {areaArchiveTarget, archiveYear, projectArchiveTargets} from '../domain/closeOut/archivePaths';
 import {isoDate, readLifecycleDate, writeLifecycleDate} from '../domain/lifecycleDates';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 /**
  * Moves `item`'s folder into its year/area archive folder (archiveTargetsFor
@@ -157,7 +158,7 @@ export async function archiveItem(
     if (itemContent !== null) rawContent = itemContent;
   } catch (e) {
     // Nothing moved yet: stop here rather than archive marks out of sight.
-    throw new Error(`Could not move the open marks to the Inbox: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(`Could not move the open marks to the Inbox: ${errorMessage(e)}`);
   }
   let keptEmptyFolder: string | null = null;
   if (merge) {
@@ -172,7 +173,7 @@ export async function archiveItem(
           deleted = await deleteEmptyFolder(item.path, reason);
         } catch (e) {
           // The move itself succeeded - a failed clean-up must not turn the archive into an error.
-          logError('archiveItem: deleting the empty source folder failed', item.path, e instanceof Error ? e.message : String(e));
+          logError('archiveItem: deleting the empty source folder failed', item.path, errorMessage(e));
         }
       }
       if (!deleted) {
@@ -200,7 +201,7 @@ export async function archiveItem(
     logError(
       'archiveItem: folder moved but stamping status failed',
       toPath,
-      e instanceof Error ? e.message : String(e),
+      errorMessage(e),
     );
   }
 

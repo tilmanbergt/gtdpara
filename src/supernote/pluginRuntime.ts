@@ -10,6 +10,7 @@
  */
 import {NativeModules} from 'react-native';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 const {GtdParaRuntime} = NativeModules;
 
@@ -54,7 +55,7 @@ export async function getRuntimeDiagnostics(): Promise<RuntimeDiagnostics | null
     });
     return d;
   } catch (e) {
-    logError('pluginRuntime: getRuntimeDiagnostics failed', e instanceof Error ? e.message : String(e));
+    logError('pluginRuntime: getRuntimeDiagnostics failed', errorMessage(e));
     return null;
   }
 }
@@ -69,6 +70,6 @@ export async function restartPluginHost(reason: string): Promise<void> {
     log('pluginRuntime: restarting plugin host', reason);
     await GtdParaRuntime.restartPluginHost(reason);
   } catch (e) {
-    logError('pluginRuntime: restartPluginHost failed', e instanceof Error ? e.message : String(e));
+    logError('pluginRuntime: restartPluginHost failed', errorMessage(e));
   }
 }
