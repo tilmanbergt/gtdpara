@@ -21,14 +21,14 @@
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
-import {shiftPeriod} from '../domain/period';
-import {isoWeekOf, weekAheadOffset} from '../domain/weekDate';
-import {FolderEntry} from '../supernote/fileSystem';
-import LoadErrorNotice from '../ui/LoadErrorNotice';
-import {common} from '../ui/commonStyles';
-import {FONT} from '../ui/theme';
-import WeekPlanner from './WeekPlanner';
-import {usePlanningScreen} from './usePlanningScreen';
+import {shiftPeriod} from '../../../domain/period';
+import {isoWeekOf, weekAheadOffset} from '../../../domain/weekDate';
+import {FolderEntry} from '../../../supernote/fileSystem';
+import LoadErrorNotice from '../../../ui/LoadErrorNotice';
+import {common} from '../../../ui/commonStyles';
+import {FONT} from '../../../ui/theme';
+import WeekPlanner from '../../WeekPlanner';
+import {usePlanningScreen} from '../../usePlanningScreen';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;

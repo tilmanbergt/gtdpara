@@ -17,7 +17,7 @@ import DailyView from './src/screens/DailyView';
 import WeekView from './src/screens/WeekView';
 import MonthView from './src/screens/MonthView';
 import InboxScreen from './src/screens/InboxScreen';
-import ReviewScreen from './src/screens/ReviewScreen';
+import ReviewScreen from './src/screens/review/ReviewScreen';
 import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
 import {setOpenMarksHandler} from './src/ui/marksNav';

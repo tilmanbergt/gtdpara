@@ -164,12 +164,12 @@
  * them rather than loading its own copy.
  */
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
-import {AbbrevFileMatch} from '../domain/abbrev';
-import {Destination, destinationLabel, isFocused} from '../domain/destination';
-import {isContextTag, setFlowStateTag} from '../domain/flowState';
-import {deriveTaskFields, setDueTag} from '../domain/markdown';
-import {isTodayOrFuture, todayIso} from '../domain/meetingTime';
+import {ActivityIndicator, Pressable, Text, View} from 'react-native';
+import {AbbrevFileMatch} from '../../domain/abbrev';
+import {Destination, destinationLabel, isFocused} from '../../domain/destination';
+import {isContextTag, setFlowStateTag} from '../../domain/flowState';
+import {deriveTaskFields, setDueTag} from '../../domain/markdown';
+import {isTodayOrFuture, todayIso} from '../../domain/meetingTime';
 import {
   meetingDisplayTitle,
   MeetingTrackingKind,
@@ -177,7 +177,7 @@ import {
   resolveMeetingTracking,
   toggleMeetingTracking,
   toggleMeetingTrackingAt,
-} from '../domain/meetingTracking';
+} from '../../domain/meetingTracking';
 import {
   applyEmptyStamps,
   applyStepVisit,
@@ -188,28 +188,28 @@ import {
   ReviewStepId,
   ReviewSummaryCounts,
   ZERO_REVIEW_SUMMARY,
-} from '../domain/reviewSteps';
-import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
-import {Meeting, Task} from '../domain/types';
-import {isoWeekKey, weekAheadRangeIso} from '../domain/weekDate';
-import {countMeetingsInRange} from '../domain/meetingSpan';
-import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../storage/archive';
-import {archiveDoneText, emptyFolderConfirmNote} from '../domain/fileChangeText';
-import {planStatusLabel} from '../domain/closeOut/plan';
-import {CachedItem, findCachedItem, getCachedData, rebuildCache, setCachedInbox, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
-import {FocusScope, focusBlockedReason, setItemFocus} from '../storage/focusSlots';
-import {InboxFilingTarget, resolveFilingPick} from '../storage/inboxFiling';
-import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
-import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
-import {MeetingRelevantTodo, relatedItemsFor} from '../storage/meetingNoteAggregate';
-import {openOrCreateMeetingNote, openOrCreateTodoNote, refreshMeetingNoteBlock} from '../storage/meetingNoteContent';
-import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
-import {resolveNotePath} from '../storage/noteLinks';
-import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
-import {summarizeAttachmentsByExtension} from '../domain/attachmentSummary';
-import {isAttachmentSupported, saveGmailAttachment} from '../storage/gmailAttachments';
-import {saveGmailEmailAsNote} from '../storage/gmailEmailNote';
+} from '../../domain/reviewSteps';
+import {GtdParaSettings, ResolvedParaPaths} from '../../domain/settings';
+import {Meeting, Task} from '../../domain/types';
+import {isoWeekKey, weekAheadRangeIso} from '../../domain/weekDate';
+import {countMeetingsInRange} from '../../domain/meetingSpan';
+import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../../storage/archive';
+import {archiveDoneText, emptyFolderConfirmNote} from '../../domain/fileChangeText';
+import {planStatusLabel} from '../../domain/closeOut/plan';
+import {CachedItem, findCachedItem, getCachedData, rebuildCache, setCachedInbox, updateItemMeetings, updateItemTasks} from '../../storage/dataCache';
+import {FocusScope, focusBlockedReason, setItemFocus} from '../../storage/focusSlots';
+import {InboxFilingTarget, resolveFilingPick} from '../../storage/inboxFiling';
+import {itemTarget, moveMeeting, moveTask} from '../../storage/entryMove';
+import {useEntryMoveUi} from '../../ui/useEntryMoveUi';
+import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../../storage/linkedFiles';
+import {MeetingRelevantTodo, relatedItemsFor} from '../../storage/meetingNoteAggregate';
+import {openOrCreateMeetingNote, openOrCreateTodoNote, refreshMeetingNoteBlock} from '../../storage/meetingNoteContent';
+import {useNoteCreateConfirm} from '../../ui/useNoteCreateConfirm';
+import {resolveNotePath} from '../../storage/noteLinks';
+import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../../storage/itemMutations';
+import {summarizeAttachmentsByExtension} from '../../domain/attachmentSummary';
+import {isAttachmentSupported, saveGmailAttachment} from '../../storage/gmailAttachments';
+import {saveGmailEmailAsNote} from '../../storage/gmailEmailNote';
 import {
   archiveGmailMessage,
   fetchGmailBody,
@@ -218,9 +218,9 @@ import {
   getGmailFetchedAt,
   isGmailConfigured,
   refreshGmailInbox,
-} from '../storage/gmailInboxCache';
-import {fetchAttachment as fetchGmailAttachmentBytes, GmailAttachmentInfo} from '../storage/gmailImapNative';
-import {loadProjectFile, saveMeetings, saveTasks} from '../storage/projectFile';
+} from '../../storage/gmailInboxCache';
+import {fetchAttachment as fetchGmailAttachmentBytes, GmailAttachmentInfo} from '../../storage/gmailImapNative';
+import {loadProjectFile, saveMeetings, saveTasks} from '../../storage/projectFile';
 import {
   buildReviewAggregate,
   buildReviewStepCounts,
@@ -234,44 +234,45 @@ import {
   ReviewShelvedTaskEntry,
   ReviewUnfocusedNextEntry,
   shelvedTasksFor,
-} from '../storage/reviewAggregate';
-import {loadSettings, updateReviewSteps} from '../storage/settingsStorage';
-import {SettableStatus, setItemStatus} from '../storage/statusControl';
-import {displayPath, FolderEntry, openPath} from '../supernote/fileSystem';
-import {log, logError} from '../utils/log';
-import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
-import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPane';
-import DateInput from '../ui/DateInput';
-import FocusedItemRow from '../ui/FocusedItemRow';
-import {ClipIcon} from '../ui/icons';
-import GmailBodyPane from '../ui/GmailBodyPane';
-import ItemContextBlock from '../ui/ItemContextBlock';
-import {COLUMN_WIDTH_PX, itemEntryDisplayText, itemEntryHeight, itemEntryLines} from '../ui/itemEntryRow';
-import ReviewWeekAhead from './ReviewWeekAhead';
-import MeetingRow, {MEETING_ROW_HEIGHT, MeetingRowLayout, MeetingTrackingConfig} from '../ui/MeetingRow';
-import MeetingList, {LayoutSwitch} from '../ui/MeetingList';
-import {useListLayout} from '../ui/listLayout';
-import {useEditTarget} from '../ui/useEditTarget';
-import PagedSection from '../ui/PagedSection';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
-import {ReviewEnd, ReviewHub} from '../ui/ReviewHub';
-import ReviewMasterDetail from '../ui/ReviewMasterDetail';
-import {displayTaskText} from '../domain/taskLabels';
-import TaskRow, {ReadOnlyTaskRow, taskRowHeight, taskRowLines} from '../ui/TaskRow';
-import {useCachedItems} from '../ui/useCachedItems';
-import {activeLineEstimator} from '../ui/textLineEstimator';
-import {common} from '../ui/commonStyles';
-import LoadErrorNotice from '../ui/LoadErrorNotice';
-import {COLORS, FONT, useThemeColors} from '../ui/theme';
-import {useFeatures} from '../ui/featureStore';
-import {useErrorStatus, useStatusApi} from '../ui/status/StatusProvider';
-import MarkWrap from '../ui/status/StatusMark';
-import {useCachedInbox} from '../ui/useCachedInbox';
-import MarksCard from '../ui/MarksCard';
-import {useOpenMarks} from '../ui/useOpenMarks';
-import {MarkScope} from '../domain/marks';
-import {errorMessage} from '../utils/errorMessage';
-import {formatClock, formatDateTime} from '../domain/dateFormat';
+} from '../../storage/reviewAggregate';
+import {loadSettings, updateReviewSteps} from '../../storage/settingsStorage';
+import {SettableStatus, setItemStatus} from '../../storage/statusControl';
+import {displayPath, FolderEntry, openPath} from '../../supernote/fileSystem';
+import {log, logError} from '../../utils/log';
+import {requestEinkRefresh, useEinkRefreshOnLoad} from '../../utils/screenRefresh';
+import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../../ui/FileBrowserPane';
+import DateInput from '../../ui/DateInput';
+import FocusedItemRow from '../../ui/FocusedItemRow';
+import {ClipIcon} from '../../ui/icons';
+import GmailBodyPane from '../../ui/GmailBodyPane';
+import ItemContextBlock from '../../ui/ItemContextBlock';
+import {COLUMN_WIDTH_PX, itemEntryDisplayText, itemEntryHeight, itemEntryLines} from '../../ui/itemEntryRow';
+import ReviewWeekAhead from './steps/WeekAheadStep';
+import MeetingRow, {MEETING_ROW_HEIGHT, MeetingRowLayout, MeetingTrackingConfig} from '../../ui/MeetingRow';
+import MeetingList, {LayoutSwitch} from '../../ui/MeetingList';
+import {useListLayout} from '../../ui/listLayout';
+import {useEditTarget} from '../../ui/useEditTarget';
+import PagedSection from '../../ui/PagedSection';
+import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../../ui/QuickAddWidget';
+import {ReviewEnd, ReviewHub} from '../../ui/ReviewHub';
+import ReviewMasterDetail from '../../ui/ReviewMasterDetail';
+import {displayTaskText} from '../../domain/taskLabels';
+import TaskRow, {ReadOnlyTaskRow, taskRowHeight, taskRowLines} from '../../ui/TaskRow';
+import {useCachedItems} from '../../ui/useCachedItems';
+import {activeLineEstimator} from '../../ui/textLineEstimator';
+import {common} from '../../ui/commonStyles';
+import LoadErrorNotice from '../../ui/LoadErrorNotice';
+import {COLORS, FONT, useThemeColors} from '../../ui/theme';
+import {useFeatures} from '../../ui/featureStore';
+import {useErrorStatus, useStatusApi} from '../../ui/status/StatusProvider';
+import MarkWrap from '../../ui/status/StatusMark';
+import {useCachedInbox} from '../../ui/useCachedInbox';
+import MarksCard from '../../ui/MarksCard';
+import {useOpenMarks} from '../../ui/useOpenMarks';
+import {MarkScope} from '../../domain/marks';
+import {errorMessage} from '../../utils/errorMessage';
+import {formatClock, formatDateTime} from '../../domain/dateFormat';
+import {styles} from './reviewStyles';
 
 const ALL_MARKS: MarkScope = {type: 'all'};
 
@@ -3374,8 +3375,6 @@ function MeetingCloseOutDetail({
 // from/attachment-count line).
 const GMAIL_ROW_PX = 60;
 
-/** Minimum height of the Gmail detail panel's email-text pane (action bar + ~4 lines) - below this the pane keeps this height instead of shrinking further when the rest of the panel (many attachments / created items) needs the room. */
-const GMAIL_BODY_MIN_PX = 150;
 /** How long the Archive pill shows inverted (black) before the email leaves the list (2026-09-28) - long enough to register on e-ink, short enough not to feel slow. */
 const ARCHIVE_FLASH_MS = 350;
 
@@ -4172,332 +4171,3 @@ function PeriodFocusKindSection({
   );
 }
 
-const styles = StyleSheet.create({
-  // See renderWeekAhead's own comment - [[feature_pagination_fixed_height]].
-  weekAheadRoot: {
-    flex: 1,
-  },
-  stepNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    paddingBottom: 10,
-    marginBottom: 12,
-  },
-  stepNavText: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-  },
-  // "‹ Back"/"Overview" on the left, "Skip ›"/"Reviewed ›" on the right of
-  // the step nav row (docs/dev/technical-design-review-hub.md §4.2).
-  stepNavGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepNavGap: {
-    marginLeft: 20,
-  },
-  stepNavPrimary: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  stepNavPrimaryText: {
-    fontWeight: '700',
-  },
-  stepTitle: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
-  },
-  stepScroll: {
-    flex: 1,
-  },
-  // Gmail inbox detail panel (2026-09-21): a column whose last child, the
-  // email text, takes all the height the fixed controls above it leave over -
-  // see GmailDetailPanel's doc comment and ui/GmailBodyPane.tsx.
-  gmailDetailRoot: {
-    flex: 1,
-  },
-  gmailBodyArea: {
-    flex: 1,
-    minHeight: GMAIL_BODY_MIN_PX,
-    marginTop: 8,
-  },
-  // Inbox-to-zero step's two-pane layout (docs/dev/technical-design-filing-
-  // unification.md §5.1) - same names/values as screens/InboxScreen.tsx's
-  // own body/leftPane/rightPane/paneTitle.
-  body: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  leftPane: {
-    flex: 1,
-    borderRightWidth: 1,
-    paddingRight: 16,
-    marginRight: 16,
-  },
-  rightPane: {
-    flex: 1,
-  },
-  // Bounded flex:1 column (docs/dev/technical-design-flex-weight-stacking.md
-  // §3.4, 2026-09-17) - splits its real available height 8:6 between the
-  // Inbox-to-zero step's Tasks/Meetings PagedSections via the weighted
-  // `<View style={{flex: REVIEW_INBOX_TASKS_WEIGHT}}>`/`{flex:
-  // REVIEW_INBOX_MEETINGS_WEIGHT}}` boxes wrapping them in renderInboxZero,
-  // above - same shape and same 8:6 ratio as screens/InboxScreen.tsx's own
-  // stackedColumn.
-  stackedColumn: {
-    flex: 1,
-  },
-  // Gmail inbox step's own manual-refresh row (renderGmailInbox) - a single
-  // pill plus an inline error, above the ReviewMasterDetail shell rather
-  // than inside it, since an IMAP fetch is its own explicit action distinct
-  // from reloading the files (see loadGmailInbox's own doc
-  // comment for why).
-  gmailToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  // Full-width failure reason under the Refresh button (renderGmailInbox) -
-  // same FONT.small/6px shape as ui/GoogleCalendarPanel.tsx's errorText, but
-  // allowed to wrap over a few lines since these messages name the cause and
-  // the next step.
-  gmailErrorText: {
-    fontSize: FONT.small,
-    marginBottom: 8,
-  },
-  paneTitle: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    paddingVertical: 7,
-  },
-  rowTextWrap: {
-    flex: 1,
-  },
-  rowText: {
-    fontSize: FONT.medium,
-  },
-  cancelText: {
-    fontSize: FONT.medium,
-    opacity: 0.6,
-    marginLeft: 8,
-    paddingHorizontal: 4,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 10,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  // ui/ReviewMasterDetail.tsx left-list rows (Stalled/Neglected/Done/On
-  // Hold's flat ReviewLeftRow, and Unfocused next items' own flattened
-  // rows) - 2026-09-16, docs/dev/technical-design-review-master-detail.md §3.
-  masterRow: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  masterRowIndented: {
-    paddingLeft: 20,
-  },
-  masterRowSelected: {
-    backgroundColor: '#eeeeee',
-    borderLeftWidth: 4,
-    borderColor: COLORS.accent,
-  },
-  masterRowText: {
-    fontSize: FONT.medium,
-    fontWeight: '500',
-  },
-  // Muted, not struck through - an acted-on row stays fully legible and
-  // re-tappable (requirements chat: "eine Haken reicht, aber auch Option es
-  // nochmal zu ändern"), it just visually recedes a touch.
-  masterRowActedOn: {
-    opacity: 0.55,
-  },
-  masterGroupLabel: {
-    paddingHorizontal: 8,
-    paddingTop: 10,
-    paddingBottom: 4,
-  },
-  masterGroupLabelText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    opacity: 0.7,
-  },
-  masterNoteRow: {
-    paddingHorizontal: 20,
-    paddingVertical: 4,
-  },
-  // The detail column's empty state (no left-list row selected yet) -
-  // centered guide copy, one shared shape per step (ReviewEmptyDetail).
-  emptyDetail: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  emptyDetailTitle: {
-    fontSize: FONT.large,
-    fontWeight: '700',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  emptyDetailText: {
-    fontSize: FONT.medium,
-    textAlign: 'center',
-    opacity: 0.7,
-    marginBottom: 12,
-  },
-  emptyDetailHint: {
-    fontSize: FONT.small,
-    fontStyle: 'italic',
-    opacity: 0.6,
-    textAlign: 'center',
-  },
-  sectionLabel: {
-    fontSize: FONT.small,
-    fontWeight: '700',
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  sectionLabelHint: {
-    fontWeight: '400',
-    opacity: 0.6,
-  },
-  detailCaption: {
-    fontSize: FONT.small,
-    opacity: 0.7,
-    marginBottom: 8,
-  },
-  focusSubheading: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    marginTop: 6,
-    marginBottom: 2,
-  },
-  cardMeetings: {
-    marginBottom: 8,
-  },
-  cardShelved: {
-    marginBottom: 8,
-  },
-  cardShelvedHeading: {
-    marginTop: 0,
-  },
-  shelvedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  shelvedText: {
-    flex: 1,
-    marginRight: 8,
-  },
-  /** One "Created from this email" entry: its row plus (once linked) the file line below. */
-  gmailCreatedItem: {
-    marginBottom: 4,
-  },
-  gmailLinkedLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 12,
-    marginBottom: 2,
-  },
-  gmailLinkedName: {
-    flex: 1,
-    marginLeft: 6,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-  },
-  pill: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginRight: 8,
-    marginBottom: 6,
-  },
-  pillActive: {
-    borderWidth: 2,
-  },
-  /** Grayed-out "already focused" state for Unfocused-next-items' own
-   * "+ Add to Daily/Weekly focus" pills (2026-09-16, Tilman feedback) - same
-   * opacity convention this file's other disabled controls use. */
-  pillDisabled: {
-    opacity: 0.3,
-  },
-  pillText: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-  },
-  /** Unfocused-next-items' own compact "Set due date" field (2026-09-16,
-   * Tilman feedback) - same YYYY-MM-DD text convention ui/QuickAddWidget.tsx's
-   * own due-date field uses, sized to sit inline in a pillRow next to its
-   * Save/✕ pills rather than the widget's own full-width layout. */
-  /** Wrapper margins for the due-date field (DateInput takes layout via containerStyle) - the same 8/6 gap the pills beside it have. */
-  dueDateWrap: {
-    marginRight: 8,
-    marginBottom: 6,
-  },
-  /** Pill-shaped corners to match the buttons in its row; border, vertical padding and font size come from DateInput's defaults. */
-  dueDateInput: {
-    borderRadius: 14,
-    paddingHorizontal: 10,
-  },
-  // Gmail Archive pill's tap flash (2026-09-28): inverted black fill, the
-  // app's "active" convention (ui/theme.ts COLORS.accent/accentText).
-  pillFlash: {
-    backgroundColor: COLORS.accent,
-    borderColor: COLORS.accent,
-  },
-  focusColumnsRow: {
-    flexDirection: 'row',
-  },
-  // Focus reset's "Monthly" / "Weekly" block headings (2026-09-28).
-  focusBlockHeading: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  focusBlockSpacing: {
-    marginTop: 8,
-  },
-  focusKindBlock: {
-    marginBottom: 12,
-  },
-  focusKindLabel: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    opacity: 0.6,
-    marginBottom: 4,
-  },
-  addSlotText: {
-    opacity: 0.6,
-  },
-  candidateList: {
-    marginLeft: 12,
-  },
-});
