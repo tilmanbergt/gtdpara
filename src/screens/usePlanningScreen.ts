@@ -23,8 +23,7 @@ import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting} from '../domain/types';
 import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {FocusScope, toggleItemFocus} from '../storage/focusSlots';
-import {appendMeetingToTarget} from '../storage/inboxFiling';
-import {moveEntryWithNote} from '../storage/entryMove';
+import {itemTarget, moveMeeting} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {
   addMeetingToDestination,
@@ -201,11 +200,10 @@ export function usePlanningScreen({logTag}: Options) {
     });
 
   /**
-   * Quick Add's onQuickFile in meeting-edit mode - "Save, but file
-   * elsewhere" (see WeekView's former handleQuickFileEdit doc comment, moved
-   * here unchanged): builds the updated meeting from the widget's composed
-   * payload, appends it to the target, then removes the original. Must
-   * reject (not swallow) on failure so the widget shows the error inline.
+   * Quick Add's onQuickFile in meeting-edit mode - "save, but file
+   * elsewhere": builds the updated meeting from the widget's composed
+   * payload and moves it. Must reject (not swallow) on failure so the
+   * widget shows the error inline.
    */
   const handleQuickFileEdit = async (
     entry: WeeklyMeetingEntry,
@@ -214,10 +212,7 @@ export function usePlanningScreen({logTag}: Options) {
   ): Promise<void> => {
     if (payload.kind !== 'meeting') return;
     const updated = applyMeetingEdit(entry.meeting, payload.fields, payload.linkedFile);
-    const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: entry.item.path, target}, moveUi, async next => {
-      await appendMeetingToTarget(target, next);
-      await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
-    });
+    const moved = await moveMeeting(entry.item, entry.meetingIndex, updated, itemTarget(target), moveUi);
     if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
   };
 

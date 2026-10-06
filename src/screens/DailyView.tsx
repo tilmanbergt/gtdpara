@@ -175,8 +175,7 @@ import {
 } from '../storage/dailyAggregate';
 import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {focusBlockedReason, setItemFocus} from '../storage/focusSlots';
-import {appendMeetingToTarget, appendTaskToTarget} from '../storage/inboxFiling';
-import {moveEntryWithNote} from '../storage/entryMove';
+import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
 import {linkedFileStatus, openLinkedFile} from '../storage/linkedFiles';
@@ -778,34 +777,13 @@ export default function DailyView({
   };
 
   /**
-   * ui/QuickAddWidget.tsx's onQuickFile in edit mode (feature_abbrev_quick_
-   * file, 2026-09-17, 2026-09-18 bugfix, docs/dev/technical-design-abbrev-quick-
-   * file.md §5.2) - genuinely new plumbing, unlike Inbox/Current tab/
-   * Review's straight pass-through to an existing refile commit path: Daily
-   * has no "move to a different file" capability at all before this
-   * feature. `payload` is the widget's fully-composed, tag-stripped current
-   * edit-session text/fields (mirroring commitTaskEdit/commitMeetingEdit's
-   * own nextText/fields above) - this is "Save, but file elsewhere", not a
-   * plain move of the last-saved copy, so any other edit made during this
-   * session (including the abbreviation tag itself) rides along instead of
-   * being silently discarded (2026-09-18: the original version only took
-   * `target` and moved entry.task/entry.meeting as-is, which is also why the
-   * tag never actually disappeared). Builds the updated object the same way
-   * commitTaskEdit/commitMeetingEdit do (spread the stored item first so
-   * done/cancelled/notePath survive, then overlay the
-   * edited fields), then appends to the resolved target
-   * (appendTaskToTarget/appendMeetingToTarget - reused as-is from
-   * storage/inboxFiling.ts, source-agnostic), then removes the entry from
-   * wherever it actually lives via saveEntryTasks/saveEntryMeetings (already
-   * source-agnostic themselves - Inbox or any Project/Area, same branch
-   * their own Inbox/non-Inbox handling uses everywhere else in this file) -
-   * same append-then-remove order fileInboxTask/fileInboxMeeting use.
-   * Deliberately does NOT go through runWidgetAction (which swallows errors
-   * internally, same as runTaskAction/runMeetingAction) - onQuickFile's
-   * contract needs a real rejecting Promise so the widget's own
-   * handleQuickFile can show the failure inline. Closes edit mode
-   * (cancelEditTarget) only once both steps succeed, same "close only on
-   * success" rule every other commitEdit in this file follows.
+   * QuickAddWidget's onQuickFile in edit mode: "save, but file elsewhere".
+   * `payload` is the widget's current edit-session text/fields with the
+   * abbreviation tag stripped, so other edits made in this session move
+   * along (stored done/cancelled/notePath are kept). The entry may live in
+   * the Inbox or any Project/Area. Throws instead of using runWidgetAction,
+   * so the widget can show the failure inline; closes edit mode only after
+   * the move succeeded.
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (editTarget?.type === 'task' && editingTaskEntry && payload.kind === 'task') {
@@ -816,18 +794,12 @@ export default function DailyView({
         ...deriveTaskFields(payload.text),
         linkedFile: payload.linkedFile,
       };
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: entry.item.path, target}, moveUi, async next => {
-        await appendTaskToTarget(target, next);
-        await saveEntryTasks(entry, tasks => tasks.filter((_, index) => index !== entry.taskIndex));
-      });
+      const moved = await moveTask(entry.item, entry.taskIndex, updated, itemTarget(target), moveUi);
       if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
     } else if (editTarget?.type === 'meeting' && editingMeetingEntry && payload.kind === 'meeting') {
       const entry = editingMeetingEntry;
       const updated: Meeting = applyMeetingEdit(entry.meeting, payload.fields, payload.linkedFile);
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: entry.item.path, target}, moveUi, async next => {
-        await appendMeetingToTarget(target, next);
-        await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
-      });
+      const moved = await moveMeeting(entry.item, entry.meetingIndex, updated, itemTarget(target), moveUi);
       if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
     }
   };

@@ -198,15 +198,8 @@ import {archiveDoneText, emptyFolderConfirmNote} from '../domain/fileChangeText'
 import {planStatusLabel} from '../domain/closeOut/plan';
 import {CachedItem, findCachedItem, getCachedData, rebuildCache, setCachedInbox, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
 import {FocusScope, focusBlockedReason, setItemFocus} from '../storage/focusSlots';
-import {
-  appendMeetingToTarget,
-  appendTaskToTarget,
-  fileInboxMeeting,
-  fileInboxTask,
-  InboxFilingTarget,
-  resolveFilingPick,
-} from '../storage/inboxFiling';
-import {moveEntryWithNote} from '../storage/entryMove';
+import {InboxFilingTarget, resolveFilingPick} from '../storage/inboxFiling';
+import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {MeetingRelevantTodo, relatedItemsFor} from '../storage/meetingNoteAggregate';
@@ -1641,10 +1634,10 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const result = await fileInboxTask(inbox, inboxPath, taskIndex, target, moveUi);
-        if (!result) return; // cancelled in the note confirm
-        setCachedInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
+        const task = inbox?.tasks[taskIndex];
+        if (!task || !inboxPath) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
+        const moved = await moveTask({kind: 'inbox', path: inboxPath}, taskIndex, task, itemTarget(target), moveUi);
+        if (!moved) return; // cancelled in the note confirm
         refreshFromCache();
         bump('inboxCleared');
         log('ReviewScreen: filed inbox task', taskIndex, '->', target.path);
@@ -1660,10 +1653,10 @@ export default function ReviewScreen({
     setInboxActionError(null);
     (async () => {
       try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target, moveUi);
-        if (!result) return; // cancelled in the note confirm
-        setCachedInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
+        const meeting = inbox?.meetings[meetingIndex];
+        if (!meeting || !inboxPath) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
+        const moved = await moveMeeting({kind: 'inbox', path: inboxPath}, meetingIndex, meeting, itemTarget(target), moveUi);
+        if (!moved) return; // cancelled in the note confirm
         refreshFromCache();
         bump('inboxCleared');
         log('ReviewScreen: filed inbox meeting', meetingIndex, '->', target.path);
@@ -1676,26 +1669,10 @@ export default function ReviewScreen({
   };
 
   /**
-   * ui/QuickAddWidget.tsx's onQuickFile in edit mode (feature_abbrev_quick_
-   * file, 2026-09-17, 2026-09-18 bugfix) - same shape as screens/
-   * InboxScreen.tsx's own handleQuickFileEdit (see its doc comment for the
-   * full "why"): `payload` is the widget's fully-composed, tag-stripped
-   * current edit-session text/fields, so this builds the updated task/
-   * meeting by spreading the stored inbox item first (done/cancelled/
-   * notePath survive) then overlaying the edited
-   * fields - "Save, but file elsewhere", not a plain move of the stale
-   * last-saved copy. Appends directly via appendTaskToTarget/
-   * appendMeetingToTarget rather than fileInboxTask/fileInboxMeeting (those
-   * re-read inbox.tasks[index] themselves - the stale copy this is
-   * avoiding), then removes the original from the Inbox via saveTasks/
-   * saveMeetings directly, same as this screen's other Inbox mutations
-   * above - target-first, source-removal-second. Deliberately doesn't
-   * go through handleFileTask/handleFileMeeting above (which exist for the
-   * Browse-picker path, handleInboxFilePick, and swallow errors into
-   * inboxActionError) - onQuickFile's contract needs a real rejecting
-   * Promise so QuickAddWidget's own handleQuickFile can show the failure
-   * inline. Closes edit mode (cancelEditTarget) only once the move
-   * succeeds.
+   * QuickAddWidget's onQuickFile in edit mode: "save, but file elsewhere"
+   * (see InboxScreen's handleQuickFileEdit). Throws instead of using
+   * inboxActionError, so the widget can show the failure inline; closes
+   * edit mode only after the move succeeded.
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (!editTarget) return;
@@ -1705,23 +1682,13 @@ export default function ReviewScreen({
       const stored = inbox.tasks[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: inboxPath, target}, moveUi, async entry => {
-        await appendTaskToTarget(target, entry);
-        const nextTasks = inbox.tasks.filter((_, i) => i !== index);
-        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
-      });
+      const moved = await moveTask({kind: 'inbox', path: inboxPath}, index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: inboxPath, target}, moveUi, async entry => {
-        await appendMeetingToTarget(target, entry);
-        const nextMeetings = inbox.meetings.filter((_, i) => i !== index);
-        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
-      });
+      const moved = await moveMeeting({kind: 'inbox', path: inboxPath}, index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows

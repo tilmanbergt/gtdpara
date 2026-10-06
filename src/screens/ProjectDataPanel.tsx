@@ -1,13 +1,11 @@
 /**
  * The right pane of ItemDetail: a Project/Area's own Todos and Meetings.
- * Reads its initial state from storage/dataCache.ts's cache (instant, no
- * file read) rather than loading the file fresh every time this item is
- * opened - ensureItemCached loads it just this once if it isn't cached yet.
- * Every save still writes the actual file (domain/markdown.ts,
- * storage/projectFile.ts) *and* the cache entry in the same operation
- * (updateItemTasks/updateItemMeetings), so the change is visible everywhere
- * else (the Projects/Areas tabs, Daily, re-opening this item later)
- * without a rebuild.
+ * Shows the item as storage/dataCache.ts's cache holds it (ui/
+ * useCachedItems.ts) - ensureItemCached loads it once if it isn't cached
+ * yet. Every save writes the file and the cache entry together
+ * (updateItemTasks/updateItemMeetings, or storage/entryMove.ts for a move),
+ * and the cache's change notice re-renders this panel like every other
+ * screen.
  * "delete" is a soft cancel (Task.cancelled/Meeting.cancelled) that hides an
  * item from this view without removing its line from the file - a "show
  * cancelled" toggle is a later feature, not built here.
@@ -96,10 +94,10 @@ import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTra
 import {TagRule} from '../domain/tagRules';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {CachedItem, ensureItemCached, findCachedItem, getCachedData, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
-import {appendMeetingToTarget, appendTaskToTarget, resolveFilingPick} from '../storage/inboxFiling';
-import {moveEntryWithNote} from '../storage/entryMove';
+import {resolveFilingPick} from '../storage/inboxFiling';
+import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
+import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
@@ -126,7 +124,7 @@ import {FONT, useThemeColors} from '../ui/theme';
 import {useErrorStatus} from '../ui/status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
-import {useOnScreenShow} from '../ui/screenActivity';
+import {useCachedItems} from '../ui/useCachedItems';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
 
@@ -217,7 +215,28 @@ export default function ProjectDataPanel({
   const marksScope: MarkScope = useMemo(() => ({type: 'item', path}), [path]);
   const {textColor, borderColor, placeholderColor} = useThemeColors();
 
-  const [state, setState] = useState<PanelState | null>(null);
+  // The item as last loaded - used only while it isn't in the cache (no
+  // cache built yet); otherwise the cached entry is shown and kept current.
+  const [loadedItem, setLoadedItem] = useState<CachedItem | null>(null);
+  const cachedItem = useCachedItems().find(i => i.path === path);
+  const item = cachedItem ?? loadedItem;
+  const rawContent = item?.rawContent;
+  const area = item?.area ?? null;
+  const state: PanelState | null = useMemo(
+    () =>
+      item && !item.loadError
+        ? {
+            rawContent: item.rawContent,
+            tasks: item.tasks,
+            meetings: item.meetings,
+            taskExtraLines: item.taskExtraLines,
+            meetingExtraLines: item.meetingExtraLines,
+            area,
+          }
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cached items are updated in place; rawContent changes with every write
+    [item, rawContent, area],
+  );
   const [loading, setLoading] = useState(true);
   // Explicit e-ink refresh once this panel's own load actually lands - see
   // src/utils/screenRefresh.ts.
@@ -258,16 +277,9 @@ export default function ProjectDataPanel({
     setLoading(true);
     setError(null);
     try {
-      const item = await ensureItemCached(kind, name, path);
-      if (item.loadError) throw new Error(item.loadError);
-      setState({
-        rawContent: item.rawContent,
-        tasks: item.tasks,
-        meetings: item.meetings,
-        taskExtraLines: item.taskExtraLines,
-        meetingExtraLines: item.meetingExtraLines,
-        area: item.area,
-      });
+      const loaded = await ensureItemCached(kind, name, path);
+      if (loaded.loadError) throw new Error(loaded.loadError);
+      setLoadedItem(loaded);
     } catch (e) {
       const message = errorMessage(e);
       logError('ProjectDataPanel: load failed', kind, path, message);
@@ -281,33 +293,12 @@ export default function ProjectDataPanel({
     load();
   }, [load]);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
-  // re-derive quietly from the shared cache if this item's file changed
-  // while hidden (e.g. a todo filed here from Daily) - no loading spinner,
-  // no re-render when nothing changed.
-  useOnScreenShow(() => {
-    const item = findCachedItem(path);
-    if (!item || item.loadError) return;
-    setState(prev =>
-      prev && prev.rawContent === item.rawContent && prev.area === item.area
-        ? prev
-        : {
-            rawContent: item.rawContent,
-            tasks: item.tasks,
-            meetings: item.meetings,
-            taskExtraLines: item.taskExtraLines,
-            meetingExtraLines: item.meetingExtraLines,
-            area: item.area,
-          },
-    );
-  });
-
   const withTasks = useCallback(
     async (nextTasks: Task[]) => {
       if (!state) return;
       const next = await saveTasks(kind, path, state.rawContent, nextTasks, state.taskExtraLines);
       updateItemTasks(path, next, nextTasks, state.taskExtraLines);
-      setState({...state, rawContent: next, tasks: nextTasks});
+      if (!findCachedItem(path)) setLoadedItem(prev => prev && {...prev, rawContent: next, tasks: nextTasks});
     },
     [state, kind, path],
   );
@@ -317,7 +308,7 @@ export default function ProjectDataPanel({
       if (!state) return;
       const next = await saveMeetings(kind, path, state.rawContent, nextMeetings, state.meetingExtraLines);
       updateItemMeetings(path, next, nextMeetings, state.meetingExtraLines);
-      setState({...state, rawContent: next, meetings: nextMeetings});
+      if (!findCachedItem(path)) setLoadedItem(prev => prev && {...prev, rawContent: next, meetings: nextMeetings});
     },
     [state, kind, path],
   );
@@ -420,25 +411,10 @@ export default function ProjectDataPanel({
   );
 
   /**
-   * `arming` mode's onPick for intent 'refile' (2026-09-09, storage/
-   * inboxFiling.ts's module doc comment) - resolveFilingPick only ever sees
-   * 'projects'/'areas', synthesized by ui/FileBrowserPane.tsx from a
-   * top-level Browse pick (its own `sources` doc comment); every other root
-   * is disabled, not removed, while refile-arming (see the isRefileArming
-   * note on ItemDetail.tsx's own fileBrowserRoots computation, which this
-   * screen's armTarget.intent drives via the bubbled-up `linkTarget`'s
-   * pickKind/root). Guards against picking this
-   * item's own current location (a same-item "refile" would otherwise race
-   * withTasks/withMeetings against appendTaskToTarget/appendMeetingToTarget
-   * writing the same file from two different in-memory snapshots) -
-   * silently cancels arming instead, same as any other no-op pick. Defined
-   * ahead of `runWidgetAction` below only in the sense that it's declared
-   * earlier in this file (so `linkTarget`'s own derivation, further down,
-   * can reference it directly) - the actual call to `runWidgetAction` inside
-   * it only happens once this whole callback is invoked (on a real pick),
-   * by which point `runWidgetAction` is already assigned, same as any other
-   * handler here that closes over something declared later in this
-   * component function.
+   * `arming` mode's onPick for intent 'refile': the Browse pick (only
+   * Projects/Areas are enabled while refile-arming, see ItemDetail's
+   * fileBrowserRoots) becomes the move target. Picking this item itself is
+   * a no-op that just ends arming.
    */
   // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
   const moveUi = useEntryMoveUi('ProjectDataPanel');
@@ -452,55 +428,28 @@ export default function ProjectDataPanel({
         if (armTarget.type === 'task') {
           const task = state.tasks[armTarget.index];
           if (!task) throw new Error('That task changed on disk - Settings → Advanced → Reload all files.');
-          const moved = await moveEntryWithNote({entry: task, entryKind: 'task', sourceFolder: path, target}, moveUi, async next => {
-            await appendTaskToTarget(target, next);
-            await withTasks(state.tasks.filter((_, index) => index !== armTarget.index));
-          });
+          const moved = await moveTask({kind, path}, armTarget.index, task, itemTarget(target), moveUi);
           if (!moved) return; // cancelled in the note confirm
         } else {
           const meeting = state.meetings[armTarget.index];
           if (!meeting) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
-          const moved = await moveEntryWithNote({entry: meeting, entryKind: 'meeting', sourceFolder: path, target}, moveUi, async next => {
-            await appendMeetingToTarget(target, next);
-            await withMeetings(state.meetings.filter((_, index) => index !== armTarget.index));
-          });
+          const moved = await moveMeeting({kind, path}, armTarget.index, meeting, itemTarget(target), moveUi);
           if (!moved) return; // cancelled in the note confirm
         }
         log('ProjectDataPanel: refiled', armTarget.type, armTarget.index, '->', target.path);
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [paths, armTarget, state, path, withTasks, withMeetings, moveUi],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWidgetAction is declared further down
+    [paths, armTarget, state, kind, path, moveUi],
   );
 
   /**
-   * QuickAddWidget's onQuickFile in edit mode (feature_abbrev_quick_file,
-   * 2026-09-17, 2026-09-18 bugfix) - the abbreviation quick-file affordance
-   * moving the item being edited straight to the recognized Project/Area,
-   * bypassing the Refile Browse picker (armRefileTarget/handleRefilePick)
-   * entirely. `payload` is the widget's fully-composed, tag-stripped current
-   * edit-session text/fields (mirroring commitTaskEdit/commitMeetingEdit's
-   * own nextText/fields just below) - this is "Save, but file elsewhere",
-   * not a plain move of the last-saved copy, so any other edit made during
-   * this session (including the abbreviation tag itself) rides along
-   * instead of being silently discarded (2026-09-18: the original version
-   * only took `target` and re-read the stale stored task/meeting straight
-   * off `state`, which is also why the tag never actually disappeared).
-   * Builds the updated object the same way commitTaskEdit/commitMeetingEdit
-   * do (spread the stored item first so done/cancelled/notePath
-   * survive, then overlay the edited fields), otherwise still
-   * mirrors handleRefilePick's own append-then-remove-from-here body above,
-   * but keyed off `editTarget` rather than `armTarget`, and deliberately
-   * NOT run through `runWidgetAction` (which swallows errors internally) -
-   * onQuickFile's contract needs a real rejecting Promise so QuickAddWidget's
-   * own handleQuickFile can show the failure inline (same reasoning
-   * feature_standalone_note_quickadd.md documents for why handleAddNote
-   * avoids runWidgetAction). resolveAbbrevFileTarget's own `excludePath`
-   * check already keeps a tag naming this item's own path from ever
-   * resolving to a target here, making the `target.path === path` guard
-   * below redundant in practice - kept anyway as the same defensive no-op
-   * handleRefilePick itself applies. Closes edit mode (cancelEditTarget)
-   * only once the move succeeds.
+   * QuickAddWidget's onQuickFile in edit mode: "save, but file elsewhere"
+   * (see InboxScreen's handleQuickFileEdit). Throws instead of using
+   * runWidgetAction, so the widget can show the failure inline; closes edit
+   * mode only after the move succeeded. A tag naming this item itself never
+   * resolves to a target (resolveAbbrevFileTarget's excludePath); the path
+   * guard below is the same no-op handleRefilePick applies.
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (!editTarget || !state || target.path === path) return;
@@ -509,19 +458,13 @@ export default function ProjectDataPanel({
       const stored = state.tasks[index];
       if (!stored) throw new Error('That task changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: path, target}, moveUi, async next => {
-        await appendTaskToTarget(target, next);
-        await withTasks(state.tasks.filter((_, i) => i !== index));
-      });
+      const moved = await moveTask({kind, path}, index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = state.meetings[index];
       if (!stored) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: path, target}, moveUi, async next => {
-        await appendMeetingToTarget(target, next);
-        await withMeetings(state.meetings.filter((_, i) => i !== index));
-      });
+      const moved = await moveMeeting({kind, path}, index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
@@ -607,10 +550,8 @@ export default function ProjectDataPanel({
       const newTask: Task = buildTask(text);
       if (destination.type === 'item' && destination.path !== path) {
         // Abbreviation quick-file recognized a different Project/Area's
-        // #tag while composing here (feature_abbrev_quick_file,
-        // 2026-09-17) - create it straight there instead of this item's
-        // own Todos list.
-        await appendTaskToTarget(destination, newTask);
+        // #tag while composing here - create it straight there.
+        await addTaskToDestination(newTask, destination, {inbox: null, inboxPath: null});
         return;
       }
       if (!state) return;
@@ -621,7 +562,7 @@ export default function ProjectDataPanel({
     runWidgetAction(async () => {
       const newMeeting: Meeting = buildMeeting(fields);
       if (destination.type === 'item' && destination.path !== path) {
-        await appendMeetingToTarget(destination, newMeeting);
+        await addMeetingToDestination(newMeeting, destination, {inbox: null, inboxPath: null});
         return;
       }
       if (!state) return;

@@ -40,7 +40,8 @@ import {archiveOpsFor, runCloseOutArchive} from '../storage/closeOut/execute';
 import {CloseOutPdfJob, startCloseOutPdf} from '../storage/closeOut/pdf';
 import {loadPlan, savePlan} from '../storage/closeOut/planStore';
 import {findCachedItem} from '../storage/dataCache';
-import {cancelMeeting, closeTask, moveMeetingTo, moveTaskTo, MoveTarget} from '../storage/itemMove';
+import {cancelMeeting, closeTask} from '../storage/itemMove';
+import {moveMeeting, moveTask, MoveTarget} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {PdfExportCancelled} from '../storage/pdfExport';
 import {loadSettings} from '../storage/settingsStorage';
@@ -207,7 +208,9 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       moveTodo: (index, to) =>
         run(async () => {
           if (!ctx) return;
-          const task = await moveTaskTo(projectPath, index, moveTarget(to), ctx.paths, moveUi);
+          const stored = findCachedItem(projectPath)?.tasks[index];
+          if (!stored) throw new Error('That todo changed on disk - Settings → Advanced → Reload all files.');
+          const task = await moveTask({kind: 'project', path: projectPath}, index, stored, moveTarget(to), moveUi);
           if (!task) return; // cancelled in the note confirm
           await updatePlan(p => withMovedItem(p, {kind: 'todo', label: task.text, to: to === 'area' && ctx.item.area ? `area:${ctx.item.area}` : 'inbox'}));
         }),
@@ -215,7 +218,9 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       moveMeeting: (index, to) =>
         run(async () => {
           if (!ctx) return;
-          const meeting = await moveMeetingTo(projectPath, index, moveTarget(to), ctx.paths, moveUi);
+          const stored = findCachedItem(projectPath)?.meetings[index];
+          if (!stored) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
+          const meeting = await moveMeeting({kind: 'project', path: projectPath}, index, stored, moveTarget(to), moveUi);
           if (!meeting) return; // cancelled in the note confirm
           await updatePlan(p => withMovedItem(p, {kind: 'meeting', label: `${meeting.date} ${meeting.title}`, to: to === 'area' && ctx.item.area ? `area:${ctx.item.area}` : 'inbox'}));
         }),

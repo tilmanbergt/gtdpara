@@ -63,9 +63,8 @@
  * screens/ReviewScreen.tsx's handleInboxTaskDone/etc. already use against
  * `inbox` state, just without those two screens' extra "which surface does
  * this row actually belong to" branching, since every row here is always an
- * Inbox row. Filing (storage/inboxFiling.ts's fileInboxTask/fileInboxMeeting)
- * is reused as-is - same calls ReviewScreen's Inbox-to-zero step already
- * uses.
+ * Inbox row. Filing and quick-file go through storage/entryMove.ts's
+ * moveTask/moveMeeting, like every other move.
  *
  * Linked file / filing / one arm target (technical-design-linked-files.md
  * §8; docs/dev/technical-design-filing-unification.md §3): the exact same lift
@@ -138,15 +137,9 @@ import {TagRule} from '../domain/tagRules';
 import {ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {findCachedItem, getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
-import {
-  appendMeetingToTarget,
-  appendTaskToTarget,
-  fileInboxMeeting,
-  fileInboxTask,
-  InboxFilingTarget,
-  resolveFilingPick,
-} from '../storage/inboxFiling';
-import {moveEntryWithNote} from '../storage/entryMove';
+import {InboxFilingTarget, resolveFilingPick} from '../storage/inboxFiling';
+import {EntrySource, itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
+import {addMeetingToDestination, addTaskToDestination} from '../storage/itemMutations';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
@@ -221,6 +214,8 @@ type EditTarget = {type: 'task' | 'meeting'; index: number};
 
 /** The one arm target for this whole screen - extends EditTarget with which action armed it (docs/dev/technical-design-filing-unification.md §3.2). */
 type ArmTarget = {type: 'task' | 'meeting'; index: number; intent: 'link' | 'file'};
+
+const inboxSource = (inboxPath: string): EntrySource => ({kind: 'inbox', path: inboxPath});
 
 export default function InboxScreen({
   onOpenCalendarSettings,
@@ -463,11 +458,9 @@ export default function InboxScreen({
 
   const handleFileTask = (taskIndex: number, target: InboxFilingTarget) => {
     runTaskAction(async () => {
-      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-      const result = await fileInboxTask(inbox, inboxPath, taskIndex, target, moveUi);
-      if (!result) return; // cancelled in the note confirm
-      setCachedInbox({...inbox, rawContent: result.inboxRawContent, tasks: result.inboxTasks});
-      log('InboxScreen: filed task', taskIndex, '->', target.path);
+      const task = inbox?.tasks[taskIndex];
+      if (!task || !inboxPath) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
+      await moveTask(inboxSource(inboxPath), taskIndex, task, itemTarget(target), moveUi);
     });
   };
 
@@ -480,7 +473,7 @@ export default function InboxScreen({
       // Abbreviation quick-file recognized a #tag while composing on the
       // Inbox tab (feature_abbrev_quick_file, 2026-09-17) - create it
       // straight in the named Project/Area instead of Inbox.
-      await appendTaskToTarget(destination, newTask);
+      await addTaskToDestination(newTask, destination, {inbox: null, inboxPath: null});
       log('InboxScreen: added task directly to', destination.path);
     }
   };
@@ -532,34 +525,11 @@ export default function InboxScreen({
   };
 
   /**
-   * QuickAddWidget's onQuickFile in edit mode (feature_abbrev_quick_file,
-   * 2026-09-17, 2026-09-18 bugfix) - the abbreviation quick-file affordance
-   * moving the item being edited straight to the recognized Project/Area,
-   * bypassing the Browse picker (armFileTarget/handleFileTask|Meeting)
-   * entirely. `payload` is the widget's fully-composed, tag-stripped current
-   * edit-session text/fields (mirroring commitTaskEdit/commitMeetingEdit's
-   * own nextText/fields) - this is "Save, but file elsewhere", not a plain
-   * move of the last-saved copy, so any other edit made during this session
-   * (including the abbreviation tag itself) rides along instead of being
-   * silently discarded (2026-09-18: the original version only took `target`
-   * and re-read the stale stored task/meeting here via fileInboxTask/
-   * fileInboxMeeting, which is also why the tag never actually disappeared).
-   * Builds the updated object the same way commitTaskEdit/commitMeetingEdit
-   * do (spread the stored item first so done/cancelled/notePath
-   * survive, then overlay the edited fields), appends that to
-   * the target directly via appendTaskToTarget/appendMeetingToTarget (not
-   * fileInboxTask/fileInboxMeeting - those re-read inbox.tasks[index]
-   * themselves, exactly the stale copy this is avoiding), then removes the
-   * original from the Inbox via the same saveInboxTasks/saveInboxMeetings
-   * every other Inbox mutation here uses - target-first, source-removal-
-   * second, same order fileInboxTask/fileInboxMeeting themselves use, so a
-   * crash in between leaves the item duplicated rather than lost.
-   * Deliberately doesn't go through runWidgetAction (which swallows errors
-   * internally) - onQuickFile's contract needs a real rejecting Promise so
-   * QuickAddWidget's own handleQuickFile can show the failure inline (same
-   * reasoning feature_standalone_note_quickadd.md documents for why
-   * handleAddNote avoids runWidgetAction). Closes edit mode
-   * (cancelEditTarget) only after the move actually succeeds.
+   * QuickAddWidget's onQuickFile in edit mode: "save, but file elsewhere".
+   * `payload` is the widget's current edit-session text/fields with the
+   * abbreviation tag stripped, so other edits made in this session move
+   * along. Throws instead of using runWidgetAction, so the widget can show
+   * the failure inline; closes edit mode only after the move succeeded.
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (!editTarget) return;
@@ -569,19 +539,13 @@ export default function InboxScreen({
       const stored = inbox.tasks[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: inboxPath, target}, moveUi, async entry => {
-        await appendTaskToTarget(target, entry);
-        await saveInboxTasks(tasks => tasks.filter((_, i) => i !== index));
-      });
+      const moved = await moveTask(inboxSource(inboxPath), index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = inbox.meetings[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
       const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: inboxPath, target}, moveUi, async entry => {
-        await appendMeetingToTarget(target, entry);
-        await saveInboxMeetings(meetings => meetings.filter((_, i) => i !== index));
-      });
+      const moved = await moveMeeting(inboxSource(inboxPath), index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else {
       return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
@@ -626,11 +590,9 @@ export default function InboxScreen({
 
   const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
     runMeetingAction(async () => {
-      if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-      const result = await fileInboxMeeting(inbox, inboxPath, meetingIndex, target, moveUi);
-      if (!result) return; // cancelled in the note confirm
-      setCachedInbox({...inbox, rawContent: result.inboxRawContent, meetings: result.inboxMeetings});
-      log('InboxScreen: filed meeting', meetingIndex, '->', target.path);
+      const meeting = inbox?.meetings[meetingIndex];
+      if (!meeting || !inboxPath) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
+      await moveMeeting(inboxSource(inboxPath), meetingIndex, meeting, itemTarget(target), moveUi);
     });
   };
 
@@ -643,7 +605,7 @@ export default function InboxScreen({
       // Abbreviation quick-file recognized a #tag while composing on the
       // Inbox tab (feature_abbrev_quick_file, 2026-09-17) - create it
       // straight in the named Project/Area instead of Inbox.
-      await appendMeetingToTarget(destination, newMeeting);
+      await addMeetingToDestination(newMeeting, destination, {inbox: null, inboxPath: null});
       log('InboxScreen: added meeting directly to', destination.path);
     }
   };
