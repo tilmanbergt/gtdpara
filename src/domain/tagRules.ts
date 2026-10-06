@@ -11,14 +11,14 @@
  *
  * Phase 1 (technical-design-note-templates.md §7): this module, plus the
  * `GtdParaSettings` fields that hold the catalog, plus the Settings UI that
- * edits it - inert, nothing yet read `noteCreationDefinitions` at
+ * edits it - inert, nothing yet read `tagRules` at
  * note-creation time.
  *
  * Phase 2 (2026-09-18, §4/§5/§7): `renderPieceText` below + `resolveNoteTemplate`
  * are now wired into meeting-note creation via
- * storage/meetingNoteContent.ts's refreshMeetingNoteBlock. `createDefaultMeetingDefinition`/
- * `migrateNoteTemplateDefaults` are the Phase 2 migration (§7): the first
- * time settings load with an empty `noteCreationDefinitions` list, one
+ * storage/meetingNoteContent.ts's refreshMeetingNoteBlock. `createDefaultMeetingRule`/
+ * `migrateTagRuleDefaults` are the Phase 2 migration (§7): the first
+ * time settings load with an empty `tagRules` list, one
  * "Meeting (default)" definition is seeded so meeting notes keep getting
  * title+date+related content out of the box, same as before this feature
  * existed, just now as real, editable definition data instead of hardcoded
@@ -26,7 +26,7 @@
  *
  * Phase 3 (2026-09-18, same day - Todo notes, the feature's last piece for
  * now): the same `resolveNoteTemplate`/`renderPieceText`/
- * `populateNoteFromDefinition` machinery is now wired into Todo-note
+ * `populateNoteFromRule` machinery is now wired into Todo-note
  * creation too, via storage/meetingNoteContent.ts's new
  * `refreshTodoNoteBlock` - no new domain functions needed there, since
  * `PieceRenderContext`/`renderPieceText` were already context-agnostic
@@ -35,7 +35,7 @@
  * `isTodoAutoUpdateFrozen` below (the Todo counterpart to domain/
  * meetingTime.ts's `isMeetingAutoUpdateFrozen`) and removes the legacy
  * global `meetingNoteTemplate` setting entirely (see domain/settings.ts) -
- * `createDefaultMeetingDefinition` no longer takes a `template` param as a
+ * `createDefaultMeetingRule` no longer takes a `template` param as a
  * result. No auto-seeded default Todo definition is added (unlike Meeting's
  * migration) - Todos have no legacy single-template setting to carry
  * forward, so the list simply starts empty for that context, same as
@@ -65,7 +65,7 @@
 import {formatDayHeader, formatTime} from './dateFormat';
 // Type-only import (erased at compile time, so this doesn't create a real
 // runtime circular dependency even though domain/settings.ts imports
-// NoteCreationDefinition back from this file) - migrateNoteTemplateDefaults
+// TagRule back from this file) - migrateTagRuleDefaults
 // below is the one function here that needs the whole settings shape.
 import type {GtdParaSettings} from './settings';
 import type {Task} from './types';
@@ -140,7 +140,7 @@ export interface NoteTextItem {
   text: string;
 }
 
-export interface NoteCreationDefinition {
+export interface TagRule {
   id: string;
   name: string;
   context: NoteContext;
@@ -151,7 +151,7 @@ export interface NoteCreationDefinition {
   /** '' = blank (style_white); else a MYSTYLE_FOLDER filename, same convention storage/noteLinks.ts's getNoteTemplate already uses. */
   template: string;
   pieces: NotePiece[];
-  /** This rule's own reusable static texts (see NoteTextItem). Optional so rules saved before this existed need no migration (absent === none) - read through `definitionTexts`. */
+  /** This rule's own reusable static texts (see NoteTextItem). Optional so rules saved before this existed need no migration (absent === none) - read through `ruleTexts`. */
   texts?: NoteTextItem[];
   /**
    * Meeting context only (docs/dev/technical-design-meeting-tracking.md): meetings
@@ -200,9 +200,9 @@ export const DEFAULT_PIECE_TYPES: Record<NoteContext, PieceType[]> = {
   area: ['title'],
 };
 
-/** Adds `DEFAULT_PIECE_TYPES[definition.context]` to `definition`, stacked via addPieceToDefinition's own seed logic. */
-export function withDefaultPieces(definition: NoteCreationDefinition): NoteCreationDefinition {
-  return DEFAULT_PIECE_TYPES[definition.context].reduce((def, type) => addPieceToDefinition(def, type), definition);
+/** Adds `DEFAULT_PIECE_TYPES[definition.context]` to `definition`, stacked via addPieceToRule's own seed logic. */
+export function withDefaultPieces(definition: TagRule): TagRule {
+  return DEFAULT_PIECE_TYPES[definition.context].reduce((def, type) => addPieceToRule(def, type), definition);
 }
 
 /**
@@ -212,7 +212,7 @@ export function withDefaultPieces(definition: NoteCreationDefinition): NoteCreat
  * re-seed the defaults for the new context, or must leave the user's own
  * edits alone.
  */
-export function hasUntouchedDefaultPieces(definition: NoteCreationDefinition): boolean {
+export function hasUntouchedDefaultPieces(definition: TagRule): boolean {
   const seeded = withDefaultPieces({...definition, pieces: []}).pieces;
   if (seeded.length !== definition.pieces.length) return false;
   return seeded.every((p, i) => {
@@ -281,7 +281,7 @@ export function nextPieceSeedPosition(pieces: NotePiece[]): {x: number; y: numbe
   return {x: lowest.x, y: lowest.y + stackGap};
 }
 
-export function createEmptyDefinition(id: string, context: NoteContext): NoteCreationDefinition {
+export function createEmptyTagRule(id: string, context: NoteContext): TagRule {
   return {
     id,
     name: '',
@@ -298,27 +298,27 @@ export function createEmptyDefinition(id: string, context: NoteContext): NoteCre
 }
 
 /** `definition.noteTarget`, defaulting a pre-existing (un-migrated) rule to 'own' - the one place this optional field is read, so no call site compares it to `undefined` directly. */
-export function effectiveNoteTarget(definition: Pick<NoteCreationDefinition, 'noteTarget'>): NoteTarget {
+export function effectiveNoteTarget(definition: Pick<TagRule, 'noteTarget'>): NoteTarget {
   return definition.noteTarget ?? 'own';
 }
 
 /** The shared file's base name (no folder, no ".note" extension) - the rule's own `sharedFileName` when set, else its `name` (Tilman, 2026-09-21: "File name: ... default = rule name"). Only meaningful when `effectiveNoteTarget(definition) === 'shared'`. */
-export function resolvedSharedFileName(definition: Pick<NoteCreationDefinition, 'name' | 'sharedFileName'>): string {
+export function resolvedSharedFileName(definition: Pick<TagRule, 'name' | 'sharedFileName'>): string {
   const explicit = definition.sharedFileName?.trim();
   return explicit ? explicit : definition.name;
 }
 
 /** `definition.sharedFileFolder`, defaulting to 'subfolder' (today's Meetings/Todos location) when unset. */
-export function resolvedSharedFileFolder(definition: Pick<NoteCreationDefinition, 'sharedFileFolder'>): SharedNoteFolder {
+export function resolvedSharedFileFolder(definition: Pick<TagRule, 'sharedFileFolder'>): SharedNoteFolder {
   return definition.sharedFileFolder ?? 'subfolder';
 }
 
-export function addPieceToDefinition(
-  definition: NoteCreationDefinition,
+export function addPieceToRule(
+  definition: TagRule,
   type: PieceType,
   text?: string,
   textId?: string,
-): NoteCreationDefinition {
+): TagRule {
   const {x, y} = nextPieceSeedPosition(definition.pieces);
   const piece: NotePiece = {
     type,
@@ -332,31 +332,31 @@ export function addPieceToDefinition(
   return {...definition, pieces: [...definition.pieces, piece]};
 }
 
-export function removePieceFromDefinition(definition: NoteCreationDefinition, index: number): NoteCreationDefinition {
+export function removePieceFromRule(definition: TagRule, index: number): TagRule {
   return {...definition, pieces: definition.pieces.filter((_, i) => i !== index)};
 }
 
 /** Moves a piece by `dx`/`dy` (device px - typically ±5 or ±25, the two nudge steps from the UI draft), clamped so it can't be nudged off the top/left of the page. */
-export function nudgePieceAt(definition: NoteCreationDefinition, index: number, dx: number, dy: number): NoteCreationDefinition {
+export function nudgePieceAt(definition: TagRule, index: number, dx: number, dy: number): TagRule {
   const pieces = definition.pieces.map((p, i) =>
     i === index ? {...p, x: Math.max(0, p.x + dx), y: Math.max(0, p.y + dy)} : p,
   );
   return {...definition, pieces};
 }
 
-export function setPieceFontSize(definition: NoteCreationDefinition, index: number, fontSize: number): NoteCreationDefinition {
+export function setPieceFontSize(definition: TagRule, index: number, fontSize: number): TagRule {
   const clamped = Math.max(8, Math.round(fontSize));
   const pieces = definition.pieces.map((p, i) => (i === index ? {...p, fontSize: clamped} : p));
   return {...definition, pieces};
 }
 
-export function setPieceStep(definition: NoteCreationDefinition, index: number, step: number): NoteCreationDefinition {
+export function setPieceStep(definition: TagRule, index: number, step: number): TagRule {
   const pieces = definition.pieces.map((p, i) => (i === index ? {...p, step} : p));
   return {...definition, pieces};
 }
 
 /** Absolute setter for a piece's max width, clamped to MIN_PIECE_MAX_WIDTH_PX - same shape as setPieceFontSize above; the ±25 buttons in ui/NudgePad.tsx call this with `pieceMaxWidthPx(piece) + delta`, same "resolve current, add delta, clamp" pattern Settings.tsx's handleFontDeltaSelectedPiece already uses for font size. No upper clamp - a cap wider than pieceWidthPx(x) is harmless (storage/notePieceMetrics.ts's measureNotePieceRect already takes the min of the two), and leaving it uncapped here means the ceiling doesn't silently change if x is nudged afterward. */
-export function setPieceMaxWidth(definition: NoteCreationDefinition, index: number, maxWidthPx: number): NoteCreationDefinition {
+export function setPieceMaxWidth(definition: TagRule, index: number, maxWidthPx: number): TagRule {
   const clamped = Math.max(MIN_PIECE_MAX_WIDTH_PX, Math.round(maxWidthPx));
   const pieces = definition.pieces.map((p, i) => (i === index ? {...p, maxWidthPx: clamped} : p));
   return {...definition, pieces};
@@ -369,26 +369,26 @@ export function setPieceMaxWidth(definition: NoteCreationDefinition, index: numb
 // instead of "+ Add". Removing a text piece only takes it out of the rule;
 // the `NoteTextItem` stays in the rule's list until explicitly deleted.
 
-export function definitionTexts(definition: NoteCreationDefinition): NoteTextItem[] {
+export function ruleTexts(definition: TagRule): NoteTextItem[] {
   return definition.texts ?? [];
 }
 
 /** Index of the (first) piece that is this placement, or -1 - `textId` only matters for type 'text'. Rules saved before the once-only model can hold duplicates of a type; this finds the first one, so "Remove" peels them off one at a time. */
-export function findPlacedPieceIndex(definition: NoteCreationDefinition, type: PieceType, textId?: string): number {
+export function findPlacedPieceIndex(definition: TagRule, type: PieceType, textId?: string): number {
   return definition.pieces.findIndex(p => p.type === type && (type !== 'text' || p.textId === textId));
 }
 
-export function isPiecePlaced(definition: NoteCreationDefinition, type: PieceType, textId?: string): boolean {
+export function isPiecePlaced(definition: TagRule, type: PieceType, textId?: string): boolean {
   return findPlacedPieceIndex(definition, type, textId) >= 0;
 }
 
 /** Removes the (first) matching placement - a no-op when there isn't one. Never touches `texts`. */
-export function removePlacedPiece(definition: NoteCreationDefinition, type: PieceType, textId?: string): NoteCreationDefinition {
+export function removePlacedPiece(definition: TagRule, type: PieceType, textId?: string): TagRule {
   const index = findPlacedPieceIndex(definition, type, textId);
-  return index < 0 ? definition : removePieceFromDefinition(definition, index);
+  return index < 0 ? definition : removePieceFromRule(definition, index);
 }
 
-/** Next free text id for this rule's own list - simple counter over the existing ids ("t1", "t2", ...), same not-a-UUID convention as `NoteCreationDefinition.id`. Ids are only meaningful inside one rule. */
+/** Next free text id for this rule's own list - simple counter over the existing ids ("t1", "t2", ...), same not-a-UUID convention as `TagRule.id`. Ids are only meaningful inside one rule. */
 export function nextTextItemId(texts: NoteTextItem[]): string {
   let max = 0;
   for (const t of texts) {
@@ -400,32 +400,32 @@ export function nextTextItemId(texts: NoteTextItem[]): string {
 
 /** Adds a text to the rule's list (NOT placed on the page - placing is a separate "+ Add"). Returns the new id alongside the updated definition so the caller can select it. */
 export function addTextItem(
-  definition: NoteCreationDefinition,
+  definition: TagRule,
   name: string,
   text: string,
-): {definition: NoteCreationDefinition; id: string} {
-  const texts = definitionTexts(definition);
+): {definition: TagRule; id: string} {
+  const texts = ruleTexts(definition);
   const id = nextTextItemId(texts);
   return {definition: {...definition, texts: [...texts, {id, name, text}]}, id};
 }
 
 /** Saves a text's new name/text AND updates the denormalized `text` on its placed piece (if any) - position, font size and step stay exactly as they were, which is the whole point of placing by reference. */
 export function updateTextItem(
-  definition: NoteCreationDefinition,
+  definition: TagRule,
   id: string,
   name: string,
   text: string,
-): NoteCreationDefinition {
-  const texts = definitionTexts(definition).map(t => (t.id === id ? {...t, name, text} : t));
+): TagRule {
+  const texts = ruleTexts(definition).map(t => (t.id === id ? {...t, name, text} : t));
   const pieces = definition.pieces.map(p => (p.type === 'text' && p.textId === id ? {...p, text} : p));
   return {...definition, texts, pieces};
 }
 
 /** Deletes a text from the rule's list and removes its placed piece too (the caller asks for confirmation first when it is placed). */
-export function removeTextItem(definition: NoteCreationDefinition, id: string): NoteCreationDefinition {
+export function removeTextItem(definition: TagRule, id: string): TagRule {
   return {
     ...definition,
-    texts: definitionTexts(definition).filter(t => t.id !== id),
+    texts: ruleTexts(definition).filter(t => t.id !== id),
     pieces: definition.pieces.filter(p => !(p.type === 'text' && p.textId === id)),
   };
 }
@@ -445,9 +445,9 @@ function legacyTextName(text: string): string {
  * from its first words, keeping its position/font. Returns the SAME object
  * when there is nothing to migrate, so a caller can cheaply tell.
  */
-export function migrateLegacyTextPieces(definition: NoteCreationDefinition): NoteCreationDefinition {
+export function migrateLegacyTextPieces(definition: TagRule): TagRule {
   if (!definition.pieces.some(p => p.type === 'text' && !p.textId)) return definition;
-  const texts = [...definitionTexts(definition)];
+  const texts = [...ruleTexts(definition)];
   const pieces = definition.pieces.map(p => {
     if (p.type !== 'text' || p.textId) return p;
     const text = p.text ?? '';
@@ -483,8 +483,8 @@ export function migrateLegacyTextPieces(definition: NoteCreationDefinition): Not
 export function resolveNoteTemplate(
   context: NoteContext,
   tags: string[],
-  definitions: NoteCreationDefinition[],
-): NoteCreationDefinition | null {
+  definitions: TagRule[],
+): TagRule | null {
   const inContext = definitions.filter(d => d.enabled && d.context === context);
   const tagsLower = tags.map(t => t.toLowerCase());
   for (const d of inContext) {
@@ -562,7 +562,7 @@ export function linkPieceText(fileName: string): string {
  * already happened before this is called, building `ctx`. Returns `''` for
  * a piece with nothing to show (an unset `time`, a `related` piece with no
  * matches) rather than a placeholder - the caller (storage/
- * meetingNoteContent.ts's populateNoteFromDefinition) skips creating an
+ * meetingNoteContent.ts's populateNoteFromRule) skips creating an
  * element at all for an empty piece, the "omit rather than show empty" convention.
  */
 export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): string {
@@ -592,7 +592,7 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
  * 2026-09-18: title + date + related-items, at the standard 100/100 seed -
  * NOT today's meetingNoteBlockTopX/Y (60/60), a deliberate, confirmed
  * choice, see technical-design-note-templates.md §7). Built via
- * addPieceToDefinition so the three pieces stack automatically using its
+ * addPieceToRule so the three pieces stack automatically using its
  * own nextPieceSeedPosition logic, rather than hand-computing their x/y
  * here. `template` starts blank (2026-09-18, Phase 3: this used to carry
  * forward whatever the now-retired `GtdParaSettings.meetingNoteTemplate`
@@ -601,19 +601,19 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
  * a fresh migration just gets a blank background, same as any other new
  * definition, editable in the Settings UI same as always).
  */
-export function createDefaultMeetingDefinition(id: string): NoteCreationDefinition {
+export function createDefaultMeetingRule(id: string): TagRule {
   // 2026-09-25 (docs/dev/technical-design-linked-file-piece.md §4.1): the standard
   // Meeting defaults (Title, Date, Time, Linked file) plus Related items at the
   // bottom, so this seeded rule keeps the related-todos content it always had.
-  let def = createEmptyDefinition(id, 'meeting');
+  let def = createEmptyTagRule(id, 'meeting');
   def = {...def, name: 'Meeting (default)', isDefault: true};
   def = withDefaultPieces(def);
-  def = addPieceToDefinition(def, 'related');
+  def = addPieceToRule(def, 'related');
   return def;
 }
 
 /**
- * Ensures `settings.noteCreationDefinitions` has at least the one seeded
+ * Ensures `settings.tagRules` has at least the one seeded
  * default (§7's Phase 2 migration) - a no-op (returns the SAME object
  * reference) once it's non-empty, so a caller can cheaply tell "did this
  * actually seed anything" via `result !== settings` and only persist when
@@ -642,13 +642,13 @@ export function isTodoAutoUpdateFrozen(task: Pick<Task, 'done' | 'cancelled'>): 
   return task.done || task.cancelled;
 }
 
-export function migrateNoteTemplateDefaults(settings: GtdParaSettings): GtdParaSettings {
-  if (settings.noteCreationDefinitions.length > 0) return settings;
-  const id = String(settings.nextNoteDefinitionId);
-  const definition = createDefaultMeetingDefinition(id);
+export function migrateTagRuleDefaults(settings: GtdParaSettings): GtdParaSettings {
+  if (settings.tagRules.length > 0) return settings;
+  const id = String(settings.nextTagRuleId);
+  const definition = createDefaultMeetingRule(id);
   return {
     ...settings,
-    noteCreationDefinitions: [definition],
-    nextNoteDefinitionId: settings.nextNoteDefinitionId + 1,
+    tagRules: [definition],
+    nextTagRuleId: settings.nextTagRuleId + 1,
   };
 }

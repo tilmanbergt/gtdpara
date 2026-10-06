@@ -59,13 +59,13 @@
  * a definition is now "what happens to items with these tags in this
  * context" - its note template plus, for meetings, whether prep and review
  * are tracked. The tab key, `templatesView` state, and the
- * `noteCreationDefinitions` settings key keep their old names on purpose -
+ * `tagRules` settings key keep their old names on purpose -
  * a UI relabel only, so no stored data or call site changed with it.
  *
  * "Templates" tab (docs/dev/technical-design-note-templates.md, Phase 1,
  * 2026-09-18; wired into Meeting-note creation in Phase 2, into Todo-note
  * creation in Phase 3, same day): a list + create/edit UI for
- * `values.noteCreationDefinitions` - same shared-draft-state/single-Save-
+ * `values.tagRules` - same shared-draft-state/single-Save-
  * button pattern as every other tab here, so a definition change is just
  * another edit to `values` until Save is pressed (this tab's own Save/
  * Delete are the one exception - see this file's "self-persist" note
@@ -243,10 +243,10 @@ import {formatDayHeader} from '../domain/dateFormat';
 import {todayIso} from '../domain/meetingTime';
 import {trackingSummary} from '../domain/meetingTracking';
 import {
-  addPieceToDefinition,
+  addPieceToRule,
   addTextItem,
-  createEmptyDefinition,
-  definitionTexts,
+  createEmptyTagRule,
+  ruleTexts,
   effectiveNoteTarget,
   findPlacedPieceIndex,
   hasUntouchedDefaultPieces,
@@ -254,7 +254,7 @@ import {
   linkPieceText,
   migrateLegacyTextPieces,
   NoteContext,
-  NoteCreationDefinition,
+  TagRule,
   NOTE_PAGE_HEIGHT_PX,
   NOTE_PAGE_WIDTH_PX,
   NotePiece,
@@ -264,7 +264,7 @@ import {
   PIECE_CONTEXTS,
   pieceMaxWidthPx,
   PieceType,
-  removePieceFromDefinition,
+  removePieceFromRule,
   removePlacedPiece,
   removeTextItem,
   resolvedSharedFileFolder,
@@ -275,7 +275,7 @@ import {
   SharedNoteFolder,
   updateTextItem,
   withDefaultPieces,
-} from '../domain/noteTemplate';
+} from '../domain/tagRules';
 import {DEFAULT_SETTINGS, GtdParaSettings, resolvePaths} from '../domain/settings';
 import {renderSharedFileName, SHARED_FILE_NAME_PLACEHOLDERS} from '../domain/sharedNotePages';
 import {MEETINGS_SUBFOLDER, sanitizeFileNameComponent, TODOS_SUBFOLDER} from '../storage/noteLinks';
@@ -320,7 +320,7 @@ const SETTINGS_TABS: MiniTabDef<SettingsTab>[] = [
   {key: 'about', label: 'About'},
 ];
 
-/** The four note contexts a definition can target - same set domain/noteTemplate.ts's PIECE_CONTEXTS is keyed against. */
+/** The four note contexts a definition can target - same set domain/tagRules.ts's PIECE_CONTEXTS is keyed against. */
 const CONTEXT_TABS: MiniTabDef<NoteContext>[] = [
   {key: 'project', label: 'Project'},
   {key: 'area', label: 'Area'},
@@ -344,7 +344,7 @@ const SHARED_FOLDER_TABS: MiniTabDef<SharedNoteFolder>[] = [
 const TEMPLATE_DEF_ROW_HEIGHT = 64;
 
 interface TemplateDefRow {
-  def: NoteCreationDefinition;
+  def: TagRule;
   index: number;
 }
 
@@ -369,7 +369,7 @@ const PREDEFINED_PIECE_TYPES: PieceType[] = ['title', 'date', 'time', 'related',
 
 /**
  * Explanation + example for a predefined piece's right-hand panel. The
- * examples mirror what domain/noteTemplate.ts's `renderPieceText` really
+ * examples mirror what domain/tagRules.ts's `renderPieceText` really
  * produces (the date example even runs the real `formatDayHeader`), so this
  * can't drift into promising a format the note won't have. Options (e.g. a
  * date format) would slot in below the example later - they would belong to
@@ -416,11 +416,11 @@ function predefinedPieceInfo(type: PieceType, context: NoteContext): {descriptio
 }
 
 /** The Add-piece page's left list: the predefined pieces that apply to the rule's context, then the rule's own texts. */
-function buildAddPieceRows(def: NoteCreationDefinition): AddPieceRow[] {
+function buildAddPieceRows(def: TagRule): AddPieceRow[] {
   const types: AddPieceRow[] = PREDEFINED_PIECE_TYPES.filter(t => PIECE_CONTEXTS[t].includes(def.context)).map(
     type => ({kind: 'type', type}),
   );
-  const texts: AddPieceRow[] = definitionTexts(def).map(item => ({kind: 'text', item}));
+  const texts: AddPieceRow[] = ruleTexts(def).map(item => ({kind: 'text', item}));
   return [...types, ...texts];
 }
 
@@ -616,16 +616,16 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   // "Edit form is three pages" note): 'list', the two-column 'edit' form,
   // and the two full-page pickers it delegates to, 'edit-template' and
   // 'edit-piece'. The definition being edited is held as its own draft
-  // (`draftDef`), separate from `values.noteCreationDefinitions`, so
+  // (`draftDef`), separate from `values.tagRules`, so
   // Cancel can discard in-progress edits without touching the
   // saved-in-`values` list; `editingDefIndex` is null while creating a new
   // definition (not yet in the list) and the index being edited otherwise.
   // `draftTagsText` is edited as free text (same "don't fight the input"
   // reasoning as the number fields above) and parsed to
-  // `NoteCreationDefinition.tags` only on save.
+  // `TagRule.tags` only on save.
   const [templatesView, setTemplatesView] = useState<'list' | 'edit' | 'edit-template' | 'edit-piece'>('list');
   const [editingDefIndex, setEditingDefIndex] = useState<number | null>(null);
-  const [draftDef, setDraftDef] = useState<NoteCreationDefinition | null>(null);
+  const [draftDef, setDraftDef] = useState<TagRule | null>(null);
   /** The "Shared file name" field - its placeholder chips insert at its cursor (docs/dev/technical-design-split-by-tag.md §3.6). */
   const sharedFileNameInputRef = useRef<ClipboardTextInputHandle>(null);
   const [draftTagsText, setDraftTagsText] = useState('');
@@ -649,8 +649,8 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   // re-attempts a load rather than staying stuck on a stale failure, with
   // no separate reset effect needed.
   const [templatePreviewFailedFor, setTemplatePreviewFailedFor] = useState<string | null>(null);
-  // Surfaces a failed persistDefinitions() write (create/save/delete on this
-  // tab now persist immediately - see persistDefinitions's own doc comment)
+  // Surfaces a failed persistTagRules() write (create/save/delete on this
+  // tab now persist immediately - see persistTagRules's own doc comment)
   // inline within the Templates tab itself, since the global saveError text
   // it would otherwise have shared sits in the global footer, which this
   // tab no longer renders (see the footer's own `activeTab !== 'templates'`
@@ -770,7 +770,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   const handleAddDefinition = () => {
     // New rules start with the context's default pieces, stacked (docs/
     // technical-design-linked-file-piece.md §4.1).
-    setDraftDef(withDefaultPieces(createEmptyDefinition(String(values.nextNoteDefinitionId), 'meeting')));
+    setDraftDef(withDefaultPieces(createEmptyTagRule(String(values.nextTagRuleId), 'meeting')));
     setEditingDefIndex(null);
     setDraftTagsText('');
     setSelectedPieceIndex(null);
@@ -781,7 +781,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     // Rules saved before rule-owned texts existed: each of their inline text
     // pieces becomes a named text of this rule (no-op otherwise - see
     // migrateLegacyTextPieces). Only lands in `values` if the rule is saved.
-    const def = migrateLegacyTextPieces(values.noteCreationDefinitions[index]);
+    const def = migrateLegacyTextPieces(values.tagRules[index]);
     setDraftDef(def);
     setEditingDefIndex(index);
     // '#'-prefixed, space-separated - matches both the list view's own
@@ -829,7 +829,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   };
 
   /**
-   * Writes a new `noteCreationDefinitions` list straight to disk - used by
+   * Writes a new `tagRules` list straight to disk - used by
    * both handleSaveDefinitionDraft and handleDeleteDefinition below now that
    * the Templates tab's own Save/Cancel/Delete persist immediately rather
    * than waiting for this screen's global Save button (2026-09-18, Tilman:
@@ -846,19 +846,19 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
    * isolated: Templates definitions save themselves immediately, everything
    * else still only saves on this screen's own global Save tap.
    */
-  const persistDefinitions = async (
-    noteCreationDefinitions: NoteCreationDefinition[],
-    nextNoteDefinitionId?: number,
+  const persistTagRules = async (
+    tagRules: TagRule[],
+    nextTagRuleId?: number,
   ): Promise<void> => {
     const onDisk = await loadSettings();
     await saveSettings({
       ...onDisk,
-      noteCreationDefinitions,
-      ...(nextNoteDefinitionId !== undefined ? {nextNoteDefinitionId} : {}),
+      tagRules,
+      ...(nextTagRuleId !== undefined ? {nextTagRuleId} : {}),
     });
   };
 
-  /** Parses the free-text tags field (space-separated, not comma - Tilman, 2026-09-18) back into `NoteCreationDefinition.tags` and writes the draft into `values`, then persists immediately (see persistDefinitions above) - Templates definitions no longer wait for this screen's global Save button. These tags are OR'd by domain/noteTemplate.ts's resolveNoteTemplate - a note matches this definition if it carries ANY one of them, not all at once. Lowercased here (2026-09-18, Tilman: "tags should be normalized to small in the config") so the config's own stored tags are always lowercase regardless of how the user typed them - resolveNoteTemplate additionally matches case-insensitively on top of this, so a note's own mixed-case tags still match either way. */
+  /** Parses the free-text tags field (space-separated, not comma - Tilman, 2026-09-18) back into `TagRule.tags` and writes the draft into `values`, then persists immediately (see persistTagRules above) - Templates definitions no longer wait for this screen's global Save button. These tags are OR'd by domain/tagRules.ts's resolveNoteTemplate - a note matches this definition if it carries ANY one of them, not all at once. Lowercased here (2026-09-18, Tilman: "tags should be normalized to small in the config") so the config's own stored tags are always lowercase regardless of how the user typed them - resolveNoteTemplate additionally matches case-insensitively on top of this, so a note's own mixed-case tags still match either way. */
   const handleSaveDefinitionDraft = async () => {
     if (!draftDef) return;
     const tags = draftTagsText
@@ -867,16 +867,16 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
       .split(/\s+/)
       .map(t => t.replace(/^#/, ''))
       .filter(Boolean);
-    const finalDef: NoteCreationDefinition = {...draftDef, name: draftDef.name.trim() || 'Untitled', tags};
-    const list = [...values.noteCreationDefinitions];
-    let nextNoteDefinitionId = values.nextNoteDefinitionId;
+    const finalDef: TagRule = {...draftDef, name: draftDef.name.trim() || 'Untitled', tags};
+    const list = [...values.tagRules];
+    let nextTagRuleId = values.nextTagRuleId;
     if (editingDefIndex === null) {
       list.push(finalDef);
-      nextNoteDefinitionId = values.nextNoteDefinitionId + 1;
-      setValues(prev => ({...prev, noteCreationDefinitions: list, nextNoteDefinitionId}));
+      nextTagRuleId = values.nextTagRuleId + 1;
+      setValues(prev => ({...prev, tagRules: list, nextTagRuleId}));
     } else {
       list[editingDefIndex] = finalDef;
-      setValues(prev => ({...prev, noteCreationDefinitions: list}));
+      setValues(prev => ({...prev, tagRules: list}));
     }
     setDraftDef(null);
     setEditingDefIndex(null);
@@ -884,7 +884,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     setTemplatesView('list');
     setTemplatesSaveError(null);
     try {
-      await persistDefinitions(list, editingDefIndex === null ? nextNoteDefinitionId : undefined);
+      await persistTagRules(list, editingDefIndex === null ? nextTagRuleId : undefined);
     } catch (e) {
       setTemplatesSaveError(errorMessage(e));
     }
@@ -892,20 +892,20 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
 
   /** Immediate, no arm/confirm second tap - matches `ui/QuickAddWidget.tsx`'s own Delete button (see the module doc comment); nothing else in the Templates tab uses a confirm step either. Persists immediately too, same as handleSaveDefinitionDraft above - there's no separate Save step for a delete from the list view to wait for. */
   const handleDeleteDefinition = async (index: number) => {
-    const list = values.noteCreationDefinitions.filter((_, i) => i !== index);
+    const list = values.tagRules.filter((_, i) => i !== index);
     setValues(prev => ({
       ...prev,
-      noteCreationDefinitions: list,
+      tagRules: list,
     }));
     setTemplatesSaveError(null);
     try {
-      await persistDefinitions(list);
+      await persistTagRules(list);
     } catch (e) {
       setTemplatesSaveError(errorMessage(e));
     }
   };
 
-  const updateDraftDef = (patch: Partial<NoteCreationDefinition>) => {
+  const updateDraftDef = (patch: Partial<TagRule>) => {
     setDraftDef(prev => (prev ? {...prev, ...patch} : prev));
   };
 
@@ -950,8 +950,8 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
         type === 'text' ? `Removed “${label}” from the rule - the text stays in the list.` : `Removed ${label} from the rule.`,
       );
     } else {
-      const body = type === 'text' ? definitionTexts(draftDef).find(t => t.id === textId)?.text ?? '' : undefined;
-      const updated = addPieceToDefinition(draftDef, type, body, type === 'text' ? textId : undefined);
+      const body = type === 'text' ? ruleTexts(draftDef).find(t => t.id === textId)?.text ?? '' : undefined;
+      const updated = addPieceToRule(draftDef, type, body, type === 'text' ? textId : undefined);
       setDraftDef(updated);
       setSelectedPieceIndex(updated.pieces.length - 1);
       setAddNotice(`Added ${type === 'text' ? `“${label}”` : label} to the rule.`);
@@ -960,7 +960,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
 
   /** Row label for a text id in the current draft ('Text' if it can't be found - shouldn't happen). */
   const textLabel = (textId?: string): string =>
-    (draftDef && definitionTexts(draftDef).find(t => t.id === textId)?.name) || 'Text';
+    (draftDef && ruleTexts(draftDef).find(t => t.id === textId)?.name) || 'Text';
 
   /** Create (new) or Save (existing). Saving an existing text also updates its placed piece in place - position and font stay (updateTextItem). */
   const handleSaveText = () => {
@@ -1015,7 +1015,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
 
   const handleRemovePiece = (index: number) => {
     if (!draftDef) return;
-    setDraftDef(removePieceFromDefinition(draftDef, index));
+    setDraftDef(removePieceFromRule(draftDef, index));
     setSelectedPieceIndex(prev => (prev === index ? null : prev !== null && prev > index ? prev - 1 : prev));
   };
 
@@ -1470,9 +1470,9 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
           </Pressable>
           <PagedSection<TemplateDefRow>
             header="Tag rules"
-            rows={values.noteCreationDefinitions.map((def, index) => ({def, index}))}
+            rows={values.tagRules.map((def, index) => ({def, index}))}
             rowHeight={() => TEMPLATE_DEF_ROW_HEIGHT}
-            resetKey={values.noteCreationDefinitions.length}
+            resetKey={values.tagRules.length}
             emptyHint="None yet — notes keep getting a blank background and no auto-inserted content, same as today."
             renderRow={({def, index}) => (
               <View key={def.id} style={[styles.defRow, {borderColor}]}>
@@ -2065,7 +2065,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
             save/cancel buttons and use should not need to tap two. So
             restrict these to the other settings pages") - the Templates tab
             has its own Save/Cancel (in the 'edit' form) and persists
-            create/edit/delete immediately (persistDefinitions above), so
+            create/edit/delete immediately (persistTagRules above), so
             this global pair would be a redundant, no-op second tap there.
             Folders/Focus/Calendar/Meeting Note are untouched - they
             still only persist on this Save tap, same as always. */}
@@ -2093,7 +2093,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
  * (docs/dev/technical-design-split-by-tag.md §3.6) - same rendering and
  * sanitizing as storage/meetingNoteContent.ts's real file name.
  */
-function sharedFilePreview(definition: NoteCreationDefinition): string {
+function sharedFilePreview(definition: TagRule): string {
   const name = sanitizeFileNameComponent(
     renderSharedFileName({
       template: resolvedSharedFileName(definition),

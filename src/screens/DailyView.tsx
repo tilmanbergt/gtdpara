@@ -1106,7 +1106,7 @@ export default function DailyView({
   // MeetingTrackingConfig), so height/lines always agree with the icon the
   // row renders.
   const trackingFor = (entry: DailyMeetingEntry): MeetingTrackingConfig => ({
-    rules: settings?.noteCreationDefinitions ?? [],
+    rules: settings?.tagRules ?? [],
     onToggle: kind => handleToggleMeetingTracking(entry, kind),
   });
 

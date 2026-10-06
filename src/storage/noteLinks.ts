@@ -9,7 +9,7 @@
 import {RESERVED_BARE_TAGS, setFlowStateTag, stripBareTags} from '../domain/flowState';
 import {setDueTag} from '../domain/markdown';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
-import {NoteContext, resolveNoteTemplate} from '../domain/noteTemplate';
+import {NoteContext, resolveNoteTemplate} from '../domain/tagRules';
 import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaSettings} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
@@ -35,7 +35,7 @@ const BLANK_TEMPLATE_NAME = 'style_white';
 /**
  * The one remaining caller of this is `storage/standaloneNotes.ts`'s
  * `createStandaloneNote` (Project/Area standalone notes, Phase 4 - not
- * wired through `resolveNoteTemplate`/`NoteCreationDefinition` at all yet,
+ * wired through `resolveNoteTemplate`/`TagRule` at all yet,
  * so they still just get a blank note). Used to also resolve a
  * settings-backed global `meetingNoteTemplate` filename (retired 2026-09-18,
  * Phase 3, docs/dev/technical-design-note-templates.md - see domain/settings.ts's
@@ -53,13 +53,13 @@ export function getNoteTemplate(): string {
  * should use, the same way `storage/meetingNoteContent.ts` resolves that
  * note's *content*: `resolveNoteTemplate(context, tags, ...)`, using the
  * matched definition's own `template` field (`''` meaning blank/
- * `style_white`, same convention `NoteCreationDefinition.template`'s own doc
+ * `style_white`, same convention `TagRule.template`'s own doc
  * comment uses). Falls back to blank (`BLANK_TEMPLATE_NAME`) when
  * `resolveNoteTemplate` finds no matching/enabled definition for this
  * context+tags - mirrors `refreshMeetingNoteBlock`/`refreshTodoNoteBlock`
  * both simply doing nothing in that same "no definition" case on the
  * content side, so a context with zero definitions configured (every Todo
- * definition, until the user adds one - see domain/noteTemplate.ts's module
+ * definition, until the user adds one - see domain/tagRules.ts's module
  * doc comment on why none is auto-seeded there) still just gets a blank
  * note, same as before this feature existed anywhere.
  *
@@ -74,7 +74,7 @@ export function resolveNoteBackgroundTemplate(
   context: NoteContext,
   tags: string[],
 ): string {
-  const definition = resolveNoteTemplate(context, tags, settings.noteCreationDefinitions);
+  const definition = resolveNoteTemplate(context, tags, settings.tagRules);
   if (!definition) return BLANK_TEMPLATE_NAME;
   return definition.template ? `${MYSTYLE_FOLDER}/${definition.template}` : BLANK_TEMPLATE_NAME;
 }

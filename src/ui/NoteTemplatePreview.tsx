@@ -47,7 +47,7 @@ import {
   pieceMaxWidthPx,
   pieceWidthPx,
   PieceType,
-} from '../domain/noteTemplate';
+} from '../domain/tagRules';
 import {MYSTYLE_FOLDER} from '../supernote/fileSystem';
 import {COLORS, FONT} from './theme';
 
@@ -78,7 +78,7 @@ interface Props {
   pieces: NotePiece[];
   selectedIndex: number | null;
   onSelectPiece: (index: number) => void;
-  /** '' = blank/no template picked - same convention NoteCreationDefinition.template already uses; renders no <Image> at all, same as before this prop existed. */
+  /** '' = blank/no template picked - same convention TagRule.template already uses; renders no <Image> at all, same as before this prop existed. */
   background: string;
   textColor: string;
   borderColor: string;

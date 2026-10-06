@@ -5,7 +5,7 @@
  * storage/settingsStorage.ts.
  */
 import {INBOX_FILE_NAME} from './types';
-import {NoteCreationDefinition} from './noteTemplate';
+import {TagRule} from './tagRules';
 import {ReviewStepsMap} from './reviewSteps';
 
 export interface GtdParaSettings {
@@ -83,7 +83,7 @@ export interface GtdParaSettings {
   /**
    * The user-editable catalog of note creation definitions (docs/technical-
    * design-note-templates.md) - context + optional tag match + background +
-   * an ordered set of content pieces, resolved by domain/noteTemplate.ts's
+   * an ordered set of content pieces, resolved by domain/tagRules.ts's
    * resolveNoteTemplate. Plugin config, not PARA content, same reasoning as
    * every other field here. Phase 1 (2026-09-18) added this field, inert
    * until Phase 2 wired Meeting-note creation through it and Phase 3 (same
@@ -94,15 +94,15 @@ export interface GtdParaSettings {
    * global `meetingNoteTemplate` setting in Phase 3 (removed from this
    * interface) - background selection is per-definition now, not global.
    */
-  noteCreationDefinitions: NoteCreationDefinition[];
+  tagRules: TagRule[];
   /**
-   * Simple incrementing counter used as the next `NoteCreationDefinition.id`
-   * (domain/noteTemplate.ts's `createEmptyDefinition`) - chosen over a UUID
+   * Simple incrementing counter used as the next `TagRule.id`
+   * (domain/tagRules.ts's `createEmptyTagRule`) - chosen over a UUID
    * as the simpler option (Tilman, 2026-09-18: "id as counter is fine").
    * Definition export/import was flagged as a plausible future idea this
    * doesn't need to accommodate now.
    */
-  nextNoteDefinitionId: number;
+  nextTagRuleId: number;
   /**
    * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md
    * §2) - the account this plugin reads via IMAP. '' means "not configured",
@@ -194,8 +194,8 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   hideDoneInboxTasks: false,
   googleCalendarIcsUrl: '',
   focusModeActive: false,
-  noteCreationDefinitions: [],
-  nextNoteDefinitionId: 1,
+  tagRules: [],
+  nextTagRuleId: 1,
   gmailEmail: '',
   gmailAppPassword: '',
   gmailImapHost: 'imap.gmail.com',
@@ -222,6 +222,29 @@ export interface ResolvedParaPaths {
   inboxFolder: string;
   /** The untriaged-capture file, `<inboxFolder>/Inbox.txt`. */
   inbox: string;
+}
+
+/** Keys Tag Rules were stored under up to 0.8 (as "note creation definitions"). */
+const LEGACY_TAG_RULE_KEYS: Array<[legacy: string, current: 'tagRules' | 'nextTagRuleId']> = [
+  ['noteCreationDefinitions', 'tagRules'],
+  ['nextNoteDefinitionId', 'nextTagRuleId'],
+];
+
+/**
+ * A stored settings blob or profile file with the Tag Rule keys of 0.8 and
+ * earlier renamed to the current ones. A current key already present wins;
+ * the legacy key is dropped either way. Returns the same object when there is
+ * nothing to rename.
+ */
+export function renameLegacyTagRuleKeys(raw: Record<string, unknown>): Record<string, unknown> {
+  if (!LEGACY_TAG_RULE_KEYS.some(([legacy]) => legacy in raw)) return raw;
+  const next = {...raw};
+  for (const [legacy, current] of LEGACY_TAG_RULE_KEYS) {
+    if (!(legacy in next)) continue;
+    if (!(current in next)) next[current] = next[legacy];
+    delete next[legacy];
+  }
+  return next;
 }
 
 function joinPath(base: string, segment: string): string {

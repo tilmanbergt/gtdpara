@@ -283,7 +283,7 @@ export function usePlanningScreen({logTag}: Options) {
   );
 
   const trackingFor = (entry: WeeklyMeetingEntry): MeetingTrackingConfig => ({
-    rules: settings?.noteCreationDefinitions ?? [],
+    rules: settings?.tagRules ?? [],
     onToggle: kind => handleToggleMeetingTracking(entry, kind),
   });
 

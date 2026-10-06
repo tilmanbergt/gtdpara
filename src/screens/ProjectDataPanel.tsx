@@ -93,7 +93,7 @@ import {groupTasksByFlowState} from '../domain/flowState';
 import {deriveTaskFields} from '../domain/markdown';
 import {splitAndSortMeetings} from '../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
-import {NoteCreationDefinition} from '../domain/noteTemplate';
+import {TagRule} from '../domain/tagRules';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {CachedItem, ensureItemCached, findCachedItem, getCachedData, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
 import {appendMeetingToTarget, appendTaskToTarget, resolveFilingPick} from '../storage/inboxFiling';
@@ -1091,13 +1091,13 @@ function MeetingsSection({
   const mainTab = mainTabs.activeKey;
   const [icsUrl, setIcsUrl] = useState('');
   // Tag Rules for the rows' prep/review checkpoint icon - same one-shot load.
-  const [tagRules, setTagRules] = useState<NoteCreationDefinition[]>([]);
+  const [tagRules, setTagRules] = useState<TagRule[]>([]);
   useEffect(() => {
     let cancelled = false;
     loadSettings().then(s => {
       if (cancelled) return;
       setIcsUrl(s.googleCalendarIcsUrl);
-      setTagRules(s.noteCreationDefinitions);
+      setTagRules(s.tagRules);
     });
     return () => {
       cancelled = true;

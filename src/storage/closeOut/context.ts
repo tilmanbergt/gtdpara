@@ -120,7 +120,7 @@ export async function refreshCloseOutContext(args: {
     currentMonthKey: monthKeyOf(now),
     today: isoDate(now),
     now,
-    noteDefinitions: settings.noteCreationDefinitions,
+    tagRules: settings.tagRules,
     others,
     projectLinkedPrefix: toLinkedFile(paths, projectPath),
     plan,

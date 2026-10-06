@@ -718,7 +718,7 @@ export default function ReviewScreen({
       if (!cache || forceRebuild) {
         cache = await rebuildCache(loadedSettings);
       }
-      setAggregate(buildReviewAggregate(cache.items, new Date(), loadedSettings.noteCreationDefinitions));
+      setAggregate(buildReviewAggregate(cache.items, new Date(), loadedSettings.tagRules));
       setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
       setCachedInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
@@ -741,7 +741,7 @@ export default function ReviewScreen({
   const refreshFromCache = () => {
     const cache = getCachedData();
     if (cache) {
-      setAggregate(buildReviewAggregate(cache.items, new Date(), settings?.noteCreationDefinitions));
+      setAggregate(buildReviewAggregate(cache.items, new Date(), settings?.tagRules));
     }
   };
 
@@ -1122,7 +1122,7 @@ export default function ReviewScreen({
     if (!cachedItem || !current) {
       throw new Error(`"${meetingDisplayTitle(entry.meeting)}" changed on disk - Settings → Advanced → Reload all files.`);
     }
-    const wasReviewed = resolveMeetingTracking(current, settings?.noteCreationDefinitions ?? [])?.done ?? false;
+    const wasReviewed = resolveMeetingTracking(current, settings?.tagRules ?? [])?.done ?? false;
     const nextMeetings = cachedItem.meetings.slice();
     nextMeetings[entry.meetingIndex] = toggleMeetingTracking(current, 'review');
     const nextRaw = await saveMeetings(entry.item.kind, entry.item.path, cachedItem.rawContent, nextMeetings, cachedItem.meetingExtraLines);
@@ -2013,7 +2013,7 @@ export default function ReviewScreen({
   };
 
   const inboxMeetingTrackingFor = (meetingIndex: number): MeetingTrackingConfig => ({
-    rules: settings?.noteCreationDefinitions ?? [],
+    rules: settings?.tagRules ?? [],
     onToggle: kind => handleInboxToggleMeetingTracking(meetingIndex, kind),
   });
 
@@ -2259,7 +2259,7 @@ export default function ReviewScreen({
     const entry = closeOutList.find(e => closeOutKey(e) === selectedKey);
     if (!entry) return null;
     const live = reviewCurrentItem(entry.item, items).meetings[entry.meetingIndex] ?? entry.meeting;
-    const reviewed = resolveMeetingTracking(live, settings?.noteCreationDefinitions ?? [])?.done ?? false;
+    const reviewed = resolveMeetingTracking(live, settings?.tagRules ?? [])?.done ?? false;
     const related = relatedItemsFor(items, inbox ? {tasks: inbox.tasks} : null, live.tags.filter(isContextTag));
     return (
       <MeetingCloseOutDetail

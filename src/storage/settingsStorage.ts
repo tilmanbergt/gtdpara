@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {DEFAULT_SETTINGS, GtdParaSettings} from '../domain/settings';
-import {migrateNoteTemplateDefaults} from '../domain/noteTemplate';
+import {DEFAULT_SETTINGS, GtdParaSettings, renameLegacyTagRuleKeys} from '../domain/settings';
+import {migrateTagRuleDefaults} from '../domain/tagRules';
 import {ReviewStepsMap} from '../domain/reviewSteps';
 import {perfEnd, perfStart} from '../utils/perf';
 import {migrateExperimentalFlags} from '../domain/features';
@@ -17,7 +17,10 @@ const SETTINGS_KEY = 'gtdpara:settings:v1';
  *
  * The loaded settings then pass through the load-time migrations, each of
  * which returns the SAME object when it has nothing to do:
- * - `migrateNoteTemplateDefaults` seeds the "Meeting (default)" Tag Rule
+ * - `renameLegacyTagRuleKeys` moves Tag Rules stored under their 0.8 key
+ *   names (`noteCreationDefinitions`, `nextNoteDefinitionId`) to the current
+ *   ones - first, so the default rule below isn't seeded over them.
+ * - `migrateTagRuleDefaults` seeds the "Meeting (default)" Tag Rule
  *   when there are no rules yet (fresh install).
  * - `migrateExperimentalFlags` sets the experimental switches and the
  *   What's-new marker for an install that predates them; it needs the raw
@@ -28,11 +31,12 @@ const SETTINGS_KEY = 'gtdpara:settings:v1';
  */
 async function readSettings(): Promise<GtdParaSettings> {
   const raw = await AsyncStorage.getItem(SETTINGS_KEY);
-  const parsed = raw ? JSON.parse(raw) : {};
+  const stored: Record<string, unknown> = raw ? JSON.parse(raw) : {};
+  const parsed = renameLegacyTagRuleKeys(stored);
   const merged: GtdParaSettings = {...DEFAULT_SETTINGS, ...parsed};
-  const noteMigrated = migrateNoteTemplateDefaults(merged);
+  const noteMigrated = migrateTagRuleDefaults(merged);
   const migrated = migrateExperimentalFlags(noteMigrated, parsed, BUILD_INFO.version);
-  if (migrated !== merged) {
+  if (migrated !== merged || parsed !== stored) {
     try {
       await saveSettings(migrated);
     } catch {

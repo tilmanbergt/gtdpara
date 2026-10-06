@@ -3,7 +3,7 @@
  *
  * Pure domain layer for the "file this Todo/Meeting's note as a PAGE in one
  * shared `.note` per Project/Area, located by keyword" Tag Rule option
- * (`NoteCreationDefinition.noteTarget === 'shared'`, domain/noteTemplate.ts).
+ * (`TagRule.noteTarget === 'shared'`, domain/tagRules.ts).
  * Covers everything this feature needs that doesn't touch the device:
  * encoding/decoding the anchor stored in `Task.notePath`/`Meeting.notePath`,
  * deriving a page's keyword from the item it belongs to, and the pure array
@@ -256,7 +256,7 @@ export interface SharedFileNameInput {
   template: string;
   /** Fallback when the rendered name comes out empty. */
   ruleName: string;
-  /** `ruleSubtag(...)` (domain/noteTemplate.ts) - `''` when the item has no nested tag under the rule. */
+  /** `ruleSubtag(...)` (domain/tagRules.ts) - `''` when the item has no nested tag under the rule. */
   subtag: string;
   /** `YYYY-MM-DD` - a meeting's own date, today for a todo. */
   date: string;

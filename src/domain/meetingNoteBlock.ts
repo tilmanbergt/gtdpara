@@ -42,7 +42,7 @@ export const NOTE_LINK_USERDATA = 'gtdpara:meeting-note-link:v1';
 /** Prefix for a definition-driven piece's own per-index userData marker (docs/dev/technical-design-note-templates.md §4: "gtdpara:note-piece:<index>:v1 ... since piece count and order are now data-driven rather than fixed"). See notePieceUserData below. */
 const NOTE_PIECE_USERDATA_PREFIX = 'gtdpara:note-piece:';
 
-/** The userData marker `storage/meetingNoteContent.ts`'s populateNoteFromDefinition writes on the textbox element for `definition.pieces[index]` - one marker per piece, not one shared block marker, so a definition's pieces can be found/replaced/reordered independently. */
+/** The userData marker `storage/meetingNoteContent.ts`'s populateNoteFromRule writes on the textbox element for `definition.pieces[index]` - one marker per piece, not one shared block marker, so a definition's pieces can be found/replaced/reordered independently. */
 export function notePieceUserData(index: number): string {
   return `${NOTE_PIECE_USERDATA_PREFIX}${index}:v1`;
 }
@@ -50,7 +50,7 @@ export function notePieceUserData(index: number): string {
 /**
  * True for any element this feature has ever written - the two LEGACY
  * markers (old fixed block, old auto-link) or a per-piece marker.
- * populateNoteFromDefinition deletes every element matching this before
+ * populateNoteFromRule deletes every element matching this before
  * inserting its fresh set, so notes written by an older version get their
  * legacy block/link cleaned up on the next refresh instead of keeping a
  * stale duplicate.
@@ -139,7 +139,7 @@ const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']);
  * API!") and the note got no content at all. Now only `.note` is a note link
  * (Tilman: "note really only makes sense for .note"), images stay 3, and
  * everything else is a document link (2). storage/meetingNoteContent.ts's
- * populateNoteFromDefinition additionally retries without the link if the
+ * populateNoteFromRule additionally retries without the link if the
  * host still rejects one. Pure lookup, no I/O.
  */
 export function linkTypeForExtension(path: string): number {

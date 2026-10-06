@@ -134,7 +134,7 @@ import {groupTasksByFlowState} from '../domain/flowState';
 import {deriveTaskFields} from '../domain/markdown';
 import {splitAndSortMeetings} from '../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
-import {NoteCreationDefinition} from '../domain/noteTemplate';
+import {TagRule} from '../domain/tagRules';
 import {ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {findCachedItem, getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
@@ -260,7 +260,7 @@ export default function InboxScreen({
   const mainTab = mainTabs.activeKey;
   const [icsUrl, setIcsUrl] = useState('');
   // Tag Rules for the meeting rows' prep/review checkpoint icon (loaded with the rest of the settings in `load`).
-  const [tagRules, setTagRules] = useState<NoteCreationDefinition[]>([]);
+  const [tagRules, setTagRules] = useState<TagRule[]>([]);
 
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [armTarget, setArmTarget] = useState<ArmTarget | null>(null);
@@ -290,7 +290,7 @@ export default function InboxScreen({
       const loadedSettings = await loadSettings();
       setHideDone(loadedSettings.hideDoneInboxTasks);
       setIcsUrl(loadedSettings.googleCalendarIcsUrl);
-      setTagRules(loadedSettings.noteCreationDefinitions);
+      setTagRules(loadedSettings.tagRules);
       let cache = getCachedData();
       if (!cache || forceRebuild) {
         cache = await rebuildCache(loadedSettings);

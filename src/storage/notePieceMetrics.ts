@@ -8,7 +8,7 @@
  *
  * Per-piece max width (2026-09-23, Tilman: "each piece should have its own
  * length cap, separately stored for each definition" - i.e. per PIECE, not
- * per definition; domain/noteTemplate.ts's NotePiece.maxWidthPx /
+ * per definition; domain/tagRules.ts's NotePiece.maxWidthPx /
  * pieceMaxWidthPx is the resolved value callers pass in here as
  * `maxWidthPx`). This function itself takes plain primitives, not a
  * NotePiece, so storage/meetingNoteContent.ts's populateMeetingNoteBlockFallback
@@ -35,7 +35,7 @@
  * whichever width was actually requested either way, so no separate fallback
  * height calculation is needed here.
  */
-import {pieceWidthPx} from '../domain/noteTemplate';
+import {pieceWidthPx} from '../domain/tagRules';
 import {measureTextHeight, TEXT_MEASURE_WIDTH_ADJUSTMENT_PX} from '../supernote/textboxMetrics';
 
 /**
@@ -55,7 +55,7 @@ export interface NotePieceRect {
 /**
  * `x`/`fontSizePx` come straight off a NotePiece (or the fallback block's own
  * fixed position/font); `maxWidthPx` is the resolved cap - domain/
- * noteTemplate.ts's `pieceMaxWidthPx(piece)` for a real piece, or
+ * tagRules.ts's `pieceMaxWidthPx(piece)` for a real piece, or
  * FALLBACK_BLOCK_MAX_WIDTH for the old fixed block. Never throws - delegates
  * to measureTextHeight, which never does.
  */

@@ -8,7 +8,7 @@
  * archive); everything else can be prepared while they are open.
  */
 import {Meeting, Task} from '../types';
-import {NoteCreationDefinition} from '../noteTemplate';
+import {TagRule} from '../tagRules';
 import {meetingDisplayTitle, resolveMeetingTracking} from '../meetingTracking';
 import {CloseOutPlan} from './plan';
 
@@ -59,7 +59,7 @@ export interface ReadinessInput {
   /** YYYY-MM-DD. */
   today: string;
   now: Date;
-  noteDefinitions: NoteCreationDefinition[];
+  tagRules: TagRule[];
   /** Every OTHER project/area (and the Inbox) - for links into this folder. */
   others: OtherItemLinks[];
   /** Base-root-relative path of the project folder, as linkedFile values spell it. */
@@ -109,7 +109,7 @@ export function evaluateReadiness(input: ReadinessInput): Finding[] {
     .map((m, index) => ({m, index}))
     .filter(({m}) => m.date < input.today)
     .filter(({m}) => {
-      const state = resolveMeetingTracking(m, input.noteDefinitions, input.now);
+      const state = resolveMeetingTracking(m, input.tagRules, input.now);
       return state !== null && !state.done;
     });
   out.push(

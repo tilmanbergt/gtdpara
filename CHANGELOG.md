@@ -26,6 +26,8 @@ or your project/area files are stored.
 - **Upgrading straight from 0.1.0 is no longer supported.** Install any version from 0.2 to 0.8
   first (it moves the Inbox), or move `Inbox.txt` and its `Todos` and `Meetings` folders from
   `Note` into `Note/2 Areas/0 Inbox` yourself. **Run Integrity Check** points out anything left.
+- Tag Rules are stored under a new name in the settings. This happens automatically on the first
+  start; profile files saved by earlier versions still load.
 
 ## [0.8.0] — 2026-10-06
 

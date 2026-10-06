@@ -30,7 +30,7 @@ import {isHighlight} from '../domain/monthHighlight';
 import {MeetingSpanDay} from '../domain/meetingSpan';
 import {meetingDisplayTitle, MeetingTrackingKind, resolveMeetingTracking} from '../domain/meetingTracking';
 import HighlightMark from './HighlightMark';
-import {NoteCreationDefinition} from '../domain/noteTemplate';
+import {TagRule} from '../domain/tagRules';
 import {Meeting} from '../domain/types';
 import {ClipIcon, TrackingBoxIcon} from './icons';
 import {COLORS, FONT} from './theme';
@@ -38,7 +38,7 @@ import {perfCount} from '../utils/perf';
 
 /**
  * What a screen supplies to switch a meeting list's prep/review icons on: the
- * Tag Rules (`settings.noteCreationDefinitions`) and its own persist step.
+ * Tag Rules (`settings.tagRules`) and its own persist step.
  * `onToggle(kind)` must flip the checkpoint on the CURRENT copy of the
  * meeting inside the screen's usual meetings mutator (domain/
  * meetingTracking.ts's `toggleMeetingTrackingAt`), not on the `meeting` the
@@ -46,7 +46,7 @@ import {perfCount} from '../utils/perf';
  * to `MeetingRow`'s `tracking` prop.
  */
 export interface MeetingTrackingConfig {
-  rules: NoteCreationDefinition[];
+  rules: TagRule[];
   onToggle: (kind: MeetingTrackingKind) => void;
 }
 

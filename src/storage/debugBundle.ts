@@ -59,7 +59,7 @@ export function summarizeSettings(s: GtdParaSettings): string[] {
     `          calendar ${s.googleCalendarIcsUrl.trim() ? 'configured' : 'not configured'}, ${onOff(f.googleCalendar)}` +
       ` · gmail ${s.gmailEmail.trim() ? 'configured' : 'not configured'}, ${onOff(f.gmail)}`,
     `          keepTabs ${onOff(s.keepTabsAlive)} · perfTracing ${onOff(s.perfTracing)} · debugLogging ${onOff(s.debugLogging)}` +
-      ` · tagRules ${s.noteCreationDefinitions.length} · reviewSteps recorded ${Object.keys(s.reviewSteps ?? {}).length}`,
+      ` · tagRules ${s.tagRules.length} · reviewSteps recorded ${Object.keys(s.reviewSteps ?? {}).length}`,
   ];
 }
 

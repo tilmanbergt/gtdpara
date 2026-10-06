@@ -23,7 +23,7 @@ import {log} from '../utils/log';
  * Creates `<folderPath>/<title>.note`, tagged with `tags` on page 0. Always
  * gets a blank background (`storage/noteLinks.ts`'s `getNoteTemplate`) -
  * standalone notes aren't wired through `resolveNoteTemplate`/
- * `NoteCreationDefinition` at all (Phase 4, not yet built), unlike linked
+ * `TagRule` at all (Phase 4, not yet built), unlike linked
  * Todo/Meeting notes. `settings` is threaded through unused today, kept as
  * a parameter rather than dropped - the obvious hook for a future
  * per-context standalone-note background, same as `getNoteTemplate`'s own

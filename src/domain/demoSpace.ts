@@ -5,7 +5,7 @@
  * files are written by storage/demoSpace.ts. Everything here is written in
  * the normal project-file format, so it is also a readable example of it.
  */
-import {createDefaultMeetingDefinition} from './noteTemplate';
+import {createDefaultMeetingRule} from './tagRules';
 import {monthKeyOf} from './period';
 import {DEFAULT_SETTINGS, GtdParaSettings} from './settings';
 import {INBOX_FILE_NAME} from './types';
@@ -186,9 +186,9 @@ export function buildDemoFiles(today: Date): DemoFile[] {
 
 /** Per-profile settings of the demo profile: the demo folders, two Tag Rules, integrations off. */
 export function demoProfileSettings(): GtdParaSettings {
-  const meeting = createDefaultMeetingDefinition('1');
+  const meeting = createDefaultMeetingRule('1');
   const oneOnOne = {
-    ...createDefaultMeetingDefinition('2'),
+    ...createDefaultMeetingRule('2'),
     name: '1:1 meetings',
     tags: ['1on1'],
     isDefault: false,
@@ -198,8 +198,8 @@ export function demoProfileSettings(): GtdParaSettings {
   return {
     ...DEFAULT_SETTINGS,
     baseRoot: DEMO_BASE_ROOT,
-    noteCreationDefinitions: [meeting, oneOnOne],
-    nextNoteDefinitionId: 3,
+    tagRules: [meeting, oneOnOne],
+    nextTagRuleId: 3,
     experimentalGoogleCalendar: false,
     experimentalGmail: false,
     activeProfileId: DEMO_PROFILE_ID,

@@ -80,7 +80,7 @@ import {isFocused} from '../domain/destination';
 import {countMeetingsInRange} from '../domain/meetingSpan';
 import {meetingTimestampMs, splitAndSortMeetings} from '../domain/meetingTime';
 import {isReviewOutstanding} from '../domain/meetingTracking';
-import {NoteCreationDefinition} from '../domain/noteTemplate';
+import {TagRule} from '../domain/tagRules';
 import {ReviewStepId} from '../domain/reviewSteps';
 import {Meeting, Task} from '../domain/types';
 import {weekAheadRangeIso} from '../domain/weekDate';
@@ -200,7 +200,7 @@ export function nextTasksFor(item: ReviewItemRef, tasks: Task[]): ReviewNextTask
 export function buildReviewAggregate(
   items: CachedItem[],
   now: Date = new Date(),
-  definitions: NoteCreationDefinition[] = [],
+  definitions: TagRule[] = [],
 ): ReviewAggregate {
   const week = weekAheadRangeIso(now);
 

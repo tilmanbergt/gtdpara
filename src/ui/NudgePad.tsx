@@ -7,7 +7,7 @@
  * be adjusted." One instance per edit form, acting on whichever piece
  * `selectedPiece` currently points at - not repeated per piece row.
  *
- * Kept dumb/reusable (plain callbacks in, no domain/noteTemplate.ts import)
+ * Kept dumb/reusable (plain callbacks in, no domain/tagRules.ts import)
  * rather than baked into screens/Settings.tsx, since the deferred "linked-
  * file link" piece (design doc §4) would plausibly want the same controls
  * later.
@@ -17,7 +17,7 @@
  * maximum width for text pieces ... +25 -25 buttons to adjust"): same shape
  * as the Font ± control right above it, fixed ±25 step, independent of the
  * x/y STEPS toggle. screens/Settings.tsx resolves `piece.maxWidthPx` via
- * domain/noteTemplate.ts's `pieceMaxWidthPx` before passing it down here, so
+ * domain/tagRules.ts's `pieceMaxWidthPx` before passing it down here, so
  * this component still never imports that domain module itself.
  */
 import React from 'react';
@@ -31,7 +31,7 @@ interface SelectedPiece {
   step: number;
   /**
    * Resolved max width (device px) for this piece - always a concrete
-   * number here even though domain/noteTemplate.ts's NotePiece.maxWidthPx
+   * number here even though domain/tagRules.ts's NotePiece.maxWidthPx
    * itself is optional (screens/Settings.tsx resolves it via
    * `pieceMaxWidthPx` before handing the piece to this component, same as
    * every other field here). 2026-09-23,

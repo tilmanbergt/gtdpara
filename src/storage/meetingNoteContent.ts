@@ -1,14 +1,14 @@
 /**
  * Builds and writes note-creation content (docs/dev/technical-design-meeting-
  * notes.md §5, generalized by docs/dev/technical-design-note-templates.md §4/§5
- * Phase 2, 2026-09-18): the per-piece textboxes a `NoteCreationDefinition`
+ * Phase 2, 2026-09-18): the per-piece textboxes a `TagRule`
  * describes, plus (when the item has a `linkedFile`) a real tappable
  * "Link:" element - always regenerated from scratch, never merged/diffed
  * against whatever was there before (the "always regenerate, discard
  * edits" decision, unchanged from Phase 1 of the meeting-notes feature).
  *
  * One population path (2026-09-25, docs/dev/technical-design-linked-file-piece.md):
- * `populateNoteFromDefinition` - one element per non-empty piece, positioned/
+ * `populateNoteFromRule` - one element per non-empty piece, positioned/
  * sized from that piece's own x/y/fontSize/maxWidth. A `link` piece becomes a
  * tappable link element to the item's `linkedFile` (only when that file still
  * exists); a rule without a `link` piece writes no link at all. The old fixed
@@ -31,13 +31,13 @@
  *
  * Phase 3 (2026-09-18, same day - Todo notes): `refreshTodoNoteBlock` below
  * mirrors `refreshMeetingNoteBlock` almost exactly - resolve a `'todo'`
- * definition, render its pieces, call `populateNoteFromDefinition` - with no
+ * definition, render its pieces, call `populateNoteFromRule` - with no
  * fallback-block equivalent (Todos have no pre-existing fixed shape to
  * preserve the way Meetings do; `resolveNoteTemplate` returning `null` just
  * means no pieces get written, same "blank note" behavior every context had
  * before this feature existed). Both refresh functions now also gate the
  * *re*-populate-on-open path on a freeze rule (domain/meetingTime.ts's
- * `isMeetingAutoUpdateFrozen` / domain/noteTemplate.ts's
+ * `isMeetingAutoUpdateFrozen` / domain/tagRules.ts's
  * `isTodoAutoUpdateFrozen`) via an `isInitialPopulation` option that only
  * the note-*creation* call sites set - see either freeze function's own doc
  * comment for why creation always bypasses it.
@@ -52,7 +52,7 @@
  * Shared Note Pages, Slice 2 of 4 (2026-09-22, docs/dev/technical-design-
  * shared-note-pages.md §5/§12): every function below that used to hardcode
  * page 0 (`deleteStaleManagedElements`, `buildLinkElement`,
- * `populateNoteFromDefinition`) now
+ * `populateNoteFromRule`) now
  * takes a real `page` parameter, defaulting to `0` everywhere it's optional -
  * so every existing own-note call site (which never had a page to think
  * about) is byte-for-byte unaffected. `refreshMeetingNoteBlock`/
@@ -79,11 +79,11 @@
  *
  * Textbox metrics + per-piece max width (2026-09-23,
  * docs/dev/technical-design-textbox-metrics.md, combined with that doc's Phase 3
- * per Tilman: "can be one thing"): `populateNoteFromDefinition` no longer hand-spells
+ * per Tilman: "can be one thing"): `populateNoteFromRule` no longer hand-spells
  * `createElement(ELEMENT_TYPE_TEXT)` + a `textBox` literal - it builds
  * its rect via `storage/notePieceMetrics.ts`'s `measureNotePieceRect`
  * (real on-device text measurement, content-fit width, capped at each
- * piece's own `maxWidthPx` - see domain/noteTemplate.ts's `NotePiece`) and
+ * piece's own `maxWidthPx` - see domain/tagRules.ts's `NotePiece`) and
  * the element itself via `supernote/noteElements.ts`'s `buildTextboxElement`.
  */
 import {isNoteTemplateManagedElement, linkTypeForExtension, notePieceUserData} from '../domain/meetingNoteBlock';
@@ -94,7 +94,7 @@ import {
   effectiveNoteTarget,
   isTodoAutoUpdateFrozen,
   NoteContext,
-  NoteCreationDefinition,
+  TagRule,
   pieceMaxWidthPx,
   PieceRenderContext,
   renderPieceText,
@@ -102,7 +102,7 @@ import {
   resolvedSharedFileName,
   resolveNoteTemplate,
   ruleSubtag,
-} from '../domain/noteTemplate';
+} from '../domain/tagRules';
 import {NoteCreationPlan} from '../domain/noteCreationPlan';
 import {
   buildSharedNoteAnchor,
@@ -238,7 +238,7 @@ async function buildLinkElement(params: {
 }
 
 /**
- * Step 1 of populateNoteFromDefinition below: reads `page` and deletes every
+ * Step 1 of populateNoteFromRule below: reads `page` and deletes every
  * element this feature ever wrote (isNoteTemplateManagedElement), leaving
  * everything else - handwriting, the user's own textboxes - untouched. The
  * one-line log (ours vs. foreign counts) is deliberate: it is what shows on
@@ -273,7 +273,7 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  *
  * `pieceContent[i]` is `definition.pieces[i]` already rendered to text (the
  * caller - refreshMeetingNoteBlock below - builds this via
- * domain/noteTemplate.ts's renderPieceText, since which fields feed a piece
+ * domain/tagRules.ts's renderPieceText, since which fields feed a piece
  * is context-specific and this function shouldn't need to know that). A
  * piece whose rendered text is `''` (an unset `time`, a `related` piece
  * with nothing to show) gets no element at all - same "omit rather than
@@ -281,7 +281,7 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  * linked file or it no longer exists).
  *
  * Deviates from technical-design-note-templates.md §4's literal signature
- * (`populateNoteFromDefinition(notePath, definition, pieceContent,
+ * (`populateNoteFromRule(notePath, definition, pieceContent,
  * settings)`) by dropping the `settings` param: every field GtdParaSettings
  * still carries after Phase 2's retirement of meetingNoteBlockTopX/Y/
  * MaxWidth turned out unused here - positioning is fully piece-driven, and
@@ -295,9 +295,9 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  * `link` piece's text is non-empty exactly when this is set. No link is
  * written for a definition without a `link` piece.
  */
-export async function populateNoteFromDefinition(
+export async function populateNoteFromRule(
   notePath: string,
-  definition: NoteCreationDefinition,
+  definition: TagRule,
   pieceContent: string[],
   linkedFileAbsolutePath: string | null = null,
   page = 0,
@@ -370,10 +370,10 @@ export async function populateNoteFromDefinition(
  * ReviewScreen.tsx/ProjectDataPanel.tsx needed touching for this phase.
  *
  * New Phase 2 behavior inside: resolves `resolveNoteTemplate('meeting',
- * meeting.tags, settings.noteCreationDefinitions)`. When it finds a
- * definition, renders every piece via domain/noteTemplate.ts's
+ * meeting.tags, settings.tagRules)`. When it finds a
+ * definition, renders every piece via domain/tagRules.ts's
  * renderPieceText (building a PieceRenderContext from this Meeting + its
- * related todos) and calls populateNoteFromDefinition. When it returns
+ * related todos) and calls populateNoteFromRule. When it returns
  * `null` (no matching/enabled Meeting definition) nothing is written - the
  * old fixed fallback block was removed 2026-09-25 (docs/dev/technical-design-
  * linked-file-piece.md §4, Tilman: "everything should behave the same, user
@@ -417,7 +417,7 @@ export async function refreshMeetingNoteBlock(
   const notePath = await resolveNotePath(itemPath, meeting.notePath);
   const paths = resolvePaths(settings);
 
-  const definition = resolveNoteTemplate('meeting', meeting.tags, settings.noteCreationDefinitions);
+  const definition = resolveNoteTemplate('meeting', meeting.tags, settings.tagRules);
   if (!definition) return;
 
   const items = getCachedData()?.items ?? [];
@@ -430,14 +430,14 @@ export async function refreshMeetingNoteBlock(
     // '' means "no time given" (Meeting.time's own convention) - left
     // unset on ctx rather than passed through as '', so renderPieceText's
     // `ctx.time ?? ''` for a `time` piece and its "meeting only, only when
-    // set" contract (domain/noteTemplate.ts §4) both read the same way
+    // set" contract (domain/tagRules.ts §4) both read the same way
     // whether the meeting has no time or the definition has no time piece.
     time: meeting.time || undefined,
     relatedItems: relatedTodos.map(t => ({text: t.task.text})),
     linkedFileName: linked?.fileName,
   };
   const pieceContent = definition.pieces.map(piece => renderPieceText(piece, ctx));
-  await populateNoteFromDefinition(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
+  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
 }
 
 /**
@@ -449,7 +449,7 @@ export async function refreshMeetingNoteBlock(
  * ReviewScreen.tsx and InboxScreen.tsx.
  *
  * `resolveNoteTemplate('todo', ...)` returning `null` (no matching/enabled
- * Todo definition) means `populateNoteFromDefinition` is never called at
+ * Todo definition) means `populateNoteFromRule` is never called at
  * all: the note stays blank - the same rule Meetings follow since 2026-09-25.
  *
  * `ctx.title` is `stripAllTags(task.text)`, not `task.text` verbatim -
@@ -460,7 +460,7 @@ export async function refreshMeetingNoteBlock(
  * with this task's own `tags` and excluding this task's own `notePath` so
  * it never lists itself (see storage/meetingNoteAggregate.ts's Phase 3 doc
  * comment on `excludeNotePath`). No `date`/`time` fields are set on `ctx` -
- * those piece types are meeting-only (domain/noteTemplate.ts's
+ * those piece types are meeting-only (domain/tagRules.ts's
  * `PIECE_CONTEXTS`), so a Todo definition's Add-piece list never offers them
  * in the first place.
  *
@@ -481,7 +481,7 @@ export async function refreshTodoNoteBlock(
   const notePath = await resolveNotePath(itemPath, task.notePath);
   const paths = resolvePaths(settings);
 
-  const definition = resolveNoteTemplate('todo', task.tags, settings.noteCreationDefinitions);
+  const definition = resolveNoteTemplate('todo', task.tags, settings.tagRules);
   if (!definition) return;
 
   const items = getCachedData()?.items ?? [];
@@ -494,7 +494,7 @@ export async function refreshTodoNoteBlock(
     linkedFileName: linked?.fileName,
   };
   const pieceContent = definition.pieces.map(piece => renderPieceText(piece, ctx));
-  await populateNoteFromDefinition(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
+  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
 }
 
 // ---- Open-or-create entry point (Slice 3, docs/dev/technical-design-shared-note-pages.md §6-§8;
@@ -603,7 +603,7 @@ async function recreateSharedPage(
  */
 async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
   const {itemPath, settings, tags, context, currentKeyword, isDated} = params;
-  const definition = resolveNoteTemplate(context, tags, settings.noteCreationDefinitions);
+  const definition = resolveNoteTemplate(context, tags, settings.tagRules);
   const background = resolveNoteBackgroundTemplate(settings, context, tags);
   const ruleName = definition ? definition.name : null;
 

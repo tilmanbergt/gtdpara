@@ -15,7 +15,7 @@ const base = (over: Partial<ReadinessInput> = {}): ReadinessInput => ({
   currentMonthKey: '2026-10',
   today: '2026-10-06',
   now: new Date(2026, 9, 6),
-  noteDefinitions: [],
+  tagRules: [],
   others: [],
   projectLinkedPrefix: '1 Projects/Garden',
   plan: EMPTY_PLAN,

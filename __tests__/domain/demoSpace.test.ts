@@ -56,7 +56,7 @@ describe('demo space', () => {
   it('profile settings point at the demo folders and survive the profile file filter', () => {
     const s = demoProfileSettings();
     expect(s.baseRoot).toBe(DEMO_BASE_ROOT);
-    expect(s.noteCreationDefinitions).toHaveLength(2);
+    expect(s.tagRules).toHaveLength(2);
     expect(sanitizeProfileSettings(profileSettingsOf(s))).toEqual(profileSettingsOf(s));
   });
 });

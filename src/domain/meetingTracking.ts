@@ -1,7 +1,7 @@
 /**
  * Meeting prep/review tracking (docs/dev/technical-design-meeting-tracking.md).
  *
- * A Tag Rule (domain/noteTemplate.ts's NoteCreationDefinition) can switch on
+ * A Tag Rule (domain/tagRules.ts's TagRule) can switch on
  * two checkpoints for the meetings it resolves for: "prepare before" and
  * "review after". Neither creates a todo - each is a single tick on the
  * meeting itself, stored as a bare `#prepped` / `#reviewed` tag on the meeting
@@ -21,7 +21,7 @@
 import {hasBareTag, setBareTag, stripBareTags} from './flowState';
 import {deriveMeetingFields} from './markdown';
 import {isoDateOffset, meetingAutoUpdateCutoffMs} from './meetingTime';
-import {NoteCreationDefinition, resolveNoteTemplate} from './noteTemplate';
+import {TagRule, resolveNoteTemplate} from './tagRules';
 import {Meeting} from './types';
 
 export type MeetingTrackingKind = 'prep' | 'review';
@@ -49,7 +49,7 @@ type TrackedMeeting = Pick<Meeting, 'date' | 'time' | 'tags' | 'cancelled'> & Pa
  */
 export function resolveMeetingTracking(
   meeting: TrackedMeeting,
-  definitions: NoteCreationDefinition[],
+  definitions: TagRule[],
   now: Date = new Date(),
 ): MeetingTrackingState | null {
   if (meeting.cancelled) return null;
@@ -68,7 +68,7 @@ export function resolveMeetingTracking(
  */
 export function isReviewOutstanding(
   meeting: TrackedMeeting,
-  definitions: NoteCreationDefinition[],
+  definitions: TagRule[],
   now: Date = new Date(),
 ): boolean {
   const state = resolveMeetingTracking(meeting, definitions, now);
@@ -77,7 +77,7 @@ export function isReviewOutstanding(
 }
 
 /** Short label for what a rule tracks, for the Tag Rules list ("prep", "review", "prep + review") - '' when nothing (or when the rule isn't a meeting rule, whose flags are ignored). */
-export function trackingSummary(rule: Pick<NoteCreationDefinition, 'context' | 'trackPrep' | 'trackReview'>): string {
+export function trackingSummary(rule: Pick<TagRule, 'context' | 'trackPrep' | 'trackReview'>): string {
   if (rule.context !== 'meeting') return '';
   return [rule.trackPrep ? 'prep' : '', rule.trackReview ? 'review' : ''].filter(Boolean).join(' + ');
 }

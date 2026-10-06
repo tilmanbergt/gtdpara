@@ -8,12 +8,12 @@ import {
 } from '../../src/domain/markdown';
 import {setBareTag, setNowTag, stripBareTags} from '../../src/domain/flowState';
 import {
-  createEmptyDefinition,
-  NoteCreationDefinition,
+  createEmptyTagRule,
+  TagRule,
   resolveNoteTemplate,
   ruleSubtag,
   tagMatchesRuleTag,
-} from '../../src/domain/noteTemplate';
+} from '../../src/domain/tagRules';
 
 // docs/dev/technical-design-split-by-tag.md §3.1 / §3.2
 
@@ -79,8 +79,8 @@ describe('nested tags - whole-tag guards', () => {
 });
 
 describe('nested tags - Tag Rule matching', () => {
-  const rule = (id: string, tags: string[], extra: Partial<NoteCreationDefinition> = {}): NoteCreationDefinition => ({
-    ...createEmptyDefinition(id, 'meeting'),
+  const rule = (id: string, tags: string[], extra: Partial<TagRule> = {}): TagRule => ({
+    ...createEmptyTagRule(id, 'meeting'),
     name: id,
     tags,
     enabled: true,

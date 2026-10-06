@@ -4,7 +4,7 @@
  * settings belong to a profile, which stay device-wide, which are secrets
  * that never go into a file, and reading/writing the file format.
  */
-import {DEFAULT_SETTINGS, GtdParaSettings} from './settings';
+import {DEFAULT_SETTINGS, GtdParaSettings, renameLegacyTagRuleKeys} from './settings';
 
 export const DEFAULT_PROFILE_ID = 'production';
 export const DEFAULT_PROFILE_NAME = 'Production';
@@ -90,7 +90,8 @@ export function sanitizeProfileSettings(raw: unknown): Partial<GtdParaSettings> 
   if (!raw || typeof raw !== 'object') {
     return out;
   }
-  const src = raw as Record<string, unknown>;
+  // Profile files written by 0.8 and earlier carry the old Tag Rule keys.
+  const src = renameLegacyTagRuleKeys(raw as Record<string, unknown>);
   for (const key of PROFILE_KEYS) {
     if (key in src && sameKind(src[key], DEFAULT_SETTINGS[key])) {
       (out as Record<string, unknown>)[key] = src[key];
