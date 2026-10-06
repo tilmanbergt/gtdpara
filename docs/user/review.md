@@ -23,7 +23,7 @@ Tap a step to open it. Inside a step:
 - **On Hold reconsideration**: paused projects and areas - keep them paused or reactivate them
 - **Neglected areas**: the same for areas - no open todo you can act on
 - **Unfocused next items**: projects and areas with a `#next` todo (without due date) but no daily, weekly or monthly focus. Add them to focus, or park the todo.
-- **Focus reset**: choose weekly and monthly focus and goals
+- **Focus reset**: choose weekly and monthly focus and goals. Switch between **Week** and **Month** at the top; each shows the same focus panel as the Week and Month tabs (tap an empty slot, then pick a project or area)
 
 Steps that list several projects show them on the left; tap one to work on it on the right.
 

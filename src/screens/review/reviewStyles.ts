@@ -96,14 +96,6 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  // Full-width failure reason under the Refresh button (renderGmailInbox) -
-  // same FONT.small/6px shape as ui/GoogleCalendarPanel.tsx's errorText, but
-  // allowed to wrap over a few lines since these messages name the cause and
-  // the next step.
-  gmailErrorText: {
-    fontSize: FONT.small,
-    marginBottom: 8,
-  },
   paneTitle: {
     fontSize: FONT.medium,
     fontWeight: '600',
@@ -115,17 +107,8 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingVertical: 7,
   },
-  rowTextWrap: {
-    flex: 1,
-  },
   rowText: {
     fontSize: FONT.medium,
-  },
-  cancelText: {
-    fontSize: FONT.medium,
-    opacity: 0.6,
-    marginLeft: 8,
-    paddingHorizontal: 4,
   },
   card: {
     borderWidth: 1,
@@ -304,33 +287,5 @@ export const styles = StyleSheet.create({
   pillFlash: {
     backgroundColor: COLORS.accent,
     borderColor: COLORS.accent,
-  },
-  focusColumnsRow: {
-    flexDirection: 'row',
-  },
-  // Focus reset's "Monthly" / "Weekly" block headings (2026-09-28).
-  focusBlockHeading: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  focusBlockSpacing: {
-    marginTop: 8,
-  },
-  focusKindBlock: {
-    marginBottom: 12,
-  },
-  focusKindLabel: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    opacity: 0.6,
-    marginBottom: 4,
-  },
-  addSlotText: {
-    opacity: 0.6,
-  },
-  candidateList: {
-    marginLeft: 12,
   },
 });

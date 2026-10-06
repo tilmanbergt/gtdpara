@@ -7,6 +7,10 @@ import React from 'react';
 import {Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {CachedItem} from '../../storage/dataCache';
+import {focusBlockedReason, setItemFocus} from '../../storage/focusSlots';
+import {log} from '../../utils/log';
+import {requestEinkRefresh} from '../../utils/screenRefresh';
+import {bump} from './reviewVisit';
 import {ReviewItemRef} from '../../storage/reviewAggregate';
 import {SettableStatus} from '../../storage/statusControl';
 import {COLUMN_WIDTH_PX, itemEntryDisplayText, itemEntryHeight, itemEntryLines} from '../../ui/itemEntryRow';
@@ -41,6 +45,23 @@ export function changedOnDisk(name: string): Error {
 }
 
 export const SETTINGS_NOT_LOADED = 'Settings not loaded yet - Settings → Advanced → Reload all files.';
+
+/**
+ * Adds `item` to (or removes it from) the weekly or monthly focus - Focus
+ * reset and Unfocused next items. Adding checks the slot limit first.
+ */
+export async function togglePeriodFocus(data: ReviewData, item: CachedItem, scope: 'weekly' | 'monthly', value: boolean): Promise<void> {
+  if (value) {
+    if (!data.settings) throw new Error(SETTINGS_NOT_LOADED);
+    const reason = focusBlockedReason(data.items, item.kind, scope, data.settings);
+    if (reason) throw new Error(reason);
+  }
+  await setItemFocus(item, scope, value);
+  log('ReviewScreen: period focus toggled', scope, item.path, value);
+  data.refreshFromCache();
+  if (value) bump(scope === 'weekly' ? 'weeklyFocusAdded' : 'monthlyFocusAdded');
+  requestEinkRefresh();
+}
 
 export function statusLabel(status: SettableStatus): string {
   if (status === 'active') return 'Active';

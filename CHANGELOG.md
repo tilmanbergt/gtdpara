@@ -11,6 +11,7 @@ or your project/area files are stored.
 ## [Unreleased]
 
 ### Changed
+- Review's Focus reset step shows a Week | Month switch with the same focus panel as the Week and Month tabs, instead of its own list.
 - One date format everywhere: day and month without leading zeros (`6.10.`, `6.10.2027` for another
   year) and 24-hour times without a leading zero (`9:05`). Day headings read `Tue 6.10.`. This also
   applies to the date and time pieces written into new meeting notes; files keep `2026-10-06`.
