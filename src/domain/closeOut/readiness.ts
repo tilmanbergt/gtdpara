@@ -22,7 +22,8 @@ export type FindingId =
   | 'incomingLinks'
   | 'targetCollision'
   | 'unreadableNotes'
-  | 'openFromHere';
+  | 'openFromHere'
+  | 'openMarks';
 
 export interface FindingItem {
   /** For openTodos/futureMeetings: index into the project's tasks/meetings array. */
@@ -72,6 +73,8 @@ export interface ReadinessInput {
   targetPdfLabel: string | null;
   unreadableNoteNames: string[];
   launchPath: string | null;
+  /** Open "Mark for later" marks of this project (lasso 0.8), as list labels. Optional for older callers. */
+  openMarks?: string[];
 }
 
 function plural(n: number, word: string): string {
@@ -160,6 +163,14 @@ export function evaluateReadiness(input: ReadinessInput): Finding[] {
       items: input.unreadableNoteNames.map(label => ({label})),
     });
   }
+
+  // Open marks (lasso 0.8 §3.10): a warning - archiving moves them to the Inbox.
+  const marks = input.openMarks ?? [];
+  out.push(
+    marks.length > 0
+      ? {id: 'openMarks', severity: 'warning', label: `${plural(marks.length, 'open mark')}`, caption: 'process them, or they move to the Inbox on archive', items: marks.map(label => ({label}))}
+      : {id: 'openMarks', severity: 'ok', label: 'No open marks', caption: '', items: []},
+  );
 
   if (input.launchPath && input.launchPath.startsWith(`${input.projectPath.replace(/\/+$/, '')}/`)) {
     const name = input.launchPath.slice(input.projectPath.replace(/\/+$/, '').length + 1);

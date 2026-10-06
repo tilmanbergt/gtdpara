@@ -47,6 +47,7 @@ import {setLassoBoxState} from '../supernote/lasso';
 import {LassoSnapshot, readLasso, saveLassoPreview} from '../supernote/lassoRead';
 import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import MarksColumn, {LASSO_KEY} from '../ui/capture/MarksColumn';
+import {MarksReturnTo} from '../ui/marksNav';
 import {useRecognitionQueue} from '../ui/capture/useRecognitionQueue';
 import QuickAddWidget, {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields} from '../ui/QuickAddWidget';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
@@ -56,7 +57,7 @@ import {useCachedItems} from '../ui/useCachedItems';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 
-export type CaptureReturnTo = 'inbox' | 'current' | 'review' | 'closeOut';
+export type CaptureReturnTo = MarksReturnTo;
 
 export type CaptureRequest =
   | {source: 'lasso'}

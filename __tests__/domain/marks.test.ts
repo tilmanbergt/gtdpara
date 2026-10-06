@@ -182,3 +182,19 @@ describe('parseMarkDataFile', () => {
     expect(parseMarkDataFile(null)).toBeNull();
   });
 });
+
+describe('marks card summary', () => {
+  const {summarizeMarks, marksSummaryLine} = jest.requireActual('../../src/domain/marks');
+  const om = (path: string, createdAt: string) => ({
+    mark: {id: 'm', createdAt, notePath: path, page: 0, text: null},
+    owner: {type: 'inbox'},
+    absPath: path,
+  });
+  it('counts marks and notes and the age of the oldest', () => {
+    const s = summarizeMarks([om('/a.note', '2026-10-02 09:00'), om('/a.note', '2026-10-05 10:00'), om('/b.note', '2026-10-04 08:00')], '2026-10-05');
+    expect(s).toEqual({count: 3, notes: 2, oldestDays: 3});
+    expect(marksSummaryLine(s)).toBe('2 notes · oldest 3 days');
+    expect(marksSummaryLine(summarizeMarks([om('/a.note', '2026-10-05 10:00')], '2026-10-05'))).toBe('1 note · today');
+    expect(summarizeMarks([], '2026-10-05')).toEqual({count: 0, notes: 0, oldestDays: null});
+  });
+});

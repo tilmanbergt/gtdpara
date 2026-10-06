@@ -39,6 +39,8 @@ import {closeOutInterrupted, parsePlan} from './closeOut/plan';
 import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, stripPageAnchor} from './sharedNotePages';
 import {legacyInboxLeftovers, ListedEntry} from './inboxMigration';
 import {GtdParaKind, Meeting, Task} from './types';
+import {parseMarksSpan} from './markdown';
+import {resolveMarkPath} from './marks';
 
 export interface IntegrityFinding {
   checkId: string;
@@ -357,12 +359,39 @@ export async function checkCloseOutInterrupted(input: IntegrityCheckInput): Prom
   ];
 }
 
+/**
+ * A "Mark for later" line (lasso 0.8, `## Marks`) whose note or PDF no
+ * longer exists - the mark can't be opened or processed against its page.
+ * Relative paths resolve against the item folder (the Inbox's are absolute).
+ */
+export async function checkMarkNoteMissing(input: IntegrityCheckInput, io: IntegrityCheckIO): Promise<IntegrityFinding[]> {
+  const findings: IntegrityFinding[] = [];
+  for (const mark of parseMarksSpan(input.rawContent).marks) {
+    const absolutePath = resolveMarkPath(input.itemPath, mark.notePath);
+    if (await io.fileExists(absolutePath)) continue;
+    findings.push({
+      checkId: 'markNoteMissing',
+      itemKind: input.itemKind,
+      itemPath: input.itemPath,
+      entityKind: 'item',
+      entityLabel: `mark ${mark.id}`,
+      notePath: mark.notePath,
+      message:
+        `The note of mark ${mark.id} (p${mark.page + 1}) doesn't exist (checked "${absolutePath}") - it may have been ` +
+        `moved, renamed or deleted outside the app. Process or discard the mark in the marks screen, or delete its ` +
+        `line under "## Marks" by hand.`,
+    });
+  }
+  return findings;
+}
+
 export const INTEGRITY_CHECKS: Record<string, IntegrityCheck> = {
   hashNotePath: checkHashNotePath,
   duplicateHeadings: checkDuplicateHeadingsAsync,
   linkedFileMissing: checkLinkedFileMissing,
   defaultResourceFolderMissing: checkDefaultResourceFolderMissing,
   closeOutInterrupted: checkCloseOutInterrupted,
+  markNoteMissing: checkMarkNoteMissing,
 };
 
 /** Runs every registered per-item check against one item's already-parsed state. */

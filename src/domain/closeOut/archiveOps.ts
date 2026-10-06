@@ -5,7 +5,7 @@
  * storage/closeOut/execute.ts - what the user sees is what runs.
  *
  * Order: outcome files move out (each followed by its link rewrite), then
- * the project PDF, then the project folder, then the status stamp in the
+ * the project PDF, then open marks to the Inbox (lasso 0.8), then the project folder, then the status stamp in the
  * file at its new place. Moving the folder before stamping (as archiveItem
  * has always done) means an interruption can never leave an item marked
  * archived while it still sits in Projects/. Every op has a stable id the
@@ -17,6 +17,7 @@ export type ArchiveOp =
   | {id: string; kind: 'moveOutcome'; from: string; to: string; relPath: string}
   | {id: string; kind: 'rewriteLinks'; fromLinked: string; toLinked: string; relPath: string}
   | {id: string; kind: 'movePdf'; from: string; to: string}
+  | {id: string; kind: 'moveMarks'; from: string; to: string; count: number}
   | {id: string; kind: 'moveFolder'; from: string; to: string}
   | {id: string; kind: 'stampArchived'; folder: string};
 
@@ -32,6 +33,8 @@ export interface ArchiveOpsInput {
   resourcesRoot: string;
   /** Converts an absolute path to the base-root-relative form todos/meetings store in linkedFile. */
   toLinked: (absPath: string) => string;
+  /** Open marks in the project's `## Marks` (lasso 0.8) - moved to the Inbox before the folder. */
+  openMarkCount?: number;
 }
 
 function joinPath(...parts: string[]): string {
@@ -67,6 +70,9 @@ export function planArchiveOps(input: ArchiveOpsInput): ArchiveOp[] {
       ops.push({id: 'move-pdf', kind: 'movePdf', from: joinPath(project, input.plan.pdf.fileName), to: input.targetPdf});
     }
   }
+  if ((input.openMarkCount ?? 0) > 0) {
+    ops.push({id: 'move-marks', kind: 'moveMarks', from: project, to: input.targetFolder, count: input.openMarkCount ?? 0});
+  }
   ops.push({id: 'move-folder', kind: 'moveFolder', from: project, to: input.targetFolder});
   ops.push({id: 'stamp', kind: 'stampArchived', folder: input.targetFolder});
   return ops;
@@ -81,6 +87,8 @@ export function describeOp(op: ArchiveOp, display: (absPath: string) => string):
       return `Update links to ${op.relPath}`;
     case 'movePdf':
       return `Project PDF → ${display(op.to)}`;
+    case 'moveMarks':
+      return `${op.count} open mark${op.count === 1 ? '' : 's'} → Inbox`;
     case 'moveFolder':
       return `Project folder → ${display(op.to)}/`;
     case 'stampArchived':

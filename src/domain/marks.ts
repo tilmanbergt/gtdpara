@@ -214,6 +214,31 @@ export function groupMarks(marks: OpenMark[], currentPath: string | null): MarkG
   return groups;
 }
 
+/** What a "marks to process" card says (§3.10): count, notes, age of the oldest. */
+export interface MarksSummary {
+  count: number;
+  notes: number;
+  /** Whole days since the oldest mark was made (0 = today); null without marks. */
+  oldestDays: number | null;
+}
+
+export function summarizeMarks(marks: OpenMark[], today: string): MarksSummary {
+  if (marks.length === 0) {return {count: 0, notes: 0, oldestDays: null};}
+  const notes = new Set(marks.map(m => m.absPath)).size;
+  const oldest = marks.reduce((min, m) => (m.mark.createdAt < min ? m.mark.createdAt : min), '9999');
+  const day = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+  const oldestDays = Math.max(0, Math.round((day(today) - day(oldest.slice(0, 10))) / 86400000));
+  return {count: marks.length, notes, oldestDays};
+}
+
+/** "3 notes · oldest 3 days" / "1 note · today". */
+export function marksSummaryLine(s: MarksSummary): string {
+  const notes = `${s.notes} note${s.notes === 1 ? '' : 's'}`;
+  if (s.oldestDays === null) {return notes;}
+  const age = s.oldestDays === 0 ? 'today' : s.oldestDays === 1 ? 'oldest 1 day' : `oldest ${s.oldestDays} days`;
+  return `${notes} · ${age}`;
+}
+
 // ---------------------------------------------------------------------------
 // Icons (§3.8)
 

@@ -18,7 +18,8 @@
  */
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
 import {assignedProjects} from './areaAssignment';
-import {CachedItem, FrontMatterSource, frontMatterOf, removeCachedItem} from './dataCache';
+import {CachedItem, FrontMatterSource, frontMatterOf, removeCachedItem, resolveLivePaths} from './dataCache';
+import {moveMarksToInbox} from './markStore';
 import {saveFrontMatter} from './projectFile';
 import {deleteEmptyFolder, displayPath, folderExists, moveFolder, moveFolderMerge} from '../supernote/fileSystem';
 import {areaArchiveTarget, archiveYear, projectArchiveTargets} from '../domain/closeOut/archivePaths';
@@ -146,6 +147,18 @@ export async function archiveItem(
   const {folder: toPath, merge} = archiveTargetsFor(item, settings, today);
 
   log('archiveItem: start', item.path, '->', toPath, merge ? '(merge)' : '');
+  // Open marks go to the Inbox first (lasso 0.8 §3.10) - an archived item
+  // leaves every list, so they would never be seen again. Its new text (the
+  // Marks lines cleared) is what the status stamp below builds on.
+  let rawContent = item.rawContent;
+  try {
+    const {inboxFolder} = await resolveLivePaths(settings);
+    const {itemContent} = await moveMarksToInbox({kind: item.kind, folder: item.path}, toPath, inboxFolder);
+    if (itemContent !== null) rawContent = itemContent;
+  } catch (e) {
+    // Nothing moved yet: stop here rather than archive marks out of sight.
+    throw new Error(`Could not move the open marks to the Inbox: ${e instanceof Error ? e.message : String(e)}`);
+  }
   let keptEmptyFolder: string | null = null;
   if (merge) {
     await moveFolderMerge(item.path, toPath);
@@ -172,7 +185,7 @@ export async function archiveItem(
   }
 
   try {
-    await saveFrontMatter(item.kind, toPath, item.rawContent, {
+    await saveFrontMatter(item.kind, toPath, rawContent, {
       ...frontMatterOf(item),
       extraLines: writeLifecycleDate(item.frontMatterExtraLines, 'archivedAt', isoDate(today)),
       status: 'archived',

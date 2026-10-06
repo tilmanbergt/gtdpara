@@ -38,6 +38,8 @@ import {
   addMarkToContent,
   markFileRef,
   markNotePathFor,
+  marksForMovedFolder,
+  moveMarksToInbox,
   removeMarkFromContent,
   removeMarkLine,
 } from '../../src/storage/markStore';
@@ -121,5 +123,37 @@ describe('addMarkLine / removeMarkLine', () => {
     expect(getCachedInbox()?.marks.map(m => m.id)).toEqual([mark(5).id]);
     await removeMarkLine(inboxRef, mark(5).id);
     expect(getCachedInbox()?.marks).toEqual([]);
+  });
+});
+
+describe('archive: open marks move to the Inbox (§3.10)', () => {
+  const ARCHIVED = `${paths.base}/4 Archive/2026/Garden`;
+  it('re-points relative and inside-folder paths to the archive, keeps others', () => {
+    const moved = marksForMovedFolder(
+      [mark(1, 'Meetings/Sync.note'), mark(2, `${GARDEN}/Plan.note`), mark(3, '/storage/emulated/0/Document/x.pdf')],
+      GARDEN,
+      ARCHIVED,
+    );
+    expect(moved.map(m => m.notePath)).toEqual([
+      `${ARCHIVED}/Meetings/Sync.note`,
+      `${ARCHIVED}/Plan.note`,
+      '/storage/emulated/0/Document/x.pdf',
+    ]);
+  });
+  it('writes the Inbox first, then clears the project; running twice adds nothing', async () => {
+    await addMarkLine(gardenRef, mark(1, 'Meetings/Sync.note'));
+    await addMarkLine(gardenRef, mark(2));
+    mockWrites.length = 0;
+    const r = await moveMarksToInbox(gardenRef, ARCHIVED, paths.inboxFolder);
+    expect(r.moved).toBe(2);
+    expect(mockWrites).toEqual([INBOX_FILE, GARDEN_FILE]);
+    expect(parseMarksSpan(mockFiles.get(GARDEN_FILE)!).marks).toEqual([]);
+    expect(mockFiles.get(GARDEN_FILE)).toContain('Order soil');
+    expect(parseMarksSpan(mockFiles.get(INBOX_FILE)!).marks.map(m => m.notePath)).toEqual([
+      `${ARCHIVED}/Meetings/Sync.note`,
+      `${ARCHIVED}/Plan.note`,
+    ]);
+    expect((await moveMarksToInbox(gardenRef, ARCHIVED, paths.inboxFolder)).moved).toBe(0);
+    expect(parseMarksSpan(mockFiles.get(INBOX_FILE)!).marks).toHaveLength(2);
   });
 });

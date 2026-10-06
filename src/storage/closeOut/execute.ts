@@ -18,6 +18,7 @@ import {stripPageAnchor} from '../../domain/sharedNotePages';
 import {toLinkedFile} from '../linkedFiles';
 import {dataFilePath, loadProjectFile, saveMeetings, saveTasks} from '../projectFile';
 import {savePlan} from './planStore';
+import {moveMarksToInbox} from '../markStore';
 import {log, logError} from '../../utils/log';
 
 export type OpState = 'pending' | 'running' | 'done' | 'skipped' | 'failed';
@@ -56,6 +57,7 @@ export function archiveOpsFor(projectPath: string, settings: GtdParaSettings): A
     areaFolder: item.area ? `${paths.areas}/${item.area}` : null,
     resourcesRoot: paths.resources,
     toLinked: abs => toLinkedFile(paths, abs),
+    openMarkCount: item.marks.length,
   });
 }
 
@@ -166,6 +168,11 @@ export async function runCloseOutArchive(
         case 'rewriteLinks':
           log('closeOut: rewrote links', op.relPath, await rewriteLinks(op.fromLinked, op.toLinked, paths));
           break;
+        case 'moveMarks': {
+          const {moved} = await moveMarksToInbox({kind: 'project', folder: op.from}, op.to, paths.inboxFolder);
+          log('closeOut: marks moved to the Inbox', moved);
+          break;
+        }
         case 'moveFolder':
           if ((await folderExists(op.from)) || !(await folderExists(op.to))) await moveFolder(op.from, op.to);
           folderMoved = true;

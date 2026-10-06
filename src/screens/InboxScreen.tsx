@@ -166,6 +166,10 @@ import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import MarksCard from '../ui/MarksCard';
+import {MarkScope} from '../domain/marks';
+
+const ALL_MARKS: MarkScope = {type: 'all'};
 import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
@@ -892,6 +896,8 @@ export default function InboxScreen({
               borderColor={borderColor}
               placeholderColor={placeholderColor}
             />
+            {/* Open marks of every project, area and the Inbox (lasso 0.8 §3.10). */}
+            <MarksCard scope={ALL_MARKS} returnTo="inbox" textColor={textColor} borderColor={borderColor} />
             <View style={[common.divider, {backgroundColor: borderColor}]} />
             {/* Flex-weight stacking (2026-09-17, docs/dev/technical-design-
                 flex-weight-stacking.md §3.4) - stackedColumn (flex:1)

@@ -117,6 +117,8 @@ import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import MarksCard from '../ui/MarksCard';
+import {MarkScope} from '../domain/marks';
 import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {common} from '../ui/commonStyles';
@@ -212,6 +214,7 @@ export default function ProjectDataPanel({
   noteFolderPath,
 }: Props): React.JSX.Element {
   usePerfRender('ProjectDataPanel');
+  const marksScope: MarkScope = useMemo(() => ({type: 'item', path}), [path]);
   const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [state, setState] = useState<PanelState | null>(null);
@@ -793,6 +796,8 @@ export default function ProjectDataPanel({
         borderColor={borderColor}
         placeholderColor={placeholderColor}
       />
+      {/* This item's open marks (lasso 0.8 §3.10). */}
+      <MarksCard scope={marksScope} returnTo="current" textColor={textColor} borderColor={borderColor} />
       <View style={[styles.divider, {backgroundColor: borderColor}]} />
       {/* Flex-weight stacking (2026-09-17, docs/dev/technical-design-flex-
           weight-stacking.md §3.3) - stackedColumn (flex:1) splits its real

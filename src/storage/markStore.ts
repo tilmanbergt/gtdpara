@@ -13,7 +13,7 @@
  */
 import {Destination} from '../domain/destination';
 import {ensureSkeleton, parseMarksSpan, writeMarksIntoContent} from '../domain/markdown';
-import {markLinkPath} from '../domain/marks';
+import {markLinkPath, resolveMarkPath} from '../domain/marks';
 import {ResolvedParaPaths} from '../domain/settings';
 import {GtdParaKind, Mark} from '../domain/types';
 import {readTextFile, writeTextFile} from '../supernote/fileSystem';
@@ -111,5 +111,52 @@ export function removeMarkLine(ref: MarkFileRef, id: string): Promise<boolean> {
       logError('markStore: removing mark failed', ref.kind, id, e instanceof Error ? e.message : String(e));
       throw e;
     }
+  });
+}
+
+/**
+ * Pure: marks of an item whose folder moves from `fromFolder` to
+ * `targetFolder` (archive), re-pointed to absolute paths at the new place -
+ * so they still find their note from the Inbox.
+ */
+export function marksForMovedFolder(marks: Mark[], fromFolder: string, targetFolder: string): Mark[] {
+  const from = fromFolder.replace(/\/+$/, '');
+  const to = targetFolder.replace(/\/+$/, '');
+  return marks.map(mark => {
+    const abs = resolveMarkPath(from, mark.notePath);
+    const moved = abs.startsWith(`${from}/`) ? `${to}${abs.slice(from.length)}` : abs;
+    return {...mark, notePath: moved};
+  });
+}
+
+/**
+ * Archive (docs/dev/technical-design-lasso-0.8.md §3.10): moves the open
+ * marks of the item in `itemFolder` into Inbox.txt - Inbox first, then the
+ * item's `## Marks` lines are cleared - before its folder moves to
+ * `targetFolder`. An archived item leaves the lists, so its marks would
+ * never be seen again otherwise. Bookmarks and private data stay as they
+ * are (keyed by id). Safe to run twice: ids already in the Inbox are not
+ * added again. Resolves the item file's new text (null: no file).
+ */
+export function moveMarksToInbox(
+  itemRef: MarkFileRef,
+  targetFolder: string,
+  inboxFolder: string,
+): Promise<{moved: number; itemContent: string | null}> {
+  return enqueue(async () => {
+    const raw = await readTextFile(dataFilePath(itemRef.kind, itemRef.folder));
+    if (raw === null) {return {moved: 0, itemContent: null};}
+    const {marks, extraLines} = parseMarksSpan(raw);
+    if (marks.length === 0) {return {moved: 0, itemContent: raw};}
+    const inboxRef: MarkFileRef = {kind: 'inbox', folder: inboxFolder};
+    let inbox = await readFresh(inboxRef);
+    for (const mark of marksForMovedFolder(marks, itemRef.folder, targetFolder)) {
+      inbox = addMarkToContent(inbox, 'inbox', mark);
+    }
+    await writeAndApply(inboxRef, inbox);
+    const next = writeMarksIntoContent(raw, [], extraLines);
+    await writeAndApply(itemRef, next);
+    log('markStore: marks moved to the Inbox', itemRef.kind, marks.length);
+    return {moved: marks.length, itemContent: next};
   });
 }

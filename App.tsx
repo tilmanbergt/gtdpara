@@ -20,6 +20,7 @@ import InboxScreen from './src/screens/InboxScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
 import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
+import {setOpenMarksHandler} from './src/ui/marksNav';
 import {MarkScope} from './src/domain/marks';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
@@ -508,6 +509,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     }),
     [],
   );
+  // The "marks to process" cards (ui/MarksCard.tsx) open the marks screen
+  // through ui/marksNav.ts - registered once, always runs the latest openMarks.
+  useEffect(() => {
+    setOpenMarksHandler((scope, returnTo) => navRef.current?.openMarks(scope, returnTo));
+    return () => setOpenMarksHandler(null);
+  }, []);
   // Which kept tabs have been visited (mounted) - a kept screen is mounted on
   // its first visit and then stays. Reset when the switch is turned off, and
   // when Settings → Advanced → "Reload all files" drops the kept tabs
