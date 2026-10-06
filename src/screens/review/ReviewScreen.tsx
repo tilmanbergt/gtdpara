@@ -165,15 +165,11 @@
  */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Pressable, Text, View} from 'react-native';
-import {AbbrevFileMatch} from '../../domain/abbrev';
 import {Destination, destinationLabel, isFocused} from '../../domain/destination';
 import {setFlowStateTag} from '../../domain/flowState';
 import {deriveTaskFields, setDueTag} from '../../domain/markdown';
-import {isTodayOrFuture} from '../../domain/meetingTime';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../domain/meetingTracking';
 import {applyEmptyStamps, applyStepVisit, nextReviewStepId, prevReviewStepId, activeReviewSteps, reviewStepDef, ReviewStepId, ReviewSummaryCounts} from '../../domain/reviewSteps';
 import {GtdParaSettings, ResolvedParaPaths} from '../../domain/settings';
-import {Meeting, Task} from '../../domain/types';
 import {isoWeekKey, weekAheadRangeIso} from '../../domain/weekDate';
 import {countMeetingsInRange} from '../../domain/meetingSpan';
 import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../../storage/archive';
@@ -181,36 +177,25 @@ import {archiveDoneText, emptyFolderConfirmNote} from '../../domain/fileChangeTe
 import {planStatusLabel} from '../../domain/closeOut/plan';
 import {CachedItem, findCachedItem, getCachedData, rebuildCache, setCachedInbox, updateItemTasks} from '../../storage/dataCache';
 import {FocusScope, focusBlockedReason, setItemFocus} from '../../storage/focusSlots';
-import {InboxFilingTarget, resolveFilingPick} from '../../storage/inboxFiling';
-import {itemTarget, moveMeeting, moveTask} from '../../storage/entryMove';
-import {useEntryMoveUi} from '../../ui/useEntryMoveUi';
-import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../../storage/linkedFiles';
-import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../storage/meetingNoteContent';
-import {useNoteCreateConfirm} from '../../ui/useNoteCreateConfirm';
-import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask} from '../../storage/itemMutations';
+import {addTaskToDestination, buildTask} from '../../storage/itemMutations';
 import {getCachedGmailInbox} from '../../storage/gmailInboxCache';
-import {loadProjectFile, saveMeetings, saveTasks} from '../../storage/projectFile';
+import {loadProjectFile, saveTasks} from '../../storage/projectFile';
 import {buildReviewAggregate, buildReviewStepCounts, isActionableOpenTask, nextTasksFor, ReviewAggregate, ReviewItemRef, ReviewNextTaskEntry, ReviewProjectEntry, ReviewShelvedTaskEntry, ReviewUnfocusedNextEntry, shelvedTasksFor} from '../../storage/reviewAggregate';
 import {loadSettings, updateReviewSteps} from '../../storage/settingsStorage';
 import {SettableStatus, setItemStatus} from '../../storage/statusControl';
 import {displayPath, FolderEntry} from '../../supernote/fileSystem';
 import {log, logError} from '../../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../../utils/screenRefresh';
-import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../../ui/FileBrowserPane';
 import DateInput from '../../ui/DateInput';
 import FocusedItemRow from '../../ui/FocusedItemRow';
 import ItemContextBlock from '../../ui/ItemContextBlock';
 import {COLUMN_WIDTH_PX, itemEntryDisplayText, itemEntryHeight, itemEntryLines} from '../../ui/itemEntryRow';
 import ReviewWeekAhead from './steps/WeekAheadStep';
-import MeetingRow, {MeetingTrackingConfig} from '../../ui/MeetingRow';
-import MeetingList from '../../ui/MeetingList';
-import {useEditTarget} from '../../ui/useEditTarget';
-import PagedSection from '../../ui/PagedSection';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../../ui/QuickAddWidget';
+import MeetingRow from '../../ui/MeetingRow';
+import QuickAddWidget from '../../ui/QuickAddWidget';
 import {ReviewEnd, ReviewHub} from '../../ui/ReviewHub';
 import ReviewMasterDetail from '../../ui/ReviewMasterDetail';
-import {displayTaskText} from '../../domain/taskLabels';
-import TaskRow, {ReadOnlyTaskRow, taskRowHeight, taskRowLines} from '../../ui/TaskRow';
+import {ReadOnlyTaskRow} from '../../ui/TaskRow';
 import {useCachedItems} from '../../ui/useCachedItems';
 import {activeLineEstimator} from '../../ui/textLineEstimator';
 import {common} from '../../ui/commonStyles';
@@ -219,7 +204,6 @@ import {FONT, useThemeColors} from '../../ui/theme';
 import {useFeatures} from '../../ui/featureStore';
 import {useErrorStatus, useStatusApi} from '../../ui/status/StatusProvider';
 import {useCachedInbox} from '../../ui/useCachedInbox';
-import MarksCard from '../../ui/MarksCard';
 import {useOpenMarks} from '../../ui/useOpenMarks';
 import {MarkScope} from '../../domain/marks';
 import {errorMessage} from '../../utils/errorMessage';
@@ -230,6 +214,7 @@ import {ReviewStepProps} from './shared';
 import {ReviewData} from './useReviewData';
 import MeetingsCloseOutStep from './steps/MeetingsCloseOutStep';
 import GmailStep from './steps/GmailStep';
+import InboxStep, {inboxStepEntries} from './steps/InboxStep';
 
 const ALL_MARKS: MarkScope = {type: 'all'};
 
@@ -248,11 +233,6 @@ interface Props {
   onStartCloseOut?: (projectPath: string, mode: 'full' | 'quick') => void;
 }
 
-// Week ahead's quick-add always goes to Inbox now (docs/dev/technical-design-
-// filing-unification.md §6) - same local-constant convention
-// screens/InboxScreen.tsx's own FIXED_INBOX_DESTINATION uses.
-const FIXED_INBOX_DESTINATION: Destination = {type: 'inbox'};
-
 // ui/QuickAddWidget.tsx's onAddMeeting prop is required even in `taskOnly`
 // mode (Meeting stays permanently greyed/locked there, so it's never
 // actually reachable) - Week ahead and every stalled-project/neglected-area
@@ -260,21 +240,6 @@ const FIXED_INBOX_DESTINATION: Destination = {type: 'inbox'};
 // inventing its own unreachable no-op.
 const noopAddMeeting = async (): Promise<void> => {};
 
-
-// Inbox-to-zero step's own Tasks/Meetings PagedSections - flex weights now
-// (docs/dev/technical-design-flex-weight-stacking.md §3.4, 2026-09-17),
-// replacing the old REVIEW_INBOX_TASKS_VIEWPORT_PX/
-// REVIEW_INBOX_MEETINGS_VIEWPORT_PX pixel budgets (which had anchored on
-// PAGE_SIZE.stacked's own 1:1 value, independent of screens/InboxScreen.tsx's
-// PAGE_SIZE.inboxTasks/inboxMeetings). Tilman explicitly asked
-// (2026-09-17) for this step to share the same 8:6 ratio as
-// InboxScreen.tsx's own Tasks/Meetings split instead of keeping its
-// previously-independent 1:1 - both stacks are now literally the same
-// weight pair (see screens/InboxScreen.tsx's own TASKS_WEIGHT/
-// MEETINGS_WEIGHT). Each PagedSection is the sole occupant of its own
-// weighted box (styles.stackedColumn below) and self-measures into it.
-const REVIEW_INBOX_TASKS_WEIGHT = 8;
-const REVIEW_INBOX_MEETINGS_WEIGHT = 6;
 
 function statusLabel(status: SettableStatus): string {
   if (status === 'active') return 'Active';
@@ -413,26 +378,6 @@ export default function ReviewScreen({
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
 
-  const [inboxActionError, setInboxActionError] = useState<string | null>(null);
-  useErrorStatus('ReviewScreen.inboxActionError', inboxActionError, () => setInboxActionError(null));
-  // One shared edit-target for the Inbox-to-zero step's task+meeting rows
-  // (2026-09-09, docs/dev/technical-design-unified-quickadd.md §6/§8) - see the
-  // module doc comment's "Inbox to zero's own edit-target state" note.
-  // `editingInboxTaskIndex`/`editingInboxMeetingIndex` below are derived
-  // from this rather than being their own state, so every existing
-  // reference to them elsewhere in this file keeps working unchanged.
-  type InboxEditTarget = {type: 'task'; index: number} | {type: 'meeting'; index: number};
-  // The step's one edit and one arm (its Files pane: link a file, file to a Project/Area) - ui/useEditTarget.ts.
-  const {
-    target: editTarget,
-    arm: inboxZeroArmTarget,
-    start: startEditTarget,
-    cancel: cancelEditTarget,
-    armFor,
-    cancelArm: cancelInboxArming,
-    flushEditRef,
-  } = useEditTarget<InboxEditTarget, {type: 'task' | 'meeting'; index: number; intent: 'link' | 'file'}>();
-
   const [view, setView] = useState<ReviewView>(getSavedView);
   /** Set when persisting a step visit / empty stamp failed - shown on the hub and end page (ui/ReviewHub.tsx). */
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -473,9 +418,6 @@ export default function ReviewScreen({
   const [onHoldActedOn, setOnHoldActedOn] = useState<Set<string>>(new Set());
   const [unfocusedNextActedOn, setUnfocusedNextActedOn] = useState<Set<string>>(new Set());
   const statusApi = useStatusApi();
-  const confirmNoteCreate = useNoteCreateConfirm('ReviewScreen.noteCreateConfirm');
-  // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
-  const moveUi = useEntryMoveUi('ReviewScreen');
   /** Bumped on every page change (showView) and on a manual 🔄 reload - passed as `ui/ReviewMasterDetail.tsx`'s `resetKey` for whichever step is currently mounted, so its own left-list selection resets to "nothing selected" exactly when that step's snapshot re-freezes (module doc comment's "Frozen snapshots" note), never on an unrelated re-render from a sibling action. */
   const [stepEntryToken, setStepEntryToken] = useState(0);
 
@@ -1074,393 +1016,6 @@ export default function ReviewScreen({
     requestEinkRefresh();
   };
 
-  const handleInboxTaskDone = (taskIndex: number) => {
-    setInboxActionError(null);
-    (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const current = inbox.tasks[taskIndex];
-        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const nextTasks = inbox.tasks.slice();
-        nextTasks[taskIndex] = {...current, done: true};
-        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
-        bump('inboxCleared');
-        log('ReviewScreen: inbox task done', taskIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox task done failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  /**
-   * The soft-delete ui/TaskRow.tsx's old ✕ used to trigger - now called
-   * only from ui/QuickAddWidget.tsx's "Delete" button in edit mode
-   * (handleDeleteEditForWidget below), same relocation every other row in
-   * this codebase got (technical-design-linked-files.md §1/§7). Returns its
-   * promise (unlike before) so the caller can close edit mode only on a
-   * successful save rather than unconditionally - same "close only on
-   * success" fix screens/ProjectDataPanel.tsx's MeetingsSection.commitEdit
-   * and screens/InboxScreen.tsx's commitTaskEdit/commitMeetingEdit already
-   * got in this same pass.
-   */
-  const handleInboxTaskCancel = (taskIndex: number): Promise<void> => {
-    setInboxActionError(null);
-    return (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const current = inbox.tasks[taskIndex];
-        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const nextTasks = inbox.tasks.slice();
-        nextTasks[taskIndex] = {...current, cancelled: true};
-        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
-        cancelEditTarget();
-        bump('inboxCleared');
-        log('ReviewScreen: inbox task cancelled', taskIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox task cancel failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  /** Meeting counterpart of handleInboxTaskCancel above. */
-  const handleInboxMeetingCancel = (meetingIndex: number): Promise<void> => {
-    setInboxActionError(null);
-    return (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const current = inbox.meetings[meetingIndex];
-        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const nextMeetings = inbox.meetings.slice();
-        nextMeetings[meetingIndex] = {...current, cancelled: true};
-        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
-        cancelEditTarget();
-        bump('inboxCleared');
-        log('ReviewScreen: inbox meeting cancelled', meetingIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox meeting cancel failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  const handleFileTask = (taskIndex: number, target: InboxFilingTarget) => {
-    setInboxActionError(null);
-    (async () => {
-      try {
-        const task = inbox?.tasks[taskIndex];
-        if (!task || !inboxPath) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const moved = await moveTask({kind: 'inbox', path: inboxPath}, taskIndex, task, itemTarget(target), moveUi);
-        if (!moved) return; // cancelled in the note confirm
-        refreshFromCache();
-        bump('inboxCleared');
-        log('ReviewScreen: filed inbox task', taskIndex, '->', target.path);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: file task failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
-    setInboxActionError(null);
-    (async () => {
-      try {
-        const meeting = inbox?.meetings[meetingIndex];
-        if (!meeting || !inboxPath) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const moved = await moveMeeting({kind: 'inbox', path: inboxPath}, meetingIndex, meeting, itemTarget(target), moveUi);
-        if (!moved) return; // cancelled in the note confirm
-        refreshFromCache();
-        bump('inboxCleared');
-        log('ReviewScreen: filed inbox meeting', meetingIndex, '->', target.path);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: file meeting failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  /**
-   * QuickAddWidget's onQuickFile in edit mode: "save, but file elsewhere"
-   * (see InboxScreen's handleQuickFileEdit). Throws instead of using
-   * inboxActionError, so the widget can show the failure inline; closes
-   * edit mode only after the move succeeded.
-   */
-  const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
-    if (!editTarget) return;
-    if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-    const index = editTarget.index;
-    if (editTarget.type === 'task' && payload.kind === 'task') {
-      const stored = inbox.tasks[index];
-      if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-      const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
-      const moved = await moveTask({kind: 'inbox', path: inboxPath}, index, updated, itemTarget(target), moveUi);
-      if (!moved) return; // cancelled in the note confirm - stay in edit mode
-    } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
-      const stored = inbox.meetings[index];
-      if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-      const updated: Meeting = applyMeetingEdit(stored, payload.fields, payload.linkedFile);
-      const moved = await moveMeeting({kind: 'inbox', path: inboxPath}, index, updated, itemTarget(target), moveUi);
-      if (!moved) return; // cancelled in the note confirm - stay in edit mode
-    } else {
-      return; // mismatched kinds shouldn't happen - editTarget.type gates which tab the widget shows
-    }
-    refreshFromCache();
-    bump('inboxCleared');
-    log('ReviewScreen: quick-filed inbox', editTarget.type, index, '->', target.path);
-    cancelEditTarget();
-  };
-
-  // Arming is reached from inside edit mode; the edit stays open meanwhile.
-  const armInboxLinkTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'});
-  const armInboxFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
-
-  const startEditingInboxTask = (taskIndex: number) => {
-    startEditTarget({type: 'task', index: taskIndex});
-  };
-  const startEditingInboxMeeting = (meetingIndex: number) => {
-    startEditTarget({type: 'meeting', index: meetingIndex});
-  };
-
-  // 'browse' (2026-09-09, replacing the old separate 'projects'/'areas'
-  // roots) is the two-level Projects/Areas browser - see
-  // screens/InboxScreen.tsx's own rootPathFor for the full note.
-  const inboxZeroRootPathFor = (root: string): string | null =>
-    root === 'resources' ? paths?.resources ?? null : root === 'browse' ? paths?.base ?? null : null;
-
-  /** `arming` mode's onPick for intent 'link' - same shape as screens/InboxScreen.tsx's handlePickLinkedFile (docs/dev/technical-design-filing-unification.md §5.2). */
-  const handleInboxLinkPick = (root: string, relativePath: string) => {
-    const rootPath = inboxZeroRootPathFor(root);
-    setInboxActionError(null);
-    (async () => {
-      try {
-        if (!inbox || !inboxPath || !paths || !rootPath || !inboxZeroArmTarget) {
-          throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        }
-        const absolutePath = `${rootPath.replace(/\/+$/, '')}/${relativePath}`;
-        const linkedFile = toLinkedFile(paths, absolutePath);
-        if (inboxZeroArmTarget.type === 'task') {
-          const current = inbox.tasks[inboxZeroArmTarget.index];
-          if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-          const nextTasks = inbox.tasks.slice();
-          nextTasks[inboxZeroArmTarget.index] = {...current, linkedFile};
-          const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-          setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
-        } else {
-          const current = inbox.meetings[inboxZeroArmTarget.index];
-          if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-          const nextMeetings = inbox.meetings.slice();
-          nextMeetings[inboxZeroArmTarget.index] = {...current, linkedFile};
-          const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-          setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
-        }
-        log('ReviewScreen: linked inbox item', inboxZeroArmTarget.type, inboxZeroArmTarget.index, '->', relativePath);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: link inbox item failed', message);
-        setInboxActionError(message);
-      } finally {
-        cancelInboxArming();
-      }
-    })();
-  };
-
-  /** `arming` mode's onPick for intent 'file' - resolveFilingPick only ever sees 'projects'/'areas' since Resources isn't offered as a root while file-arming (docs/dev/technical-design-filing-unification.md §5.2, mirroring screens/InboxScreen.tsx's handlePickFile). */
-  const handleInboxFilePick = (root: string, relativePath: string) => {
-    if (!paths || !inboxZeroArmTarget || inboxZeroArmTarget.intent !== 'file') return;
-    const target = resolveFilingPick(paths, root, relativePath);
-    if (!target) return;
-    if (inboxZeroArmTarget.type === 'task') handleFileTask(inboxZeroArmTarget.index, target);
-    else handleFileMeeting(inboxZeroArmTarget.index, target);
-    cancelInboxArming();
-  };
-
-  /**
-   * Inline edit/note-link handlers for Inbox tasks/meetings
-   * (docs/dev/technical-design-inbox-tab.md §1, 2026-09-03: Review's Inbox-to-zero
-   * cards gain full row parity via the shared ui/TaskRow.tsx/ui/MeetingRow.tsx,
-   * same as Daily view and Project/Area's own rows) - same
-   * save-shape (saveTasks/saveMeetings against `inbox` state, then setCachedInbox)
-   * as handleInboxTaskDone/handleInboxTaskCancel/handleInboxMeetingCancel
-   * above, and (2026-09-22, Slice 3 of docs/dev/technical-design-shared-note-
-   * pages.md) the same `openOrCreateTodoNote`/`openOrCreateMeetingNote`
-   * DailyView.tsx's own Inbox-sourced rows use, with `forceOwnTarget: true`
-   * (Inbox.txt lives at `inboxPath` itself, so `inboxPath` stands in for the
-   * "item path" those functions normally take, and there's no Project/Area
-   * to anchor a shared file to - see `handleInboxTaskNote`'s own doc
-   * comment).
-   */
-  const handleInboxTaskSave = (taskIndex: number, nextText: string, nextLinkedFile: string): Promise<boolean> => {
-    setInboxActionError(null);
-    return (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const current = inbox.tasks[taskIndex];
-        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const nextTasks = inbox.tasks.slice();
-        nextTasks[taskIndex] = {...current, text: nextText, ...deriveTaskFields(nextText), linkedFile: nextLinkedFile};
-        const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
-        cancelEditTarget();
-        log('ReviewScreen: inbox task edited', taskIndex);
-        return true;
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox task edit failed', message);
-        setInboxActionError(message);
-        return false;
-      }
-    })();
-  };
-
-  /**
-   * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §6/§9,
-   * Slice 3, 2026-09-22): replaces the old separate handleInboxCreateTaskNote/
-   * handleInboxOpenTaskNote pair with one call into `openOrCreateTodoNote`.
-   * `forceOwnTarget: true` - same §9 Inbox exclusion as InboxScreen.tsx's own
-   * handlers (Inbox.txt lives at `inboxPath` itself, so there's no Project/
-   * Area to anchor a shared file to).
-   */
-  const handleInboxTaskNote = (taskIndex: number) => {
-    setInboxActionError(null);
-    (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const currentSettings = settings ?? (await loadSettings());
-        const {task, changed} = await openOrCreateTodoNote(inbox.tasks[taskIndex], inboxPath, currentSettings, {tasks: inbox.tasks}, {
-          forceOwnTarget: true,
-          confirmCreate: confirmNoteCreate,
-        });
-        if (changed) {
-          const nextTasks = inbox.tasks.slice();
-          nextTasks[taskIndex] = task;
-          const nextRaw = await saveTasks('inbox', inboxPath, inbox.rawContent, nextTasks, inbox.taskExtraLines);
-          setCachedInbox({...inbox, rawContent: nextRaw, tasks: nextTasks});
-        }
-        log('ReviewScreen: inbox task note opened/created', taskIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox task note open/create failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  const handleInboxMeetingStartEdit = (meetingIndex: number) => {
-    startEditingInboxMeeting(meetingIndex);
-  };
-
-  /**
-   * ui/QuickAddWidget.tsx's meeting-edit mode onSaveEdit - `fields` has
-   * already been validated/normalized by its own submit(), so this only
-   * needs to write through (same shape as screens/InboxScreen.tsx's
-   * commitMeetingEdit).
-   */
-  const handleInboxMeetingCommitEdit = (meetingIndex: number, fields: MeetingQuickAddFields, nextLinkedFile: string): Promise<boolean> => {
-    setInboxActionError(null);
-    return (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const current = inbox.meetings[meetingIndex];
-        if (!current) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const nextMeetings = inbox.meetings.slice();
-        nextMeetings[meetingIndex] = applyMeetingEdit(current, fields, nextLinkedFile);
-        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
-        cancelEditTarget();
-        log('ReviewScreen: inbox meeting edited', meetingIndex);
-        return true;
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox meeting edit failed', message);
-        setInboxActionError(message);
-        return false;
-      }
-    })();
-  };
-
-  /**
-   * Inbox-to-zero's own "add a meeting" (docs/dev/technical-design-pagination-
-   * edit-reuse.md §5) - a genuinely new capability this step never had
-   * (unlike Tasks, which already had handleAddTask). Introduced because the
-   * edit-reuse pattern needs an always-rendered fixed-slot form to swap into
-   * edit mode - the same QuickAddWidget fixedDestination=inbox shape
-   * screens/InboxScreen.tsx already uses.
-   *
-   * 2026-09-20: now honours `destination` (via storage/itemMutations.ts, the
-   * same path handleAddTask uses). It used to ignore it - so a title typed
-   * with a Project/Area `#ABBR` tag (button reading "+ Add to <Name>", tag
-   * stripped from the saved title) was silently filed to the Inbox instead.
-   */
-  const handleAddInboxMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
-    const {nextInbox} = await addMeetingToDestination(buildMeeting(fields), destination, {inbox, inboxPath});
-    if (nextInbox) setCachedInbox(nextInbox);
-    else refreshFromCache();
-    log('ReviewScreen: added meeting', destinationLabel(destination));
-  };
-
-  /** Meeting counterpart of handleInboxTaskNote above - see its doc comment, including `forceOwnTarget: true`. */
-  const handleInboxMeetingNote = (meetingIndex: number) => {
-    setInboxActionError(null);
-    (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        const currentSettings = settings ?? (await loadSettings());
-        const {meeting, changed} = await openOrCreateMeetingNote(
-          inbox.meetings[meetingIndex],
-          inboxPath,
-          currentSettings,
-          {tasks: inbox.tasks},
-          {forceOwnTarget: true, confirmCreate: confirmNoteCreate},
-        );
-        if (changed) {
-          const nextMeetings = inbox.meetings.slice();
-          nextMeetings[meetingIndex] = meeting;
-          const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-          setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
-        }
-        log('ReviewScreen: inbox meeting note opened/created', meetingIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox meeting note open/create failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  /** Inbox-to-zero's meeting rows' prep/review checkpoint icon (docs/dev/technical-design-meeting-tracking.md) - same write-through shape as the other Inbox meeting handlers above, then an explicit e-ink flush for the direct tap. */
-  const handleInboxToggleMeetingTracking = (meetingIndex: number, kind: MeetingTrackingKind) => {
-    setInboxActionError(null);
-    (async () => {
-      try {
-        if (!inbox || !inboxPath) throw new Error('Inbox not loaded yet - Settings → Advanced → Reload all files.');
-        if (!inbox.meetings[meetingIndex]) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-        const nextMeetings = toggleMeetingTrackingAt(inbox.meetings, meetingIndex, kind);
-        const nextRaw = await saveMeetings('inbox', inboxPath, inbox.rawContent, nextMeetings, inbox.meetingExtraLines);
-        setCachedInbox({...inbox, rawContent: nextRaw, meetings: nextMeetings});
-        requestEinkRefresh();
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('ReviewScreen: inbox meeting tracking toggle failed', message);
-        setInboxActionError(message);
-      }
-    })();
-  };
-
-  const inboxMeetingTrackingFor = (meetingIndex: number): MeetingTrackingConfig => ({
-    rules: settings?.tagRules ?? [],
-    onToggle: kind => handleInboxToggleMeetingTracking(meetingIndex, kind),
-  });
-
   // No usePagination(..., PAGE_SIZE.review) here any more (2026-09-16,
   // docs/dev/technical-design-review-master-detail.md §3/§7) - each of these
   // five lists is now a `ui/ReviewMasterDetail.tsx` left list, which wraps
@@ -1483,17 +1038,7 @@ export default function ReviewScreen({
   // ui/ItemContextBlock.tsx's own currentWeekKey doc comment.
   const currentWeekKey = isoWeekKey(new Date());
 
-  const inboxOpenTasks = (inbox?.tasks ?? [])
-    .map((task, taskIndex) => ({task, taskIndex}))
-    .filter(({task}) => !task.cancelled && !task.done);
-  // Only meetings dated today or later (2026-09-21): a past meeting sitting
-  // in the Inbox can't be prepared for any more, so it neither shows in the
-  // Inbox-to-zero list nor counts toward the hub's number for this step
-  // (stepCounts below is derived from this same list). It stays in
-  // Inbox.txt and in the Inbox tab - only this review step ignores it.
-  const inboxOpenMeetings = (inbox?.meetings ?? [])
-    .map((meeting, meetingIndex) => ({meeting, meetingIndex}))
-    .filter(({meeting}) => !meeting.cancelled && isTodayOrFuture(meeting.date));
+  const {openTasks: inboxOpenTasks, openMeetings: inboxOpenMeetings} = inboxStepEntries(inbox);
 
   // The hub's per-step numbers (storage/reviewAggregate.ts's
   // buildReviewStepCounts) - live from the same aggregate the steps read, so
@@ -1543,105 +1088,6 @@ export default function ReviewScreen({
       .catch(e => logError('ReviewScreen: empty-step stamp failed', errorMessage(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, loading, emptyBacklogKey, settings?.reviewSteps]);
-  // Derived from editTarget rather than their own state - see the module
-  // doc comment's "Inbox to zero's own edit-target state" note. Everything
-  // below that reads these two (TaskRow/MeetingRow's isEditing, the widget's
-  // onSaveEdit* wiring, handleDeleteEditForWidget) is unchanged from before.
-  const editingInboxTaskIndex = editTarget?.type === 'task' ? editTarget.index : null;
-  const editingInboxMeetingIndex = editTarget?.type === 'meeting' ? editTarget.index : null;
-  const editingInboxTask = editingInboxTaskIndex !== null ? inbox?.tasks[editingInboxTaskIndex] ?? null : null;
-  const editingInboxMeeting = editingInboxMeetingIndex !== null ? inbox?.meetings[editingInboxMeetingIndex] ?? null : null;
-
-  // Linked-file treatment (technical-design-linked-files.md §9.1 gave this a
-  // read-only clip; docs/dev/technical-design-filing-unification.md §5 makes it
-  // fully armable, same as screens/InboxScreen.tsx). linkedFileMissing
-  // mirrors screens/ProjectDataPanel.tsx's identical effect - the editing
-  // item's own linkedFile (if any) still resolving to a real file, resolved
-  // async so QuickAddWidget stays free of I/O. Also feeds the
-  // 'locating' branch of inboxZeroLinkTarget below, same as
-  // screens/InboxScreen.tsx's editingItem.
-  const editingInboxItem: Task | Meeting | null = editingInboxTask ?? editingInboxMeeting ?? null;
-  const [inboxLinkedFileMissing, setInboxLinkedFileMissing] = useState(false);
-  useEffect(() => {
-    if (!editingInboxItem?.linkedFile || !paths) {
-      setInboxLinkedFileMissing(false);
-      return;
-    }
-    let cancelled = false;
-    linkedFileStatus(paths, editingInboxItem.linkedFile).then(status => {
-      if (!cancelled) setInboxLinkedFileMissing(status === 'missing');
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [editingInboxItem?.linkedFile, paths]);
-
-  const onOpenInboxLinkedFile = (linkedFile: string) => {
-    if (!paths) return;
-    openLinkedFile(paths, linkedFile).catch(e =>
-      logError('ReviewScreen: open linked file failed', errorMessage(e)),
-    );
-  };
-
-  const armingInboxTaskIndex = inboxZeroArmTarget?.type === 'task' ? inboxZeroArmTarget.index : null;
-  const armingInboxMeetingIndex = inboxZeroArmTarget?.type === 'meeting' ? inboxZeroArmTarget.index : null;
-
-  // See the module doc comment's "Linked-file treatment" note above on why
-  // `paths.resources` doubles as the "item root" argument here (identical
-  // reasoning to screens/InboxScreen.tsx's own locating branch).
-  // `root: 'browse'` (2026-09-09, was 'projects') - see
-  // screens/InboxScreen.tsx's own linkTarget for the full note.
-  const inboxZeroLinkTarget: LinkTarget | null = inboxZeroArmTarget
-    ? inboxZeroArmTarget.intent === 'file'
-      ? {mode: 'arming', onPick: handleInboxFilePick, onCancel: cancelInboxArming, pickKind: 'folder', label: ARMING_TEXT.refile(inboxZeroArmTarget.type), root: 'browse'}
-      : {mode: 'arming', onPick: handleInboxLinkPick, onCancel: cancelInboxArming, label: ARMING_TEXT.link(inboxZeroArmTarget.type)}
-    : editingInboxItem?.linkedFile && paths
-    ? (() => {
-        const location = locateLinkedFile(paths, paths.resources, editingInboxItem.linkedFile);
-        if (!location) return null;
-        return {
-          mode: 'locating' as const,
-          root: 'resources',
-          folderPath: location.folderPath,
-          fileName: location.fileName,
-          fileMissing: inboxLinkedFileMissing,
-        };
-      })()
-    : null;
-
-  // Active-only, same entryFilter screens/InboxScreen.tsx uses (docs/
-  // technical-design-filing-unification.md §3.1/§5.1) - always applied to
-  // Browse's own per-category listings regardless of arm state (Tilman:
-  // only the top-level Projects/Areas management tabs, not Browse, show
-  // every status).
-  const inboxZeroActiveOnly = (entry: FolderEntry) => findCachedItem(entry.path)?.status === 'active';
-  // Resources is disabled (not removed - see ui/FileBrowserPane.tsx's
-  // `disabled` doc comment) while file-arming, same 2026-09-09 rework as
-  // screens/InboxScreen.tsx's own fileBrowserRoots.
-  const inboxZeroIsFileArming = inboxZeroArmTarget?.intent === 'file';
-  const inboxZeroFileBrowserRoots: FileBrowserRoot[] = paths
-    ? [
-        {key: 'resources', label: 'Resources', rootPath: paths.resources, disabled: inboxZeroIsFileArming},
-        {
-          key: 'browse',
-          label: 'Browse',
-          rootPath: paths.base,
-          sources: [
-            {kind: 'project', path: paths.projects, label: 'Projects'},
-            {kind: 'area', path: paths.areas, label: 'Areas'},
-          ],
-          entryFilter: inboxZeroActiveOnly,
-          onNavigateToItem: (kind, name, path) => onOpenItem(kind, {name, path, isFolder: true}),
-        },
-      ]
-    : [];
-
-  /** ui/QuickAddWidget.tsx's onDeleteEdit - single entry point since only one of editingInboxTaskIndex/editingInboxMeetingIndex can be set at a time (this step's own §6 guard). handleInboxTaskCancel/handleInboxMeetingCancel do the actual mutation and close edit mode themselves, on success. */
-  const handleDeleteEditForWidget = () => {
-    if (editingInboxTaskIndex !== null) handleInboxTaskCancel(editingInboxTaskIndex);
-    else if (editingInboxMeetingIndex !== null) handleInboxMeetingCancel(editingInboxMeetingIndex);
-  };
-
   /**
    * Week ahead (docs/dev/technical-design-meeting-lists.md §4.6): the Week screen
    * itself, screens/ReviewWeekAhead.tsx (WeekPlanner + its own planning
@@ -1670,153 +1116,6 @@ export default function ReviewScreen({
       />
     </View>
   );
-
-  const renderInboxZero = () => {
-    return (
-      <View style={styles.body}>
-        <View style={[styles.leftPane, {borderColor}]}>
-          <Text style={[styles.paneTitle, {color: textColor}]}>Files</Text>
-          <FileBrowserPane
-            roots={inboxZeroFileBrowserRoots}
-            linkTarget={inboxZeroLinkTarget}
-            textColor={textColor}
-            borderColor={borderColor}
-          />
-        </View>
-        <View style={styles.rightPane}>
-        <Text style={[common.hint, {color: textColor}]}>
-          Clear every capture: file it to a Project/Area, finish it on the spot, or cancel it.
-        </Text>
-
-        {/* One shared widget above both lists (2026-09-09, docs/technical-
-            design-unified-quickadd.md §3/§8) - it isn't Tasks- or Meetings-
-            exclusive, so it sits above both rather than nested in either,
-            same placement rule ProjectDataPanel.tsx/InboxScreen.tsx already
-            applied in step 2. */}
-        <QuickAddWidget
-          fixedDestination={FIXED_INBOX_DESTINATION}
-          onAddTask={handleAddTask}
-          onAddMeeting={handleAddInboxMeeting}
-          editingTask={
-            editingInboxTask ? {...editingInboxTask, text: displayTaskText(editingInboxTask, 'flat')} : undefined
-          }
-          editingMeeting={editingInboxMeeting ?? undefined}
-          onSaveEditTask={
-            editingInboxTaskIndex !== null
-              ? (nextText, nextLinkedFile) => handleInboxTaskSave(editingInboxTaskIndex, nextText, nextLinkedFile)
-              : undefined
-          }
-          onSaveEditMeeting={
-            editingInboxMeetingIndex !== null
-              ? (fields, nextLinkedFile) => handleInboxMeetingCommitEdit(editingInboxMeetingIndex, fields, nextLinkedFile)
-              : undefined
-          }
-          editTargetKey={editTarget ? `${editTarget.type}:${editTarget.index}` : null}
-          flushEditRef={flushEditRef}
-          onCancelEdit={cancelEditTarget}
-          onDeleteEdit={handleDeleteEditForWidget}
-          onRefile={editTarget ? () => armInboxFileTarget(editTarget.type, editTarget.index) : undefined}
-          onQuickFile={editTarget ? handleQuickFileEdit : undefined}
-          linkedFileMissing={inboxLinkedFileMissing}
-          textColor={textColor}
-          borderColor={borderColor}
-          placeholderColor={placeholderColor}
-        />
-        <MarksCard scope={ALL_MARKS} returnTo="review" textColor={textColor} borderColor={borderColor} />
-
-        <View style={[common.divider, {backgroundColor: borderColor}]} />
-
-        {/* Flex-weight stacking (2026-09-17, docs/dev/technical-design-flex-
-            weight-stacking.md §3.4) - stackedColumn (flex:1) splits its
-            real available height 8:6 between the Tasks/Meetings
-            PagedSections below via plain sibling `flex` weights. */}
-        <View style={styles.stackedColumn}>
-        <View style={{flex: REVIEW_INBOX_TASKS_WEIGHT}}>
-        {/* "Tasks" heading + PageControls merged into one PagedSection
-            (2026-09-16, same mechanical swap Batch 2 already made for
-            screens/InboxScreen.tsx's own Tasks pane) - the old separate
-            `{inboxOpenTasks.length === 0 && <Text>...}` folds into
-            `emptyHint`. No header/group rows here (unlike InboxScreen's own
-            flow-state-grouped list), so no `isCountableRow` needed - every
-            row in `inboxOpenTasks` is a real entry. */}
-        <PagedSection
-          header="Tasks"
-          rows={inboxOpenTasks}
-          rowHeight={({task}) => taskRowHeight(task, COLUMN_WIDTH_PX, 'flat')}
-          renderRow={({task, taskIndex}) => (
-            <TaskRow
-              key={`task-${taskIndex}`}
-              task={task}
-              isEditing={editingInboxTaskIndex === taskIndex}
-              isArming={armingInboxTaskIndex === taskIndex}
-              onStartEdit={() => startEditingInboxTask(taskIndex)}
-              onToggleDone={() => handleInboxTaskDone(taskIndex)}
-              onCreateNote={() => handleInboxTaskNote(taskIndex)}
-              onOpenNote={() => handleInboxTaskNote(taskIndex)}
-              linkedFile={task.linkedFile}
-              onOpenLinkedFile={onOpenInboxLinkedFile}
-              onArmLink={() => armInboxLinkTarget('task', taskIndex)}
-              context="flat"
-              height={taskRowHeight(task, COLUMN_WIDTH_PX, 'flat')}
-              numberOfLines={taskRowLines(task, COLUMN_WIDTH_PX, 'flat')}
-              textColor={textColor}
-              borderColor={borderColor}
-            />
-          )}
-          emptyHint="Inbox tasks are at zero. 🎉"
-          textColor={textColor}
-          borderColor={borderColor}
-        />
-        </View>
-
-        <View style={[common.divider, {backgroundColor: borderColor}]} />
-
-        <View style={{flex: REVIEW_INBOX_MEETINGS_WEIGHT}}>
-        {/* The standard MeetingList (docs/dev/technical-design-meeting-lists.md
-            §4.4) - same rows and options as InboxScreen.tsx's Meetings pane:
-            1-line by default, date+time column, no source (all Inbox). */}
-        <MeetingList
-          listId="reviewInbox"
-          defaultLayout="oneLine"
-          header="Meetings"
-          rows={inboxOpenMeetings}
-          renderRow={({meeting, meetingIndex}, layout) => (
-            <MeetingRow
-              key={`meeting-${meetingIndex}`}
-              meeting={meeting}
-              layout={layout}
-              time="dateTime"
-              highlight="mark"
-              tracking={inboxMeetingTrackingFor(meetingIndex)}
-              note={{onOpen: () => handleInboxMeetingNote(meetingIndex), onCreate: () => handleInboxMeetingNote(meetingIndex)}}
-              file={{
-                linkedFile: meeting.linkedFile,
-                onOpen: onOpenInboxLinkedFile,
-                onArm: () => armInboxLinkTarget('meeting', meetingIndex),
-              }}
-              onPress={() => handleInboxMeetingStartEdit(meetingIndex)}
-              state={
-                editingInboxMeetingIndex === meetingIndex
-                  ? 'editing'
-                  : armingInboxMeetingIndex === meetingIndex
-                  ? 'arming'
-                  : undefined
-              }
-              textColor={textColor}
-              borderColor={borderColor}
-            />
-          )}
-          emptyHint="Inbox meetings are at zero. 🎉"
-          textColor={textColor}
-          borderColor={borderColor}
-        />
-        </View>
-        </View>
-
-        </View>
-      </View>
-    );
-  };
 
   /**
    * Stalled projects / Neglected areas / Done awaiting review / On Hold
@@ -2204,7 +1503,7 @@ export default function ReviewScreen({
       case 'gmailInbox':
         return <GmailStep {...stepProps} />;
       case 'inbox':
-        return renderInboxZero();
+        return <InboxStep {...stepProps} />;
       case 'stalled':
         return renderStalledProjects();
       case 'done':
