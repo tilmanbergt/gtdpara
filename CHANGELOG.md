@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-10-06
+
 ### New
 - **Mark for later**: a second lasso button saves a selection in one tap, without opening gtdpara, and
   puts a small bookmark icon into the note. Process the marks later: a card **n marks to process** on
