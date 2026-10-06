@@ -233,6 +233,20 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
     };
   }, [selectedKey, lassoRec.text, lassoSaved, selectedMark, selectedText]);
 
+  // Recognition finishes long after the screen loaded: the new text in the
+  // field and the column's status must be redrawn explicitly, or the e-ink
+  // panel keeps the old picture until the next tap (checkpoint C; see
+  // utils/screenRefresh.ts).
+  const recognitionSignature = useMemo(
+    () => Array.from(recognition.entries()).map(([id, r]) => `${id}:${r.state}`).join('|'),
+    [recognition],
+  );
+  const seedText = seed ? `${seed.key}\u0000${seed.items.join('\n')}` : '';
+  useEffect(() => {
+    if (loaded) {requestEinkRefresh();}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lassoRec.state, seedText, recognitionSignature]);
+
   // ---- saving ----
   const sourcePath = selectedMark ? selectedMark.absPath : loaded?.currentNotePath ?? null;
   const sourcePage = selectedMark ? selectedMark.mark.page : lassoPage;
@@ -407,17 +421,20 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
 
   const showColumn = !fromLasso || marks.length > 0;
   const markPicture = (id: string) => (loaded.dataDir ? fileUri(`${loaded.dataDir}/marks/${id}/picture.png`) : null);
+  // The lasso is saved and its row selected again (after Save & next with no
+  // marks left): an empty form for a typed extra item, without the old picture.
+  const lassoDone = selectedKey === LASSO_KEY && lassoSaved > 0;
   let pictureUri: string | null = null;
-  if (selectedKey === LASSO_KEY) {pictureUri = loaded.lassoPicture ? fileUri(loaded.lassoPicture) : null;}
+  if (selectedKey === LASSO_KEY && !lassoDone) {pictureUri = loaded.lassoPicture ? fileUri(loaded.lassoPicture) : null;}
   else if (selectedMark) {pictureUri = markPicture(selectedMark.mark.id);}
   let headerSource = '';
   if (selectedMark) {headerSource = `${fileNameOf(selectedMark.absPath)} · p${selectedMark.mark.page + 1}`;}
-  else if (loaded.currentNotePath) {
+  else if (loaded.currentNotePath && !lassoDone) {
     headerSource = `${fileNameOf(loaded.currentNotePath)}${lassoPage != null ? ` · p${lassoPage + 1}` : ''}`;
   }
   const selectedState = selectedMark ? recognition.get(selectedMark.mark.id)?.state : undefined;
   const recognizing =
-    selectedKey === LASSO_KEY ? lassoRec.state === 'recognizing' : !!selectedMark && (!selectedState || selectedState === 'recognizing' || selectedState === 'waiting');
+    selectedKey === LASSO_KEY ? !lassoDone && lassoRec.state === 'recognizing' : !!selectedMark && (!selectedState || selectedState === 'recognizing' || selectedState === 'waiting');
   const nothingSelected = !fromLasso && !selectedMark;
   let title = 'Marks';
   if (fromLasso) {title = 'New from Lasso';}
@@ -489,10 +506,16 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
             </>
           ) : (
             <>
-              <View style={[styles.pictureBox, {borderColor: isDarkMode ? COLORS.borderDark : COLORS.textLight}]}>
-                {pictureUri ? <Image source={{uri: pictureUri}} style={styles.picture} resizeMode="contain" /> : null}
-                {recognizing ? <Text style={styles.pictureNote}>recognizing…</Text> : null}
-              </View>
+              {lassoDone ? (
+                <Text style={[styles.doneHint, {color: textColor}]}>
+                  {marks.length > 0 ? 'Lasso saved.' : 'Lasso saved · no marks left.'} Add another todo or press Done.
+                </Text>
+              ) : (
+                <View style={[styles.pictureBox, {borderColor: isDarkMode ? COLORS.borderDark : COLORS.textLight}]}>
+                  {pictureUri ? <Image source={{uri: pictureUri}} style={styles.picture} resizeMode="contain" /> : null}
+                  {recognizing ? <Text style={styles.pictureNote}>recognizing…</Text> : null}
+                </View>
+              )}
               <QuickAddWidget
                 variant="capture"
                 captureSeed={seed}
@@ -524,6 +547,7 @@ const styles = StyleSheet.create({
   heading: {fontSize: FONT.large, fontWeight: '700', marginRight: 16},
   headerSource: {flex: 1, fontSize: FONT.small, textAlign: 'right'},
   hint: {fontSize: FONT.medium, marginTop: 12},
+  doneHint: {fontSize: FONT.medium, marginBottom: 10},
   body: {flex: 1, flexDirection: 'row'},
   column: {flex: 1, borderRightWidth: 1, paddingRight: 8, marginRight: 12},
   panel: {flex: 2},

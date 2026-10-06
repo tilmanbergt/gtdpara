@@ -106,7 +106,7 @@ jest.mock('../../src/supernote/strokeRecognition', () => ({
 }));
 
 import React from 'react';
-import {Text, TextInput} from 'react-native';
+import {Image, Text, TextInput} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import CaptureScreen from '../../src/screens/CaptureScreen';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
@@ -220,4 +220,29 @@ it('✂ Split at cursor: a caret splits there, a selection becomes the next item
   await press(r, '✂ Split at cursor');
   const rows = values().filter(v => ['book room', 'slides', 'agenda to Tom'].includes(v));
   expect(rows).toEqual(['book room', 'slides', 'agenda to Tom']);
+});
+
+it('lasso, then the last mark: Save & next ends on an empty form without the old picture', async () => {
+  mockState.marksInbox = [
+    {id: 'm-20261005-100000-001', createdAt: '2026-10-05 10:00', notePath: '/Note/x/A.note', page: 0, text: null},
+  ];
+  const r = render({source: 'lasso'});
+  await flush();
+  await flush();
+  await press(r, 'Save 2 & next');
+  expect(r.root.findAllByType(TextInput).map(i => i.props.value)).toContain('Room for offsite?');
+  mockState.marksInbox = [];
+  await press(r, 'Save & next');
+  await flush();
+  expect(texts(r).join(' ')).toContain('Lasso saved · no marks left. Add another todo or press Done.');
+  expect(r.root.findAllByType(Image)).toHaveLength(0);
+  expect(texts(r)).toContain('Done');
+});
+
+it('asks for an e-ink redraw when the recognized text arrives', async () => {
+  const {requestEinkRefresh} = jest.requireMock('../../src/utils/screenRefresh');
+  (requestEinkRefresh as jest.Mock).mockClear();
+  render({source: 'lasso'});
+  await flush();
+  expect(requestEinkRefresh).toHaveBeenCalled();
 });
