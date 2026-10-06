@@ -187,7 +187,7 @@ export default function ItemDetail({
   onStartCloseOut,
 }: Props): React.JSX.Element {
   usePerfRender('ItemDetail');
-  const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [error, setError] = useState<string | null>(null);
 

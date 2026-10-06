@@ -56,5 +56,6 @@ export function useCachedItems(): CachedItem[] {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- version: the cache object is updated in place
   return useMemo(() => (cache ? cache.items.slice() : NO_ITEMS), [cache, version]);
 }

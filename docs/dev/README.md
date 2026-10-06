@@ -23,11 +23,13 @@ Build the plugin package:
 ./buildPlugin.ps1
 ```
 
-The script first stamps the build info (`scripts/gen-bundled-content.mjs --build`: version from
-`package.json`, build number, git commit, changelog → `src/generated/`, not committed), then
+The script first stamps the build info (`scripts/gen-bundled-content.mjs --build`: version and
+`nextVersion` from `package.json`, stage (`-Stage alpha|beta`), build number, git commit, changelog →
+`src/generated/`, not committed), then
 bundles the JavaScript (`npx react-native bundle`), compiles the native Android modules
 (`gradlew buildCustomApkDebug`), and packs everything into `build/outputs/gtdpara.snplg`, plus a
-copy named after the build label, e.g. `gtdpara-0.1.0+dev.a1b2c3d.snplg`.
+copy named after the build label, e.g. `gtdpara-0.9.0-alpha+a1b2c3d.snplg` (labels:
+`RELEASING.md` §4).
 
 The build number (`versionCode`) is the number of minutes since 2026-01-01 UTC, so every build
 counts as a new version for the Supernote host (see `technical-design-host-update-crash.md`). It
@@ -44,9 +46,11 @@ Releases: see `RELEASING.md`.
 
 ## Checking your changes
 
-- Type check: `npx tsc --noEmit`
-- Release/versioning scripts: `npm run test:scripts`
-- Tests: `npm test` (Jest). A useful smoke test mounts `<App />` with `react-test-renderer`.
+- Everything at once: `npm run check` (add `-- --quick` to skip Jest). It runs, in order:
+  `npx tsc --noEmit`, ESLint, `npm test` (Jest), `npm run test:scripts` and
+  `npm run code-health` (the rules are in `scripts/lib/codeHealth.mjs`; long existing files are
+  listed in `scripts/code-health-baseline.json` and may only shrink).
+- A useful smoke test mounts `<App />` with `react-test-renderer`.
   `tsc` alone cannot catch a broken default export of `App.tsx`, because `index.js` isn't type
   checked. See `design-overview.md` for the mocks this needs (`sn-plugin-lib`, AsyncStorage,
   Clipboard).

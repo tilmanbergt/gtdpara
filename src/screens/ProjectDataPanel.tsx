@@ -215,7 +215,7 @@ export default function ProjectDataPanel({
 }: Props): React.JSX.Element {
   usePerfRender('ProjectDataPanel');
   const marksScope: MarkScope = useMemo(() => ({type: 'item', path}), [path]);
-  const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [state, setState] = useState<PanelState | null>(null);
   const [loading, setLoading] = useState(true);

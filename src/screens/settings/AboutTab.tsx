@@ -18,6 +18,11 @@ import PillButton from '../../ui/PillButton';
 import {useStatus} from '../../ui/status/StatusProvider';
 import {FONT, SPACING} from '../../ui/theme';
 import {LOG_FILE_NAME} from '../../utils/logSink';
+
+/** The Unreleased changelog section's heading: the release it is for, when the build knows it. */
+function unreleasedHeader(): string {
+  return BUILD_INFO.nextVersion ? `${BUILD_INFO.nextVersion} (in progress)` : 'Not yet released';
+}
 import {logError} from '../../utils/log';
 
 const PROJECT_URL = 'github.com/tilmanbergt/gtdpara';
@@ -49,7 +54,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
   }, []);
 
   const releaseTabs: MiniTabDef<string>[] = useMemo(
-    () => CHANGELOG.map(r => ({key: r.version, label: r.version === 'Unreleased' ? 'Unreleased' : r.version})),
+    () => CHANGELOG.map(r => ({key: r.version, label: r.version === 'Unreleased' ? (BUILD_INFO.nextVersion ?? 'Unreleased') : r.version})),
     [],
   );
   const [selectedVersion, setSelectedVersion] = useState<string>(CHANGELOG[0]?.version ?? '');
@@ -145,7 +150,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
             )}
             <MarkdownPager
               markdown={selected.markdown}
-              header={selected.version === 'Unreleased' ? 'Not yet released' : `${selected.version}${selected.date ? ` · ${selected.date}` : ''}`}
+              header={selected.version === 'Unreleased' ? unreleasedHeader() : `${selected.version}${selected.date ? ` · ${selected.date}` : ''}`}
               resetKey={selected.version}
               emptyHint="No notes for this version."
               textColor={textColor}

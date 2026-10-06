@@ -1,6 +1,7 @@
 {
   "name": "gtdpara",
   "version": "0.8.0",
+  "nextVersion": "0.9.0",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -9,7 +10,10 @@
     "test": "jest",
     "gen": "node scripts/gen-bundled-content.mjs",
     "postinstall": "node scripts/gen-bundled-content.mjs",
-    "test:scripts": "node scripts/test-versioning.mjs && node scripts/test-userdocs.mjs"
+    "test:scripts": "node scripts/test-versioning.mjs && node scripts/test-userdocs.mjs && node scripts/test-code-health.mjs",
+    "check": "node scripts/check.mjs",
+    "code-health": "node scripts/code-health.mjs",
+    "next-version": "node scripts/gen-bundled-content.mjs --set-next"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",

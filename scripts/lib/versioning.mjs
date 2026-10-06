@@ -32,13 +32,44 @@ export function computeVersionCode(nowMs, lastCode) {
   return Math.max(minutes, last + 1);
 }
 
+export const BUILD_STAGES = ['alpha', 'beta'];
+
+/** -1, 0 or 1 for two "x.y.z" versions. */
+export function compareVersions(a, b) {
+  const pa = SEMVER.exec(a);
+  const pb = SEMVER.exec(b);
+  if (!pa || !pb) throw new Error(`not x.y.z versions: "${a}", "${b}"`);
+  for (let i = 1; i <= 3; i++) {
+    const d = Number(pa[i]) - Number(pb[i]);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+/** The release this build works towards: `nextVersion` when it is above `version`, else null. */
+export function targetVersion(version, nextVersion) {
+  if (!nextVersion || !isSemver(nextVersion)) return null;
+  return compareVersions(nextVersion, version) > 0 ? nextVersion : null;
+}
+
 /**
- * "0.1.0" for a release build (HEAD tagged v<version>, no uncommitted
- * changes), otherwise "0.1.0+dev.<commit>[-dirty]".
+ * The build label:
+ * - release build (HEAD tagged v<version>, clean): "0.9.0"
+ * - work towards a next version: "0.9.0-alpha+a1b2c3d" (".dirty" appended for uncommitted changes)
+ * - otherwise: "0.8.0+dev.a1b2c3d[-dirty]"
  */
-export function buildLabel({version, commit, dirty, release}) {
+export function buildLabel({version, commit, dirty, release, nextVersion = null, stage = 'alpha'}) {
   if (release) return version;
+  const target = targetVersion(version, nextVersion);
+  if (target) return `${target}-${stage}+${commit || 'unknown'}${dirty ? '.dirty' : ''}`;
   return `${version}+dev.${commit || 'unknown'}${dirty ? '-dirty' : ''}`;
+}
+
+/** What the packaged PluginConfig.json shows as versionName: "0.9.0", or "0.9.0-alpha" for a build towards 0.9.0. */
+export function packagedVersionName({version, release, nextVersion = null, stage = 'alpha'}) {
+  if (release) return version;
+  const target = targetVersion(version, nextVersion);
+  return target ? `${target}-${stage}` : version;
 }
 
 function eolOf(text) {
@@ -128,8 +159,12 @@ export function renderBuildInfoTs(info) {
     `  version: ${JSON.stringify(info.version)},`,
     `  /** Build number (minutes since 2026-01-01 UTC); 0 when generated outside a build. */`,
     `  versionCode: ${Number(info.versionCode) || 0},`,
-    `  /** "0.1.0" for a release, "0.1.0+dev.a1b2c3d[-dirty]" otherwise. */`,
+    `  /** "0.9.0" for a release, "0.9.0-alpha+a1b2c3d" towards a next version, "0.8.0+dev.a1b2c3d" otherwise. */`,
     `  label: ${JSON.stringify(info.label)},`,
+    `  /** The release this build works towards ("0.9.0"), or null. */`,
+    `  nextVersion: ${JSON.stringify(info.nextVersion ?? null)},`,
+    `  /** "alpha" or "beta" for a build towards nextVersion, else null. */`,
+    `  stage: ${JSON.stringify(info.stage ?? null)},`,
     `  commit: ${JSON.stringify(info.commit)},`,
     `  dirty: ${info.dirty ? 'true' : 'false'},`,
     `  release: ${info.release ? 'true' : 'false'},`,

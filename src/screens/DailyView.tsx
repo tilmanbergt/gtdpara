@@ -118,9 +118,8 @@
  * nested Meetings-tab Today/Tomorrow toggle) and "Google", the shared
  * ui/GoogleCalendarPanel.tsx capped to `maxDays={2}` (the same today/
  * tomorrow window the other two tabs show) with a default copy destination
- * of Inbox. All three tabs render at the same fixed total column height
- * (`CALENDAR_VIEWPORT_PX`/`CALENDAR_GOOGLE_VIEWPORT_PX` below) so switching
- * tabs never reflows `DailyFocusPanel` underneath. `onOpenCalendarSettings`
+ * of Inbox. All three tabs measure the same box (PagedSection's self-measured
+ * viewport), so switching tabs never reflows `DailyFocusPanel` underneath. `onOpenCalendarSettings`
  * is threaded down from App.tsx for the panel's empty-state "Open Calendar
  * Settings" link when no ICS URL is set yet.
  *
@@ -189,24 +188,20 @@ import {FolderEntry} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import DailyFocusPanel from '../ui/DailyFocusPanel';
-import GoogleCalendarPanel, {
-  GOOGLE_COPY_FOOTER_BASELINE_PX,
-  GOOGLE_SUBHEADER_ROW_PX,
-} from '../ui/GoogleCalendarPanel';
+import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import {useFeatures} from '../ui/featureStore';
 import MeetingRow, {MeetingRowLayout, MeetingTrackingConfig} from '../ui/MeetingRow';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
 import {useEditFlush} from '../ui/useEditFlush';
 import {MiniTabDef} from '../ui/MiniTabs';
 import PagedSection from '../ui/PagedSection';
-import {PAGE_SIZE} from '../ui/pagination';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
 import {common} from '../ui/commonStyles';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
-import {COLORS, FONT, SPACING, useThemeColors} from '../ui/theme';
+import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {ExitFocusModeIcon} from '../ui/icons';
 import {useErrorStatus} from '../ui/status/StatusProvider';
 import {perfEnd, perfStart, usePerfRender} from '../utils/perf';
@@ -263,119 +258,6 @@ const COLUMN_WIDTH_PX = 678;
 // [[feature_pagination_fixed_height]] for the full round-by-round history.
 const GROUP_HEADER_ROW_PX = 57;
 
-// --- Open-tasks viewport budget (docs/dev/design-device-rendering.md §6) ---
-// Bugfix (2026-09-15): Batch 5's first cut preserved the OLD PAGE_SIZE.
-// column row-count budget (10 rows x 42px = 420) on the assumption this
-// column's real available height hadn't changed - wrong. That old 420px
-// figure was tuned against the OLD uniform-64px-row/PageControls layout's
-// own visual proportions, not against what's actually left in this column
-// once QuickAddWidget/the divider/PagedSection's own header row are
-// properly accounted for. Tilman's Batch 5 smoke test showed the box
-// stopping about halfway down the column with a large empty gap below it,
-// while still paginating to a second page - a classic "budget too small"
-// symptom, not a rendering bug. Recomputed from scratch instead, same
-// method ItemsList's own viewportHeight constants used (Batch 4).
-// Bugfix (2026-09-16, round 2): every term below was originally a "~"
-// estimate (FONT.small's real line-height is never set explicitly anywhere
-// in the app), with zero slack - built to land the box's bottom edge
-// exactly on the 1872px screen bottom. A first fix attempt (a flat 150px
-// guessed safety margin) was a placeholder pending real numbers. These ARE
-// the real numbers: Tilman's own bug-report screenshot turned out to be a
-// genuine 1:1, 1404x1872 on-device capture (confirmed by comparing its
-// pixel dimensions to the exact device resolution) - not a mockup - so
-// every fixed-chrome element above the task list could be measured
-// directly by pixel-scanning it for border lines, rather than guessed:
-//   - tab bar's own bottom border:                     y=123 (assumed 96)
-//   - QuickAddWidget card top border:                  y=206
-//   - QuickAddWidget card bottom border:                y=455 (card height
-//     249px real vs 162px assumed - the single biggest gap)
-//   - "Open tasks" header row's own bottom border
-//     (where the task-list viewport itself begins):     y=537 (assumed 348)
-// i.e. real content consumes 537px before the list even starts, not the
-// assumed 348px - a 189px gap, which is why the flat -150 guess in the
-// first fix attempt was close but not quite enough. Screen bottom is
-// confirmed physical (image height = device height exactly), so the real,
-// directly-measured maximum this column's viewport can safely be is
-// `1872 - 537 = 1335`; `OPEN_TASKS_VIEWPORT_PX` below uses 1320 (a small
-// ~15px cushion for antialiasing/measurement rounding, not another guess).
-// Each budget term is corrected to what it actually measures out to
-// (fixed, non-text values like DIVIDER_PX/MIDDLE_ROW_MARGIN_PX are left
-// alone - they aren't font-dependent and the measurement doesn't
-// contradict them); GROUP_HEADER_ROW_PX below (a separate constant, used
-// for pagination row-counting rather than this fixed total) is corrected
-// the same way, from the screenshot's own group-header rows.
-const GLOBAL_CHROME_PX = 123; // Measured: tab bar's own bottom border, full-width scan of the screenshot.
-const DISPLAY_ROW_PX = 79; // Measured (contextIndicatorRow, incl. the "Focus mode" pill - real ~47px tall alone, well over the "~26" guess).
-const MIDDLE_ROW_MARGIN_PX = 4; // styles.middleRow's own marginTop - a fixed value, not text-based, left as originally documented.
-const QUICK_ADD_WIDGET_PX = 249; // Measured: card top border y=206 to card bottom border y=455.
-const DIVIDER_PX = 1 + 12 * 2; // common.divider: height 1 + marginVertical (SPACING.md=12) x2 - fixed, not text-based, unchanged.
-const SECTION_HEADER_ROW_PX = 57; // Measured: PagedSection's own header row, from after the divider to its own bottom border. Still used by CALENDAR_VIEWPORT_PX below.
-
-// Kept but no longer passed to PagedSection (2026-09-17, [[feature_
-// pagination_fixed_height]]'s "runtime-measured viewport height" plan) -
-// the Open-tasks PagedSection below now omits `viewportHeight` entirely
-// and self-measures instead (ui/PagedSection.tsx). A real onLayout
-// measurement came back ~400px smaller than this constant's own total
-// (977px measured vs ~1377px assumed for header+viewport combined),
-// confirming this whole hand-summed-chrome approach had drifted
-// substantially from reality despite each individual term above being
-// pixel-measured against a real screenshot. Left defined, unused, as the
-// quickest possible rollback: pass `viewportHeight={OPEN_TASKS_VIEWPORT_PX}`
-// again to revert this one screen to the old fixed-budget behavior without
-// resurrecting a deleted constant.
-const OPEN_TASKS_VIEWPORT_PX =
-  1872 -
-  GLOBAL_CHROME_PX -
-  DISPLAY_ROW_PX -
-  MIDDLE_ROW_MARGIN_PX -
-  QUICK_ADD_WIDGET_PX -
-  DIVIDER_PX -
-  SECTION_HEADER_ROW_PX -
-  15; // small measurement-rounding cushion, not a repeat of the earlier flat guess // ≈ 1320
-
-// --- Calendar-column viewport budget (Batch 6, docs/dev/technical-design-
-// pagination-fixed-height.md §3.2) ---
-// The Calendar column's own 3-tab (Today/Tomorrow/Google) box has to render
-// at the exact same total height regardless of which tab is active, so
-// switching tabs never reflows DailyFocusPanel underneath it. Both tabs
-// share the same three terms below (chrome already subtracted for
-// OPEN_TASKS_VIEWPORT_PX above, plus this column's own tab strip and the
-// PagedSection/GoogleCalendarPanel header row they both render); the Google
-// tab additionally reserves its own subHeader + copy-footer rows (below)
-// out of the same shared total, rather than growing the column.
-const CALENDAR_TAB_ROW_PX = 44; // ui/MiniTabs.tsx's own already-measured mini-tab strip (design-device-rendering.md §5.3).
-// DailyFocusPanel sits directly below the Calendar box in this same column
-// (a sibling, not measured by this file) - estimated the same way
-// QUICK_ADD_WIDGET_PX above estimates its own sibling: common.spacer's
-// marginTop (SPACING.lg) above it, then its own MiniTabs strip (same figure
-// as CALENDAR_TAB_ROW_PX) plus PAGE_SIZE.dailyFocusPanel fixed-slot rows at
-// ~36px each (design-device-rendering.md §5.2's "Focus-panel slot row").
-const DAILY_FOCUS_PANEL_ROW_PX = 36;
-const DAILY_FOCUS_PANEL_TOTAL_PX =
-  SPACING.lg + CALENDAR_TAB_ROW_PX + PAGE_SIZE.dailyFocusPanel * DAILY_FOCUS_PANEL_ROW_PX; // 20+44+180 = 244
-// Kept but no longer passed to PagedSection/GoogleCalendarPanel (2026-09-17,
-// [[feature_pagination_fixed_height]]'s tabbed-pane follow-on) - both
-// Calendar-column tabs below now omit `viewportHeight` and self-measure
-// instead, same reasoning/rollback convention as OPEN_TASKS_VIEWPORT_PX
-// above (this formula has the identical hand-summed-sibling-chrome shape
-// that turned out ~400px off there). Left defined, unused, as the quickest
-// rollback: pass these two back into the Today/Tomorrow PagedSection and
-// GoogleCalendarPanel calls below to revert.
-const CALENDAR_VIEWPORT_PX =
-  1872 -
-  GLOBAL_CHROME_PX -
-  DISPLAY_ROW_PX -
-  MIDDLE_ROW_MARGIN_PX -
-  CALENDAR_TAB_ROW_PX -
-  DAILY_FOCUS_PANEL_TOTAL_PX -
-  SECTION_HEADER_ROW_PX; // ≈ 1423
-// Google tab's own subHeader (Refresh/Show-existing row) and fixed
-// copy-footer slot sit below its PagedSection's own viewport, inside the
-// same box the Today/Tomorrow tab fills with viewportHeight alone - see
-// ui/GoogleCalendarPanel.tsx's own exported GOOGLE_SUBHEADER_ROW_PX/
-// GOOGLE_COPY_FOOTER_BASELINE_PX doc comments for those two figures.
-const CALENDAR_GOOGLE_VIEWPORT_PX = CALENDAR_VIEWPORT_PX - GOOGLE_SUBHEADER_ROW_PX - GOOGLE_COPY_FOOTER_BASELINE_PX; // ≈ 1373
-
 /** Flattens grouped task entries into one paginated sequence (docs/technical-
  * design-pagination-edit-reuse.md §2/§4) - a group's header row is counted
  * as content within that sequence, same as any other row. */
@@ -415,7 +297,7 @@ export default function DailyView({
   onEnterFocusMode,
 }: Props): React.JSX.Element {
   usePerfRender('DailyView');
-  const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   // Live view of storage/dataCache.ts - re-renders (with a fresh array) on
   // every cache mutation (docs/dev/technical-design-cache-subscription-and-
@@ -573,7 +455,6 @@ export default function DailyView({
       }
     })();
   });
-
 
   // pickerMode's one-time initializer (see its own declaration above) - runs
   // once the initial load lands (guarded by pickerModeInitRef, not by an
@@ -1095,6 +976,7 @@ export default function DailyView({
       inboxPath !== null
         ? buildDailyAggregate(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, inboxPath)
         : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- todayDate: recompute after midnight
     [items, inbox, inboxPath, todayDate],
   );
 
@@ -1115,6 +997,7 @@ export default function DailyView({
             dailyContext,
           )
         : aggregate ?? EMPTY_DAILY_AGGREGATE,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- todayDate: recompute after midnight
     [dailyContext, items, inbox, inboxPath, aggregate, todayDate],
   );
 
@@ -1206,17 +1089,9 @@ export default function DailyView({
    */
   const renderFlatTaskRow = (row: FlatTaskRow) => {
     if (row.kind === 'header') {
-      // Reverted 2026-09-16: an earlier attempt at this same bug wrapped
-      // this row in a height:GROUP_HEADER_ROW_PX/overflow:'hidden' box to
-      // force it to match its pagination-budgeted height exactly (mirroring
-      // TaskRow's own defensive pattern). Tilman's on-device check showed
-      // that just visibly clipped the header text itself - proof
-      // GROUP_HEADER_ROW_PX(34) under-estimates the real rendered height,
-      // not that clipping was the right mechanism - and it didn't fix the
-      // actual missing-tasks/no-pagination symptom either. Reverted to
-      // plain organic rendering; see OPEN_TASKS_VIEWPORT_PX's own comment
-      // for the real fix this time (shrinking the whole column's budget by
-      // a safety margin instead of chasing individual row estimates).
+      // Rendered at its natural height (no fixed-height box): clipping it to
+      // GROUP_HEADER_ROW_PX cut the header text; PagedSection measures the
+      // real viewport instead.
       return (
         <Pressable key={`header-${row.item.path}`} onPress={() => openItem(row.item)} hitSlop={8}>
           <Text style={[common.subheading, styles.groupHeading, {color: textColor}]} numberOfLines={1}>
@@ -1501,7 +1376,6 @@ export default function DailyView({
               </>
             )}
 
-
             <View style={styles.focusSpacer} />
 
             {/* Meetings anchored at the bottom (design-philosophy.md §8) -
@@ -1699,17 +1573,9 @@ export default function DailyView({
                     isCountableRow below excludes them from the "+N"
                     hidden-count label itself (2026-09-15 bugfix, see
                     ui/PagedSection.tsx's own module doc comment). */}
-                {/* Stage 2 (2026-09-17, [[feature_pagination_fixed_height]]) -
-                    `viewportHeight` deliberately omitted: ui/PagedSection.tsx
-                    now self-measures via its own flex:1 + onLayout instead of
-                    OPEN_TASKS_VIEWPORT_PX's hand-summed chrome budget (kept,
-                    unused, a few lines above, as the fastest rollback path).
-                    `columnScroll` (this box's parent, common.column's own
-                    styles.columnScroll) is already flex:1, which is what
-                    PagedSection's own self-measuring mode needs from its
-                    caller. Watch `adb logcat -s ReactNativeJS:V | findstr
-                    GtdPara` for "PagedSection: self-measured viewport"
-                    (header: "Next todos") to see the real number each time. */}
+                {/* No `viewportHeight`: PagedSection measures itself (flex:1 + onLayout);
+                    its parent `columnScroll` is flex:1, which that needs. The measured
+                    height is logged as "PagedSection: self-measured viewport". */}
                 <PagedSection
                   header="Next todos"
                   rows={taskRows}
@@ -1721,7 +1587,6 @@ export default function DailyView({
                   textColor={textColor}
                   borderColor={borderColor}
                 />
-
 
                 {displayAggregate.failedItems.length > 0 && (
                   <Text style={[common.error, common.sectionSpacingSmall, {color: textColor}]}>

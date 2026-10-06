@@ -72,16 +72,29 @@ git commit -m "<subject>"
 git push
 ```
 
-## 4. Test builds (every day)
+## 4. Checks and test builds (every day)
 
 ```powershell
-./buildPlugin.ps1
+npm run check                  # tsc, lint, Jest, script tests, code health - before every commit
+npm run check -- --quick       # the same without Jest, for a fast loop
+./buildPlugin.ps1              # test build, labelled for the release being worked on
+./buildPlugin.ps1 -Stage beta  # same, once that release is feature-complete (final device test)
+./buildPlugin.ps1 -Check       # runs npm run check first and stops if it fails
 ```
 
-- The build stamps version and changelog into the app, bundles, compiles the native modules and
-  writes `build\outputs\gtdpara.snplg` plus a labelled copy `gtdpara-<version>+dev.<commit>.snplg`.
+- **The release being worked on** is `nextVersion` in `package.json`. Set it when work on the next
+  release starts (after the previous release is published):
+  `npm run next-version -- 0.10.0`.
+- **Labels** say which release a build belongs to: `0.9.0-alpha+a1b2c3d` while the release is
+  being built (spikes included), `0.9.0-beta+a1b2c3d` for the final device test, `0.9.0` for the
+  release itself. `.dirty` at the end means the build contains uncommitted changes. Without a
+  `nextVersion` above the current version a build is labelled `0.8.0+dev.a1b2c3d` and the build
+  prints a reminder.
+- The build stamps version, stage and changelog into the app, bundles, compiles the native modules
+  and writes `build\outputs\gtdpara.snplg` plus a copy named after the label, e.g.
+  `gtdpara-0.9.0-alpha+a1b2c3d.snplg`. The Supernote's plugin list shows `0.9.0-alpha`.
 - **Commit before building** a build you will test seriously: then the label names the exact
-  commit. `-dirty` in the label means the build contains uncommitted changes.
+  commit.
 - Install the `.snplg` on the Supernote **over** the existing plugin. If the "old version still
   loaded" message appears, tap **Restart**.
 - After changing `CHANGELOG.md` or `docs/user/` without building, `npm run gen` refreshes
@@ -104,21 +117,21 @@ git push
    git switch main
    git pull
    git status --short           # must be empty
-   npx tsc --noEmit
-   npm test
-   npm run test:scripts
+   npm run check
    ```
 2. **Check** the release checklist in `DEVELOPMENT-POLICY.md` §9 (CHANGELOG read as a user, help
    pages, README, PRIVACY, Experimental, logging).
 3. **Dry run** - shows the new version and what would happen, changes nothing:
    ```powershell
-   ./scripts/release.ps1 -Bump patch -DryRun     # or -Bump minor
+   ./scripts/release.ps1 -DryRun                 # releases nextVersion from package.json
+   ./scripts/release.ps1 -Bump patch -DryRun     # a hotfix without a nextVersion
    ```
 4. **Release**:
    ```powershell
-   ./scripts/release.ps1 -Bump patch             # or -Bump minor
+   ./scripts/release.ps1                         # or -Bump patch for a hotfix
    ```
-   The script sets the version in `package.json` and `PluginConfig.json`, turns `[Unreleased]`
+   `-Bump` must agree with `nextVersion` when one is set; `-Version x.y.z` overrides both.
+   The script runs `npm run check`, sets the version in `package.json` and `PluginConfig.json`, turns `[Unreleased]`
    into `[x.y.z] - date` in the CHANGELOG, commits `Release x.y.z`, tags `vx.y.z` and builds
    `build\outputs\gtdpara-x.y.z.snplg`. Then it **pauses**.
 5. **Device check** while the script waits (§6 below), then answer `y` to publish. The script
@@ -154,6 +167,7 @@ CHANGELOG line under Fixed) followed by `./scripts/release.ps1 -Bump patch`.
   `docs/dev/inkhub-listing.md`. If permissions changed, update the description's permission
   paragraph and `docs/inkhub-review.md` first.
 - The next work starts with an empty `## [Unreleased]` section - the script leaves it ready.
+  Set the next release with `npm run next-version -- x.y.z` so test builds carry its name.
 - Triage new issues: `needs-info` (version or log missing), `confirmed` (reproduced, ideally in
   the demo space), `experimental` (Google Calendar / Gmail). Fixes reference the issue
   (`Fixes #12`).

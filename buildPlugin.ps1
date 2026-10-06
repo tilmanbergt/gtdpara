@@ -1,4 +1,14 @@
 # PowerShell Script: Analyze Android Dependencies and Generate PluginConfig.json
+#
+# gtdpara usage (docs/dev/RELEASING.md section 4):
+#   ./buildPlugin.ps1                 test build, labelled for package.json's nextVersion, e.g. 0.9.0-alpha+a1b2c3d
+#   ./buildPlugin.ps1 -Stage beta     same, labelled 0.9.0-beta+a1b2c3d (release is feature-complete, final device test)
+#   ./buildPlugin.ps1 -Check          runs `npm run check` first and stops if it fails
+param(
+    [ValidateSet('alpha', 'beta')]
+    [string]$Stage = 'alpha',
+    [switch]$Check
+)
 
 # Set color output function
 function Write-ColorOutput {
@@ -1163,11 +1173,21 @@ function Main {
         Write-ColorOutput "Created build/generated directory: $buildGeneratedDir" 'Green'
     }
     
-    # Step 1b (gtdpara): stamp version, build number and git commit into
+    # Step 1a (gtdpara): optional local checks (tsc, lint, tests, code health) before building.
+    if ($Check) {
+        Write-ColorOutput '=== Step 1a: npm run check ===' 'Blue'
+        & node (Join-Path $projectRoot 'scripts\check.mjs')
+        if ($LASTEXITCODE -ne 0) {
+            Write-ColorOutput 'Checks failed, script terminated (build without -Check to skip them)' 'Red'
+            return
+        }
+    }
+
+    # Step 1b (gtdpara): stamp version, build number, stage and git commit into
     # src/generated/ BEFORE bundling, so the JS bundle carries them
     # (docs/dev/technical-design-versioning-release.md 3.5).
     Write-ColorOutput '=== Step 1b: Stamp build info ===' 'Blue'
-    & node (Join-Path $projectRoot 'scripts\gen-bundled-content.mjs') --build
+    & node (Join-Path $projectRoot 'scripts\gen-bundled-content.mjs') --build --stage $Stage
     if ($LASTEXITCODE -ne 0) {
         Write-ColorOutput 'Stamping build info failed (is Node installed?), script terminated' 'Red'
         return

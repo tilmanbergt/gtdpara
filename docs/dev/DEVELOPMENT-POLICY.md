@@ -158,11 +158,14 @@ A change is not done while the docs describe the old behavior.
 
 ## 7. Testing
 
-- **Automated, every change:**
-  - `npx tsc --noEmit` - no new errors (the goal is zero).
-  - `npm test` - all Jest tests pass. New pure logic in `domain/` (and testable parts of
-    `storage/`) gets Jest tests in `__tests__/`, including edge cases and the bug that was fixed.
-  - `npm run test:scripts` - when `scripts/` or `docs/user/` changed.
+- **Automated, every change: `npm run check`** - stops at the first failure:
+  - `tsc --noEmit` with zero errors; ESLint with zero errors;
+  - all Jest tests pass. New pure logic in `domain/` (and testable parts of `storage/`) gets Jest
+    tests in `__tests__/`, including edge cases and the bug that was fixed;
+  - the script tests (`scripts/test-*.mjs`: versioning, help pages, code-health rules);
+  - the code-health rules (`scripts/code-health.mjs`): file length, `errorMessage()` instead of
+    copied error text, no history in comments, no `console`/`Alert`, date text from
+    `domain/dateFormat.ts` in `ui/` and `screens/`, design-doc references that exist.
   - A smoke render of the changed screen where possible (`react-test-renderer`, mocks as in
     `docs/dev/README.md`), at minimum for changes to `App.tsx` and navigation.
 - **On the device**, for every change that touches UI, files or device APIs:
@@ -180,7 +183,7 @@ A change is not done while the docs describe the old behavior.
 - [ ] UI rules kept; checked against the A5 X budget - §4
 - [ ] Errors and key steps logged; debug bundle extended if needed - §5
 - [ ] Help pages, CHANGELOG `[Unreleased]`, README, PRIVACY, dev docs updated as needed - §6
-- [ ] `tsc`, `npm test` (and `test:scripts` if relevant) pass; new logic has tests - §7
+- [ ] `npm run check` passes; new logic has tests - §7
 - [ ] Device test done, or explicitly listed as still open - §7
 - [ ] Ideas found on the way are on the backlog, not half-built - §1
 - [ ] Step-by-step guide for Tilman given (commit, build, test, push/merge, release?) - §10
@@ -202,7 +205,7 @@ Before running `scripts/release.ps1`:
 - [ ] **Experimental**: anything not reliable enough is behind a switch and listed under
       Experimental.
 - [ ] **Logging**: no debug-only noise left in hot paths; no secrets or excessive content logged.
-- [ ] `tsc`, `npm test`, `npm run test:scripts` pass on a clean tree.
+- [ ] `npm run check` passes on a clean tree (`release.ps1` runs it too).
 - [ ] Device checklist in RELEASING.md: install **over the previous release**, settings kept,
       main tabs work, Quick Add, Review, Help opens, Settings → About shows the new version.
 - [ ] After publishing: release page has text and `.snplg`; InkHub/Reddit updated if it matters

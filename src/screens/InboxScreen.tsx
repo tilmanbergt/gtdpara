@@ -226,7 +226,7 @@ export default function InboxScreen({
   onOpenCalendarSettings,
   onOpenItem,
 }: Props): React.JSX.Element {
-  const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   // Live view of storage/dataCache.ts (docs/dev/technical-design-cache-
   // subscription-and-shared-add-path.md §A) - fed to ui/GoogleCalendarPanel.tsx

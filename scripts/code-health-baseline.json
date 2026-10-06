@@ -1,0 +1,12 @@
+{
+  "maxLines": {
+    "App.tsx": 1039,
+    "src/screens/DailyView.tsx": 1882,
+    "src/screens/InboxScreen.tsx": 1107,
+    "src/screens/ProjectDataPanel.tsx": 1284,
+    "src/screens/ReviewScreen.tsx": 4630,
+    "src/screens/Settings.tsx": 2598,
+    "src/supernote/fileSystem.ts": 1297,
+    "src/ui/QuickAddWidget.tsx": 2414
+  }
+}

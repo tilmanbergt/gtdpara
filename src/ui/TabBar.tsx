@@ -84,7 +84,7 @@ export default function TabBar({
   onHelpPress,
 }: Props): React.JSX.Element {
   usePerfRender('TabBar');
-  const {isDarkMode, textColor, borderColor} = useThemeColors();
+  const {textColor, borderColor} = useThemeColors();
 
   return (
     <View style={[styles.container, {borderColor}]}>

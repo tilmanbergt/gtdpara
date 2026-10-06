@@ -4,7 +4,8 @@
   Design: docs/dev/technical-design-versioning-release.md (3.6); checklist: docs/dev/RELEASING.md
 
 .EXAMPLE
-  ./scripts/release.ps1 -Version 0.1.0          # first release
+  ./scripts/release.ps1                         # releases package.json's nextVersion (e.g. 0.9.0)
+  ./scripts/release.ps1 -Version 0.1.0          # an explicit version
   ./scripts/release.ps1 -Bump patch             # 0.1.0 -> 0.1.1
   ./scripts/release.ps1 -Bump minor -DryRun     # show what would happen, change nothing
 #>
@@ -53,8 +54,8 @@ $script:changedFiles = $false
 # ---------------------------------------------------------------- 1. checks
 Write-Step '1. Checks'
 
-if (($Bump -and $Version) -or (-not $Bump -and -not $Version)) {
-    Stop-Release 'use exactly one of -Bump patch|minor|major or -Version x.y.z'
+if ($Bump -and $Version) {
+    Stop-Release 'use -Bump patch|minor|major or -Version x.y.z, not both'
 }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Stop-Release 'Node.js not found' }
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Stop-Release 'git not found' }
@@ -68,12 +69,19 @@ if ($status) {
     Stop-Release 'uncommitted changes - commit or stash them first'
 }
 
+$target = "$(& node $gen --target-version)".Trim()
 if ($Bump) {
     $newVersion = (& node $gen --next-version $Bump)
     if ($LASTEXITCODE -ne 0) { Stop-Release 'could not compute the next version' }
     $newVersion = "$newVersion".Trim()
-} else {
+    if ($target -and $target -ne $newVersion) {
+        Stop-Release "-Bump $Bump gives $newVersion, but package.json's nextVersion is $target - use -Version $newVersion if that is really meant"
+    }
+} elseif ($Version) {
     $newVersion = $Version.Trim()
+} else {
+    if (-not $target) { Stop-Release 'no next version set in package.json - use -Bump or -Version, or: npm run next-version -- x.y.z' }
+    $newVersion = $target
 }
 if ($newVersion -notmatch '^\d+\.\d+\.\d+$') { Stop-Release "'$newVersion' is not a x.y.z version" }
 
@@ -109,30 +117,15 @@ if ($DryRun) {
 }
 
 # ---------------------------------------------------------------- 4. code checks
-Write-Step '3. Type check and tests'
-$tscOut = & npx tsc --noEmit 2>&1
-$tscErrors = @($tscOut | Select-String -Pattern 'error TS').Count
-if ($tscErrors -gt 0) {
-    $tscOut | Select-String -Pattern 'error TS' | Select-Object -First 20 | ForEach-Object { Write-Host $_.Line }
-    Write-Host "tsc: $tscErrors error(s) - a release should have none (docs/dev/DEVELOPMENT-POLICY.md section 7)." -ForegroundColor Yellow
-    if (-not (Confirm-Yes 'Continue anyway?')) { Stop-Release 'type check failed' }
-} else {
-    Write-Host 'tsc: no errors' -ForegroundColor Green
-}
-
-& node (Join-Path $root 'scripts\test-versioning.mjs')
-if ($LASTEXITCODE -ne 0) { Stop-Release 'scripts/test-versioning.mjs failed' }
-& node (Join-Path $root 'scripts\test-userdocs.mjs')
-if ($LASTEXITCODE -ne 0) { Stop-Release 'scripts/test-userdocs.mjs failed (help pages)' }
-
-Write-Info 'Running the Jest tests. Expected at the end: "Tests: N passed" and no "failed".'
+Write-Step '3. Checks (npm run check)'
+Write-Info 'Runs tsc, lint, the Jest tests, the script tests and the code-health rules.'
 Write-Info 'Log lines or warnings printed while tests run are normal (some tests simulate errors on purpose).'
-& npx jest --passWithNoTests
+& node (Join-Path $root 'scripts\check.mjs')
 if ($LASTEXITCODE -ne 0) {
-    Write-Host 'Jest: some tests FAILED - look for "FAIL" and the red marks above. Do not publish a release with failing tests.' -ForegroundColor Red
-    if (-not (Confirm-Yes 'Jest tests failed. Continue anyway?')) { Stop-Release 'tests failed' }
+    Write-Host 'Checks FAILED - see the first failing check above. Do not publish a release with failing checks.' -ForegroundColor Red
+    if (-not (Confirm-Yes 'Checks failed. Continue anyway?')) { Stop-Release 'checks failed' }
 } else {
-    Write-Host 'Jest: all tests passed - anything printed above the summary is expected output.' -ForegroundColor Green
+    Write-Host 'All checks passed.' -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------- 5. commit + tag

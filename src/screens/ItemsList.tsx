@@ -176,7 +176,7 @@ function groupByStatus(kind: 'project' | 'area', entries: CachedItem[]): StatusG
 }
 
 export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element {
-  const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [cache, setCache] = useState<DataCache | null>(() => getCachedData());
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.1):

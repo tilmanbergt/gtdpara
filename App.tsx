@@ -152,7 +152,7 @@ function AppRoot(): React.JSX.Element {
 
 function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.JSX.Element {
   usePerfRender('AppShell');
-  const {isDarkMode, textColor} = useThemeColors();
+  const {textColor} = useThemeColors();
 
   const [mode, setMode] = useState<Mode>('loading');
   // Explicit e-ink refresh once the initial reorient() below actually lands

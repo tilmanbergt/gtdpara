@@ -331,33 +331,6 @@ const FIXED_INBOX_DESTINATION: Destination = {type: 'inbox'};
 // inventing its own unreachable no-op.
 const noopAddMeeting = async (): Promise<void> => {};
 
-// Fresh screen budget for every converted step's left-list PagedSection
-// (docs/dev/design-device-rendering.md §6, same method screens/ItemsList.tsx's
-// own FULL_VIEWPORT_PX/HALF_VIEWPORT_PX use) - shared by all five Review
-// master-detail steps below, since they all sit inside the same stepNavRow
-// + stepScroll wrapper (see the render() at the bottom of this file).
-// Tab bar (~80) + screen content top padding (16) - same GLOBAL_CHROME_PX
-// figure ui/ItemsList.tsx already uses, since App.tsx wraps every screen
-// identically.
-const REVIEW_GLOBAL_CHROME_PX = 96;
-// stepNavRow's own height (styles.stepNavRow below): paddingBottom 10 +
-// marginBottom 12 + one FONT.medium (17px) text line (~20 incl. leading) +
-// borderBottomWidth 1.
-const REVIEW_STEP_NAV_ROW_PX = 10 + 12 + 20 + 1;
-// Every PagedSection's own header row (ui/PagedSection.tsx's
-// styles.headerRow) - same SECTION_HEADER_ROW_PX figure ui/ItemsList.tsx
-// already uses: paddingVertical 4x2 + FONT.small line ~18 + marginBottom 4
-// + borderBottomWidth 1.
-const REVIEW_SECTION_HEADER_ROW_PX = 8 + 18 + 4 + 1;
-// Kept but no longer passed to ReviewMasterDetail (2026-09-17, [[feature_
-// pagination_fixed_height]]'s tabbed-pane follow-on) - all 5 steps below
-// now omit `viewportHeight` and self-measure instead (ui/
-// ReviewMasterDetail.tsx), same hand-summed-sibling-chrome shape that
-// turned out ~400px off for DailyView.tsx's Open-tasks column. Left
-// defined, unused, as the quickest rollback: pass it back into all 5 calls
-// below to revert.
-const REVIEW_LIST_VIEWPORT_PX =
-  1872 - REVIEW_GLOBAL_CHROME_PX - REVIEW_STEP_NAV_ROW_PX - REVIEW_SECTION_HEADER_ROW_PX; // = 1702
 
 // Inbox-to-zero step's own Tasks/Meetings PagedSections - flex weights now
 // (docs/dev/technical-design-flex-weight-stacking.md §3.4, 2026-09-17),
@@ -531,7 +504,7 @@ export default function ReviewScreen({
   onOpenCalendarSettings,
   onStartCloseOut,
 }: Props): React.JSX.Element {
-  const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [aggregate, setAggregate] = useState<ReviewAggregate | null>(null);
   // Live view of storage/dataCache.ts (re-renders with a fresh array on every
@@ -688,7 +661,7 @@ export default function ReviewScreen({
   useEffect(() => {
     setGmailSelectedKey(null);
     setGmailArchiveError(null);
-  }, [stepEntryToken]);
+  }, [stepEntryToken, setGmailArchiveError]);
 
   /** Bumps one of the recap counters of the step visit in progress - see the module doc comment. A no-op outside a visit (hub/end page); never goes below 0 (a tick that gets un-ticked again takes its own count back). Attribution to a step is automatic: an action can only happen inside its own step. */
   const bump = (key: keyof ReviewSummaryCounts, delta = 1) => {
@@ -805,7 +778,7 @@ export default function ReviewScreen({
       setGmailLoading(false);
       requestEinkRefresh();
     }
-  }, [settings]);
+  }, [settings, setGmailArchiveError]);
 
   // Every action handler below that mutates data (status/archive/focus/
   // quick-add/promote/due-date) also calls requestEinkRefresh() explicitly
@@ -3608,7 +3581,6 @@ function GmailDetailPanel({
   borderColor: string;
   placeholderColor: string;
 }): React.JSX.Element {
-  const [pending, setPending] = useState(false);
   /** Archive pill shown inverted (black) for ARCHIVE_FLASH_MS right after the tap, before the email leaves the list (2026-09-28). */
   const [archiveFlash, setArchiveFlash] = useState(false);
   const archiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3679,21 +3651,7 @@ function GmailDetailPanel({
   }, [message.uid]);
 
   // requestEinkRefresh() in every .finally: busy state, progress text, success and
-  // errors are all async state changes the panel would otherwise not repaint on
-  // e-ink (bugfix_eink_refresh) - the reason a failed/finished link used to look
-  // like "nothing happened".
-  const runAction = (fn: () => Promise<void>) => {
-    setError(null);
-    setPending(true);
-    requestEinkRefresh();
-    fn()
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => {
-        setPending(false);
-        requestEinkRefresh();
-      });
-  };
-
+  // errors are async state changes the panel would otherwise not repaint on e-ink.
   const runLink = (key: string, fn: (onProgress: (text: string) => void) => Promise<void>) => {
     setError(null);
     setLinkProgress(null);
@@ -3812,7 +3770,7 @@ function GmailDetailPanel({
       <View style={styles.pillRow}>
         <Pressable
           style={[styles.pill, {borderColor}, archiveFlash && styles.pillFlash]}
-          disabled={pending || archiveFlash}
+          disabled={archiveFlash}
           onPress={handleArchivePress}
           hitSlop={8}>
           <Text style={[styles.pillText, {color: archiveFlash ? COLORS.accentText : textColor}]}>Archive</Text>

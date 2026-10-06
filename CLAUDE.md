@@ -16,7 +16,8 @@ Short version:
   to the internal backlog `claude/next-improvements.md`, never into repo docs.
 - User-visible change = help page (`docs/user/`, device-safe markdown) + a line under
   `## [Unreleased]` in `CHANGELOG.md`, in the same change.
-- Checks: `npx tsc --noEmit`, `npm test`, `npm run test:scripts`; then a device test.
+- Checks: `npm run check` (tsc, lint, tests, code health); then a device test with a build
+  labelled for the release being worked on (`./buildPlugin.ps1`, `RELEASING.md` §4).
 - Branches: `main` is always releasable; features on `feature/<name>`, merged with `--no-ff`.
   Releases only via `scripts/release.ps1` from `main` (`docs/dev/RELEASING.md`).
 - **End every change, build or release with a short, numbered, copy-paste-ready guide for
