@@ -12,6 +12,7 @@ gtdpara is a calm GTD and PARA workspace for the Supernote. Your projects, areas
 - [Daily and focus mode](daily.md)
 - [Week and Month](week-and-month.md)
 - [Quick Add and capture](quick-add.md)
+- [Lasso: capture and mark for later](lasso.md)
 - [Tags](tags.md)
 - [Meetings](meetings.md)
 

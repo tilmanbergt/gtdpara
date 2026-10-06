@@ -45,7 +45,7 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
 - **Focus mode** (`#now`): only the few things you are doing right now
 - **Quick Add** for todos, meetings and notes, with tags, due dates and refiling
 - **Projects & Areas** with status, scope, abbreviations and linked files
-- **Inbox + lasso capture** from handwriting
+- **Inbox + lasso capture** from handwriting, or **Mark for later** in one tap and process the marks later
 - **Weekly Review** hub with one clear step at a time
 - **Note templates** (Tag Rules): new notes come with a background and pre-filled context; shared
   notes can be split by nested tag and date, e.g. one file per coaching client and year

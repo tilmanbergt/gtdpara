@@ -59,14 +59,16 @@ Turn the back garden into a vegetable garden before winter.
 
 - `- [ ]` is an open todo, `- [x]` a done one, `- [-]` a cancelled one.
 - A meeting line is date, then time (`10:00`, `10:00-11:00`) or length (`1d`, `2d`), then the title.
-- A linked note appears at the end of a line as `→ [[Meetings/…]]`, a linked file as `+[[…]]`.
+- A linked note appears at the end of a line as `→ [[Meetings/…]]`, a linked file as `+[[…]]`. A link to a page, from a lasso capture, ends in `#page=3`.
+- A `## Marks` section lists open lasso marks, one per line, see [Lasso](lasso.md).
 - Lines gtdpara doesn't understand are kept as they are.
 
 ## Editing by hand
 
-You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`) as they are.
+You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`) as they are.
 
 ## What gtdpara keeps elsewhere
 
 - **Settings** are stored inside the plugin. Profiles save them as files, see [Profiles](profiles-and-demo.md).
+- **Pictures and handwriting of lasso marks** are kept in the plugin's own storage until the mark is processed, see [Lasso](lasso.md).
 - **Exports** go to `EXPORT/gtdpara`: `profiles` for profile files, `debug` for logs, debug bundles and reports.

@@ -17,7 +17,7 @@ Tap a step to open it. Inside a step:
 - **Week ahead**: this week's meetings and focus; from Friday to Sunday the coming week
 - **Meetings to close out**: past meetings (last 7 days) whose review is still open
 - **Gmail inbox**: only with the experimental Gmail integration, see [integrations](integrations.md)
-- **Inbox to zero**: file or finish everything in the Inbox
+- **Inbox to zero**: file or finish everything in the Inbox. Open lasso marks count too; the card **n marks to process** opens them, see [Lasso](lasso.md)
 - **Stalled projects**: active projects without any open todo you can act on. Someday and Maybe todos don't count (Waiting for does); you can promote one of them to Next with one tap.
 - **Done awaiting review**: projects marked Done - close them out or archive them
 - **On Hold reconsideration**: paused projects and areas - keep them paused or reactivate them

@@ -10,6 +10,34 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Mark for later**: a second lasso button saves a selection in one tap, without opening gtdpara, and
+  puts a small bookmark icon into the note. Process the marks later: a card **n marks to process** on
+  the Inbox and Current tabs and in the Review's Inbox to zero opens them, with the picture of each
+  mark and its recognized text. A saved mark's bookmark becomes a check mark. See the new help page
+  *Lasso: capture and mark for later*.
+- **Several todos from one lasso**: a list with boxes, dashes, dots or numbers becomes one todo per
+  line, each row editable and removable; **✂ Split at cursor** splits by hand.
+- Lasso capture uses the Quick Add chips (flow, tags, due date) and **File to** chips for the
+  destination, with **Save & next**, **Save & view** and **Save & close**.
+- The close-out checklist warns about open marks; archiving moves them to the Inbox.
+- Integrity check: lasso marks whose note is gone.
+
+### Changed
+- A capture's **Link to this page** now becomes the item's linked file (the clip) and opens the note
+  at that page; before, it was set as the item's own note.
+- Lasso capture opens faster: recognition starts right away while the screen loads.
+
+### Fixed
+- The second lasso capture on a page often recognized nothing: handwriting low on the page was
+  outside the area the recognizer looked at.
+
+### Upgrade notes
+- Project, area and Inbox files can get a new `## Marks` section with one line per open mark. Older
+  versions keep it untouched.
+- A linked file can end in `#page=3` (a link to a page from a lasso capture). Older versions can't
+  open such a link; going back to an older version, remove the `#page=…` part by hand.
+
 ## [0.7.0] — 2026-10-05
 
 ### Changed
