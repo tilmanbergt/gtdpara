@@ -8,9 +8,10 @@ logging, help pages, CHANGELOG, tests, device test.
 
 Short version:
 
-- Features: clarify requirements, then a technical design in `docs/dev/`, then implement.
+- Features: clarify requirements, then a technical design in `docs/dev/history/`, then implement.
   Bugs: exact failure, then root cause, then fix.
 - `src/domain/` stays pure (no React Native, no `sn-plugin-lib`, no I/O).
+- Comments say what and why, never when: no dates, no change history. New files stay ≤ 1,000 lines.
 - Files are the source of truth; secrets never go into files, logs or debug bundles.
 - Living docs (`docs/dev/README.md` lists them) describe the current state only; open work goes
   to the internal backlog `claude/next-improvements.md`, never into repo docs.

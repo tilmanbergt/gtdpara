@@ -16,7 +16,7 @@ in the same change that shows a rule is wrong or missing (§11).
 
 1. **Features: requirements, then design, then implementation.**
    - Requirements are clarified in conversation first: questions, edge cases, decisions.
-   - Then a technical design in `docs/dev/technical-design-<topic>.md`: requirements as decided,
+   - Then a technical design in `docs/dev/history/technical-design-<topic>.md`: requirements as decided,
      current state, design, files, test plan, open points.
    - Implementation starts only after the design is approved. The design doc gets an
      **"As built"** section when it's done.
@@ -85,6 +85,13 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
   (design-overview §3 "Reusable building blocks").
 - **Known host limits** are respected and documented: for example, creating notes only works
   when the plugin was opened from a note.
+- **One way to do a thing.** Moving a todo or meeting goes through `storage/entryMove.ts`
+  (`moveTask`/`moveMeeting`); a screen's edit/arm state through `ui/useEditTarget.ts`; every date
+  or time shown through `domain/dateFormat.ts`; every caught error's text through
+  `utils/errorMessage.ts`. `npm run code-health` checks the last two.
+- **File size.** New files stay at or below 1,000 lines; split by responsibility (one component
+  or hook per file, like `screens/review/` and `screens/settings/`). Files that are longer today
+  are listed in `scripts/code-health-baseline.json` and may only shrink.
 
 ## 4. UI rules
 
@@ -126,6 +133,12 @@ Details: `docs/dev/design-overview.md` §3 "Styling" and `docs/dev/design-device
 
 A change is not done while the docs describe the old behavior.
 
+- **Code comments** say what the code does and why, as it is now: constraints, invariants,
+  non-obvious behavior, a reference to the design doc section. No dates, no "used to",
+  "previously", "no longer", no change history and no quotes from conversations - history lives
+  in git and in the design documents. `npm run code-health` flags dates and history wording in
+  comments.
+
 - **Help pages** (`docs/user/*.md`) - shown on GitHub *and* in the app ("?" in the tab bar):
   - Update every page that describes the changed behavior; add a page for a new area of use and
     link it from `index.md`.
@@ -143,14 +156,17 @@ A change is not done while the docs describe the old behavior.
   exported.
 - **Developer docs** come in two kinds (list in `docs/dev/README.md`):
   - **Living documents** (`design-overview.md`, `design-philosophy.md`,
-    `design-device-rendering.md`, `DEVELOPMENT-POLICY.md`, `RELEASING.md`, `docs/dev/README.md`)
+    `design-device-rendering.md`, `DEVELOPMENT-POLICY.md`, `RELEASING.md`, `inkhub-listing.md`,
+    `docs/dev/README.md`) live directly in `docs/dev/` and
     describe the current state in present tense: no history ("previously", "superseded",
     "not yet verified"), no open questions, no plans. Each starts with a short "About this
     document" note saying what it is for and how it is kept. Update the affected one in the same
     change.
   - **Historical documents** (`technical-design-*.md`, spikes, requirement notes, release plans,
-    device test records) are written for one feature or release, get their "As built" section,
-    and are then left alone.
+    device test records) live in `docs/dev/history/`. They are written for one feature or
+    release, get their "As built" section, and are then left alone. Refer to them by their full
+    path, `docs/dev/history/<name>.md`; `npm run code-health` reports references to documents
+    that don't exist.
 - **Open work lives in one place**: ideas, requirements under discussion, bugs, technical debt
   and housekeeping go to the internal backlog (the claude.ai project document
   `claude/next-improvements.md`), never into the repository's documents. Decisions and context

@@ -7,8 +7,8 @@
  * else in the file, and vice versa.
  *
  * Like ItemDetail's own file listing, this is load-once-per-screen, not
- * kept in a cross-project index (design-overview.md §4's index is for
- * cross-project views like Daily, which don't exist yet) - a mid-session
+ * kept in the cross-project cache (design-overview.md §2.3, which serves
+ * cross-project views like Daily) - a mid-session
  * external edit to the file is the same narrow, accepted risk the design
  * doc calls out for write-through in general.
  */

@@ -210,7 +210,7 @@ export interface MonthlyGoal {
  * A parsed project.txt / area.txt / Inbox.txt. `rawContent` is kept
  * alongside the parsed model so write-through can target only the
  * Tasks/Meetings span and leave any hand-added content untouched
- * (design-overview.md §6, "Write-through must not clobber hand-added content").
+ * (design-overview.md §2.2, "Write-through must not clobber hand-added content").
  */
 export interface GtdParaFile {
   kind: GtdParaKind;

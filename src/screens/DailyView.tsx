@@ -1,5 +1,5 @@
 /**
- * Daily view (design-overview.md §5.2/§5.3): a two-column row - Calendar
+ * Daily view (design-overview.md §2.7): a two-column row - Calendar
  * (meetings dated today/tomorrow) on the left, Open tasks (the daily focus
  * filter rule, storage/dailyAggregate.ts: #next, due today-or-earlier, or
  * belonging to a daily-focus Project/Area) on the right. The Focus panel

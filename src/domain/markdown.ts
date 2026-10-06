@@ -5,7 +5,7 @@
  * Pure, zero RN/SDK imports (design-overview.md §3's domain/ convention) -
  * everything here is plain string manipulation, unit-testable without a
  * device. The one rule every function here is built around
- * (design-overview.md §6, "Write-through must not clobber hand-added
+ * (design-overview.md §2.2, "Write-through must not clobber hand-added
  * content"): touch only the span you actually mean to change (a "## Heading"
  * span, or the frontmatter block) - everything else passes through
  * unchanged.

@@ -1,5 +1,5 @@
 /**
- * The disposable cross-project cache (design-overview.md §4), covering both
+ * The disposable cross-project cache (design-overview.md §2.3), covering both
  * halves the design doc describes: which Project/Area folders exist, AND
  * each one's own parsed Tasks/Meetings - so Home and Daily don't read every
  * file on every open, which gets slow as the number of Projects/Areas grows.

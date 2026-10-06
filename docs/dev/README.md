@@ -82,7 +82,9 @@ that don't exist, so `npm test` catches most slips.
 | `src/domain/` | Pure TypeScript logic: parsing, dates, tags, rules. **No React Native or `sn-plugin-lib` imports**, so it stays testable with plain Node. |
 | `src/storage/` | Reading/writing project files, cache, settings, integrations (I/O) |
 | `src/supernote/` | Thin wrappers around `sn-plugin-lib` and the native modules |
-| `src/screens/` | One component per tab/screen (Daily, Week, Month, Review, Settings, …) |
+| `src/screens/` | One component per tab/screen (Daily, Week, Month, Inbox, Current, …) |
+| `src/screens/review/` | Weekly Review: the shell (`ReviewScreen.tsx`: hub, navigation, visit record), shared data (`useReviewData.ts`, `useFrozenStepList.ts`, `reviewVisit.ts`) and one component per step in `steps/` |
+| `src/screens/settings/` | Settings: the shell (`Settings.tsx`), the Save-draft (`useSettingsDraft.ts`) and its tabs (`DraftTabs.tsx`), Advanced/About/Profiles, and Tag Rules in `tagRules/` (list, rule form, background, Add piece) |
 | `src/ui/` | Shared components (QuickAddWidget, PagedSection, MeetingRow, …) and styles |
 | `src/utils/` | Logging, performance tracing, e-ink refresh helpers |
 | `android/…/eu/embodyagile/gtdpara/` | Native modules: file access, Gmail IMAP, PDF, text measurement, runtime guard |
@@ -98,9 +100,10 @@ no history and no open work:
 - `design-philosophy.md`: the values behind the design and how they show up in it.
 - `design-device-rendering.md`: screen facts, row heights and space budgets for the A5 X.
 - `RELEASING.md`: git, build and release workflow.
+- `inkhub-listing.md`: the field values for the InkHub store listing.
 - this `README.md`.
 
-**Historical documents** record how something was decided and built. They are written once,
+**Historical documents** live in `docs/dev/history/`. They record how something was decided and built. They are written once,
 get an "As built" section when the feature ships, and are not updated afterwards - if they
 disagree with a living document, the living document is right:
 
