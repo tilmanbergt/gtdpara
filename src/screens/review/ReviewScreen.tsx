@@ -167,28 +167,11 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, Pressable, Text, View} from 'react-native';
 import {AbbrevFileMatch} from '../../domain/abbrev';
 import {Destination, destinationLabel, isFocused} from '../../domain/destination';
-import {isContextTag, setFlowStateTag} from '../../domain/flowState';
+import {setFlowStateTag} from '../../domain/flowState';
 import {deriveTaskFields, setDueTag} from '../../domain/markdown';
-import {isTodayOrFuture, todayIso} from '../../domain/meetingTime';
-import {
-  meetingDisplayTitle,
-  MeetingTrackingKind,
-  REVIEW_LOOKBACK_DAYS,
-  resolveMeetingTracking,
-  toggleMeetingTracking,
-  toggleMeetingTrackingAt,
-} from '../../domain/meetingTracking';
-import {
-  applyEmptyStamps,
-  applyStepVisit,
-  nextReviewStepId,
-  prevReviewStepId,
-  activeReviewSteps,
-  reviewStepDef,
-  ReviewStepId,
-  ReviewSummaryCounts,
-  ZERO_REVIEW_SUMMARY,
-} from '../../domain/reviewSteps';
+import {isTodayOrFuture} from '../../domain/meetingTime';
+import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../domain/meetingTracking';
+import {applyEmptyStamps, applyStepVisit, nextReviewStepId, prevReviewStepId, activeReviewSteps, reviewStepDef, ReviewStepId, ReviewSummaryCounts} from '../../domain/reviewSteps';
 import {GtdParaSettings, ResolvedParaPaths} from '../../domain/settings';
 import {Meeting, Task} from '../../domain/types';
 import {isoWeekKey, weekAheadRangeIso} from '../../domain/weekDate';
@@ -196,48 +179,25 @@ import {countMeetingsInRange} from '../../domain/meetingSpan';
 import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../../storage/archive';
 import {archiveDoneText, emptyFolderConfirmNote} from '../../domain/fileChangeText';
 import {planStatusLabel} from '../../domain/closeOut/plan';
-import {CachedItem, findCachedItem, getCachedData, rebuildCache, setCachedInbox, updateItemMeetings, updateItemTasks} from '../../storage/dataCache';
+import {CachedItem, findCachedItem, getCachedData, rebuildCache, setCachedInbox, updateItemTasks} from '../../storage/dataCache';
 import {FocusScope, focusBlockedReason, setItemFocus} from '../../storage/focusSlots';
 import {InboxFilingTarget, resolveFilingPick} from '../../storage/inboxFiling';
 import {itemTarget, moveMeeting, moveTask} from '../../storage/entryMove';
 import {useEntryMoveUi} from '../../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../../storage/linkedFiles';
-import {MeetingRelevantTodo, relatedItemsFor} from '../../storage/meetingNoteAggregate';
-import {openOrCreateMeetingNote, openOrCreateTodoNote, refreshMeetingNoteBlock} from '../../storage/meetingNoteContent';
+import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../../ui/useNoteCreateConfirm';
-import {resolveNotePath} from '../../storage/noteLinks';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../../storage/itemMutations';
 import {summarizeAttachmentsByExtension} from '../../domain/attachmentSummary';
 import {isAttachmentSupported, saveGmailAttachment} from '../../storage/gmailAttachments';
 import {saveGmailEmailAsNote} from '../../storage/gmailEmailNote';
-import {
-  archiveGmailMessage,
-  fetchGmailBody,
-  GmailCacheMessage,
-  getCachedGmailInbox,
-  getGmailFetchedAt,
-  isGmailConfigured,
-  refreshGmailInbox,
-} from '../../storage/gmailInboxCache';
+import {archiveGmailMessage, fetchGmailBody, GmailCacheMessage, getCachedGmailInbox, getGmailFetchedAt, isGmailConfigured, refreshGmailInbox} from '../../storage/gmailInboxCache';
 import {fetchAttachment as fetchGmailAttachmentBytes, GmailAttachmentInfo} from '../../storage/gmailImapNative';
 import {loadProjectFile, saveMeetings, saveTasks} from '../../storage/projectFile';
-import {
-  buildReviewAggregate,
-  buildReviewStepCounts,
-  isActionableOpenTask,
-  nextTasksFor,
-  ReviewAggregate,
-  ReviewItemRef,
-  ReviewMeetingEntry,
-  ReviewNextTaskEntry,
-  ReviewProjectEntry,
-  ReviewShelvedTaskEntry,
-  ReviewUnfocusedNextEntry,
-  shelvedTasksFor,
-} from '../../storage/reviewAggregate';
+import {buildReviewAggregate, buildReviewStepCounts, isActionableOpenTask, nextTasksFor, ReviewAggregate, ReviewItemRef, ReviewNextTaskEntry, ReviewProjectEntry, ReviewShelvedTaskEntry, ReviewUnfocusedNextEntry, shelvedTasksFor} from '../../storage/reviewAggregate';
 import {loadSettings, updateReviewSteps} from '../../storage/settingsStorage';
 import {SettableStatus, setItemStatus} from '../../storage/statusControl';
-import {displayPath, FolderEntry, openPath} from '../../supernote/fileSystem';
+import {displayPath, FolderEntry} from '../../supernote/fileSystem';
 import {log, logError} from '../../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../../utils/screenRefresh';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../../ui/FileBrowserPane';
@@ -248,9 +208,8 @@ import GmailBodyPane from '../../ui/GmailBodyPane';
 import ItemContextBlock from '../../ui/ItemContextBlock';
 import {COLUMN_WIDTH_PX, itemEntryDisplayText, itemEntryHeight, itemEntryLines} from '../../ui/itemEntryRow';
 import ReviewWeekAhead from './steps/WeekAheadStep';
-import MeetingRow, {MEETING_ROW_HEIGHT, MeetingRowLayout, MeetingTrackingConfig} from '../../ui/MeetingRow';
-import MeetingList, {LayoutSwitch} from '../../ui/MeetingList';
-import {useListLayout} from '../../ui/listLayout';
+import MeetingRow, {MeetingTrackingConfig} from '../../ui/MeetingRow';
+import MeetingList from '../../ui/MeetingList';
 import {useEditTarget} from '../../ui/useEditTarget';
 import PagedSection from '../../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../../ui/QuickAddWidget';
@@ -271,8 +230,13 @@ import MarksCard from '../../ui/MarksCard';
 import {useOpenMarks} from '../../ui/useOpenMarks';
 import {MarkScope} from '../../domain/marks';
 import {errorMessage} from '../../utils/errorMessage';
-import {formatClock, formatDateTime} from '../../domain/dateFormat';
+import {formatClock} from '../../domain/dateFormat';
 import {styles} from './reviewStyles';
+import {endVisit, getSavedView, rememberView, ReviewView, setActivationCandidates, startVisit, visitStepId} from './reviewVisit';
+import {bump} from './reviewVisit';
+import {ReviewStepProps} from './shared';
+import {ReviewData} from './useReviewData';
+import MeetingsCloseOutStep from './steps/MeetingsCloseOutStep';
 
 const ALL_MARKS: MarkScope = {type: 'all'};
 
@@ -343,21 +307,6 @@ const noopAddMeeting = async (): Promise<void> => {};
 const REVIEW_INBOX_TASKS_WEIGHT = 8;
 const REVIEW_INBOX_MEETINGS_WEIGHT = 6;
 
-/** Which page the screen shows: the hub, one step, or the end page after the last step. */
-type ReviewView = {kind: 'hub'} | {kind: 'step'; id: ReviewStepId} | {kind: 'end'};
-
-/** See the module doc comment's "Resume behavior" note. */
-let savedView: ReviewView = {kind: 'hub'};
-
-/**
- * The recap tally of the step visit in progress (module doc comment's "Hub"
- * note) - null on the hub/end page. Module-level for the same reason as
- * savedView (survives a tab-switch-and-back), and no React mirror because
- * nothing renders the running tally; leaveStep turns it into the step's
- * persisted record.
- */
-let savedVisit: {id: ReviewStepId; counts: ReviewSummaryCounts} | null = null;
-
 function statusLabel(status: SettableStatus): string {
   if (status === 'active') return 'Active';
   if (status === 'on-hold') return 'On Hold';
@@ -414,41 +363,6 @@ function reviewFallbackItem(ref: ReviewItemRef): CachedItem {
  */
 function reviewCurrentItem(ref: ReviewItemRef, items: CachedItem[]): CachedItem {
   return items.find(i => i.path === ref.path) ?? reviewFallbackItem(ref);
-}
-
-/**
- * A close-out list row (docs/dev/technical-design-meeting-lists.md §3): the
- * standard MeetingRow as a selector - date+time column, the item as source,
- * no actions (the master-detail shell owns the tap). Reads the meeting and the
- * item's abbreviation from the live cache so an edit in the detail shows.
- */
-function CloseOutMeetingRow({
-  entry,
-  items,
-  layout,
-  state,
-  textColor,
-  borderColor,
-}: {
-  entry: ReviewMeetingEntry;
-  items: CachedItem[];
-  layout: MeetingRowLayout;
-  state?: 'selected' | 'done';
-  textColor: string;
-  borderColor: string;
-}): React.JSX.Element {
-  const current = reviewCurrentItem(entry.item, items);
-  return (
-    <MeetingRow
-      meeting={current.meetings[entry.meetingIndex] ?? entry.meeting}
-      layout={layout}
-      time="dateTime"
-      source={{abbrev: current.abbrev ?? entry.item.name, name: entry.item.name}}
-      state={state}
-      textColor={textColor}
-      borderColor={borderColor}
-    />
-  );
 }
 
 /**
@@ -550,7 +464,7 @@ export default function ReviewScreen({
     flushEditRef,
   } = useEditTarget<InboxEditTarget, {type: 'task' | 'meeting'; index: number; intent: 'link' | 'file'}>();
 
-  const [view, setView] = useState<ReviewView>(savedView);
+  const [view, setView] = useState<ReviewView>(getSavedView);
   /** Set when persisting a step visit / empty stamp failed - shown on the hub and end page (ui/ReviewHub.tsx). */
   const [saveError, setSaveError] = useState<string | null>(null);
   useErrorStatus('ReviewScreen.saveError', saveError && `Couldn't save review progress: ${saveError}`, () => setSaveError(null));
@@ -589,9 +503,6 @@ export default function ReviewScreen({
   const [doneActedOn, setDoneActedOn] = useState<Set<string>>(new Set());
   const [onHoldActedOn, setOnHoldActedOn] = useState<Set<string>>(new Set());
   const [unfocusedNextActedOn, setUnfocusedNextActedOn] = useState<Set<string>>(new Set());
-  /** Meetings-to-close-out step (docs/dev/technical-design-meeting-tracking.md §5): same frozen-membership + acted-on pattern as the five steps above - a meeting ticked "reviewed" stays listed, checkmarked and re-openable until the step is left. Keyed by `closeOutKey`. */
-  const [closeOutSnapshot, setCloseOutSnapshot] = useState<ReviewMeetingEntry[] | null>(null);
-  const [closeOutActedOn, setCloseOutActedOn] = useState<Set<string>>(new Set());
   /**
    * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md) -
    * NOT a frozen snapshot of the usual kind: the source of truth is storage/
@@ -655,12 +566,6 @@ export default function ReviewScreen({
     setGmailArchiveError(null);
   }, [stepEntryToken, setGmailArchiveError]);
 
-  /** Bumps one of the recap counters of the step visit in progress - see the module doc comment. A no-op outside a visit (hub/end page); never goes below 0 (a tick that gets un-ticked again takes its own count back). Attribution to a step is automatic: an action can only happen inside its own step. */
-  const bump = (key: keyof ReviewSummaryCounts, delta = 1) => {
-    if (!savedVisit) return;
-    savedVisit = {...savedVisit, counts: {...savedVisit.counts, [key]: Math.max(0, (savedVisit.counts[key] ?? 0) + delta)}};
-  };
-
   const load = useCallback(async (forceRebuild: boolean) => {
     setLoading(true);
     // Explicit rising-edge refresh (2026-09-11, Tilman reported entering
@@ -690,7 +595,6 @@ export default function ReviewScreen({
       setStalledSnapshot(null);
       setNeglectedSnapshot(null);
       setUnfocusedNextSnapshot(null);
-      setCloseOutSnapshot(null);
       setDoneSnapshot(null);
       setOnHoldSnapshot(null);
       setStalledActedOn(new Set());
@@ -698,7 +602,6 @@ export default function ReviewScreen({
       setDoneActedOn(new Set());
       setOnHoldActedOn(new Set());
       setUnfocusedNextActedOn(new Set());
-      setCloseOutActedOn(new Set());
       setStepEntryToken(t => t + 1);
     }
     try {
@@ -792,7 +695,6 @@ export default function ReviewScreen({
     if (currentStepId === 'stalled' && stalledSnapshot === null) setStalledSnapshot(aggregate.stalledProjects);
     if (currentStepId === 'neglected' && neglectedSnapshot === null) setNeglectedSnapshot(aggregate.neglectedAreas);
     if (currentStepId === 'unfocusedNext' && unfocusedNextSnapshot === null) setUnfocusedNextSnapshot(aggregate.unfocusedNextItems);
-    if (currentStepId === 'meetingsCloseOut' && closeOutSnapshot === null) setCloseOutSnapshot(aggregate.meetingsToClose);
     if (currentStepId === 'done' && doneSnapshot === null) setDoneSnapshot(aggregate.doneProjects);
     if (currentStepId === 'onHold' && onHoldSnapshot === null) setOnHoldSnapshot(aggregate.onHoldItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -817,7 +719,7 @@ export default function ReviewScreen({
    * remount after it lands on the hub (see the module doc comment).
    */
   const showView = (next: ReviewView) => {
-    savedView = next.kind === 'end' ? {kind: 'hub'} : next;
+    rememberView(next);
     setView(next);
     setStepEntryToken(t => t + 1);
     requestEinkRefresh();
@@ -852,11 +754,6 @@ export default function ReviewScreen({
         setUnfocusedNextSnapshot(aggregate.unfocusedNextItems);
         setUnfocusedNextActedOn(new Set());
       }
-      if (id === 'meetingsCloseOut') {
-        setCloseOutSnapshot(aggregate.meetingsToClose
-            );
-        setCloseOutActedOn(new Set());
-      }
       if (id === 'done') {
         setDoneSnapshot(aggregate.doneProjects);
         setDoneActedOn(new Set());
@@ -872,7 +769,7 @@ export default function ReviewScreen({
       setGmailActedOn(new Set());
       // No fetch here - the step's own Load/Refresh button does that (see loadGmailInbox).
     }
-    savedVisit = {id, counts: {...ZERO_REVIEW_SUMMARY}};
+    startVisit(id);
     showView({kind: 'step', id});
   };
 
@@ -902,11 +799,14 @@ export default function ReviewScreen({
     // A second tap arriving before the re-render (double-tap on "Reviewed ›")
     // finds the visit already closed by the first: ignore it, rather than
     // record a second, empty visit over the first one's tally.
-    if (savedVisit?.id !== id) return;
-    const counts: ReviewSummaryCounts = {...savedVisit.counts};
-    if (id === 'stalled') counts.projectsActivated = (stalledSnapshot ?? []).filter(hasActionableOpenTask).length;
-    if (id === 'neglected') counts.areasActivated = (neglectedSnapshot ?? []).filter(hasActionableOpenTask).length;
-    savedVisit = null;
+    const ended = endVisit(id);
+    if (!ended) return;
+    const counts: ReviewSummaryCounts = {...ended.counts};
+    if (id === 'stalled' || id === 'neglected') {
+      const activated = ended.activationCandidates.filter(hasActionableOpenTask).length;
+      if (id === 'stalled') counts.projectsActivated = activated;
+      else counts.areasActivated = activated;
+    }
 
     const now = new Date();
     if (settings) {
@@ -1099,58 +999,6 @@ export default function ReviewScreen({
   };
 
   /**
-   * Meetings-to-close-out step: ticks (or un-ticks) `#reviewed` on the
-   * meeting's CURRENT copy in the cache (not the frozen entry's, which may be
-   * a render behind) via domain/meetingTracking.ts's toggleMeetingTracking -
-   * the same mutator the Daily row icon uses - then the usual saveMeetings +
-   * updateItemMeetings write-through. Ticking marks the row acted-on
-   * (checkmarked, stays listed, reopenable); un-ticking clears that again.
-   */
-  const handleToggleCloseOutReviewed = async (entry: ReviewMeetingEntry): Promise<void> => {
-    const cachedItem = findCachedItem(entry.item.path);
-    const current = cachedItem?.meetings[entry.meetingIndex];
-    if (!cachedItem || !current) {
-      throw new Error(`"${meetingDisplayTitle(entry.meeting)}" changed on disk - Settings → Advanced → Reload all files.`);
-    }
-    const wasReviewed = resolveMeetingTracking(current, settings?.tagRules ?? [])?.done ?? false;
-    const nextMeetings = cachedItem.meetings.slice();
-    nextMeetings[entry.meetingIndex] = toggleMeetingTracking(current, 'review');
-    const nextRaw = await saveMeetings(entry.item.kind, entry.item.path, cachedItem.rawContent, nextMeetings, cachedItem.meetingExtraLines);
-    updateItemMeetings(entry.item.path, nextRaw, nextMeetings, cachedItem.meetingExtraLines);
-    log('ReviewScreen: meeting review toggled', entry.item.path, entry.meetingIndex, !wasReviewed);
-    refreshFromCache();
-    bump('meetingsClosedOut', wasReviewed ? -1 : 1);
-    setCloseOutActedOn(prev => {
-      const next = new Set(prev);
-      if (wasReviewed) next.delete(closeOutKey(entry));
-      else next.add(closeOutKey(entry));
-      return next;
-    });
-    requestEinkRefresh();
-  };
-
-  /**
-   * Meetings-to-close-out step: opens the meeting's note - deliberately NOT
-   * migrated to `openOrCreateMeetingNote` (Slice 3, docs/dev/technical-design-
-   * shared-note-pages.md §6, 2026-09-22): this step never offers a "create"
-   * action (the guard right below throws when there's no note yet), unlike
-   * every other note-icon handler in this app, which always pairs create
-   * with open. Going through the open-or-create entry point here would
-   * silently start CREATING a note from a place that never did before - an
-   * unrequested behavior change - so this keeps calling
-   * `refreshMeetingNoteBlock`/`openPath` directly, exactly as before.
-   */
-  const handleOpenCloseOutNote = async (entry: ReviewMeetingEntry): Promise<void> => {
-    const current = findCachedItem(entry.item.path)?.meetings[entry.meetingIndex];
-    if (!current || !current.notePath) {
-      throw new Error(`"${meetingDisplayTitle(entry.meeting)}" has no note - Settings → Advanced → Reload all files.`);
-    }
-    const currentSettings = settings ?? (await loadSettings());
-    await refreshMeetingNoteBlock(current, entry.item.path, currentSettings, inbox ? {tasks: inbox.tasks} : null);
-    await openPath(await resolveNotePath(entry.item.path, current.notePath));
-  };
-
-  /**
    * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md
    * §8) - "add task"/"add meeting" from a message. Always to the Inbox
    * (FIXED_INBOX_DESTINATION, same as Week ahead's own quick-add - an email
@@ -1338,7 +1186,7 @@ export default function ReviewScreen({
         logError('ReviewScreen: background Gmail archive failed', message.uid, reason);
         // The cache already put the message back at its old position.
         setGmailMessages(getCachedGmailInbox());
-        if (savedVisit?.id === 'gmailInbox') bump('gmailArchived', -1);
+        if (visitStepId() === 'gmailInbox') bump('gmailArchived', -1);
         setGmailArchiveError(`Couldn't archive "${message.subject || '(no subject)'}": ${reason} - it's back in the list.`);
         requestEinkRefresh();
       });
@@ -1699,8 +1547,6 @@ export default function ReviewScreen({
   // Arming is reached from inside edit mode; the edit stays open meanwhile.
   const armInboxLinkTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'});
   const armInboxFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
-  // Meetings to close out: 1-line/2-line switch like every meeting list (session-only, ui/listLayout.ts).
-  const [closeOutLayout, setCloseOutLayout] = useListLayout('reviewCloseOut', 'twoLine');
 
   const startEditingInboxTask = (taskIndex: number) => {
     startEditTarget({type: 'task', index: taskIndex});
@@ -1953,7 +1799,6 @@ export default function ReviewScreen({
   // this pass).
   const stalledList = stalledSnapshot ?? aggregate?.stalledProjects ?? [];
   const neglectedList = neglectedSnapshot ?? aggregate?.neglectedAreas ?? [];
-  const closeOutList = closeOutSnapshot ?? aggregate?.meetingsToClose ?? [];
   const doneList = doneSnapshot ?? aggregate?.doneProjects ?? [];
   const onHoldList = onHoldSnapshot ?? aggregate?.onHoldItems ?? [];
   const unfocusedNextList = unfocusedNextSnapshot ?? aggregate?.unfocusedNextItems ?? [];
@@ -2158,76 +2003,6 @@ export default function ReviewScreen({
         placeholderColor={placeholderColor}
       />
     </View>
-  );
-
-  /**
-   * Meetings to close out (docs/dev/technical-design-meeting-tracking.md §5) -
-   * the sixth ReviewMasterDetail step: past meetings whose Tag Rule tracks
-   * "review after" and that aren't `#reviewed` yet (storage/reviewAggregate.ts's
-   * meetingsToClose, last REVIEW_LOOKBACK_DAYS days). Same frozen-membership/
-   * acted-on/write-through conventions as the item-based steps below.
-   */
-  const renderCloseOutDetail = (selectedKey: string | null): React.ReactNode => {
-    if (!selectedKey) {
-      return (
-        <ReviewEmptyDetail
-          title="No meeting selected"
-          text={`These meetings are over, their Tag Rule asks for a review, and you haven't ticked it yet (last ${REVIEW_LOOKBACK_DAYS} days). Note down follow-ups as todos, then mark the meeting reviewed.`}
-          hint="Tap a meeting on the left to get started."
-          textColor={textColor}
-        />
-      );
-    }
-    const entry = closeOutList.find(e => closeOutKey(e) === selectedKey);
-    if (!entry) return null;
-    const live = reviewCurrentItem(entry.item, items).meetings[entry.meetingIndex] ?? entry.meeting;
-    const reviewed = resolveMeetingTracking(live, settings?.tagRules ?? [])?.done ?? false;
-    const related = relatedItemsFor(items, inbox ? {tasks: inbox.tasks} : null, live.tags.filter(isContextTag));
-    return (
-      <MeetingCloseOutDetail
-        entry={entry}
-        meeting={live}
-        reviewed={reviewed}
-        related={related}
-        onOpenItem={openReviewItem}
-        onToggleReviewed={handleToggleCloseOutReviewed}
-        onOpenNote={handleOpenCloseOutNote}
-        onAddTask={handleAddTask}
-        textColor={textColor}
-        borderColor={borderColor}
-        placeholderColor={placeholderColor}
-      />
-    );
-  };
-
-  const renderCloseOut = () => (
-    <ReviewMasterDetail<ReviewMeetingEntry>
-      header="Meetings to close out"
-      headerAccessory={<LayoutSwitch layout={closeOutLayout} onChange={setCloseOutLayout} textColor={textColor} />}
-      rows={closeOutList}
-      rowHeight={() => MEETING_ROW_HEIGHT[closeOutLayout]}
-      isSelectable={() => true}
-      rowKey={closeOutKey}
-      renderRow={(entry, selected, actedOn) => (
-        // The standard row as a selector (docs/dev/technical-design-meeting-lists.md
-        // §3): date+time column, source, no actions - the tap selects (the
-        // master-detail shell owns it); acted-on rows are greyed with a ✓.
-        <CloseOutMeetingRow
-          entry={entry}
-          items={items}
-          layout={closeOutLayout}
-          state={selected ? 'selected' : actedOn ? 'done' : undefined}
-          textColor={textColor}
-          borderColor={borderColor}
-        />
-      )}
-      renderDetail={renderCloseOutDetail}
-      actedOnKeys={closeOutActedOn}
-      resetKey={stepEntryToken}
-      emptyHint="No meetings waiting for a review - nice."
-      textColor={textColor}
-      borderColor={borderColor}
-    />
   );
 
   /**
@@ -2845,19 +2620,46 @@ export default function ReviewScreen({
     );
   };
 
-  // Record over every step id (not an array): the compiler now insists a new
-  // step in domain/reviewSteps.ts gets a renderer here.
-  const STEP_RENDERERS: Record<ReviewStepId, () => React.ReactNode> = {
-    weekAhead: renderWeekAhead,
-    meetingsCloseOut: renderCloseOut,
-    gmailInbox: renderGmailInbox,
-    inbox: renderInboxZero,
-    stalled: renderStalledProjects,
-    done: renderDoneProjects,
-    onHold: renderOnHold,
-    neglected: renderNeglectedAreas,
-    unfocusedNext: renderUnfocusedNextItems,
-    weeklyFocus: renderFocusReset,
+  const stepData: ReviewData = {items, settings, setSettings, aggregate, inbox, inboxPath, paths, loading, error, load, refreshFromCache};
+  const stepProps: ReviewStepProps = {
+    data: stepData,
+    stepEntryToken,
+    onOpenItem: openReviewItem,
+    onAddTask: handleAddTask,
+    textColor,
+    borderColor,
+    placeholderColor,
+  };
+  useEffect(() => {
+    if (currentStepId === 'stalled' && stalledSnapshot) setActivationCandidates(stalledSnapshot);
+    if (currentStepId === 'neglected' && neglectedSnapshot) setActivationCandidates(neglectedSnapshot);
+  }, [currentStepId, stalledSnapshot, neglectedSnapshot]);
+
+  // A switch over every step id: the compiler insists a new step in
+  // domain/reviewSteps.ts gets a renderer here.
+  const renderStep = (id: ReviewStepId): React.ReactNode => {
+    switch (id) {
+      case 'weekAhead':
+        return renderWeekAhead();
+      case 'meetingsCloseOut':
+        return <MeetingsCloseOutStep {...stepProps} />;
+      case 'gmailInbox':
+        return renderGmailInbox();
+      case 'inbox':
+        return renderInboxZero();
+      case 'stalled':
+        return renderStalledProjects();
+      case 'done':
+        return renderDoneProjects();
+      case 'onHold':
+        return renderOnHold();
+      case 'neglected':
+        return renderNeglectedAreas();
+      case 'unfocusedNext':
+        return renderUnfocusedNextItems();
+      case 'weeklyFocus':
+        return renderFocusReset();
+    }
   };
 
   const renderStepNav = (id: ReviewStepId): React.JSX.Element => {
@@ -2899,7 +2701,7 @@ export default function ReviewScreen({
         <View style={common.content}>
           {view.kind === 'step' && renderStepNav(view.id)}
           <View style={styles.stepScroll}>
-            {view.kind === 'step' && STEP_RENDERERS[view.id]()}
+            {view.kind === 'step' && renderStep(view.id)}
             {view.kind === 'hub' && (
               <ReviewHub
                 steps={settings.reviewSteps}
@@ -3251,121 +3053,6 @@ function DoneOnHoldDetail({
             borderColor={borderColor}
           />
         ))
-      )}
-    </View>
-  );
-}
-
-/** Stable identity of a meetings-to-close-out entry - item path + index into that item's full meetings array (same convention as every ReviewMeetingEntry consumer). */
-function closeOutKey(entry: ReviewMeetingEntry): string {
-  return `${entry.item.path}#${entry.meetingIndex}`;
-}
-
-// Cap on the related-todos list in the close-out detail panel - a detail
-// column has no scroll on this device, so a long list would push the panel's
-// own actions off screen. The remainder is summarised as "+N more".
-const CLOSE_OUT_RELATED_LIMIT = 5;
-
-/**
- * Meetings-to-close-out detail panel: what the meeting was, the one action
- * this step exists for (mark reviewed - toggles back if tapped again), the
- * note if there is one, a task-only quick-add fixed to the meeting's own
- * Project/Area for the follow-ups, and the open todos that share the
- * meeting's context tags (storage/meetingNoteAggregate.ts's relatedItemsFor -
- * the same match the meeting's note block lists), so results can be checked
- * against what's already captured.
- */
-function MeetingCloseOutDetail({
-  entry,
-  meeting,
-  reviewed,
-  related,
-  onOpenItem,
-  onToggleReviewed,
-  onOpenNote,
-  onAddTask,
-  textColor,
-  borderColor,
-  placeholderColor,
-}: {
-  entry: ReviewMeetingEntry;
-  meeting: Meeting;
-  reviewed: boolean;
-  related: MeetingRelevantTodo[];
-  onOpenItem: (item: ReviewItemRef) => void;
-  onToggleReviewed: (entry: ReviewMeetingEntry) => Promise<void>;
-  onOpenNote: (entry: ReviewMeetingEntry) => Promise<void>;
-  onAddTask: (text: string, destination: Destination) => Promise<void>;
-  textColor: string;
-  borderColor: string;
-  placeholderColor: string;
-}): React.JSX.Element {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  useErrorStatus('ReviewScreen.error', error, () => setError(null));
-
-  const runAction = (fn: () => Promise<void>) => {
-    setError(null);
-    setPending(true);
-    fn()
-      .catch(e => setError(errorMessage(e)))
-      .finally(() => setPending(false));
-  };
-
-  const destination: Destination = {type: 'item', kind: entry.item.kind, name: entry.item.name, path: entry.item.path};
-  const shownRelated = related.slice(0, CLOSE_OUT_RELATED_LIMIT);
-
-  return (
-    <View>
-      <Text style={[styles.cardTitle, {color: textColor}]}>{meetingDisplayTitle(meeting)}</Text>
-      <Pressable onPress={() => onOpenItem(entry.item)} hitSlop={8}>
-        <Text style={[common.rowSource, {color: textColor}]}>
-          {formatDateTime(meeting.date, meeting.time, todayIso())} — {entry.item.name}
-          {entry.item.kind === 'area' ? ' (Area)' : ''}
-        </Text>
-      </Pressable>
-      <View style={styles.pillRow}>
-        <Pressable
-          style={[styles.pill, {borderColor}, reviewed && styles.pillActive]}
-          disabled={pending}
-          onPress={() => runAction(() => onToggleReviewed(entry))}
-          hitSlop={8}>
-          <Text style={[styles.pillText, {color: textColor}]}>{reviewed ? '✓ Reviewed (tap to undo)' : 'Mark reviewed'}</Text>
-        </Pressable>
-        {!!meeting.notePath && (
-          <Pressable
-            style={[styles.pill, {borderColor}]}
-            disabled={pending}
-            onPress={() => runAction(() => onOpenNote(entry))}
-            hitSlop={8}>
-            <Text style={[styles.pillText, {color: textColor}]}>Open note</Text>
-          </Pressable>
-        )}
-      </View>
-      <View style={[common.divider, {backgroundColor: borderColor}]} />
-      <QuickAddWidget
-        fixedDestination={destination}
-        taskOnly
-        onAddTask={onAddTask}
-        onAddMeeting={noopAddMeeting}
-        textColor={textColor}
-        borderColor={borderColor}
-        placeholderColor={placeholderColor}
-      />
-      <Text style={[styles.sectionLabel, {color: textColor}]}>Related open todos</Text>
-      {shownRelated.length === 0 ? (
-        <Text style={[common.hint, {color: textColor}]}>None share this meeting's tags.</Text>
-      ) : (
-        <View style={common.sectionSpacingSmall}>
-          {shownRelated.map((r, i) => (
-            <Text key={`${r.item.path}#${i}`} style={[styles.rowText, {color: textColor}]}>
-              • {r.task.text} — {r.item.name}
-            </Text>
-          ))}
-          {related.length > shownRelated.length && (
-            <Text style={[common.hint, {color: textColor}]}>+{related.length - shownRelated.length} more</Text>
-          )}
-        </View>
       )}
     </View>
   );
