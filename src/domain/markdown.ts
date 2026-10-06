@@ -382,24 +382,6 @@ export function writeSectionLines(content: string, heading: string, lines: strin
   return setSpan(content, heading, lines);
 }
 
-/**
- * Removes a whole `## Heading` section (heading line and its lines) - used
- * when a feature's section should disappear entirely rather than stay as an
- * empty heading (close-out "Start over"). No-op if the heading is absent.
- */
-export function removeSection(content: string, heading: string): string {
-  const span = getSpan(content, heading);
-  if (!span.found) return content;
-  const beforeLines = span.before.split('\n');
-  // span.before ends with the heading line plus a trailing '\n' - drop both.
-  beforeLines.pop();
-  beforeLines.pop();
-  const head = beforeLines.join('\n').replace(/\n+$/, '');
-  const tail = span.after;
-  if (head.length === 0) return tail;
-  return tail.length > 0 ? `${head}\n\n${tail}` : `${head}\n`;
-}
-
 const FRONTMATTER_DELIM = '---';
 
 /**

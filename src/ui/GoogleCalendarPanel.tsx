@@ -179,7 +179,7 @@ interface Props {
   placeholderColor: string;
 }
 
-function withinWindow(event: GoogleCalendarEvent, maxDays: number, todayStr: string): boolean {
+function withinWindow(event: GoogleCalendarEvent, maxDays: number, today: string): boolean {
   // Cheap string comparison works because both are YYYY-MM-DD and the cache
   // is already filtered to >= today - just need an upper bound here.
   const limit = new Date();
@@ -188,7 +188,7 @@ function withinWindow(event: GoogleCalendarEvent, maxDays: number, todayStr: str
   const m = String(limit.getMonth() + 1).padStart(2, '0');
   const d = String(limit.getDate()).padStart(2, '0');
   const limitStr = `${y}-${m}-${d}`;
-  return event.date >= todayStr && event.date <= limitStr;
+  return event.date >= today && event.date <= limitStr;
 }
 
 /** `dateRange`'s own window check (see this file's module doc comment) - a plain inclusive-range comparison, no "today" involved at all, unlike withinWindow above which always counts from today. */

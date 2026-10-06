@@ -73,12 +73,15 @@ jest.mock('../../src/storage/marks', () => ({
   runPendingIconChanges: async () => undefined,
   setMarkOutcome: jest.fn(),
   storedMarkText: async (open: {mark: {id: string}}) => mockState.stored[open.mark.id] ?? null,
-  recognizeMark: async (open: {mark: {id: string}}) => (mockState.recognized.push(open.mark.id), {
-    text: open.mark.id.endsWith('1') ? 'Room for offsite?' : 'Ask HR',
-    error: null,
-    ms: 1,
-    missing: false,
-  }),
+  recognizeMark: async (open: {mark: {id: string}}) => {
+    mockState.recognized.push(open.mark.id);
+    return {
+      text: open.mark.id.endsWith('1') ? 'Room for offsite?' : 'Ask HR',
+      error: null,
+      ms: 1,
+      missing: false,
+    };
+  },
 }));
 jest.mock('../../src/supernote/fileSystem', () => ({
   getCurrentNotePath: async () => '/Note/2 Areas/0 Inbox/Todos/Test.note',

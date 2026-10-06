@@ -150,7 +150,6 @@ export default function ReviewMasterDetail<T>({
     // those change on every action inside this same step visit and must
     // NOT clear the current selection (an acted-on row stays selected,
     // checkmarked, reopenable - see the module doc comment).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
   const wrappedRenderRow = (row: T): React.ReactNode => {

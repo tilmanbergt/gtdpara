@@ -836,7 +836,6 @@ export default function ReviewScreen({
   const viewHidden = view.kind === 'step' && !activeSteps.some(def => def.id === view.id);
   useEffect(() => {
     if (viewHidden) showView({kind: 'hub'});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewHidden]);
 
   /**

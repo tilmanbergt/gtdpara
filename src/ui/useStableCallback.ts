@@ -13,7 +13,6 @@
  */
 import {useCallback, useRef} from 'react';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useStableCallback<F extends (...args: any[]) => any>(fn: F): F {
   const ref = useRef(fn);
   // Assigned during render (not in a layout effect) on purpose: a child's

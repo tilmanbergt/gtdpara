@@ -11,7 +11,7 @@ import {MarkOutcome, retryBookmark, setMarkOutcome} from '../storage/marks';
 import {logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 import PillButton from './PillButton';
-import {FONT, useThemeColors} from './theme';
+import {COLORS, FONT, useThemeColors} from './theme';
 
 function texts(outcome: MarkOutcome): {title: string; body: string} {
   switch (outcome.kind) {
@@ -55,7 +55,7 @@ export default function MarkOutcomeScreen({outcome}: {outcome: MarkOutcome}): Re
   };
 
   return (
-    <View style={[styles.root, {backgroundColor: isDarkMode ? '#000000' : '#ffffff'}]}>
+    <View style={[styles.root, {backgroundColor: isDarkMode ? COLORS.textLight : COLORS.background}]}>
       <View style={[styles.box, {borderColor: textColor}]}>
         <Text style={[styles.title, {color: textColor}]}>{title}</Text>
         {body ? <Text style={[styles.body, {color: textColor}]}>{body}</Text> : null}

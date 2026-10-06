@@ -19,7 +19,7 @@
  *
  * Lines this parser doesn't understand are kept verbatim (extraLines).
  */
-import {readSectionLines, removeSection, writeSectionLines} from '../markdown';
+import {readSectionLines, writeSectionLines} from '../markdown';
 
 export const CLOSE_OUT_HEADING = '## Close-out';
 
@@ -189,11 +189,6 @@ export function serializePlan(plan: CloseOutPlan): string[] {
 
 export function writePlanIntoContent(content: string, plan: CloseOutPlan): string {
   return writeSectionLines(content, CLOSE_OUT_HEADING, serializePlan(plan));
-}
-
-/** Removes the whole section ("Start over"). */
-export function removePlanFromContent(content: string): string {
-  return removeSection(content, CLOSE_OUT_HEADING);
 }
 
 // ---- small immutable edits (each one also invalidates a PDF check where the PDF's content changes) ----

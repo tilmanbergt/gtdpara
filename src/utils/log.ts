@@ -23,7 +23,6 @@ export function log(...args: unknown[]): void {
   perfCount('console:log');
   const token = perfStart();
   recordLogLine('I', args);
-  // eslint-disable-next-line no-console
   console.log(PREFIX, ...args);
   perfAccum('console:ms', token);
 }
@@ -32,7 +31,6 @@ export function logWarn(...args: unknown[]): void {
   perfCount('console:warn');
   const token = perfStart();
   recordLogLine('W', args);
-  // eslint-disable-next-line no-console
   console.warn(PREFIX, ...args);
   perfAccum('console:ms', token);
 }
@@ -41,7 +39,6 @@ export function logError(...args: unknown[]): void {
   perfCount('console:error');
   const token = perfStart();
   recordLogLine('E', args);
-  // eslint-disable-next-line no-console
   console.error(PREFIX, ...args);
   perfAccum('console:ms', token);
 }

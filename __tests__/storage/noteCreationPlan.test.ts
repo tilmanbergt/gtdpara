@@ -91,7 +91,13 @@ function task(text: string, notePath = ''): Task {
 
 function recorder(answer: boolean) {
   const plans: NoteCreationPlan[] = [];
-  return {plans, confirm: async (plan: NoteCreationPlan) => (plans.push(plan), answer)};
+  return {
+    plans,
+    confirm: async (plan: NoteCreationPlan) => {
+      plans.push(plan);
+      return answer;
+    },
+  };
 }
 
 beforeEach(() => {

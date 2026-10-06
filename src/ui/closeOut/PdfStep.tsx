@@ -45,15 +45,15 @@ export default function PdfStep({ctx, busy, run, onCreate, onCancel, onOpen, onT
 
   if (run.running) {
     return (
-      <View style={{flex: 1}}>
-        <Text style={[co.strong, {color: textColor, marginBottom: 10}]}>
+      <View style={co.fill}>
+        <Text style={[co.strong, {color: textColor}, co.mb10]}>
           Creating PDF… {p ? `${PHASE_LABEL[p.phase]} ${p.done} of ${p.total}` : ''}
         </Text>
         <ProgressBar done={p?.phase === 'build' ? p.done : p?.done ?? 0} total={p?.total ?? 1} borderColor={textColor} />
-        <Text style={[co.body, {color: textColor, marginTop: 8}]} numberOfLines={1}>
+        <Text style={[co.body, {color: textColor}, co.mt8]} numberOfLines={1}>
           {p?.label ?? ''}
         </Text>
-        <View style={[co.boxLight, {borderColor, marginTop: 16}]}>
+        <View style={[co.boxLight, {borderColor}, co.mt16]}>
           <Text style={[co.small, co.muted, {color: textColor}]}>Written to (moves into the archive in step 5)</Text>
           <Text style={[co.path, {color: textColor}]}>{ctx.display(ctx.workingPdfPath)}</Text>
           <Text style={[co.small, co.muted, {color: textColor}]}>Built in gtdpara's private folder and copied here only when finished - a cancelled run writes nothing. Keep gtdpara open until it's done.</Text>
@@ -66,7 +66,7 @@ export default function PdfStep({ctx, busy, run, onCreate, onCancel, onOpen, onT
   }
 
   return (
-    <View style={{flex: 1}}>
+    <View style={co.fill}>
       {!pdf ? (
         <View style={[co.box, {borderColor: textColor}]}>
           <Text style={[co.strong, {color: textColor}]}>
@@ -99,12 +99,12 @@ export default function PdfStep({ctx, busy, run, onCreate, onCancel, onOpen, onT
       </View>
       {pdf && (
         <>
-          <Text style={[co.small, co.muted, {color: textColor, marginTop: 4}]}>The PDF opens in Supernote's reader. Come back with the gtdpara button and you land here again.</Text>
-          <Pressable style={[co.box, co.row, {borderColor: textColor, marginTop: 12}]} disabled={busy} onPress={onToggleChecked}>
+          <Text style={[co.small, co.muted, {color: textColor}, co.mt4]}>The PDF opens in Supernote's reader. Come back with the gtdpara button and you land here again.</Text>
+          <Pressable style={[co.box, co.row, {borderColor: textColor}, co.mt12]} disabled={busy} onPress={onToggleChecked}>
             <View style={[co.checkbox, {borderColor: textColor}, pdf.checked && {backgroundColor: COLORS.accent, borderColor: COLORS.accent}]}>
-              {pdf.checked && <Text style={{color: COLORS.accentText, fontWeight: '700'}}>✓</Text>}
+              {pdf.checked && <Text style={[{color: COLORS.accentText}, co.bold]}>✓</Text>}
             </View>
-            <Text style={[co.strong, {color: textColor, flex: 1}]}>I checked the PDF - it looks right</Text>
+            <Text style={[co.strong, {color: textColor}, co.fill]}>I checked the PDF - it looks right</Text>
             <Text style={[co.small, co.muted, {color: textColor}]}>required before archiving</Text>
           </Pressable>
         </>

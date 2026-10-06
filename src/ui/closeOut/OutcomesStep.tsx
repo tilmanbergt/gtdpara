@@ -49,11 +49,11 @@ function OutcomeDetail({ctx, entry, busy, onSetMove, textColor, borderColor}: Pr
       : null;
 
   return (
-    <View style={{flex: 1}}>
+    <View style={co.fill}>
       <Text style={[co.strong, {color: textColor}]} numberOfLines={1}>
         {entry.title}
       </Text>
-      <Text style={[co.small, {color: textColor, marginBottom: 8}]}>
+      <Text style={[co.small, {color: textColor}, co.mb8]}>
         {entry.movedTo ? `Moves to ${ctx.outcomeLabel(entry.movedTo)}/` : 'Stays in the archive with the project.'}
       </Text>
       <View style={co.wrapRow}>
@@ -68,7 +68,7 @@ function OutcomeDetail({ctx, entry, busy, onSetMove, textColor, borderColor}: Pr
         />
       </View>
       {!areaFolder && <Text style={[co.small, co.muted, {color: textColor}]}>No Area assigned - Area Files is off (assign one in step 1).</Text>}
-      <View style={{flex: 1, marginTop: 6}}>
+      <View style={[co.fill, co.mt6]}>
         <FileBrowserPane
           roots={roots}
           linkTarget={null}
@@ -88,9 +88,9 @@ export default function OutcomesStep(props: Props): React.JSX.Element {
   const rows = ctx.contents.outcomeCandidates;
   const moved = new Set(rows.filter(r => r.movedTo).map(r => r.key));
   return (
-    <View style={{flex: 1}}>
-      <Text style={[co.body, {color: textColor, marginBottom: 6}]}>What lives on after the project? Everything you don't move goes to the archive with the project folder.</Text>
-      <View style={{flex: 1}}>
+    <View style={co.fill}>
+      <Text style={[co.body, {color: textColor}, co.mb6]}>What lives on after the project? Everything you don't move goes to the archive with the project folder.</Text>
+      <View style={co.fill}>
         <ReviewMasterDetail<ContentEntry>
           header={`Files · ${moved.size} move`}
           rows={rows}
@@ -98,7 +98,7 @@ export default function OutcomesStep(props: Props): React.JSX.Element {
           isSelectable={() => true}
           rowKey={e => e.key}
           renderRow={(e, selected) => (
-            <View style={{height: ROW_H.outcome - 8, justifyContent: 'center'}}>
+            <View style={[{height: ROW_H.outcome - 8}, co.center]}>
               <Text style={[co.body, {color: textColor}, selected && co.strong]} numberOfLines={1}>
                 {e.title}
               </Text>

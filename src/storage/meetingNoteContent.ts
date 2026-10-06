@@ -852,10 +852,12 @@ export async function openOrCreateMeetingNote(
   if (!anchor) return {meeting, changed: false, cancelled: true, outcome: null};
 
   const updatedMeeting = anchor.changed ? {...meeting, notePath: anchor.notePath} : meeting;
-  if (!anchor.foreign) await refreshMeetingNoteBlock(updatedMeeting, itemPath, settings, inbox, {
-    isInitialPopulation: anchor.isInitialPopulation,
-    page: anchor.page,
-  });
+  if (!anchor.foreign) {
+    await refreshMeetingNoteBlock(updatedMeeting, itemPath, settings, inbox, {
+      isInitialPopulation: anchor.isInitialPopulation,
+      page: anchor.page,
+    });
+  }
   await openPath(anchor.absolutePath, anchor.page);
 
   return {
@@ -900,10 +902,12 @@ export async function openOrCreateTodoNote(
   if (!anchor) return {task, changed: false, cancelled: true, outcome: null};
 
   const updatedTask = anchor.changed ? {...task, notePath: anchor.notePath} : task;
-  if (!anchor.foreign) await refreshTodoNoteBlock(updatedTask, itemPath, settings, inbox, {
-    isInitialPopulation: anchor.isInitialPopulation,
-    page: anchor.page,
-  });
+  if (!anchor.foreign) {
+    await refreshTodoNoteBlock(updatedTask, itemPath, settings, inbox, {
+      isInitialPopulation: anchor.isInitialPopulation,
+      page: anchor.page,
+    });
+  }
   await openPath(anchor.absolutePath, anchor.page);
 
   return {

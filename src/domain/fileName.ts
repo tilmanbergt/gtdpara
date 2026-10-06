@@ -15,11 +15,9 @@
  * Only affects names created from now on; existing files keep theirs.
  */
 
+// eslint-disable-next-line no-control-regex -- control characters are exactly what is not allowed
 const INVALID_FILE_NAME_CHAR = /[\\/:*?"<>|#[\]^\u0000-\u001f]/;
 const INVALID_FILE_NAME_CHARS = new RegExp(INVALID_FILE_NAME_CHAR.source, 'g');
-
-/** The characters of the rule above as shown in messages and help: `\ / : * ? " < > | # [ ] ^`. */
-export const INVALID_FILE_NAME_CHARS_LABEL = '\\ / : * ? " < > | # [ ] ^';
 
 /**
  * Replaces every character of the rule with a space, collapses whitespace and

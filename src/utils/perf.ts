@@ -99,10 +99,6 @@ export function perfEnable(on: boolean): void {
   scheduleFlush();
 }
 
-export function perfIsEnabled(): boolean {
-  return enabled === true;
-}
-
 /** Wires the file writer + stats provider (App.tsx, once at startup). */
 export function perfConfigure(next: PerfConfig): void {
   config = next;
@@ -197,17 +193,6 @@ export function perfTime<T>(label: string, fn: () => T, meta?: Meta): T {
   const token = now();
   try {
     return fn();
-  } finally {
-    perfEnd(label, token, meta);
-  }
-}
-
-/** Times an async function (until its promise settles). */
-export async function perfAsync<T>(label: string, fn: () => Promise<T>, meta?: Meta): Promise<T> {
-  if (!current) return fn();
-  const token = now();
-  try {
-    return await fn();
   } finally {
     perfEnd(label, token, meta);
   }

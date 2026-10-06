@@ -18,10 +18,6 @@ export function setFeatures(next: Features): void {
   Array.from(listeners).forEach(l => l());
 }
 
-export function getFeatures(): Features {
-  return current;
-}
-
 export function useFeatures(): Features {
   const [, setTick] = useState(0);
   useEffect(() => {

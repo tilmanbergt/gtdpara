@@ -684,7 +684,9 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
           ...integrityResult,
           actions:
             fileNameFixes.length > 0
-              ? [{label: `Fix file names (${fileNameFixes.length})`, primary: true, onPress: () => void handleFixFileNames()}]
+              ? [{label: `Fix file names (${fileNameFixes.length})`, primary: true, onPress: () => {
+                    handleFixFileNames();
+                  }}]
               : undefined,
           onDismiss: () => setIntegrityResult(null),
         }
@@ -1253,8 +1255,8 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     setReloading(true);
     try {
       log('Settings: reload all files - start');
-      const saved = await loadSettings();
-      const cache = await rebuildCache(saved);
+      const stored = await loadSettings();
+      const cache = await rebuildCache(stored);
       dropKeptTabs();
       // Only the MyStyle listing - the form fields keep any unsaved edits.
       setMyStyleError(null);
@@ -1303,7 +1305,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   }
 
   return (
-    <View style={[styles.container, {backgroundColor: '#ffffff'}]}>
+    <View style={[styles.container, styles.background]}>
       <View style={styles.content}>
         <MiniTabs
           tabs={settingsTabs}
@@ -2104,6 +2106,9 @@ function sharedFilePreview(definition: NoteCreationDefinition): string {
 }
 
 const styles = StyleSheet.create({
+  background: {
+    backgroundColor: COLORS.background,
+  },
   container: {
     flex: 1,
   },

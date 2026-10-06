@@ -712,7 +712,6 @@ function QuickAddWidget({
     }
     wasEditingRef.current = isEditingNow;
     lastTargetKeyRef.current = isEditingNow ? editTargetKey : undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingTask, editingMeeting, editTargetKey]);
 
   // Applies a caller's one-shot `prefill` request (see the prop's doc

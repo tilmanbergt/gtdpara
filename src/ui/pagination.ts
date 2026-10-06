@@ -212,7 +212,6 @@ export function usePagedByHeight<T>(
       pageStartsRef.current = [0];
       setPage(0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
   // `jumpTo` (Batch 3, 2026-09-15, ui/FileBrowserPane.tsx's `locating` mode -
@@ -234,7 +233,6 @@ export function usePagedByHeight<T>(
     const boundaries: number[] = [0];
     let landingPage = 0;
     let start = 0;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       let used = 0;
       let count = 0;

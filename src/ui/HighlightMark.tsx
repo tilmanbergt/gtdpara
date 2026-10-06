@@ -24,9 +24,6 @@ interface Props {
   textColor: string;
 }
 
-/** Width a row mark takes, including its right margin - MeetingRow's title-width allowance for highlighted rows. */
-export const HIGHLIGHT_MARK_ROW_WIDTH_PX = 24;
-
 function inverse(color: string): string {
   const c = color.toLowerCase();
   return c === '#000' || c === '#000000' || c === 'black' ? '#ffffff' : '#000000';

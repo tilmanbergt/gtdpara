@@ -15,7 +15,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const quick = process.argv.includes('--quick');
 
 /** ESLint warnings allowed (null = any number). */
-const LINT_MAX_WARNINGS = null;
+const LINT_MAX_WARNINGS = 0;
 /** When true, any code-health finding fails the check. */
 const CODE_HEALTH_STRICT = false;
 

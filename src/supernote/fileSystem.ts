@@ -68,16 +68,6 @@ export function displayPath(path: string): string {
   return path.replace(/^\/storage\/emulated\/0\//, '');
 }
 
-/**
- * `Element.type` values (docs.supernote.com's `ElementType` enum) - only the
- * two this codebase actually constructs so far are named; the rest
- * (TYPE_STROKE 0, TYPE_PICTURE 200, TYPE_TEXT_DIGEST_QUOTE 501,
- * TYPE_TEXT_DIGEST_CREATE 502, TYPE_GEO 700, TYPE_FIVE_STAR 800) are left out
- * until something here actually needs to construct one - the same "don't
- * wrap what nothing calls yet" posture getKeyWords/deleteKeyWord used to
- * follow too, before docs/dev/technical-design-shared-note-pages.md needed them.
- */
-export const ELEMENT_TYPE_TITLE = 100;
 export const ELEMENT_TYPE_TEXT = 500;
 export const ELEMENT_TYPE_LINK = 600;
 

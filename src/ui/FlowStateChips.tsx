@@ -58,7 +58,7 @@ export default function FlowStateChips({value, onChange, textColor, borderColor,
             disabled={disabled}
             onPress={() => onChange(selected ? null : option.value)}
             hitSlop={8}>
-            <Text style={[styles.chipText, {color: selected ? '#ffffff' : textColor}]}>{option.label}</Text>
+            <Text style={[styles.chipText, {color: selected ? COLORS.accentText : textColor}]}>{option.label}</Text>
           </Pressable>
         );
       })}

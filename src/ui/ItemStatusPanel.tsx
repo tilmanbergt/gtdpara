@@ -191,7 +191,6 @@ export default function ItemStatusPanel({
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):

@@ -136,7 +136,6 @@ export default function ItemFocusPanel({
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   /** The item as a write should see it: fresh from the cache, else this panel's copy. */

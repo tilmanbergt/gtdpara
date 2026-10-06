@@ -279,7 +279,6 @@ export default function ProjectDataPanel({
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
@@ -1141,15 +1140,15 @@ function MeetingsSection({
   };
 
   /** The row's prep/review checkpoint icon (docs/dev/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
-  const handleToggleTracking = (index: number, kind: MeetingTrackingKind) => {
+  const handleToggleTracking = (index: number, trackingKind: MeetingTrackingKind) => {
     runAction(async () => {
-      await onSave(toggleMeetingTrackingAt(meetings, index, kind));
+      await onSave(toggleMeetingTrackingAt(meetings, index, trackingKind));
       requestEinkRefresh();
     });
   };
   const trackingFor = (index: number): MeetingTrackingConfig => ({
     rules: tagRules,
-    onToggle: kind => handleToggleTracking(index, kind),
+    onToggle: trackingKind => handleToggleTracking(index, trackingKind),
   });
 
   // Flattened into one paginated sequence (docs/dev/technical-design-pagination-

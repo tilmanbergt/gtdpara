@@ -140,8 +140,8 @@ export async function checkHashNotePath(input: IntegrityCheckInput, io: Integrit
       message:
         `notePath contains '#' but neither reading resolves to a real file (checked "${ownCandidate}"` +
         `${anchorCandidate ? ` and "${anchorCandidate}"` : ''}) - the linked note may have been ` +
-        `deleted, renamed outside the app, or never actually created. Re-link or clear this note ` +
-        `reference by hand.`,
+        'deleted, renamed outside the app, or never actually created. Re-link or clear this note ' +
+        'reference by hand.',
     });
   };
 
@@ -211,8 +211,8 @@ function checkDuplicateHeadings(input: IntegrityCheckInput): IntegrityFinding[] 
         notePath: '',
         message:
           `"${heading}" appears ${count} times in this file. Only the FIRST one is ever read by the ` +
-          `app - anything under a later occurrence is invisible in the app (never shown, never ` +
-          `editable) and stays frozen in place on every future save. Merge the sections by hand: move ` +
+          'app - anything under a later occurrence is invisible in the app (never shown, never ' +
+          'editable) and stays frozen in place on every future save. Merge the sections by hand: move ' +
           `any real content up into the first "${heading}", then delete the duplicate heading line.`,
       });
     }
@@ -227,10 +227,10 @@ function checkDuplicateHeadings(input: IntegrityCheckInput): IntegrityFinding[] 
       entityLabel: '(the data file itself)',
       notePath: '',
       message:
-        `This file doesn't open with a "---" frontmatter line. The app tolerates this by silently ` +
-        `falling back to default status/focus/area/abbrev values, but that means anything actually ` +
-        `set there (status, daily/weekly focus, Area assignment, abbrev) is being ignored. Check the ` +
-        `top of the file by hand.`,
+        'This file doesn\'t open with a "---" frontmatter line. The app tolerates this by silently ' +
+        'falling back to default status/focus/area/abbrev values, but that means anything actually ' +
+        'set there (status, daily/weekly focus, Area assignment, abbrev) is being ignored. Check the ' +
+        'top of the file by hand.',
     });
   } else if (!lines.slice(1).includes('---')) {
     findings.push({
@@ -241,9 +241,9 @@ function checkDuplicateHeadings(input: IntegrityCheckInput): IntegrityFinding[] 
       entityLabel: '(the data file itself)',
       notePath: '',
       message:
-        `This file's frontmatter block opens with "---" but never closes with a second "---" line. ` +
-        `The app tolerates this by silently falling back to default status/focus/area/abbrev values - ` +
-        `check the top of the file by hand and add the closing "---".`,
+        'This file\'s frontmatter block opens with "---" but never closes with a second "---" line. ' +
+        'The app tolerates this by silently falling back to default status/focus/area/abbrev values - ' +
+        'check the top of the file by hand and add the closing "---".',
     });
   }
 
@@ -294,7 +294,7 @@ export async function checkLinkedFileMissing(input: IntegrityCheckInput, io: Int
       notePath: '',
       message:
         `linkedFile "${linkedFile}" doesn't exist (checked "${absolutePath}") - the linked file may have ` +
-        `been moved, renamed, or deleted outside the app. Re-link it, or clear the reference by hand.`,
+        'been moved, renamed, or deleted outside the app. Re-link it, or clear the reference by hand.',
     });
   };
 
@@ -330,7 +330,7 @@ export async function checkDefaultResourceFolderMissing(input: IntegrityCheckInp
       message:
         `defaultResourceFolder "${input.defaultResourceFolder}" doesn't exist under Resources (checked ` +
         `"${absolutePath}") - it may have been renamed or deleted outside the app. Re-set it from the ` +
-        `Files pane, or clear the "defaultResourceFolder:" line by hand.`,
+        'Files pane, or clear the "defaultResourceFolder:" line by hand.',
     },
   ];
 }
@@ -378,8 +378,8 @@ export async function checkMarkNoteMissing(input: IntegrityCheckInput, io: Integ
       notePath: mark.notePath,
       message:
         `The note of mark ${mark.id} (p${mark.page + 1}) doesn't exist (checked "${absolutePath}") - it may have been ` +
-        `moved, renamed or deleted outside the app. Process or discard the mark in the marks screen, or delete its ` +
-        `line under "## Marks" by hand.`,
+        'moved, renamed or deleted outside the app. Process or discard the mark in the marks screen, or delete its ' +
+        'line under "## Marks" by hand.',
     });
   }
   return findings;
@@ -449,8 +449,8 @@ function checkOrphanedAreaAssignment(items: ScannedItemSummary[]): IntegrityFind
       notePath: '',
       message:
         `This Project's area: "${item.area}" doesn't match any Area folder currently under Areas or ` +
-        `Archive - it may have been renamed or deleted outside the app. Re-set or clear the Project's ` +
-        `Area assignment by hand (the "area:" frontmatter line).`,
+        'Archive - it may have been renamed or deleted outside the app. Re-set or clear the Project\'s ' +
+        'Area assignment by hand (the "area:" frontmatter line).',
     });
   }
   return findings;
@@ -525,9 +525,9 @@ export function checkLegacyInboxLeftovers(rootEntries: ListedEntry[], base: stri
       message:
         `Left in the base folder from the old Inbox location: ${leftovers.join(', ')}. Either the move to ` +
         `"${inboxFolder}" did not finish or was blocked (an Area with the same name, or the same file ` +
-        `name in both places) - then move these by hand, or choose another Inbox folder name in Settings → ` +
-        `Folders and restart gtdpara. Or the move finished and only an empty folder was left behind ` +
-        `(gtdpara never deletes folders on its own) - then you can delete it in the file manager.`,
+        'name in both places) - then move these by hand, or choose another Inbox folder name in Settings → ' +
+        'Folders and restart gtdpara. Or the move finished and only an empty folder was left behind ' +
+        '(gtdpara never deletes folders on its own) - then you can delete it in the file manager.',
     },
   ];
 }

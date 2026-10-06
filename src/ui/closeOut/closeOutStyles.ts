@@ -5,7 +5,7 @@
  * style below sets `height` to exactly its ROW_H value.
  */
 import {StyleSheet} from 'react-native';
-import {FONT, RADII, SPACING} from '../theme';
+import {COLORS, FONT, RADII, SPACING} from '../theme';
 
 export const ROW_H = {
   group: 40,
@@ -103,6 +103,34 @@ export const co = StyleSheet.create({
     marginTop: SPACING.sm,
     marginBottom: SPACING.xs,
   },
+  solid: {borderStyle: 'solid'},
+  dashed: {borderStyle: 'dashed'},
+  checked: {backgroundColor: COLORS.accent, borderColor: COLORS.accent},
+  /** An included entry the user can't change (dimmed). */
+  checkedLocked: {backgroundColor: '#888888', borderColor: '#888888'},
+  // One-property helpers for the step layouts.
+  alignEnd: {alignItems: 'flex-end'},
+  bold: {fontWeight: '700'},
+  borderBottom: {borderBottomWidth: 1},
+  center: {justifyContent: 'center'},
+  fill: {flex: 1},
+  large: {fontSize: FONT.large},
+  mb10: {marginBottom: 10},
+  mb6: {marginBottom: 6},
+  mb8: {marginBottom: 8},
+  minH44: {minHeight: 44},
+  mr20: {marginRight: 20},
+  mt10: {marginTop: 10},
+  mt12: {marginTop: 12},
+  mt14: {marginTop: 14},
+  mt16: {marginTop: 16},
+  mt4: {marginTop: 4},
+  mt6: {marginTop: 6},
+  mt8: {marginTop: 8},
+  right: {textAlign: 'right'},
+  w190: {width: 190},
+  w36: {width: 36},
+  w8: {width: 8},
   error: {
     fontSize: FONT.small,
     fontWeight: '700',

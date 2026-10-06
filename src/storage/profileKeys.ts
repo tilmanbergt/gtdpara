@@ -11,10 +11,6 @@ import {DEFAULT_PROFILE_ID} from '../domain/profiles';
 let activeId = DEFAULT_PROFILE_ID;
 const listeners = new Set<() => void>();
 
-export function getActiveProfileId(): string {
-  return activeId;
-}
-
 export function setActiveProfileId(id: string): void {
   const next = id || DEFAULT_PROFILE_ID;
   if (next === activeId) {

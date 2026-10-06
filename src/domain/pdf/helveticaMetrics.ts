@@ -63,11 +63,6 @@ export function charWidth(codePoint: number, bold: boolean): number {
   return table[codePoint] ?? table[QUESTION_MARK];
 }
 
-/** Whether the writer can print this character as-is (otherwise it becomes "?"). */
-export function isWinAnsi(codePoint: number): boolean {
-  return HELVETICA[codePoint] !== undefined;
-}
-
 /** Width of `text` in points at `size` pt. Iterates code points, so an emoji counts as one "?", same as the writer. */
 export function textWidth(text: string, size: number, bold = false): number {
   let units = 0;

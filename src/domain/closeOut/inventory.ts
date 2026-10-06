@@ -380,8 +380,3 @@ export function buildContents(input: InventoryInput): ContentsModel {
     unreadable,
   };
 }
-
-/** Every entry, flat, in display order. */
-export function allEntries(model: ContentsModel): ContentEntry[] {
-  return model.groups.flatMap(g => g.entries);
-}

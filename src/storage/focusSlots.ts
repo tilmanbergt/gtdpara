@@ -51,11 +51,6 @@ export function focusLimit(kind: FocusKind, scope: FocusScope, settings: GtdPara
   return settings[kind === 'project' ? cfg.project : cfg.area];
 }
 
-/** Whether `item` currently has `scope` focus. */
-export function hasFocus(item: Pick<CachedItem, FocusField>, scope: FocusScope): boolean {
-  return item[FOCUS_SCOPES[scope].field];
-}
-
 /** How many `kind` items currently have `scope` focus set. */
 export function countFocused(items: CachedItem[], kind: FocusKind, scope: FocusScope): number {
   const field = FOCUS_SCOPES[scope].field;

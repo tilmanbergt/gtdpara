@@ -551,7 +551,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         <DailyView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onEnterFocusMode={stableNav.onEnterFocusMode}
         />
@@ -560,14 +560,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         <WeekView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
       month: (
         <MonthView
           onOpenItem={stableOpenItem}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
@@ -580,7 +580,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           name={currentItem.name}
           path={currentItem.path}
           onArchived={stableNav.handleArchived}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onOpenItem={stableOpenItem}
           onStartCloseOut={stableNav.startCloseOutFull}
@@ -881,7 +881,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     <>
       {activeTab === 'inbox' && (
         <InboxScreen
-         
+
           onOpenCalendarSettings={openSettingsCalendar}
           onOpenItem={stableOpenItem}
         />
@@ -893,13 +893,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
             projectPath={closeOut.path}
             mode={closeOut.mode}
             onExit={handleCloseOutExit}
-           
+
           />
         ) : (
           <ReviewScreen
             onOpenItem={stableOpenItem}
             onReviewRecorded={refreshSettings}
-           
+
             onOpenCalendarSettings={openSettingsCalendar}
             onStartCloseOut={openCloseOut}
           />
@@ -947,21 +947,21 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                 <ItemsList
                   kind="project"
                   onOpenItem={stableOpenItem}
-                 
+
                 />
               )}
               {activeTab === 'areas' && (
                 <ItemsList
                   kind="area"
                   onOpenItem={stableOpenItem}
-                 
+
                 />
               )}
               {activeTab === 'daily' && (
                 <DailyView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-                 
+
                   onOpenCalendarSettings={openSettingsCalendar}
                   onEnterFocusMode={onEnterFocusMode}
                 />
@@ -970,14 +970,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                 <WeekView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-                 
+
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
               {activeTab === 'month' && (
                 <MonthView
                   onOpenItem={stableOpenItem}
-                 
+
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
@@ -988,7 +988,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                     name={currentItem.name}
                     path={currentItem.path}
                     onArchived={handleArchived}
-                   
+
                     onOpenCalendarSettings={openSettingsCalendar}
                     onOpenItem={stableOpenItem}
                     onStartCloseOut={path => openCloseOut(path, 'full')}
