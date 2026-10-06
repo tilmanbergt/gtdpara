@@ -110,7 +110,7 @@ import {ARMING_TEXT, LinkTarget} from '../ui/FileBrowserPane';
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import MeetingRow, {MeetingTrackingConfig} from '../ui/MeetingRow';
 import MeetingList, {MeetingListHeaderRow} from '../ui/MeetingList';
-import {useEditFlush} from '../ui/useEditFlush';
+import {useEditTarget} from '../ui/useEditTarget';
 import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import PagedSection from '../ui/PagedSection';
@@ -245,8 +245,15 @@ export default function ProjectDataPanel({
 
   // technical-design-linked-files.md §8's lifted "one edit target" - see
   // the EditTarget doc comment above.
-  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
-  const [armTarget, setArmTarget] = useState<ArmTarget | null>(null);
+  const {
+    target: editTarget,
+    arm: armTarget,
+    start: startEdit,
+    cancel: cancelEditTarget,
+    armFor,
+    cancelArm: cancelArming,
+    flushEditRef,
+  } = useEditTarget<EditTarget, ArmTarget>();
   // QuickAddWidget's own add/edit/delete error surface (docs/technical-
   // design-unified-quickadd.md §6/§10 step 2) - mirrors the pre-existing
   // per-section `actionError`/`runAction` pattern TodosSection/
@@ -254,10 +261,6 @@ export default function ProjectDataPanel({
   // create/open note), just lifted here since the widget itself is now
   // lifted too.
   const widgetAction = useActionError('ProjectDataPanel.widgetError', 'ProjectDataPanel: widget action failed');
-  // Set when a row tap was blocked because an edit is already open
-  // elsewhere on screen - see startEditTarget's guard below and
-  // QuickAddWidget's own `blockedMessage` prop doc comment.
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
   // Loaded once on mount, same self-contained "load your own settings"
   // pattern hideDone/icsUrl below already use - needed to resolve linkedFile
   // (base-root-relative) to/from an absolute path and to know where the
@@ -405,9 +408,9 @@ export default function ProjectDataPanel({
           withMeetings(next);
         }
       }
-      setArmTarget(null);
+      cancelArming();
     },
-    [paths, armTarget, state, rootPathFor, withTasks, withMeetings],
+    [paths, armTarget, state, rootPathFor, withTasks, withMeetings, cancelArming],
   );
 
   /**
@@ -422,7 +425,7 @@ export default function ProjectDataPanel({
     (rootKey: string, relativePath: string) => {
       if (!paths || !armTarget || armTarget.intent !== 'refile' || !state) return;
       const target = resolveFilingPick(paths, rootKey, relativePath);
-      setArmTarget(null);
+      cancelArming();
       if (!target || target.path === path) return; // no-op: same item, or an unexpected root
       runWidgetAction(async () => {
         if (armTarget.type === 'task') {
@@ -483,50 +486,11 @@ export default function ProjectDataPanel({
     [paths],
   );
 
-  /** docs/dev/technical-design-unified-quickadd.md §6: one edit at a time - a row tap while an edit is already open is blocked and surfaces QuickAddWidget's blockedMessage instead of silently switching targets. */
-  // Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, 2026-09-29) -
-  // replaces the old "Finish edit!" block: the current row's changes are
-  // saved first (if any), then the edit moves to the tapped row.
-  const {flushEditRef, afterSave} = useEditFlush();
-  const startEditTarget = useCallback(
-    (type: 'task' | 'meeting', index: number) =>
-      afterSave(() => {
-        setBlockedMessage(null);
-        setEditTarget({type, index});
-        setArmTarget(null);
-      }),
-    [afterSave],
-  );
-  /** Also cancels any open arm (2026-09-09 bugfix) - see armLinkTarget/armRefileTarget's own note below. */
-  const cancelEditTarget = useCallback(() => {
-    setEditTarget(null);
-    setArmTarget(null);
-    setBlockedMessage(null);
-  }, []);
-  /**
-   * No longer clears editTarget (2026-09-09 bugfix - Tilman reported the
-   * task text and flow-state chip vanishing the instant Refile was tapped).
-   * Both link- and refile-arming are only ever reached from inside an open
-   * edit now (Link from the row's own clip while it's the edited row,
-   * Refile from QuickAddWidget's edit-mode button) - clearing editTarget
-   * here used to be a leftover from when arming was independent of any open
-   * edit, and it was exactly what wiped the widget's fields back to its
-   * empty create-mode draft. Leaving editTarget set is safe: `linkTarget`'s
-   * own derivation below already checks armTarget before ever falling
-   * through to editTarget's own (unrelated) "locate a linked file" branch.
-   * cancelEditTarget above now cancels any open arm itself instead, on
-   * whatever actually closes the edit - a cleaner place than every
-   * arm-starting call, and it means an arm never outlives the edit it came
-   * from.
-   */
-  const armLinkTarget = useCallback((type: 'task' | 'meeting', index: number) => {
-    setArmTarget({type, index, intent: 'link'});
-  }, []);
-  /** Reached from QuickAddWidget's "Refile" button in edit mode (2026-09-09) - see the ArmTarget doc comment, handleRefilePick above, and armLinkTarget's note just above for the 2026-09-09 no-longer-clears-editTarget fix. */
-  const armRefileTarget = useCallback((type: 'task' | 'meeting', index: number) => {
-    setArmTarget({type, index, intent: 'refile'});
-  }, []);
-  const cancelArming = useCallback(() => setArmTarget(null), []);
+  // One edit at a time (ui/useEditTarget.ts): starting another saves this one first.
+  const startEditTarget = useCallback((type: 'task' | 'meeting', index: number) => startEdit({type, index}), [startEdit]);
+  // Arming (Link, Refile) is reached from inside edit mode; the edit stays open meanwhile.
+  const armLinkTarget = useCallback((type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'}), [armFor]);
+  const armRefileTarget = useCallback((type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'refile'}), [armFor]);
 
   /**
    * QuickAddWidget's own add/edit/delete handlers (docs/dev/technical-design-
@@ -731,7 +695,6 @@ export default function ProjectDataPanel({
         linkedFileMissing={linkedFileMissing}
         onAddNote={stableAddNote}
         noteFolderPath={noteFolderPath}
-        blockedMessage={blockedMessage ?? undefined}
         textColor={textColor}
         borderColor={borderColor}
         placeholderColor={placeholderColor}

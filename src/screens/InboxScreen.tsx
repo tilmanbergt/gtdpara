@@ -154,7 +154,7 @@ import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../ui/F
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import MeetingRow, {MeetingTrackingConfig} from '../ui/MeetingRow';
 import MeetingList, {MeetingListHeaderRow} from '../ui/MeetingList';
-import {useEditFlush} from '../ui/useEditFlush';
+import {useEditTarget} from '../ui/useEditTarget';
 import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import PagedSection from '../ui/PagedSection';
@@ -257,8 +257,15 @@ export default function InboxScreen({
   // Tag Rules for the meeting rows' prep/review checkpoint icon (loaded with the rest of the settings in `load`).
   const [tagRules, setTagRules] = useState<TagRule[]>([]);
 
-  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
-  const [armTarget, setArmTarget] = useState<ArmTarget | null>(null);
+  const {
+    target: editTarget,
+    arm: armTarget,
+    start: startEdit,
+    cancel: cancelEditTarget,
+    armFor,
+    cancelArm: cancelArming,
+    flushEditRef,
+  } = useEditTarget<EditTarget, ArmTarget>();
   const editingTaskIndex = editTarget?.type === 'task' ? editTarget.index : null;
   const editingMeetingIndex = editTarget?.type === 'meeting' ? editTarget.index : null;
   const armingTaskIndex = armTarget?.type === 'task' ? armTarget.index : null;
@@ -273,10 +280,6 @@ export default function InboxScreen({
   // were, for the row-level actions - toggle done, create/open note, file -
   // that are still per-type).
   const widgetAction = useActionError('InboxScreen.widgetError', 'InboxScreen: widget action failed');
-  // Set when a row tap was blocked because an edit is already open
-  // elsewhere on screen - see startEditTarget's guard below and
-  // QuickAddWidget's own `blockedMessage` prop doc comment.
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
 
   const load = useCallback(async (forceRebuild: boolean) => {
     setLoading(true);
@@ -352,44 +355,11 @@ export default function InboxScreen({
     );
   };
 
-  /** docs/dev/technical-design-unified-quickadd.md §6: one edit at a time - a row tap while an edit is already open is blocked and surfaces QuickAddWidget's blockedMessage instead of silently switching targets. */
-  // Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, 2026-09-29) -
-  // replaces the old "Finish edit!" block.
-  const {flushEditRef, afterSave} = useEditFlush();
-  const startEditTarget = (type: 'task' | 'meeting', index: number) =>
-    afterSave(() => {
-      setBlockedMessage(null);
-      setEditTarget({type, index});
-      setArmTarget(null);
-    });
-  /** Also cancels any open arm (2026-09-09 bugfix) - see armLinkTarget/armFileTarget's own note below on why an arm no longer clears editTarget itself. Closing the edit that an arm was started from (Cancel or Delete/Save, both of which route through here or bypass it entirely on their own success path) leaves nothing sensible for that arm to still be pointed at, so it's cancelled too rather than left dangling with a now-closed edit behind it. */
-  const cancelEditTarget = () => {
-    setEditTarget(null);
-    setArmTarget(null);
-    setBlockedMessage(null);
-  };
-  /**
-   * Arming a link/refile no longer clears editTarget (2026-09-09 bugfix -
-   * Tilman reported the task text and flow-state chip vanishing the instant
-   * Refile was tapped). Both are only ever reached from inside
-   * QuickAddWidget's edit mode now (the row-level "File" action is gone,
-   * and the clip icon is only shown/tappable via a row that's also
-   * reachable while editing) - clearing editTarget here used to be a
-   * leftover from when arming a row's own File/Link action was independent
-   * of any open edit; now it just closes the very edit the Refile/link tap
-   * came from, which is what wiped the widget's fields back to its (empty)
-   * create-mode draft. Leaving editTarget set is safe: linkTarget's own
-   * derivation below already checks armTarget before ever falling through
-   * to editTarget's own (unrelated) "locate a linked file" branch.
-   */
-  const armLinkTarget = (type: 'task' | 'meeting', index: number) => {
-    setArmTarget({type, index, intent: 'link'});
-  };
-  /** docs/dev/technical-design-filing-unification.md §3.2. See armLinkTarget's note just above - same 2026-09-09 fix applies here. */
-  const armFileTarget = (type: 'task' | 'meeting', index: number) => {
-    setArmTarget({type, index, intent: 'file'});
-  };
-  const cancelArming = () => setArmTarget(null);
+  // One edit at a time (ui/useEditTarget.ts): starting another saves this one first.
+  const startEditTarget = (type: 'task' | 'meeting', index: number) => startEdit({type, index});
+  // Arming is reached from inside edit mode; the edit stays open meanwhile.
+  const armLinkTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'});
+  const armFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
 
   /**
    * QuickAddWidget's own add/edit/delete error surface (docs/technical-
@@ -691,7 +661,7 @@ export default function InboxScreen({
           }),
         );
       }
-      setArmTarget(null);
+      cancelArming();
     },
     // inbox/inboxPath are read indirectly through saveInboxTasks/
     // saveInboxMeetings (plain, unmemoized closures recreated every render)
@@ -718,7 +688,7 @@ export default function InboxScreen({
       if (!target) return;
       if (armTarget.type === 'task') handleFileTask(armTarget.index, target);
       else handleFileMeeting(armTarget.index, target);
-      setArmTarget(null);
+      cancelArming();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [paths, armTarget, inbox, inboxPath],
@@ -853,7 +823,6 @@ export default function InboxScreen({
               onRefile={editTarget ? () => armFileTarget(editTarget.type, editTarget.index) : undefined}
               onQuickFile={editTarget ? handleQuickFileEdit : undefined}
               linkedFileMissing={linkedFileMissing}
-              blockedMessage={blockedMessage ?? undefined}
               textColor={textColor}
               borderColor={borderColor}
               placeholderColor={placeholderColor}

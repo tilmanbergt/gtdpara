@@ -251,7 +251,7 @@ import ReviewWeekAhead from './ReviewWeekAhead';
 import MeetingRow, {MEETING_ROW_HEIGHT, MeetingRowLayout, MeetingTrackingConfig} from '../ui/MeetingRow';
 import MeetingList, {LayoutSwitch} from '../ui/MeetingList';
 import {useListLayout} from '../ui/listLayout';
-import {useEditFlush} from '../ui/useEditFlush';
+import {useEditTarget} from '../ui/useEditTarget';
 import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {ReviewEnd, ReviewHub} from '../ui/ReviewHub';
@@ -538,20 +538,16 @@ export default function ReviewScreen({
   // from this rather than being their own state, so every existing
   // reference to them elsewhere in this file keeps working unchanged.
   type InboxEditTarget = {type: 'task'; index: number} | {type: 'meeting'; index: number};
-  const [editTarget, setEditTarget] = useState<InboxEditTarget | null>(null);
-  // Shown as a warning in the central status slot (via QuickAddWidget) when a row tap is blocked because
-  // an edit is already open elsewhere in this step (design doc §6).
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
-  /**
-   * The one arm target for the Inbox-to-zero step's own Files pane
-   * (docs/dev/technical-design-filing-unification.md §5.2) - this step never
-   * had a Files pane or an arm concept before this feature (design-
-   * overview.md §2.18 previously documented that as a deliberate gap).
-   * Mirrors screens/InboxScreen.tsx's own armTarget shape exactly.
-   */
-  const [inboxZeroArmTarget, setInboxZeroArmTarget] = useState<{type: 'task' | 'meeting'; index: number; intent: 'link' | 'file'} | null>(
-    null,
-  );
+  // The step's one edit and one arm (its Files pane: link a file, file to a Project/Area) - ui/useEditTarget.ts.
+  const {
+    target: editTarget,
+    arm: inboxZeroArmTarget,
+    start: startEditTarget,
+    cancel: cancelEditTarget,
+    armFor,
+    cancelArm: cancelInboxArming,
+    flushEditRef,
+  } = useEditTarget<InboxEditTarget, {type: 'task' | 'meeting'; index: number; intent: 'link' | 'file'}>();
 
   const [view, setView] = useState<ReviewView>(savedView);
   /** Set when persisting a step visit / empty stamp failed - shown on the hub and end page (ui/ReviewHub.tsx). */
@@ -1699,53 +1695,11 @@ export default function ReviewScreen({
     cancelEditTarget();
   };
 
-  /**
-   * Arm/cancel helpers for the Inbox-to-zero step's Files pane
-   * (docs/dev/technical-design-filing-unification.md §5.2) - mirror
-   * screens/InboxScreen.tsx's own armLinkTarget/armFileTarget/cancelArming.
-   *
-   * No longer clears editTarget (2026-09-09 bugfix - see
-   * screens/InboxScreen.tsx's own armLinkTarget doc comment for the full
-   * "why": both are only ever reached from inside an open edit now (Link
-   * from the row's own clip, Refile from QuickAddWidget's edit-mode
-   * button), so clearing editTarget here just closed the edit the tap came
-   * from, wiping the widget's fields back to its empty create-mode draft.
-   * cancelEditTarget below now cancels any open arm itself instead, on
-   * whatever actually closes the edit (Cancel, or a successful Save/Delete)
-   * - a cleaner place for it than every arm-starting call, and it means an
-   * arm never outlives the edit it was started from.
-   */
-  const armInboxLinkTarget = (type: 'task' | 'meeting', index: number) => {
-    setInboxZeroArmTarget({type, index, intent: 'link'});
-  };
-  const armInboxFileTarget = (type: 'task' | 'meeting', index: number) => {
-    setInboxZeroArmTarget({type, index, intent: 'file'});
-  };
-  const cancelInboxArming = () => setInboxZeroArmTarget(null);
-
-  // One-edit-at-a-time guard (design doc §6) - mirrors ProjectDataPanel.tsx/
-  // InboxScreen.tsx's own startEditTarget/cancelEditTarget exactly. Also
-  // clears any open arm target, same as the two start* functions below used
-  // to do individually before this state merge - only one of arming or
-  // editing is ever active at a time in this step (pre-existing invariant,
-  // unrelated to this pass).
-  // Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, 2026-09-29) -
-  // replaces the old "Finish edit!" block.
-  const {flushEditRef, afterSave} = useEditFlush();
+  // Arming is reached from inside edit mode; the edit stays open meanwhile.
+  const armInboxLinkTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'});
+  const armInboxFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
   // Meetings to close out: 1-line/2-line switch like every meeting list (session-only, ui/listLayout.ts).
   const [closeOutLayout, setCloseOutLayout] = useListLayout('reviewCloseOut', 'twoLine');
-  const startEditTarget = (target: InboxEditTarget) =>
-    afterSave(() => {
-      setEditTarget(target);
-      setBlockedMessage(null);
-      setInboxZeroArmTarget(null);
-    });
-  /** Also cancels any open arm (2026-09-09) - see armInboxLinkTarget/armInboxFileTarget's own note above. */
-  const cancelEditTarget = () => {
-    setEditTarget(null);
-    setInboxZeroArmTarget(null);
-    setBlockedMessage(null);
-  };
 
   const startEditingInboxTask = (taskIndex: number) => {
     startEditTarget({type: 'task', index: taskIndex});
@@ -1792,7 +1746,7 @@ export default function ReviewScreen({
         logError('ReviewScreen: link inbox item failed', message);
         setInboxActionError(message);
       } finally {
-        setInboxZeroArmTarget(null);
+        cancelInboxArming();
       }
     })();
   };
@@ -1804,7 +1758,7 @@ export default function ReviewScreen({
     if (!target) return;
     if (inboxZeroArmTarget.type === 'task') handleFileTask(inboxZeroArmTarget.index, target);
     else handleFileMeeting(inboxZeroArmTarget.index, target);
-    setInboxZeroArmTarget(null);
+    cancelInboxArming();
   };
 
   /**
@@ -2430,7 +2384,6 @@ export default function ReviewScreen({
           onRefile={editTarget ? () => armInboxFileTarget(editTarget.type, editTarget.index) : undefined}
           onQuickFile={editTarget ? handleQuickFileEdit : undefined}
           linkedFileMissing={inboxLinkedFileMissing}
-          blockedMessage={blockedMessage ?? undefined}
           textColor={textColor}
           borderColor={borderColor}
           placeholderColor={placeholderColor}

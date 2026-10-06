@@ -191,7 +191,7 @@ import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import {useFeatures} from '../ui/featureStore';
 import MeetingRow, {MeetingRowLayout, MeetingTrackingConfig} from '../ui/MeetingRow';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
-import {useEditFlush} from '../ui/useEditFlush';
+import {useEditTarget} from '../ui/useEditTarget';
 import {MiniTabDef} from '../ui/MiniTabs';
 import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
@@ -343,20 +343,12 @@ export default function DailyView({
   const [dailyContext, setDailyContext] = useState<string | null>(null);
   const toggleContext = (tag: string) => setDailyContext(current => (current === tag ? null : tag));
 
-  // Which row (if any) is mid-edit, across BOTH columns (2026-09-09,
-  // docs/dev/technical-design-unified-quickadd.md §6/§8) - one shared
-  // QuickAddWidget instance now serves both the Open-tasks and Calendar
-  // columns, so there's one lifted edit-target state for the whole screen
-  // rather than a separate one per column, mirroring the
-  // `EditTarget`-shaped state ProjectDataPanel.tsx/InboxScreen.tsx already
-  // use. Row keys stay string-based (not the `{type, index}` shape those
-  // two screens use) since a row here can belong to a *different*
-  // Project/Area/Inbox than its neighbor - see taskKey/meetingKey above.
+  // Which row (if any) is mid-edit, across both columns: one Quick Add
+  // serves Open tasks and Calendar. Rows are keyed by string (taskKey/
+  // meetingKey above), since neighbouring rows can live in different files.
+  // Starting another edit saves this one first (ui/useEditTarget.ts).
   type DailyEditTarget = {type: 'task'; key: string} | {type: 'meeting'; key: string};
-  const [editTarget, setEditTarget] = useState<DailyEditTarget | null>(null);
-  // Shown as a warning in the central status slot (via QuickAddWidget) when a row tap is blocked
-  // because an edit is already open elsewhere on screen (design doc §6).
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+  const {target: editTarget, start: startEditTarget, cancel: cancelEditTarget, flushEditRef} = useEditTarget<DailyEditTarget>();
   const tasksAction = useActionError('DailyView.tasksActionError', 'DailyView: task action failed');
   const meetingsAction = useActionError('DailyView.meetingsActionError', 'DailyView: meeting action failed');
 
@@ -520,25 +512,6 @@ export default function DailyView({
     if (nextInbox) setCachedInbox(nextInbox);
   };
 
-  // One-edit-at-a-time guard (design doc §6) - lives here, not in the
-  // widget, since the widget only ever sees whichever row it's handed and
-  // has no way to know about the other column. `blockedMessage` is cleared
-  // wherever an edit actually completes (cancelEditTarget wraps every
-  // Cancel/Save/Delete path below), and by a fresh startEditTarget call
-  // succeeding.
-  // Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, 2026-09-29):
-  // tapping another row while editing first saves the current row's changes
-  // (if any), then switches - it used to be blocked with "Finish edit!".
-  const {flushEditRef, afterSave} = useEditFlush();
-  const startEditTarget = (target: DailyEditTarget) =>
-    afterSave(() => {
-      setEditTarget(target);
-      setBlockedMessage(null);
-    });
-  const cancelEditTarget = () => {
-    setEditTarget(null);
-    setBlockedMessage(null);
-  };
 
   // Errors from the shared widget's own add/edit/delete actions - kept
   // separate from tasksActionError/meetingsActionError below, which stay
@@ -1504,7 +1477,6 @@ export default function DailyView({
                   onQuickFile={editTarget ? stableQuickFileEdit : undefined}
                   editingItemPath={editingItemPath}
                   linkedFileMissing={linkedFileMissing}
-                  blockedMessage={blockedMessage ?? undefined}
                   textColor={textColor}
                   borderColor={borderColor}
                   placeholderColor={placeholderColor}

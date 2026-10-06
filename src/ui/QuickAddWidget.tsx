@@ -451,9 +451,6 @@ interface Props {
    */
   prefill?: {kind: 'task' | 'meeting'; text: string; nonce: number} | null;
 
-  /** Set by the caller when a row tap was blocked because an edit is already open elsewhere on screen (design doc §6). Shown as a warning in the central status slot while editing (docs/dev/technical-design-status-slot.md §7.3); cleared by the caller, not the widget. */
-  blockedMessage?: string;
-
   /** Task input only; defaults to "New task" everywhere (this pass drops the old per-screen "New todo" override as incidental cleanup). */
   placeholder?: string;
   textColor: string;
@@ -491,7 +488,6 @@ function QuickAddWidget({
   onAddNote,
   noteFolderPath = null,
   prefill,
-  blockedMessage,
   placeholder = 'New task',
   textColor,
   borderColor,
@@ -1868,7 +1864,6 @@ function QuickAddWidget({
 
   const statusId = useRef(`quickadd.${++nextQuickAddInstance}`).current;
   useStatus(`${statusId}.error`, error ? {kind: 'error', text: error, onDismiss: () => setError(null)} : null);
-  useStatus(`${statusId}.blocked`, isEditing && blockedMessage ? {kind: 'warning', text: blockedMessage} : null);
   useStatus(`${statusId}.success`, successText ? {kind: 'success', text: successText, onDismiss: dismissSuccess} : null);
   useStatus(`${statusId}.info`, infoText ? {kind: 'info', text: infoText, onDismiss: () => setMeetingCopyNote(null)} : null);
 

@@ -46,7 +46,7 @@ import {MeetingRowLayout, MeetingRowProps, MeetingTrackingConfig} from '../ui/Me
 import {entryDate} from '../domain/meetingSpan';
 import {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {useCachedItems} from '../ui/useCachedItems';
-import {useEditFlush} from '../ui/useEditFlush';
+import {useEditTarget} from '../ui/useEditTarget';
 import {perfEnd, perfStart} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
@@ -78,7 +78,8 @@ export function usePlanningScreen({logTag}: Options) {
   const [loading, setLoading] = useState(true);
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
-  const [editingKey, setEditingKey] = useState<string | null>(null);
+  // The meeting open in Quick Add's edit mode, by meetingKey (ui/useEditTarget.ts).
+  const {target: editingKey, start: startEdit, cancel: cancelEditTarget, set: setEditingKey, flushEditRef, afterSave} = useEditTarget<string>();
   // Both go to the central status slot (docs/dev/technical-design-status-slot.md §7.4)
   // - the Week/Month screens no longer render them inline.
   const widgetAction = useActionError('planning.widgetError', `${logTag}: widget action failed`);
@@ -172,14 +173,10 @@ export function usePlanningScreen({logTag}: Options) {
     log(`${logTag}: added meeting`, destinationLabel(destination));
   };
 
-  // Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, 2026-09-29):
-  // every change of the edit target first saves the current meeting's
-  // pending changes in Quick Add (only if something changed); a failed save
-  // keeps the edit where it is. The screen passes `flushEditRef` and
-  // `editingKey` to its QuickAddWidget.
-  const {flushEditRef, afterSave} = useEditFlush();
-  const startMeetingEdit = (entry: WeeklyMeetingEntry) => afterSave(() => setEditingKey(meetingKey(entry)));
-  const cancelEditTarget = () => setEditingKey(null);
+  // Save-then-switch: every change of the edit target first saves the
+  // current meeting's pending changes; a failed save keeps the edit where it
+  // is. The screen passes `flushEditRef` and `editingKey` to its QuickAddWidget.
+  const startMeetingEdit = (entry: WeeklyMeetingEntry) => startEdit(meetingKey(entry));
 
   const commitMeetingEdit = (entry: WeeklyMeetingEntry, fields: MeetingQuickAddFields, nextLinkedFile: string): Promise<boolean> =>
     runWidgetSave(async () => {
