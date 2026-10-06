@@ -10,6 +10,10 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Fixed
+- Integrity Check now also checks archived projects and areas in the Archive's year folders
+  (where close-out puts them), including a close-out that was interrupted after the folder move.
+
 ## [0.8.0] — 2026-10-06
 
 ### New

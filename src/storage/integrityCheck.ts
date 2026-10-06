@@ -16,10 +16,9 @@
  * scanned - it holds linked/attached files only, no Task/Meeting/notePath
  * data structurally.
  *
- * Archive folders aren't kind-tagged the way the Projects/Areas roots are
- * (archiveItem moves a Project OR an Area folder into the same flat
- * Archive/ root) - detectArchivedItemKind below tells them apart by which
- * data file (project.txt vs area.txt) is actually present.
+ * Archived items sit at several depths under Archive (flat, or under a year
+ * and Area folder after a close-out); domain/closeOut/archiveScan.ts finds
+ * them and tells Projects from Areas by their data file.
  *
  * Deliberately no SCAN_TIMEOUT_MS wrapper the way dataCache.ts's rebuild
  * has - that one runs automatically on every app open/foreground and needs
@@ -41,7 +40,8 @@ import {
 import {FileFix, NoteRef, planFileNameFixes, unsafeFolderNames} from '../domain/fileNameFix';
 import {invalidFileNameChars} from '../domain/fileName';
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
-import {AREA_FILE_NAME, GtdParaKind, Meeting, PROJECT_FILE_NAME, Task} from '../domain/types';
+import {GtdParaKind, Meeting, Task} from '../domain/types';
+import {collectArchivedItems} from '../domain/closeOut/archiveScan';
 import {fileExists, folderExists, listFolderEntries, writeIntegrityCheckReport} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
@@ -151,14 +151,6 @@ interface ScanTarget {
   inArchive: boolean;
 }
 
-/** Archive doesn't separate Projects from Areas by folder location (storage/archive.ts moves either kind into the same Archive/ root) - tell them apart by which data file is actually present. Returns null for an Archive entry that has neither (an unexpected/foreign folder) - skipped rather than guessed at. */
-async function detectArchivedItemKind(folderPath: string): Promise<GtdParaKind | null> {
-  const entries = await listFolderEntries(folderPath);
-  if (entries.some(e => !e.isFolder && e.name === PROJECT_FILE_NAME)) return 'project';
-  if (entries.some(e => !e.isFolder && e.name === AREA_FILE_NAME)) return 'area';
-  return null;
-}
-
 export async function runIntegrityCheck(settings: GtdParaSettings): Promise<IntegrityCheckSummary> {
   const granted = await ensureFileReadPermission();
   if (!granted) {
@@ -178,10 +170,9 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
   // and threaded into every per-item check run below.
   const io: IntegrityCheckIO = {fileExists, folderExists};
 
-  const [projectEntries, areaEntries, archiveEntries, rootEntries] = await Promise.all([
+  const [projectEntries, areaEntries, rootEntries] = await Promise.all([
     listFolderEntries(paths.projects),
     listFolderEntries(paths.areas),
-    listFolderEntries(paths.archive),
     listFolderEntries(paths.base),
   ]);
 
@@ -193,12 +184,8 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
       .map(e => ({kind: 'area' as const, path: e.path, name: e.name, inArchive: false})),
   ];
 
-  const archiveFolders = archiveEntries.filter(e => e.isFolder);
-  const archiveKinds = await Promise.all(archiveFolders.map(entry => detectArchivedItemKind(entry.path)));
-  archiveFolders.forEach((entry, index) => {
-    const kind = archiveKinds[index];
-    if (kind) targets.push({kind, path: entry.path, name: entry.name, inArchive: true});
-  });
+  const archived = await collectArchivedItems(listFolderEntries, paths.archive);
+  for (const item of archived) targets.push({kind: item.kind, path: item.path, name: item.name, inArchive: true});
 
   // The Inbox at its effective location: its folder under Areas, or the base root while an old Inbox hasn't moved.
   targets.push({kind: 'inbox', path: paths.inboxFolder, name: 'Inbox', inArchive: false});
