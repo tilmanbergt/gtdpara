@@ -430,3 +430,43 @@ pages `review.md` and pages with example dates, living dev docs, CLAUDE.md.
 - **O4** Focus reset step with a `Week | Month` mini-tab instead of two stacked lists - fine?
 - **O5** Meeting note headers (written into new notes) also switch to `Tue 6.10.`? Proposed: yes,
   for consistency; existing notes are not touched.
+
+## 9. As built
+
+All steps S0-S13 are done; every commit ends with `npm run check` green (strict from S13 on).
+Differences from the design above:
+
+- **S0**: as designed. The packaged `versionName` carries the stage (O3); the device check is part
+  of the beta test.
+- **S3**: Review's inline try/catch blocks went away with the S9 split (the Inbox step uses
+  `useActionError`); the item detail panels keep their own small pending/error state.
+- **S7**: S7a and S7b are one commit, because the Current tab's refile was rewritten on
+  `moveTask`/`moveMeeting` in the same change. `ProjectDataPanel` reads its item from the cache
+  (`useCachedItems`); `withTasks`/`withMeetings` still write the whole list (no index-based
+  `mutateEntryTasks`), but no longer keep a screen-local copy. `appendTaskToTarget`/
+  `appendMeetingToTarget` and `fileInboxTask`/`fileInboxMeeting` are gone; adds to another item
+  use `addTaskToDestination`. `inboxFiling.ts` keeps only the filing-pick resolution;
+  `itemMove.ts` only close-out's close/cancel.
+- **S8**: the unused `blockedMessage` prop and state (never set since save-then-switch) were
+  removed with it. `useEditTarget` also returns `set` for handlers that already run inside
+  `afterSave` (Week/Month day panel).
+- **S9**: five commits rather than one per step file. Steps hold their own frozen list
+  (`useFrozenStepList`) and mount on entry, so the shell has no snapshot state; Stalled/Neglected
+  register their list in `reviewVisit.ts` for the "activated" recap count. The archive confirm
+  uses `useStatusConfirm`. Files: `review/ReviewScreen.tsx` (352 lines), `reviewVisit.ts`,
+  `useReviewData.ts`, `useFrozenStepList.ts`, `shared.tsx`, `reviewStyles.ts`,
+  `steps/{WeekAhead,MeetingsCloseOut,Gmail,Inbox,ItemList,UnfocusedNext,FocusReset}Step.tsx`,
+  `steps/ItemDetails.tsx`. Focus reset uses the current week/month for goals. Smoke renders of
+  every Review step were not written (heavy mocking); `useFrozenStepList` has its own test and
+  the device walk-through covers the steps.
+- **S10**: Folders/Focus/Calendar/Gmail are one file `DraftTabs.tsx` (145 lines) instead of four;
+  Add-piece list and editor are one `PieceEditor.tsx`. The MyStyle listing is its own hook
+  (`tagRules/useMyStylePngs.ts`). The Tag Rule draft lives in the shell, so an unsaved rule
+  survives switching sub-tabs. A smoke test renders every tab, opens the rule form and Add piece,
+  and saves a folder change. Unused `ui/TemplatePicker.tsx` deleted.
+- **S11**: 121 files, comments only; a token comparison against the previous commit proves no
+  code changed.
+- **S12**: 65 documents moved to `docs/dev/history/`; 655 prefixed references rewritten and 29
+  references split across comment lines joined. `design-overview.md` 240 KB → 64 KB.
+- **S13**: baseline of long files: `App.tsx`, `DailyView.tsx`, `ProjectDataPanel.tsx`,
+  `supernote/fileSystem.ts`, `QuickAddWidget.tsx`.
