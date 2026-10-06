@@ -1,7 +1,8 @@
 # Technical design: Lasso (0.8.0)
 
-Status: **approved** with two changes (Tilman, 2026-10-05): Close out shows open marks as a
-warning, and split items are separate rows you can edit and remove.
+Status: **built** (2026-10-06), see §10 "As built". Approved with two changes (Tilman,
+2026-10-05): Close out shows open marks as a warning, and split items are separate rows you can
+edit and remove.
 Branch: `feature/lasso-0.8`, created from `main` after the 0.7.0 release.
 
 Background:
@@ -612,3 +613,62 @@ Checkpoint B and final:
 - Moving marks to the Inbox on archive (§3.10) is new work in the archive step; it reuses
   `markStore` and the operation journal's order (write the Inbox first, then clear the
   project's section).
+
+## 10. As built (2026-10-06)
+
+Built in steps S1-S8 plus three fix rounds after device checkpoints B and C (S6b, S6c, S6d).
+Where the build differs from §1-§8:
+
+**Capture screen**
+- The source link is the item's **linked file** (the clip), `<file>#page=N` (1-based), not its
+  working note: the note icon keeps creating the item's own note. `storage/linkedFiles.ts`
+  `openLinkedFile` opens it at the page; the integrity check and the close-out link rewrite
+  strip the anchor. A source path outside the base folder is stored absolute.
+- Recognized text of a mark is kept in its `mark.json` (`recognizedText`) and preloaded when
+  the screen opens, so each mark is recognized once. The recognition queue waits for that
+  preload.
+- The recognizer returns no line breaks for a handwritten list: boxes and dots inside a line
+  (`☐ □ ☑ ☒ •`) are treated as item starts (`breakAtInlineBullets`); dashes are not, they
+  occur inside text. **✂ Split at cursor** splits by hand: a caret splits there, a selection
+  becomes the next item (`splitAtSelection`).
+- Options row under the text: Split lines, ✂ Split at cursor, due date (📅 left R2 in the
+  capture variant).
+- **File to**: a short list (Inbox, the mark's or lasso's own place, the current choice,
+  focused items daily → weekly → monthly, recent capture destinations from
+  `storage/destinationUsage.ts`) plus **More…** with every Active item alphabetically, 15 per
+  page. On Hold items are no longer offered as chips (a typed `#ABBR` still reaches them).
+- Marks column: always the picture, with "p2 · 5.10. 10:42 · status" (not recognized /
+  recognizing… / recognized / no text / picture missing) and one fixed row height. Text rows
+  instead of pictures (§3.7) were dropped.
+- Save & next on a mark always goes to the next mark; in the lasso flow, after the last mark
+  (lasso already saved) an empty form without the old picture: "Lasso saved · no marks left".
+  Save & close closes.
+- Recognized text and status changes request an e-ink refresh; before, the text only showed
+  after a tap into the field.
+- For the current lasso, recognition starts right after the lasso is read, before settings,
+  cache, picture and screen ("route A"). A direct recognition of the lasso elements with a
+  corrected size ("route B") was considered and not built; the speed with route A was enough.
+  `strokeRecognition: done` logs `build=` (time spent rebuilding strokes) for a later look.
+- `CapturePanel.tsx` and `SplitRows.tsx` (§5) were not split out; the capture panel is
+  `QuickAddWidget variant="capture"`.
+
+**Rest of the app**
+- The cards open the marks screen through `ui/marksNav.ts` (App registers `openMarks` once),
+  not through props: they sit inside kept screens whose elements App creates once.
+- Returning from the marks screen shows the tab that opened it again, freshly loaded (the tab
+  shell is unmounted while the capture screen is open).
+- Close-out: "Process ›" per mark; "Discard…" is in the marks screen only.
+- Archive: also the direct archive (`storage/archive.ts` `archiveItem`, projects and areas,
+  incl. the cascade) moves open marks to the Inbox, before the folder move; if that write
+  fails, nothing is archived.
+- Integrity check: `markNoteMissing` (per item). "Mark data missing" and orphan reporting were
+  not added: the marks screen shows "picture missing", and orphans are cleaned up silently.
+- Help: no help mapping for the capture screen (it has no tab bar); the new page
+  `docs/user/lasso.md` is linked from the index, Quick Add, Review, Close out and Files.
+- The temporary multi-line diagnostic (patch 0007) was removed again in S8.
+
+**Device results**
+- Checkpoint A: marks with picture and icon in 1.1-1.7 s; recognition low on the page works.
+- Checkpoint B/C: bookmark and check icons, PDF text, saving, page links. Lasso with about 40
+  strokes took about 11 s from button to text before route A; with route A it is "pretty fast"
+  (Tilman, 2026-10-06).
