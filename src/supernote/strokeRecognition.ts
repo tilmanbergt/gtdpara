@@ -86,9 +86,11 @@ export function recognizeStrokes(
     let built: SdkElement[] = [];
     let recognized = '';
     let error: string | null = null;
+    let buildMs = 0;
     try {
       if (!size) {throw new Error('no page size');}
       built = await buildStrokes(shiftStrokes(strokes), page);
+      buildMs = Date.now() - t0;
       const r = (await PluginCommAPI.recognizeElements(built, size)) as SdkResponse<string>;
       if (r?.success) {recognized = (r.result ?? '').trim();}
       else {error = errText(r, 'recognition failed');}
@@ -100,7 +102,7 @@ export function recognizeStrokes(
     const text = [recognized, boxText].filter(part => part.length > 0).join('\n');
     const ms = Date.now() - t0;
     if (error) {logWarn('strokeRecognition: failed', `strokes=${strokes.length}`, `ms=${ms}`, error);}
-    else {log('strokeRecognition: done', `strokes=${strokes.length}`, `chars=${text.length}`, `ms=${ms}`);}
+    else {log('strokeRecognition: done', `strokes=${strokes.length}`, `chars=${text.length}`, `ms=${ms}`, `build=${buildMs}`);}
     // TEMPORARY diagnostic (0.8 checkpoint B, multi-line lists): the SHAPE of
     // the recognizer's raw answer - letters and digits masked as 'x', so no
     // content is logged - plus every line's first character as a code point.

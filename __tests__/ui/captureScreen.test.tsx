@@ -34,7 +34,10 @@ jest.mock('../../src/storage/dataCache', () => {
   const settings = jest.requireActual('../../src/domain/settings');
   const paths = settings.resolvePaths(settings.DEFAULT_SETTINGS);
   return {
-    getCachedData: () => ({scannedAt: 0, paths, items: []}),
+    getCachedData: () => {
+      mockCalls.push('cache');
+      return {scannedAt: 0, paths, items: []};
+    },
     rebuildCache: async () => ({scannedAt: 0, paths, items: []}),
     setCachedInbox: jest.fn(),
   };
@@ -102,7 +105,10 @@ jest.mock('../../src/supernote/lassoRead', () => ({
   saveLassoPreview: async (t: string) => t,
 }));
 jest.mock('../../src/supernote/strokeRecognition', () => ({
-  recognizeStrokes: async () => ({text: '- book room\n- agenda to Tom', error: null, ms: 1}),
+  recognizeStrokes: async () => {
+    mockCalls.push('recognize');
+    return {text: '- book room\n- agenda to Tom', error: null, ms: 1};
+  },
 }));
 
 import React from 'react';
@@ -245,4 +251,11 @@ it('asks for an e-ink redraw when the recognized text arrives', async () => {
   render({source: 'lasso'});
   await flush();
   expect(requestEinkRefresh).toHaveBeenCalled();
+});
+
+it('starts recognizing the lasso before the project list is loaded (route A)', async () => {
+  render({source: 'lasso'});
+  await flush();
+  expect(mockCalls.indexOf('recognize')).toBeGreaterThanOrEqual(0);
+  expect(mockCalls.indexOf('recognize')).toBeLessThan(mockCalls.indexOf('cache'));
 });
