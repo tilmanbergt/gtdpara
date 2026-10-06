@@ -17,7 +17,7 @@ const quick = process.argv.includes('--quick');
 /** ESLint warnings allowed (null = any number). */
 const LINT_MAX_WARNINGS = 0;
 /** When true, any code-health finding fails the check. */
-const CODE_HEALTH_STRICT = false;
+const CODE_HEALTH_STRICT = true;
 
 const lintArgs = ['eslint', 'src', 'App.tsx', 'index.js', '__tests__', 'test-helpers'];
 if (LINT_MAX_WARNINGS !== null) lintArgs.push('--max-warnings', String(LINT_MAX_WARNINGS));

@@ -1,12 +1,9 @@
 {
   "maxLines": {
-    "App.tsx": 1039,
-    "src/screens/DailyView.tsx": 1882,
-    "src/screens/InboxScreen.tsx": 1107,
-    "src/screens/ProjectDataPanel.tsx": 1284,
-    "src/screens/ReviewScreen.tsx": 4630,
-    "src/screens/Settings.tsx": 2598,
-    "src/supernote/fileSystem.ts": 1297,
-    "src/ui/QuickAddWidget.tsx": 2414
+    "App.tsx": 1003,
+    "src/screens/DailyView.tsx": 1544,
+    "src/screens/ProjectDataPanel.tsx": 1134,
+    "src/supernote/fileSystem.ts": 1251,
+    "src/ui/QuickAddWidget.tsx": 2379
   }
 }
