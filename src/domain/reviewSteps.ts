@@ -6,9 +6,9 @@
  * screens/ReviewScreen.tsx, the hub UI is ui/ReviewHub.tsx.
  *
  * What is persisted (`GtdParaSettings.reviewSteps`): one small record per
- * step, keyed by a stable STRING id (never the step's position - the list of
- * steps has already grown once, and a persisted index would silently point at
- * the wrong step after an insertion):
+ * step, keyed by a stable STRING id (never the step's position - steps get
+ * inserted into the list, and a persisted index would silently point at the
+ * wrong step after an insertion):
  * - `reviewedAt`: the last time the user tapped "Reviewed" on the step.
  * - `counts`: the recap numbers of that step's last recorded visit.
  * - `emptyAt`: the last time the hub saw a *backlog* step with nothing in it.
@@ -23,14 +23,13 @@ import {formatWeekdayDate} from './dateFormat';
 import {todayIso} from './meetingTime';
 
 /**
- * Deliberately coarse counters for the recap - kept simple on purpose
- * (2026-09-02 feedback: "don't track what is hard to track or overcomplicates
- * things, this is not an essential feature"). Every counter is a plain
+ * Deliberately coarse counters for the recap - this is not an essential
+ * feature, so nothing hard to track is tracked. Every counter is a plain
  * running count bumped inline by whichever action fired, with no further
  * breakdown (e.g. `onHold` doesn't distinguish Projects from Areas), except
  * `projectsActivated`/`areasActivated`, which screens/ReviewScreen.tsx
  * computes once when a step is LEFT (from that step's frozen snapshot).
- * Moved here from domain/settings.ts (2026-09-20) so settings.ts can import
+ * Lives here rather than in domain/settings.ts so settings.ts can import
  * the record type below without an import cycle.
  */
 export interface ReviewSummaryCounts {
@@ -42,11 +41,11 @@ export interface ReviewSummaryCounts {
   onHold: number;
   markedDone: number;
   archived: number;
-  /** Renamed from `focusAdded` (2026-09-10, docs/dev/technical-design-daily-todo-filter.md) when the "Unfocused next items" review step introduced a second, daily-scoped focus-add action alongside this one - see dailyFocusAdded below. A saved blob from before the rename just reads this key as undefined, which every consumer here treats as 0 (this recap is deliberately coarse/non-audited). */
+  /** "Add to Weekly focus" (docs/dev/technical-design-daily-todo-filter.md) - kept separate from dailyFocusAdded below so the recap's line text stays accurate about which focus scope was touched. A saved blob that lacks this key reads it as undefined, which every consumer here treats as 0 (this recap is deliberately coarse/non-audited). */
   weeklyFocusAdded: number;
   /** "Add to Daily focus" from the Unfocused-next-items review step (docs/dev/technical-design-daily-todo-filter.md) - kept separate from weeklyFocusAdded above so the recap's line text stays accurate about which focus scope was touched. */
   dailyFocusAdded: number;
-  /** "Add to Monthly focus" (Unfocused next items) and monthly slots filled in Focus reset (docs/dev/technical-design-review-monthly-focus.md §3, 2026-09-28). Absent in stats saved before then - every reader uses `?? 0`. */
+  /** "Add to Monthly focus" (Unfocused next items) and monthly slots filled in Focus reset (docs/dev/technical-design-review-monthly-focus.md §3). May be absent in saved stats - every reader uses `?? 0`. */
   monthlyFocusAdded: number;
   /** "Meetings to close out" step (docs/dev/technical-design-meeting-tracking.md): meetings ticked `#reviewed` during the visit. */
   meetingsClosedOut: number;
@@ -133,9 +132,8 @@ export const REVIEW_STEPS: ReviewStepDef[] = [
   {id: 'onHold', title: 'On Hold reconsideration', kind: 'backlog'},
   {id: 'neglected', title: 'Neglected areas', kind: 'backlog'},
   {id: 'unfocusedNext', title: 'Unfocused next items', kind: 'backlog'},
-  // Title renamed from "Weekly focus reset" 2026-09-28 (docs/technical-
-  // design-review-monthly-focus.md §3) - the step now sets weekly AND
-  // monthly focus. The id stays 'weeklyFocus' on purpose: it is the
+  // The step sets weekly AND monthly focus (docs/technical-design-review-
+  // monthly-focus.md §3). The id stays 'weeklyFocus' on purpose: it is the
   // persisted key of this step's last-reviewed date and stats.
   {id: 'weeklyFocus', title: 'Focus reset', kind: 'ritual'},
 ];
@@ -190,7 +188,7 @@ function parseMs(iso: string | null | undefined): number | null {
   return Number.isNaN(ms) ? null : ms;
 }
 
-/** Missing or malformed counts as stale, same "treat unparseable like never" call the old isReviewOverdue made - this only ever drives a passive marker. */
+/** Missing or malformed counts as stale ("treat unparseable like never") - this only ever drives a passive marker. */
 export function isStaleTimestamp(iso: string | null | undefined, now: Date = new Date()): boolean {
   const ms = parseMs(iso);
   return ms === null || now.getTime() - ms > REVIEW_STALE_MS;
@@ -334,7 +332,7 @@ export function isReviewOverdue(steps: ReviewStepsMap, now: Date = new Date(), d
   return false;
 }
 
-// ---- Text helpers shared by the hub and the end page (moved from screens/ReviewScreen.tsx) ----
+// ---- Text helpers shared by the hub and the end page ----
 
 /** "today", "yesterday", "N days ago", then a weekday and date ("Mon 28.9."). */
 export function formatReviewedAt(iso: string, now: Date): string {

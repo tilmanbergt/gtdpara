@@ -1,10 +1,9 @@
 /**
- * Creates a brand-new Project or Area (2026-09-11): an empty folder under
- * the configured Projects/Areas root plus its data file, scaffolded exactly
- * like any other fresh project.txt/area.txt (domain/markdown.ts's
- * ensureSkeleton) - `status: active`, empty Scope/Tasks/Meetings sections
- * (Scope added 2026-09-14, docs/dev/technical-design-item-scope.md - already
- * there to type into from Obsidian, before the app ever touches the file),
+ * Creates a brand-new Project or Area: an empty folder under the configured
+ * Projects/Areas root plus its data file, scaffolded like any other fresh
+ * project.txt/area.txt (domain/markdown.ts's ensureSkeleton) - `status: active`,
+ * empty Scope/Tasks/Meetings sections (docs/dev/technical-design-item-scope.md -
+ * Scope is there to type into from Obsidian before the app touches the file),
  * no further fields. Backs the "Create Project"/"Create Area" row on
  * screens/ItemsList.tsx's Projects/Areas tabs.
  *
@@ -12,8 +11,8 @@
  * folder-lifecycle action) - a single function ItemsList.tsx calls, not
  * spread across dataCache.ts/projectFile.ts.
  *
- * Abbreviation (docs/dev/technical-design-project-area-abbreviations.md,
- * 2026-09-14): a brand-new item gets its default abbrev assigned right here,
+ * Abbreviation (docs/dev/technical-design-project-area-abbreviations.md):
+ * a brand-new item gets its default abbrev assigned right here,
  * via dataCache.ts's assignDefaultAbbrevIfMissing - not left for the next
  * full rebuild's migrateMissingAbbrevs pass to fill in, since that could be
  * a while (only runs on app open/foreground or an explicit 🔄), and the new

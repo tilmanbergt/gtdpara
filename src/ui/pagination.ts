@@ -4,17 +4,13 @@
  * scrolling, so e-ink only ever has to redraw one fixed-size box rather than
  * an arbitrary, growing scroll region.
  *
- * `usePagedByHeight` (docs/dev/technical-design-pagination-fixed-height.md,
- * 2026-09-15/16) is the app's one remaining pagination hook - fits as many
- * rows as their real, per-row `rowHeight` allows into a fixed pixel
- * `viewportHeight`, so the box's total height never varies with content.
- * `PAGE_SIZE` below is still a per-list-type constant, but for most callers
- * it's no longer a literal row count fed straight to a hook - it's an
- * anchor multiplied by a row's own pixel height to get that list's
- * `viewportHeight` (the "N single-line rows" conversion pattern most
- * `PAGE_SIZE.*` doc comments below describe), tuned as a starting point and
- * retuned once checked against the real device rather than computed from
- * measured layout.
+ * `usePagedByHeight` (docs/dev/technical-design-pagination-fixed-height.md)
+ * is the app's pagination hook - fits as many rows as their real, per-row
+ * `rowHeight` allows into a fixed pixel `viewportHeight`, so the box's total
+ * height never varies with content. `PAGE_SIZE` below is a per-list-type
+ * constant; for most callers it is an anchor multiplied by a row's pixel
+ * height to get that list's `viewportHeight` ("N single-line rows"), tuned
+ * on the real device rather than computed from measured layout.
  *
  * Current page is preserved across data reloads (add/save/toggle-done) and
  * only clamped down if it's now past the new last page (e.g. the last item
@@ -34,20 +30,11 @@
  * step more specific: instead of always landing on page 0, jump to whatever
  * page contains a particular item - ui/FileBrowserPane.tsx's `locating` mode
  * needs this to land on the page holding the linked file being auto-
- * navigated to, not necessarily page 0 of that folder. Purely additive, same
- * opt-in shape as `resetKey` (a new optional param, existing callers
- * unaffected) - the caller finds the real item index itself (e.g.
+ * navigated to, not necessarily page 0 of that folder. Same opt-in shape as
+ * `resetKey` (an optional param) - the caller finds the real item index itself (e.g.
  * `array.findIndex(...)`) and passes it straight through; see the `JumpTo`
  * doc comment below. If both `resetKey` and `jumpTo.key` change on the same
  * render, `jumpTo` wins (its effect runs after resetKey's).
- *
- * **Retired 2026-09-16**: the old fixed *row-count* `usePagination`/
- * `Paged<T>`/`ui/PageControls.tsx` trio (this file's original API, before
- * `usePagedByHeight` existed) - screens/ReviewScreen.tsx's Inbox-to-zero
- * step was the last caller (docs/dev/technical-design-pagination-fixed-height.md's
- * Batch 7 tail); once it converted to `PagedSection`/`usePagedByHeight`
- * like every other screen, all three had zero remaining importers anywhere
- * in the app and were deleted outright rather than left as dead code.
  */
 import {useEffect, useRef, useState} from 'react';
 
@@ -55,21 +42,17 @@ import {useEffect, useRef, useState} from 'react';
  * §2) - retune once checked against the real device rather than computing
  * from measured layout. */
 export const PAGE_SIZE = {
-  /** Half-width columns: Daily's own Meetings and Tasks/Open-tasks columns
-   * (Inbox's Tasks/Meetings used to be side-by-side columns too, but moved
-   * to a stacked layout - see inboxTasks/inboxMeetings below). */
+  /** Half-width columns: Daily's own Meetings and Tasks/Open-tasks columns. */
   column: 10,
   /** Full-width single-column lists that are the only list on their screen:
    * Projects/Areas tabs, the file browser, Lasso-capture's destination
    * picker. */
   full: 23,
   /** The Files pane's Browse tab specifically (ui/FileBrowserPane.tsx's
-   * `sources` root), once drilled into its Projects or Areas category listing
-   * - 2026-09-09 feedback that `full`'s row count made that particular list
-   * too long. Deliberately its own constant, 3 less than `full`, rather than
-   * a tweak to `full` itself - every other full-width list (Project Files,
-   * Resources, a Project's own Areas-assignment picker, etc.) keeps `full`
-   * unchanged; only Browse's own listing uses this. */
+   * `sources` root), once drilled into its Projects or Areas category listing,
+   * where `full`'s row count is too long. Its own constant, 3 less than
+   * `full`, so every other full-width list (Project Files, Resources, a
+   * Project's Areas-assignment picker, etc.) keeps `full`. */
   browse: 20,
   /** Weekly Review's Inbox-to-zero step: two full-width lists (Tasks,
    * Meetings) stacked on one screen, each with its own quick-add form above
@@ -77,49 +60,39 @@ export const PAGE_SIZE = {
    * below - the two screens' available space and content density differ, and
    * on-device tuning of one shouldn't silently move the other. */
   stacked: 4,
-  /** Project/Area panel's Todos section. Independent of `projectMeetings`
-   * (2026-09-07 feedback: Todos is usually the longer list and can afford
-   * more rows per page than Meetings). Raised 5->8 (2026-09-14, docs/
-   * technical-design-pagination-grayscale-proposal.md §1) - well under the
-   * column's estimated vertical slack; re-tune from here once checked
-   * against the real device. */
+  /** Project/Area panel's Todos section. Independent of `projectMeetings`:
+   * Todos is usually the longer list and can afford more rows per page
+   * (docs/dev/technical-design-pagination-grayscale-proposal.md §1) - well under
+   * the column's estimated vertical slack. */
   projectTodos: 8,
   /** Project/Area panel's Meetings section - deliberately smaller than
-   * `projectTodos`; see that constant's note. Raised 3->6 (2026-09-14,
-   * same proposal §1) - this section is the last element in its column, so
-   * there's nothing below it to crowd. */
+   * `projectTodos`; see that constant's note. This section is the last
+   * element in its column, so there's nothing below it to crowd (same
+   * proposal §1). */
   projectMeetings: 6,
-  /** Inbox tab's Tasks section (technical-design-linked-files.md §1/§10.5,
-   * 2026-09-07) - Inbox moved from side-by-side Tasks/Meetings columns
-   * (`column` above) to a stacked layout, same shape as the Project/Area
-   * panel's Todos-above-Meetings, so this starts at the same values as
-   * `projectTodos`/`projectMeetings` pending its own on-device tuning - kept
-   * as its own constant rather than reused, same "on-device tuning of one
-   * shouldn't silently move another" rule projectTodos/projectMeetings
-   * themselves follow. Raised 5->8 (2026-09-14, docs/dev/technical-design-
-   * pagination-grayscale-proposal.md §1), same reasoning as projectTodos. */
+  /** Inbox tab's Tasks section (technical-design-linked-files.md §1/§10.5) -
+   * Inbox stacks Tasks above Meetings, same shape as the Project/Area panel,
+   * so it uses the same values as `projectTodos`/`projectMeetings`. Kept as
+   * its own constant so on-device tuning of one doesn't silently move the
+   * other (docs/dev/technical-design-pagination-grayscale-proposal.md §1). */
   inboxTasks: 8,
-  /** Inbox tab's Meetings section - see inboxTasks. Raised 3->6 (2026-09-14,
-   * same proposal §1), same reasoning as projectMeetings (last element in
-   * its column). */
+  /** Inbox tab's Meetings section - see inboxTasks. Same reasoning as
+   * projectMeetings (last element in its column). */
   inboxMeetings: 6,
-  /** Google Calendar mini-tab, per screen (2026-09-07 feedback) - the same
+  /** Google Calendar mini-tab, per screen - the same
    * ui/GoogleCalendarPanel.tsx component is reused across screens whose
    * available space/density differ (same reasoning as projectTodos vs.
-   * projectMeetings above), so its page size is now a prop instead of one
-   * constant hardcoded inside the component. */
+   * projectMeetings above), so its page size is a prop. */
   googleCalendarProject: 9,
   googleCalendarDaily: 20,
   googleCalendarReview: 18,
-  /** Inbox's Google mini-tab - lowered from its old value of 20 now that it
-   * sits in the bottom (Meetings) half of Inbox's stacked right pane rather
-   * than a full-height left pane (same restructure as inboxTasks/
-   * inboxMeetings above); starting at the same value googleCalendarProject
-   * uses, the closest existing "Google panel inside a partial-height
-   * stacked section" case, pending its own on-device tuning. */
+  /** Inbox's Google mini-tab - it sits in the bottom (Meetings) half of
+   * Inbox's stacked right pane, so it uses the same value as
+   * googleCalendarProject, the closest "Google panel inside a
+   * partial-height stacked section" case. */
   googleCalendarInbox: 9,
-  /** Daily view's new Focus/Projects/Areas panel (technical-design-daily-
-   * focus-panel.md §4/§7.3, 2026-09-10) - one fixed row budget shared by all
+  /** Daily view's Focus/Projects/Areas panel (technical-design-daily-
+   * focus-panel.md §4/§7.3) - one fixed row budget shared by all
    * three mini-tabs, so the panel's own height never grows or shrinks
    * per-tab: Focus tab's total slot count (`dailyFocusProjectCount +
    * dailyFocusAreaCount`, defaults 3 + 2) is this many rows, and the
@@ -140,8 +113,8 @@ export const PAGE_SIZE = {
    * it since the two panels' configured slot counts
    * (weeklyFocusProjectCount/weeklyFocusAreaCount default to 5/3, vs daily's
    * 3/2) and available column space differ. Also doubles as the Projects/
-   * Areas mini-tabs' own browse-list page size within this panel (raised
-   * 5 -> 10, 2026-09-13 feedback - 5 felt too short to browse through). */
+   * Areas mini-tabs' own browse-list page size within this panel (5 is too
+   * short to browse through). */
   weeklyFocusPanel: 10,
 } as const;
 
@@ -151,11 +124,7 @@ export const PAGE_SIZE = {
  * (not a page number - the hook works out which page that index falls on
  * itself, by walking rows from the start since row heights vary - see that
  * hook's own jumpTo effect). A caller with a real item index in hand (e.g.
- * `array.findIndex(...)`) passes it directly; there's no `pageIndexOf`
- * helper any more; the old one only existed to convert a real index into
- * a fixed-page-size page number, which was already a lossy detour back to
- * "some index in the target page" (see the old ui/FileBrowserPane.tsx's
- * `index * pageSize` for what it was reversed for). */
+ * `array.findIndex(...)`) passes it directly. */
 export interface JumpTo {
   key: string | number;
   index: number;
@@ -175,16 +144,12 @@ export interface PagedByHeight<T> {
 /**
  * The app's pagination hook (docs/dev/technical-design-pagination-fixed-height.md
  * §1.1) - fits as many rows as their real `rowHeight` allows into a fixed-
- * height box, instead of a fixed row count. Used by ui/PagedSection.tsx.
- * Replaced the old fixed-row-count `usePagination`/`Paged<T>` (retired
- * 2026-09-16, see the module doc comment) everywhere, including the fixed
- * focus-slot lists (ui/DailyFocusPanel.tsx/ui/WeeklyFocusPanel.tsx) that
- * used to be cited as `usePagination`'s one remaining reason to stay -
- * those never actually called it directly (they forward a `PAGE_SIZE`
- * constant into ui/FileBrowserPane.tsx, itself already on this hook).
+ * height box, instead of a fixed row count. Used by ui/PagedSection.tsx
+ * and, via ui/FileBrowserPane.tsx, by the fixed focus-slot lists
+ * (ui/DailyFocusPanel.tsx/ui/WeeklyFocusPanel.tsx).
  *
- * No `totalPages` - deliberately (Tilman: "no need to calculate overall
- * number of pages in advance"). `pageStarts` below is grown lazily, one
+ * No `totalPages` - deliberately; the page count is never computed in
+ * advance. `pageStarts` below is grown lazily, one
  * boundary at a time, only for pages actually visited: a very long list
  * costs no more per page-turn than walking that one page's worth of rows,
  * never the whole list.
@@ -214,7 +179,7 @@ export function usePagedByHeight<T>(
     }
   }, [resetKey]);
 
-  // `jumpTo` (Batch 3, 2026-09-15, ui/FileBrowserPane.tsx's `locating` mode -
+  // `jumpTo` (ui/FileBrowserPane.tsx's `locating` mode -
   // see the module doc comment) - runs after the resetKey effect above, same
   // "jumpTo wins if both fire on the same render" ordering the module doc
   // comment describes. Unlike a fixed page size, a target row's
@@ -253,7 +218,7 @@ export function usePagedByHeight<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpTo?.key]);
 
-  // Clamp down (never up/forward) if the page we were on no longer exists -
+  // Clamp down (never up/forward) if the page we were on doesn't exist any more -
   // computed rather than corrected via setState during render (this hook
   // self-heals on the next goPrev/goNext).
   let clampedPage = page;

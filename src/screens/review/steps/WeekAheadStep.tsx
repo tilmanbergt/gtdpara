@@ -1,8 +1,6 @@
 /**
- * The Review's "Week ahead" step (docs/dev/technical-design-meeting-lists.md §4.6,
- * Tilman 2026-09-29: "keep the review's week preview as close to the week
- * view, perhaps even replicating it exactly ... technically simple, reuse as
- * much as possible"). It is the Week screen's body, screens/WeekPlanner.tsx,
+ * The Review's "Week ahead" step (docs/dev/technical-design-meeting-lists.md §4.6),
+ * kept as close to the Week view as possible by reuse. It is the Week screen's body, screens/WeekPlanner.tsx,
  * with its own screens/usePlanningScreen.ts instance. The "‹ Week 40 ›"
  * navigation sits at the right end of the grid's Meetings | Google tab row:
  * the Review's step navigation already takes ~50 dp that the Week tab does

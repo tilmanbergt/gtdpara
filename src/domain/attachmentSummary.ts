@@ -1,8 +1,8 @@
 /**
  * Pure helper behind the Gmail inbox step's collapsed "not viewable"
- * attachment line (2026-09-21, Tilman: attachments the device can't open are
- * not listed one by one - "+4 .png" instead). See screens/ReviewScreen.tsx's
- * GmailDetailPanel and docs/dev/technical-design-gmail-body-select.md §2.4.
+ * attachment line: attachments the device can't open are not listed one by
+ * one - "+4 .png" instead. See screens/ReviewScreen.tsx's GmailDetailPanel
+ * and docs/dev/technical-design-gmail-body-select.md §2.4.
  */
 
 /** File extensions longer than this (incl. the dot) are treated as "no real extension" - e.g. "Invoice 2026.final version" must not become a bucket of its own. */

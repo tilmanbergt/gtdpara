@@ -45,8 +45,8 @@ export function isoWeekKey(now: Date = new Date()): string {
 
 /**
  * Whole ISO weeks between two week keys (`b` minus `a` - positive when `b`
- * is later). Added 2026-09-16 (docs/dev/technical-design-review-master-
- * detail.md §4.2) for `ItemGoalRow`'s "(Week NN, N weeks ago)" phrasing -
+ * is later), for `ItemGoalRow`'s "(Week NN, N weeks ago)" phrasing
+ * (docs/dev/technical-design-review-master-detail.md §4.2) -
  * finds each key's own week-1 Monday (same jan4DayNum/week1Monday
  * construction `isoWeekOf` above already uses to go the other direction,
  * year+week -> date), then diffs in whole weeks. Pure, no wall-clock read -

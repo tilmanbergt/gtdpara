@@ -1,31 +1,21 @@
 /**
- * Small shared hook for reading a View's real, laid-out height via React
- * Native's own `onLayout` callback (docs/dev/technical-design-pagination-fixed-
- * height.md's history - [[feature_pagination_fixed_height]]'s "Runtime-
- * measured viewport height" plan, 2026-09-17). Wrap whichever box you want
- * the true remaining size of in a `{flex: 1}` View (so ordinary flexbox
- * shrinks it to "whatever's left" after its non-flexible siblings, the same
- * way flexbox always has), pass this hook's `onLayout` to that View, and
+ * Small shared hook that reads a View's real, laid-out height via React
+ * Native's own `onLayout` callback. Wrap the box whose remaining size you
+ * want in a `{flex: 1}` View (flexbox shrinks it to whatever is left after
+ * its non-flexible siblings), pass this hook's `onLayout` to that View, and
  * read `height` back.
  *
- * This is a pure read tap on layout RN already computes on every render -
- * it does not introduce a new layout model, and it does not require any
- * change to sibling components' own styles (a `TabBar`/`QuickAddWidget`/etc.
- * keeps sizing itself exactly as it always has; this hook just reports what
- * was left over for the flex:1 box next to it). `height` stays `null` until
- * RN's first layout pass completes - there is always one render before the
- * real number is known, same as any `onLayout`-based measurement.
+ * It is a pure read of layout RN already computes on every render: no new
+ * layout model, and no change to sibling components' styles. `height` stays
+ * `null` until RN's first layout pass completes, so there is always one
+ * render before the real number is known.
  *
- * Stage 0 of the plan to replace hand-summed pixel "chrome budget" constants
- * (`GLOBAL_CHROME_PX`, `QUICK_ADD_WIDGET_PX`, `OPEN_TASKS_VIEWPORT_PX`, etc.
- * in screens/DailyView.tsx and their equivalents elsewhere) with a real
- * flexbox measurement instead of a formula built from estimated/measured-
- * from-a-screenshot sibling sizes, which this whole feature's round-by-round
- * history (see that file) shows drifts from reality in ways that are very
- * hard to catch by eye. Deliberately its own tiny hook, not baked into
- * `ui/PagedSection.tsx` itself - it's meant to wrap the box *around* a
- * `PagedSection` (or any other fixed-size box), not to change what
- * `PagedSection` does with the `viewportHeight` number it's given.
+ * A real flexbox measurement is more reliable than hand-summed pixel
+ * "chrome budget" constants, which drift from reality in ways that are hard
+ * to catch by eye. It is its own tiny hook rather than part of
+ * `ui/PagedSection.tsx`: it wraps the box *around* a `PagedSection` (or any
+ * other fixed-size box) and does not change what `PagedSection` does with
+ * the `viewportHeight` number it is given.
  */
 import {useCallback, useState} from 'react';
 import {LayoutChangeEvent} from 'react-native';

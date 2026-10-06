@@ -64,7 +64,7 @@ interface GmailCreatedItem {
 // from/attachment-count line).
 const GMAIL_ROW_PX = 60;
 
-/** How long the Archive pill shows inverted (black) before the email leaves the list (2026-09-28) - long enough to register on e-ink, short enough not to feel slow. */
+/** How long the Archive pill shows inverted (black) before the email leaves the list - long enough to register on e-ink, short enough not to feel slow. */
 const ARCHIVE_FLASH_MS = 350;
 
 /** "HH:MM" of a fetch time - same short form the Google Calendar panel's "Refresh (last …)" label uses for today. */
@@ -119,7 +119,7 @@ function GmailEmailRow({
   textColor: string;
   borderColor: string;
 }): React.JSX.Element {
-  // 📎 counts only attachments the device can open (Tilman, 2026-09-21) - signature/inline images don't make a mail "have an attachment".
+  // 📎 counts only attachments the device can open - signature/inline images don't make a mail "have an attachment".
   const viewableAttachmentCount = message.attachments.filter(a => isAttachmentSupported(a.mimeType)).length;
   return (
     <View
@@ -146,13 +146,13 @@ function GmailEmailRow({
  * Project/Area of its own), the attachments (one line per attachment inside
  * storage/gmailAttachments.ts's SUPPORTED_ATTACHMENT_MIME_TYPES allow-list;
  * everything else collapses into ONE summary line by file extension, "+4
- * .png, +2 .jpg" - Tilman, 2026-09-21), a "link the email's text" action once at
+ * .png, +2 .jpg"), a "link the email's text" action once at
  * least one item has been created from it, and Archive - and, filling ALL the
  * remaining height at the bottom, the email's body (fetched lazily the first
  * time this uid is selected - see the mount effect below) in ui/
  * GmailBodyPane.tsx: scrollable (the app's one deliberate exception to the
  * no-scroll policy) and selectable, with Copy / -> Todo / -> Meeting acting
- * on the selection (2026-09-21, docs/dev/technical-design-gmail-body-select.md).
+ * on the selection (docs/dev/technical-design-gmail-body-select.md).
  * -> Todo/-> Meeting hand the selected text to the QuickAddWidget above via
  * its `prefill` prop (appended to the draft, tab switched) - the item is
  * still created with that widget's own +Add, like any other.
@@ -185,7 +185,7 @@ function GmailDetailPanel({
   borderColor: string;
   placeholderColor: string;
 }): React.JSX.Element {
-  /** Archive pill shown inverted (black) for ARCHIVE_FLASH_MS right after the tap, before the email leaves the list (2026-09-28). */
+  /** Archive pill shown inverted (black) for ARCHIVE_FLASH_MS right after the tap, before the email leaves the list. */
   const [archiveFlash, setArchiveFlash] = useState(false);
   const archiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -211,7 +211,7 @@ function GmailDetailPanel({
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
   /** Status text of the link in progress ("Creating note... page 2/5") - shown on the running pill. */
   const [linkProgress, setLinkProgress] = useState<string | null>(null);
-  // Attachments split (2026-09-21): the ones the device can open get their own
+  // Attachments split: the ones the device can open get their own
   // line (and a "Save & link" pill); the rest collapse into one "+4 .png, +2
   // .jpg" line - mostly signature/inline images nobody wants listed.
   const viewableAttachments = message.attachments.filter(a => isAttachmentSupported(a.mimeType));
@@ -432,20 +432,17 @@ export default function GmailStep({
   const [gmailCreatedItems, setGmailCreatedItems] = useState<Record<string, GmailCreatedItem[]>>({});
   /** uid -> linkedFile of the .note already written for that email during this visit, so linking the email text onto a second item of the same email reuses the note instead of writing another one (docs/dev/technical-design-gmail-email-note.md 3.7). Reset with gmailCreatedItems on step entry. */
   const [gmailEmailNotes, setGmailEmailNotes] = useState<Record<string, string>>({});
-  /** Generic "did something with this email" checkmark for `ui/ReviewMasterDetail.tsx`'s `actedOnKeys` - set by creating an item from the email (an archived email leaves the list immediately since 2026-09-28 - see handleArchiveGmailMessage - so it never shows this checkmark). */
+  /** Generic "did something with this email" checkmark for `ui/ReviewMasterDetail.tsx`'s `actedOnKeys` - set by creating an item from the email (an archived email leaves the list immediately - see handleArchiveGmailMessage - so it never shows this checkmark). */
   const [gmailActedOn, setGmailActedOn] = useState<Set<string>>(new Set());
-  /** Gmail step's left-list selection, CONTROLLED here (ui/ReviewMasterDetail.tsx's optional selectedKey prop, 2026-09-28) so an archive can move it to the neighbouring email. Reset on every step entry / 🔄 via stepEntryToken, like the shell's own internal reset. */
+  /** Gmail step's left-list selection, CONTROLLED here (ui/ReviewMasterDetail.tsx's optional selectedKey prop) so an archive can move it to the neighbouring email. Reset on every step entry / 🔄 via stepEntryToken, like the shell's own internal reset. */
   const [gmailSelectedKey, setGmailSelectedKey] = useState<string | null>(null);
   /** A background archive that failed (the email is back in the list) - shown under the Refresh button until the next archive or refresh. */
   const [gmailArchiveErrorState, setGmailArchiveErrorState] = useState<string | null>(null);
-  // Gmail refresh/archive failures -> central status slot + ⚠ on the Refresh
-  // pill (docs/dev/technical-design-status-slot.md §7.5). An archive failure is
-  // published GLOBAL through the (App-level, always mounted) status API, so
-  // it still shows when the background IMAP call fails after the user has
-  // already left Review (D13).
   // Refresh/archive failures go to the central status slot and mark the
-  // Refresh pill. An archive failure is shown globally, so it still appears
-  // when the background IMAP call fails after the user left Review.
+  // Refresh pill (docs/dev/technical-design-status-slot.md §7.5). An archive
+  // failure is published globally through the (App-level, always mounted)
+  // status API, so it still appears when the background IMAP call fails
+  // after the user left Review.
   const statusApi = useStatusApi();
   const gmailArchiveError = gmailArchiveErrorState;
   const setGmailArchiveError = useCallback(
@@ -478,9 +475,8 @@ export default function GmailStep({
    * same "storage owns it, this state just mirrors it" split `load` above
    * uses for `inbox`/`aggregate`). Called ONLY by the step's own manual
    * Load/Refresh button (renderGmailInbox) - never on step entry, never from
-   * an effect, never as a retry (2026-09-21: an effect that re-fired whenever
-   * `gmailMessages` was still null retried every failure immediately, in a
-   * loop, and each retry cleared the error text before it could be read).
+   * an effect, never as a retry: an automatic retry would loop on a failure
+   * and clear the error text before it could be read.
    * Also NOT by reopening the step or Reload all files (load), since an IMAP round
    * trip is a materially different cost than resnapshotting the already-warm
    * local cache every other step refreshes against. A failure leaves
@@ -664,7 +660,7 @@ export default function GmailStep({
 
   /**
    * Gmail's own "Archive" (remove from Inbox, not deletion - storage/
-   * gmailInboxCache.ts's own doc comment). Reworked 2026-09-28 (docs/
+   * gmailInboxCache.ts's own doc comment; docs/
    * technical-design-review-monthly-focus.md §4): the panel has already
    * flashed the pill black; here the email leaves the list IMMEDIATELY, the
    * selection moves to the neighbouring email (the one below, else the one
@@ -717,10 +713,10 @@ export default function GmailStep({
    * come from storage/gmailInboxCache.ts's own IMAP-backed cache
    * (`gmailList`) rather than the local item cache, and there is no frozen-
    * membership snapshot: an archived message leaves the list immediately
-   * (2026-09-28, background archive - handleArchiveGmailMessage), anything
-   * else leaves it in place, so `gmailActedOn` is a plain checkmark, not a
-   * "still shown despite no longer matching" marker like the five converted
-   * steps' own acted-on sets. Selection is controlled here
+   * (background archive - handleArchiveGmailMessage), anything
+   * else stays in place, so `gmailActedOn` is a plain checkmark, not a
+   * "still shown despite not matching anymore" marker like the other
+   * steps' acted-on sets. Selection is controlled here
    * (`gmailSelectedKey`) so an archive can move it to the next email.
    */
   const renderGmailInboxDetail = (selectedKey: string | null): React.ReactNode => {

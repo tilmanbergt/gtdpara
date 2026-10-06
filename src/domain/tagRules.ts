@@ -9,58 +9,24 @@
  * imports (design-overview.md §3), so it's usable from both `screens/` and a
  * plain Node script for verification.
  *
- * Phase 1 (technical-design-note-templates.md §7): this module, plus the
- * `GtdParaSettings` fields that hold the catalog, plus the Settings UI that
- * edits it - inert, nothing yet read `tagRules` at
- * note-creation time.
+ * Meeting and Todo note creation read these rules through `resolveNoteTemplate`
+ * and `renderPieceText` (storage/meetingNoteContent.ts's refreshMeetingNoteBlock
+ * and refreshTodoNoteBlock). `migrateTagRuleDefaults` seeds one
+ * "Meeting (default)" definition when the list is empty, so meeting notes get
+ * title+date+related content out of the box (§7). Todos get no seeded default.
  *
- * Phase 2 (2026-09-18, §4/§5/§7): `renderPieceText` below + `resolveNoteTemplate`
- * are now wired into meeting-note creation via
- * storage/meetingNoteContent.ts's refreshMeetingNoteBlock. `createDefaultMeetingRule`/
- * `migrateTagRuleDefaults` are the Phase 2 migration (§7): the first
- * time settings load with an empty `tagRules` list, one
- * "Meeting (default)" definition is seeded so meeting notes keep getting
- * title+date+related content out of the box, same as before this feature
- * existed, just now as real, editable definition data instead of hardcoded
- * logic.
+ * Each rule owns a `texts` list (`NoteTextItem`); the Add-piece page places
+ * each piece/text at most once, and a placed text piece points at its text by
+ * `textId` (see the "Once-only placement" helpers near `setPieceStep`, §6.1).
  *
- * Phase 3 (2026-09-18, same day - Todo notes, the feature's last piece for
- * now): the same `resolveNoteTemplate`/`renderPieceText`/
- * `populateNoteFromRule` machinery is now wired into Todo-note
- * creation too, via storage/meetingNoteContent.ts's new
- * `refreshTodoNoteBlock` - no new domain functions needed there, since
- * `PieceRenderContext`/`renderPieceText` were already context-agnostic
- * (only `date`/`time` pieces are meeting-only, per `PIECE_CONTEXTS`, and a
- * Todo definition's Add-piece list already excludes those). This phase adds
- * `isTodoAutoUpdateFrozen` below (the Todo counterpart to domain/
- * meetingTime.ts's `isMeetingAutoUpdateFrozen`) and removes the legacy
- * global `meetingNoteTemplate` setting entirely (see domain/settings.ts) -
- * `createDefaultMeetingRule` no longer takes a `template` param as a
- * result. No auto-seeded default Todo definition is added (unlike Meeting's
- * migration) - Todos have no legacy single-template setting to carry
- * forward, so the list simply starts empty for that context, same as
- * Project/Area always have.
- *
- * Rule-owned static texts + once-only placement (2026-09-20, §6.1): a rule
- * now carries its own `texts` list (`NoteTextItem`), the Add-piece page
- * places each piece/text at most once, and a placed text piece points at its
- * text by `textId` (see the "Once-only placement" helpers near
- * `setPieceStep` below). Rendering is untouched - `piece.text` stays the
- * source `renderPieceText` reads, kept in sync by `updateTextItem`.
- *
- * Shared Note Pages, Slice 1 of 4 (2026-09-22,
- * docs/dev/technical-design-shared-note-pages.md §2.1/§12): a Meeting/Todo rule
- * can now target a shared `.note` file (one page per item, located by
- * keyword) instead of its own file per item - `noteTarget`/`sharedFileName`/
- * `sharedFileFolder` below, plus `effectiveNoteTarget`/
- * `resolvedSharedFileName`/`resolvedSharedFileFolder`. The anchor encoding
- * (`notePath` as `"relativePath#keyword"`), keyword derivation and
- * chronological-insertion math live in the sibling `domain/
- * sharedNotePages.ts` (kept separate so this file doesn't have to import
- * `Task`/`Meeting`-specific tag-stripping logic it otherwise has no reason
- * to need). Nothing here is wired into note creation yet - purely additive,
- * same "inert until a later slice" posture Phase 1 of this file's own
- * feature used.
+ * A Meeting/Todo rule can target a shared `.note` file (one page per item,
+ * located by keyword) instead of its own file per item - `noteTarget`/
+ * `sharedFileName`/`sharedFileFolder` below, plus `effectiveNoteTarget`/
+ * `resolvedSharedFileName`/`resolvedSharedFileFolder`
+ * (docs/dev/technical-design-shared-note-pages.md §2.1/§12). The anchor
+ * encoding, keyword derivation and chronological-insertion math live in
+ * `domain/sharedNotePages.ts`, so this file need not import `Task`/`Meeting`
+ * tag-stripping logic.
  */
 import {formatDayHeader, formatTime} from './dateFormat';
 // Type-only import (erased at compile time, so this doesn't create a real
@@ -72,21 +38,20 @@ import type {Task} from './types';
 
 export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
 /**
- * `link` (2026-09-25, docs/dev/technical-design-linked-file-piece.md): a tappable
+ * `link` (docs/dev/technical-design-linked-file-piece.md): a tappable
  * Supernote link element to the item's own `linkedFile` (the paperclip
- * attachment) - Todo/Meeting only. Replaces the old always-auto-appended
- * "Link:" element: a rule without a `link` piece writes no link at all.
+ * attachment) - Todo/Meeting only. A rule without a `link` piece writes no
+ * link at all.
  */
 export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link';
 
 /**
  * Where a Meeting/Todo definition's note content ends up (docs/technical-
- * design-shared-note-pages.md §2.1) - 'own' is today's one-file-per-item
- * behavior (unchanged), 'shared' files it as a page in one shared `.note`
- * per Project/Area instead, located by keyword. Project/Area definitions
- * never read this - shared targets are Meeting/Todo only (§9 of the design
- * doc: there's no single natural shared file for a Project/Area's own
- * standalone note).
+ * design-shared-note-pages.md §2.1) - 'own' is one file per item, 'shared'
+ * files it as a page in one shared `.note` per Project/Area, located by
+ * keyword. Project/Area definitions never read this (§9 of the design doc:
+ * there's no single natural shared file for a Project/Area's own standalone
+ * note).
  */
 export type NoteTarget = 'own' | 'shared';
 
@@ -110,14 +75,10 @@ export interface NotePiece {
   /** Last nudge-step (5 or 25) used on this piece in the Settings UI - UI memory only, never read by rendering. */
   step: number;
   /**
-   * Maximum textbox width in device px for THIS piece (2026-09-23,
-   * docs/dev/technical-design-textbox-metrics.md - Tilman: "each piece should
-   * have its own length cap, separately stored for each definition" -
-   * per-PIECE, not per-definition, despite the "definition" wording of the
-   * question it answered). Read through `pieceMaxWidthPx` below, never
-   * compared to `undefined` directly - absent on any piece saved before this
-   * field existed, which resolves to `DEFAULT_MAX_PIECE_WIDTH_PX`, same
-   * absent-is-a-default convention as `texts`/`noteTarget` above. The actual
+   * Maximum textbox width in device px for THIS piece
+   * (docs/dev/technical-design-textbox-metrics.md) - per piece, not per
+   * definition. Read through `pieceMaxWidthPx` below, never compared to
+   * `undefined` directly; absent resolves to `DEFAULT_MAX_PIECE_WIDTH_PX`. The
    * written textbox width is never wider than this AND never wider than
    * `pieceWidthPx(x)` (the page-edge ceiling) - see storage/
    * notePieceMetrics.ts's `measureNotePieceRect`.
@@ -126,12 +87,11 @@ export interface NotePiece {
 }
 
 /**
- * A reusable static text that belongs to exactly ONE rule (Tilman,
- * 2026-09-20: "I don't imagine saved texts to be used across different
- * rules"), listed on the Add-piece page next to the predefined pieces. A
- * piece of type 'text' places one of these by `textId`; each text can be
- * placed at most once per rule. Editing the text updates the placed piece in
- * place (`updateTextItem`), so its position/font never need redoing.
+ * A reusable static text that belongs to exactly ONE rule, listed on the
+ * Add-piece page next to the predefined pieces. A piece of type 'text' places
+ * one of these by `textId`; each text can be placed at most once per rule.
+ * Editing the text updates the placed piece in place (`updateTextItem`), so
+ * its position/font never need redoing.
  */
 export interface NoteTextItem {
   id: string;
@@ -188,10 +148,9 @@ export const PIECE_CONTEXTS: Record<PieceType, NoteContext[]> = {
 
 /**
  * The pieces a freshly created rule starts with, in top-to-bottom order
- * (docs/dev/technical-design-linked-file-piece.md §4.1 - Tilman, 2026-09-25:
- * "title, link, and for meetings date and time as default elements present
- * one below the other", ordered Title, Date, Time, Link). Project/Area only
- * get Title - Date/Time/Linked file don't exist in those contexts.
+ * (docs/dev/technical-design-linked-file-piece.md §4.1): Title, Date, Time,
+ * Link. Project/Area only get Title - Date/Time/Linked file don't exist in
+ * those contexts.
  */
 export const DEFAULT_PIECE_TYPES: Record<NoteContext, PieceType[]> = {
   meeting: ['title', 'date', 'time', 'link'],
@@ -227,7 +186,7 @@ export function hasUntouchedDefaultPieces(definition: TagRule): boolean {
   });
 }
 
-/** Supernote A5X page dimensions in device px (design-device-rendering.md). A piece has no stored width - it always extends from its own `x` to the page's right edge (Tilman, 2026-09-18: "would right now always extend until the right side"). NOTE_PAGE_WIDTH_PX is the one place both the Settings-UI preview and, from Phase 2 on, the real element writer get a piece's width from; NOTE_PAGE_HEIGHT_PX exists alongside it only for the Settings-UI preview's aspect ratio - nothing here reads it for layout math. */
+/** Supernote A5X page dimensions in device px (design-device-rendering.md). A piece has no stored width - it always extends from its own `x` to the page's right edge. NOTE_PAGE_WIDTH_PX is the one place both the Settings-UI preview and the real element writer get a piece's width from; NOTE_PAGE_HEIGHT_PX exists only for the Settings-UI preview's aspect ratio - nothing here reads it for layout math. */
 export const NOTE_PAGE_WIDTH_PX = 1404;
 export const NOTE_PAGE_HEIGHT_PX = 1872;
 
@@ -236,25 +195,22 @@ export function pieceWidthPx(x: number): number {
 }
 
 /**
- * Starting position for a brand-new piece (Tilman, 2026-09-18: "use 100/100
- * as starting seed for position"). Deliberately not a mirror of today's
- * `meetingNoteBlockTopX/Y` (60/60) - see the Phase 2 migration note in
- * technical-design-note-templates.md §7.
+ * Starting position for a brand-new piece. Deliberately not a mirror of
+ * `meetingNoteBlockTopX/Y` (60/60) - see technical-design-note-templates.md §7.
  */
 export const DEFAULT_PIECE_X = 100;
 export const DEFAULT_PIECE_Y = 100;
-/** Supernote's own smallest selectable text size on a real note page (Tilman, 2026-09-18: "set the default size for text to 36, this is the default smallest size on supernote notes and looks much better") - was 17 (a mirror of ui/theme.ts's FONT.medium, tuned for this app's own small Settings-UI text, not for how a note page itself reads). */
+/** Supernote's own smallest selectable text size on a real note page - looks much better on a note page than this app's small Settings-UI font sizes. */
 export const DEFAULT_PIECE_FONT_SIZE = 36;
-/** Default nudge-step for a newly added piece, one of ui/NudgePad.tsx's own two step sizes (5 or 25) - was 5 (Tilman, 2026-09-18: "set default moving speed to 25 instead of 5"). Both steps stay available in the UI either way; this only decides which one a new piece starts on. */
+/** Default nudge-step for a newly added piece, one of ui/NudgePad.tsx's two step sizes (5 or 25). Both steps stay available in the UI; this only decides which one a new piece starts on. */
 export const DEFAULT_PIECE_STEP = 25;
 /**
- * Default per-piece max width for a newly added piece (2026-09-23, Tilman:
- * "should be half the total screen width as default") - half of
+ * Default per-piece max width for a newly added piece - half of
  * NOTE_PAGE_WIDTH_PX, computed rather than hardcoded so the two stay in sync
  * if the page dimensions ever change.
  */
 export const DEFAULT_MAX_PIECE_WIDTH_PX = Math.round(NOTE_PAGE_WIDTH_PX / 2);
-/** Floor for the max-width ± control (Tilman, 2026-09-23, answering "is a 100px minimum sensible": "yes 100 px min seems good") - a box narrower than this can no longer fit most single words at a readable font size. */
+/** Floor for the max-width ± control - a narrower box can't fit most single words at a readable font size. */
 export const MIN_PIECE_MAX_WIDTH_PX = 100;
 
 /** `piece.maxWidthPx`, defaulting a pre-existing (un-migrated) piece to DEFAULT_MAX_PIECE_WIDTH_PX - the one place this optional field is read, same "resolver function, never compared to undefined at the call site" convention as `effectiveNoteTarget`/`resolvedSharedFileName` above. */
@@ -302,13 +258,13 @@ export function effectiveNoteTarget(definition: Pick<TagRule, 'noteTarget'>): No
   return definition.noteTarget ?? 'own';
 }
 
-/** The shared file's base name (no folder, no ".note" extension) - the rule's own `sharedFileName` when set, else its `name` (Tilman, 2026-09-21: "File name: ... default = rule name"). Only meaningful when `effectiveNoteTarget(definition) === 'shared'`. */
+/** The shared file's base name (no folder, no ".note" extension) - the rule's own `sharedFileName` when set, else its `name`. Only meaningful when `effectiveNoteTarget(definition) === 'shared'`. */
 export function resolvedSharedFileName(definition: Pick<TagRule, 'name' | 'sharedFileName'>): string {
   const explicit = definition.sharedFileName?.trim();
   return explicit ? explicit : definition.name;
 }
 
-/** `definition.sharedFileFolder`, defaulting to 'subfolder' (today's Meetings/Todos location) when unset. */
+/** `definition.sharedFileFolder`, defaulting to 'subfolder' (the Meetings/Todos location) when unset. */
 export function resolvedSharedFileFolder(definition: Pick<TagRule, 'sharedFileFolder'>): SharedNoteFolder {
   return definition.sharedFileFolder ?? 'subfolder';
 }
@@ -362,7 +318,7 @@ export function setPieceMaxWidth(definition: TagRule, index: number, maxWidthPx:
   return {...definition, pieces};
 }
 
-// ---- Once-only placement + rule-owned static texts (2026-09-20) ------------
+// ---- Once-only placement + rule-owned static texts ------------------------
 // The Add-piece page's model (docs/dev/technical-design-note-templates.md §6.1):
 // every piece can be placed at most once per rule - Title/Date/Time/Related
 // by type, a static text by its `textId` - and a placed piece shows "Remove"
@@ -460,25 +416,18 @@ export function migrateLegacyTextPieces(definition: TagRule): TagRule {
 
 /**
  * First enabled, tagged definition (in list order - list order doubles as
- * priority, same "first match wins" rule domain/abbrev.ts's quick-file
- * already established) one of whose tags matches one of the note's own tags
- * (directly, or as a parent of a nested tag - see tagMatchesRuleTag); otherwise the
- * context's Default; otherwise `null`. This is also THE rule lookup for a
- * meeting's prep/review tracking (domain/meetingTracking.ts) - one resolved
- * definition per item supplies both its note layout and its tracking flags. Every caller treats `null` as "blank
- * template, no pieces" - today's behavior - so a fresh install with zero
- * definitions configured is unchanged.
+ * priority, same "first match wins" rule as domain/abbrev.ts's quick-file)
+ * one of whose tags matches one of the note's own tags (directly, or as a
+ * parent of a nested tag - see tagMatchesRuleTag); otherwise the context's
+ * Default; otherwise `null`. This is also THE rule lookup for a meeting's
+ * prep/review tracking (domain/meetingTracking.ts) - one resolved definition
+ * per item supplies both its note layout and its tracking flags. Every caller
+ * treats `null` as "blank template, no pieces".
  *
- * Matching is case-insensitive (2026-09-18, Tilman: "tags should be
- * normalized to small in the config and be applied case insensitive").
- * `d.tags` is already lowercased at the source - Settings.tsx's
- * handleSaveDefinitionDraft normalizes the config's own tags on save - but
- * this comparison lowercases both sides anyway rather than trusting that:
- * the note's own `tags` (a Meeting's, say) come from user-entered text
- * elsewhere in the app that was never asked to normalize its casing, and
- * defending here means the match is correct regardless of what either side
- * actually stored, including any already-saved config data from before this
- * fix.
+ * Matching is case-insensitive. Settings.tsx's handleSaveDefinitionDraft
+ * already lowercases the config's tags, but this lowercases both sides
+ * anyway: the note's own `tags` come from user-entered text that is never
+ * normalized, and older saved config data may not be lowercased either.
  */
 export function resolveNoteTemplate(
   context: NoteContext,
@@ -550,7 +499,7 @@ export interface PieceRenderContext {
   linkedFileName?: string;
 }
 
-/** The visible text of a `link` piece's link element - "Link: <file name>" (Tilman, 2026-09-25: keep this label). */
+/** The visible text of a `link` piece's link element - "Link: <file name>". */
 export function linkPieceText(fileName: string): string {
   return `Link: ${fileName}`;
 }
@@ -588,23 +537,17 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
 }
 
 /**
- * Seeds the Phase 2 migration's one "Meeting (default)" definition (Tilman,
- * 2026-09-18: title + date + related-items, at the standard 100/100 seed -
- * NOT today's meetingNoteBlockTopX/Y (60/60), a deliberate, confirmed
- * choice, see technical-design-note-templates.md §7). Built via
- * addPieceToRule so the three pieces stack automatically using its
- * own nextPieceSeedPosition logic, rather than hand-computing their x/y
- * here. `template` starts blank (2026-09-18, Phase 3: this used to carry
- * forward whatever the now-retired `GtdParaSettings.meetingNoteTemplate`
- * global was already set to - see domain/settings.ts's doc comment on that
- * field's removal - but there's no longer any such value to carry forward;
- * a fresh migration just gets a blank background, same as any other new
- * definition, editable in the Settings UI same as always).
+ * Seeds the one "Meeting (default)" definition (title + date + related items,
+ * at the standard 100/100 seed - NOT meetingNoteBlockTopX/Y (60/60), a
+ * deliberate choice, see technical-design-note-templates.md §7). Built via
+ * addPieceToRule so the pieces stack automatically using its own
+ * nextPieceSeedPosition logic. `template` starts blank, same as any other
+ * new definition.
  */
 export function createDefaultMeetingRule(id: string): TagRule {
-  // 2026-09-25 (docs/dev/technical-design-linked-file-piece.md §4.1): the standard
-  // Meeting defaults (Title, Date, Time, Linked file) plus Related items at the
-  // bottom, so this seeded rule keeps the related-todos content it always had.
+  // docs/dev/technical-design-linked-file-piece.md §4.1: the standard Meeting
+  // defaults (Title, Date, Time, Linked file) plus Related items at the bottom,
+  // so this seeded rule also carries the related-todos content.
   let def = createEmptyTagRule(id, 'meeting');
   def = {...def, name: 'Meeting (default)', isDefault: true};
   def = withDefaultPieces(def);
@@ -613,30 +556,22 @@ export function createDefaultMeetingRule(id: string): TagRule {
 }
 
 /**
- * Ensures `settings.tagRules` has at least the one seeded
- * default (§7's Phase 2 migration) - a no-op (returns the SAME object
- * reference) once it's non-empty, so a caller can cheaply tell "did this
- * actually seed anything" via `result !== settings` and only persist when
- * it did (storage/settingsStorage.ts's loadSettings). Deliberately keyed on
- * "list is empty", not a separate one-shot migration flag: simpler, and
- * idempotent either way - if a future change ever lets the list go back to
- * empty on purpose (e.g. the user deletes every definition), this seeds a
- * fresh default again rather than leaving meeting notes with nothing, which
- * keeps a Meeting default in place (since 2026-09-25 there is no fixed
- * fallback layout any more - a Meeting with no matching rule gets no
- * content, docs/dev/technical-design-linked-file-piece.md §4).
+ * Ensures `settings.tagRules` has at least the one seeded default (§7) - a
+ * no-op (returns the SAME object reference) once it's non-empty, so a caller
+ * can cheaply tell "did this seed anything" via `result !== settings` and only
+ * persist when it did (storage/settingsStorage.ts's loadSettings). Keyed on
+ * "list is empty", not a one-shot migration flag: simpler, and idempotent -
+ * if the user deletes every definition, this seeds a fresh default again.
+ * That matters because there is no fixed fallback layout - a Meeting with no
+ * matching rule gets no content (docs/dev/technical-design-linked-file-piece.md §4).
  */
 /**
  * Whether a Todo's note should stop being auto-*re*populated on open
  * (storage/meetingNoteContent.ts's `refreshTodoNoteBlock`) - true once the
- * task is done or cancelled (2026-09-18, Phase 3 - Tilman: "stop auto
- * updating existing data when a note is already marked done"; cancelled
- * folded in the same way isMeetingAutoUpdateFrozen treats a cancelled
- * meeting, for the same reason - a cancelled task's note is done changing
- * too). Never gates *creation* - same "initial population always happens,
- * only the *re*-populate-on-open path freezes" split
- * isMeetingAutoUpdateFrozen documents; callers pass an explicit bypass for
- * the creation path rather than this function trying to distinguish the two.
+ * task is done or cancelled, the same way isMeetingAutoUpdateFrozen treats a
+ * cancelled meeting. Never gates *creation*: initial population always
+ * happens, only the re-populate-on-open path freezes; callers pass an
+ * explicit bypass for the creation path.
  */
 export function isTodoAutoUpdateFrozen(task: Pick<Task, 'done' | 'cancelled'>): boolean {
   return task.done || task.cancelled;

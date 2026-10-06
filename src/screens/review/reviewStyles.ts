@@ -49,7 +49,7 @@ export const styles = StyleSheet.create({
   stepScroll: {
     flex: 1,
   },
-  // Gmail inbox detail panel (2026-09-21): a column whose last child, the
+  // Gmail inbox detail panel: a column whose last child, the
   // email text, takes all the height the fixed controls above it leave over -
   // see GmailDetailPanel's doc comment and ui/GmailBodyPane.tsx.
   gmailDetailRoot: {
@@ -77,7 +77,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   // Bounded flex:1 column (docs/dev/technical-design-flex-weight-stacking.md
-  // §3.4, 2026-09-17) - splits its real available height 8:6 between the
+  // §3.4) - splits its real available height 8:6 between the
   // Inbox-to-zero step's Tasks/Meetings PagedSections via the weighted
   // `<View style={{flex: REVIEW_INBOX_TASKS_WEIGHT}}>`/`{flex:
   // REVIEW_INBOX_MEETINGS_WEIGHT}}` boxes wrapping them in renderInboxZero,
@@ -123,7 +123,7 @@ export const styles = StyleSheet.create({
   },
   // ui/ReviewMasterDetail.tsx left-list rows (Stalled/Neglected/Done/On
   // Hold's flat ReviewLeftRow, and Unfocused next items' own flattened
-  // rows) - 2026-09-16, docs/dev/technical-design-review-master-detail.md §3.
+  // rows) - docs/dev/technical-design-review-master-detail.md §3.
   masterRow: {
     paddingVertical: 6,
     paddingHorizontal: 8,
@@ -141,8 +141,7 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
   },
   // Muted, not struck through - an acted-on row stays fully legible and
-  // re-tappable (requirements chat: "eine Haken reicht, aber auch Option es
-  // nochmal zu ändern"), it just visually recedes a touch.
+  // re-tappable (the decision can be changed), it just visually recedes a touch.
   masterRowActedOn: {
     opacity: 0.55,
   },
@@ -259,8 +258,8 @@ export const styles = StyleSheet.create({
     borderWidth: 2,
   },
   /** Grayed-out "already focused" state for Unfocused-next-items' own
-   * "+ Add to Daily/Weekly focus" pills (2026-09-16, Tilman feedback) - same
-   * opacity convention this file's other disabled controls use. */
+   * "+ Add to Daily/Weekly focus" pills - same opacity convention this
+   * file's other disabled controls use. */
   pillDisabled: {
     opacity: 0.3,
   },
@@ -268,10 +267,10 @@ export const styles = StyleSheet.create({
     fontSize: FONT.small,
     fontWeight: '600',
   },
-  /** Unfocused-next-items' own compact "Set due date" field (2026-09-16,
-   * Tilman feedback) - same YYYY-MM-DD text convention ui/QuickAddWidget.tsx's
-   * own due-date field uses, sized to sit inline in a pillRow next to its
-   * Save/✕ pills rather than the widget's own full-width layout. */
+  /** Unfocused-next-items' own compact "Set due date" field - same
+   * YYYY-MM-DD text convention ui/QuickAddWidget.tsx's own due-date field
+   * uses, sized to sit inline in a pillRow next to its Save/✕ pills rather
+   * than the widget's own full-width layout. */
   /** Wrapper margins for the due-date field (DateInput takes layout via containerStyle) - the same 8/6 gap the pills beside it have. */
   dueDateWrap: {
     marginRight: 8,
@@ -282,7 +281,7 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 10,
   },
-  // Gmail Archive pill's tap flash (2026-09-28): inverted black fill, the
+  // Gmail Archive pill's tap flash: inverted black fill, the
   // app's "active" convention (ui/theme.ts COLORS.accent/accentText).
   pillFlash: {
     backgroundColor: COLORS.accent,

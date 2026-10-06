@@ -2,28 +2,23 @@
  * The ONE implementation of "create a Task/Meeting and put it somewhere" and
  * "change one existing Task/Meeting wherever it lives" that every screen
  * shares (docs/dev/technical-design-cache-subscription-and-shared-add-path.md
- * §B, 2026-09-20). Before this, Daily, Week, Review, Inbox, Project and
- * Capture each carried their own copy of the same Task/Meeting object
- * literal and of the "Inbox file or cached Project/Area item?" branch - and
- * the copies had drifted (Capture's literals lacked `linkedFile`; Week's
- * post-save refresh silently did nothing, so meetings filed to a
- * Project/Area did not show up until something else re-rendered it).
+ * §B), so Daily, Week, Review, Inbox, Project and Capture build the same
+ * Task/Meeting objects and take the same "Inbox file or cached Project/Area
+ * item?" branch instead of separate copies that drift apart.
  *
- * Deliberately no React and no screen state in here. The Inbox is still
- * held as local `ProjectFileState` by each screen (moving it into
- * storage/dataCache.ts is a separate, later step), so every function that
- * may write the Inbox file takes it as an explicit `InboxContext` and
- * RETURNS the new Inbox state (`nextInbox`, or null when the Inbox file was
- * not the one written) - the caller does `if (nextInbox) setInbox(nextInbox)`.
+ * Deliberately no React and no screen state in here. The Inbox is held as
+ * local `ProjectFileState` by each screen, so every function that may write
+ * the Inbox file takes it as an explicit `InboxContext` and RETURNS the new
+ * Inbox state (`nextInbox`, or null when the Inbox file was not the one
+ * written) - the caller does `if (nextInbox) setInbox(nextInbox)`.
  * Returning it (instead of a setter callback) also gives multi-step callers
- * (Daily's bulk `#now` clear) the fresh value to thread into the next call,
- * which is what the old `inboxOverride` parameter was for: `setInbox` is
- * async, so a second call reading the `inbox` React state would otherwise
- * see the pre-mutation value and clobber the first write.
+ * (Daily's bulk `#now` clear) the fresh value to thread into the next call:
+ * `setInbox` is async, so a second call reading the `inbox` React state would
+ * otherwise see the pre-mutation value and clobber the first write.
  *
- * Project/Area writes go through storage/dataCache.ts's write-through pair
- * exactly as before; the cache itself announces the change
- * (subscribeCache), so no caller has a "refresh" step to forget.
+ * Project/Area writes go through storage/dataCache.ts's write-through pair;
+ * the cache itself announces the change (subscribeCache), so no caller has a
+ * "refresh" step to forget.
  */
 import {Destination} from '../domain/destination';
 import {deriveMeetingFields, deriveTaskFields} from '../domain/markdown';
@@ -81,10 +76,10 @@ export function buildMeeting(fields: MeetingInput, opts?: {notePath?: string; li
 /**
  * `meeting` with an edit session's fields applied - the ONE place that maps
  * Quick Add's edited fields onto a stored Meeting (docs/dev/technical-design-
- * monthly-view.md §3.3). Every screen's "save meeting edit" and "quick-file
- * meeting edit" used to copy title/date/time by hand (10 copies); a new
- * meeting field now needs exactly one change, here. Everything not edited
- * (cancelled/notePath) is carried over from `meeting`.
+ * monthly-view.md §3.3), shared by every screen's "save meeting edit" and
+ * "quick-file meeting edit", so a new meeting field needs exactly one change,
+ * here. Everything not edited (cancelled/notePath) is carried over from
+ * `meeting`.
  */
 export function applyMeetingEdit(meeting: Meeting, fields: MeetingInput, linkedFile: string): Meeting {
   return {
@@ -165,7 +160,7 @@ export interface MeetingEntryRef {
  * Re-fetches `entry`'s own source (the Inbox via `ctx`, otherwise the live
  * cache) fresh, applies `mutate` to a copy of its full tasks array, saves the
  * file and writes the cache through. Throws a user-facing message if the
- * item or the task index no longer matches what is cached (edited/removed
+ * item or the task index does not match what is cached (edited/removed
  * outside the plugin since the last load). `mutate` is source-agnostic - it
  * just indexes by `entry.taskIndex` into whatever array it is handed - so
  * the same callback works against either backing array.

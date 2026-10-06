@@ -90,9 +90,9 @@ const KEPT_TABS: AppTab[] = ['daily', 'week', 'month', 'current', 'projects', 'a
 // The Project/Area currently shown on the "Current" tab - set whenever one
 // is opened (from Projects/Areas/Daily, from a Lasso-capture save, or by
 // reorient() below), and left alone by everything else, including tab
-// switches. There is no back stack any more: navigation is purely "which
-// tab is active" (`activeTab`) plus "what does the Current tab show right
-// now" (`currentItem`), and the two are independent - switching to another
+// switches. There is no back stack: navigation is purely "which tab is
+// active" (`activeTab`) plus "what does the Current tab show right now"
+// (`currentItem`), and the two are independent - switching to another
 // tab and back to "Current" still shows the same item.
 interface CurrentItem {
   kind: 'project' | 'area';
@@ -104,11 +104,9 @@ interface CurrentItem {
 // full-screen Lasso-capture overlay, showing the tab shell, or showing
 // Daily's focus mode. Deliberately separate from `activeTab`/`currentItem`
 // (which persist regardless of mode) - both the capture overlay and focus
-// mode sit on top of the tab shell rather than being one of its tabs, same
-// as the old {kind: 'capture'} screen used to stand apart from
-// {kind: 'home'|'daily'|'item'|'settings'}. 'focus' (docs/dev/technical-design-
-// now-focus-mode.md §4) reuses that exact "full-screen, no TabBar" shape -
-// same DailyView instance as 'tabs'-mode Daily, just rendered with its
+// mode sit on top of the tab shell rather than being one of its tabs.
+// 'focus' (docs/dev/technical-design-now-focus-mode.md §4) is the same
+// DailyView instance as 'tabs'-mode Daily, just rendered with its
 // focusMode prop on instead of a separate screen component.
 type Mode = 'loading' | 'capture' | 'tabs' | 'focus';
 
@@ -224,10 +222,10 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // initial mount, AND every time our own sidebar button is pressed again.
   // The Activity/JS instance stays alive while the plugin is hidden (the
   // user switched to a different note without tapping the "✕" close
-  // button), so a mount-only effect only ever ran this once and left the
-  // plugin stuck showing whatever it had open before - it never noticed a
-  // different note was now current. registerButtonListener's event fires on
-  // every press, whether that press launches a fresh instance or brings an
+  // button), so a mount-only effect would run this only once and leave the
+  // plugin showing whatever it had open before, never noticing a different
+  // note is now current. registerButtonListener's event fires on every
+  // press, whether that press launches a fresh instance or brings an
   // already-running one back to the foreground, which is exactly the signal
   // needed here. The button that opens this plugin only appears while a
   // NOTE/DOC is open, so there's always *a* current note; the only question
@@ -235,15 +233,15 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // nested, e.g. its own Meetings/Todos subfolder - findEnclosingItem walks
   // up to the top-level item either way). A hit switches to the "Current"
   // tab and updates `currentItem`; a miss switches to the "Daily" tab
-  // instead (the closest still-useful landing spot now that there's no
-  // "Home" tab) without touching whatever `currentItem` already held.
+  // instead (the closest useful landing spot, as there's no "Home" tab)
+  // without touching whatever `currentItem` already held.
   // Exception (docs/dev/technical-design-return-to-origin.md): if the note open
   // now is the one this plugin itself last opened (openPath), neither jump
   // happens - the plugin resumes exactly where it was left.
   //
   // Same spot also kicks off a background cache refresh (design-overview.md
-  // §2.3; since 0.6.0 only files changed on disk are read again, the first
-  // open builds the cache in full) - fire-and-forget, not
+  // §2.3; only files changed on disk are read again, the first open builds
+  // the cache in full) - fire-and-forget, not
   // awaited, so a slow scan never delays landing on a tab. By the time the
   // user actually taps into something, storage/dataCache.ts is usually
   // already warm; if it isn't yet, each screen's own cache-miss fallback
@@ -267,41 +265,23 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // Bumped on every Lasso-button press and used as CaptureScreen's `key`
   // below, forcing a full unmount+remount on each press rather than
-  // re-rendering the same instance. Without this, a *second* capture while
-  // the app's JS instance is still alive from the first one (Save & Close
-  // and Cancel both leave `mode` as 'capture' - closePluginView() only
-  // hides the native view, per this file's own note above about the
-  // instance staying alive) re-sets mode to the exact same 'capture' value.
-  // React re-renders CaptureScreen in place rather than remounting it, so
-  // its mount-only `useEffect(load, [load])` never re-fires - `load` is a
-  // stable useCallback identity, so nothing tells it a *new* lasso
-  // selection is waiting to be read. The text field then just keeps
-  // showing whatever the previous capture left in it (its old recognized
-  // text, or whatever was typed/cleared before saving) instead of the new
-  // selection's recognition - this is what surfaced on-device as
-  // "recognition did not appear in text field" on a second capture. Forcing
-  // a remount via `key` resets every piece of CaptureScreen's local state
+  // re-rendering the same instance. A *second* capture while the app's JS
+  // instance is still alive from the first one (Save & Close and Cancel
+  // both leave `mode` as 'capture' - closePluginView() only hides the
+  // native view) would otherwise re-render CaptureScreen in place: its
+  // mount-only `useEffect(load, [load])` never re-fires (`load` is a stable
+  // useCallback), so the text field would keep showing the previous
+  // capture's text instead of the new selection's recognition. Forcing a
+  // remount via `key` resets every piece of CaptureScreen's local state
   // (text, kind, destination, linkToSource, warnings) and re-runs `load()`
   // against whatever is actually lassoed right now.
   //
   // Real useState, not useRef (docs/dev/technical-design-filing-unification.md
-  // §9 - fixes a since-found regression in the mechanism described above):
-  // a plain ref mutation doesn't itself trigger a re-render, so the fix
-  // relied entirely on the *following* `setMode('capture')` call to force
-  // one. That's fine on the very first capture (mode is genuinely
-  // transitioning away from 'loading'/'tabs'), but on a *second* Lasso press
-  // after Cancel/Save & Close - both of which leave `mode` already at
-  // 'capture', per the note above - `setMode('capture')` is a same-value
-  // call, and React's Object.is bailout on identical primitive state means
-  // it re-renders nothing at all: the `key={captureNonce}` JSX line below
-  // never re-evaluates, and the stale CaptureScreen instance (old
-  // recognized text, old kind, old destination) stays mounted exactly as it
-  // was. This is the precise mechanism behind the reported "recognizes
-  // correctly the first time, then always shows the previous capture's text
-  // after that" regression. `setCaptureNonce(n => n + 1)`'s functional
-  // updater always produces a genuinely new value regardless of what `mode`
-  // does, so the remount no longer depends on `setMode`'s own bailout
-  // behavior.
+  // §9): a ref mutation doesn't trigger a re-render, and when `mode` is
+  // already 'capture', `setMode('capture')` is a same-value call that React
+  // bails out of (Object.is), so the `key={captureNonce}` JSX line would
+  // never re-evaluate. `setCaptureNonce(n => n + 1)` always produces a new
+  // value, so the remount doesn't depend on `setMode`.
   const [captureNonce, setCaptureNonce] = useState(0);
   // What the capture screen shows (docs/dev/technical-design-lasso-0.8.md §3.7):
   // the lasso (lasso button) or open marks (a "marks to process" card).
@@ -411,7 +391,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           return;
         }
 
-        // A record that no longer matches (a different note is open, or it
+        // A record that doesn't match (a different note is open, or it
         // expired) means the user moved on - drop it, so returning to the
         // old note by hand later can't resurrect it.
         if (landing.clearRecord) clearReturnRecord();
@@ -571,8 +551,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
-      // Keyed by path: opening a different item gives a fresh screen, as it
-      // always did when arriving from another tab.
+      // Keyed by path: opening a different item gives a fresh screen, the same
+      // as arriving from another tab.
       current: currentItem ? (
         <ItemDetail
           key={currentItem.path}
@@ -668,7 +648,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // Shared by Projects/Areas/Daily's "open this Project/Area" action,
   // CaptureScreen's "Save & View", screens/ReviewScreen.tsx's own cards, and
-  // (2026-09-09) every Files pane's Browse tab (screens/InboxScreen.tsx,
+  // every Files pane's Browse tab (screens/InboxScreen.tsx,
   // screens/ItemDetail.tsx) - all just want to land on the "Current" tab
   // showing this item.
   const openItem = (kind: 'project' | 'area', entry: FolderEntry) => {
@@ -785,8 +765,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // ItemStatusPanel's Archive action (via ItemDetail) calls this once the
-  // item's folder has actually moved - `currentItem.path` no longer points
-  // at anything under Projects/Areas, so there's nothing left to show on
+  // item's folder has actually moved - `currentItem.path` then points at
+  // nothing under Projects/Areas, so there's nothing left to show on
   // the "Current" tab. Lands back on whichever list (Projects/Areas) this
   // item came from, same as closing out of it normally would.
   const handleArchived = (kind: 'project' | 'area') => {
@@ -837,9 +817,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // Focus mode (docs/dev/technical-design-now-focus-mode.md §4): the exact same
   // DailyView instance 'tabs' mode's Daily tab renders below, just with
   // focusMode on - no separate screen component, no separate data load.
-  // Rendered here, before the TabBar-wrapped 'tabs' branch, the same way
-  // 'capture' above always was - "full-screen, no TabBar" is a shape this
-  // app already had.
+  // Rendered here, before the TabBar-wrapped 'tabs' branch, like 'capture'
+  // above - full-screen, no TabBar.
   if (mode === 'focus') {
     // The status slot sits at the very top of focus mode (D4) - it's
     // normally empty there.
@@ -925,8 +904,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
               {nonKeptBody}
             </>
           ) : (
-            // "Keep tabs in memory" off: exactly the previous behavior - the
-            // active tab's screen is mounted, every other one unmounted.
+            // "Keep tabs in memory" off: only the active tab's screen is mounted,
+            // every other one is unmounted.
             <>
               {activeTab === 'projects' && (
                 <ItemsList

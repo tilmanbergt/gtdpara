@@ -1,7 +1,7 @@
 /**
  * Whether visited tabs are kept alive (hidden, not unmounted) - the
  * "Keep tabs in memory" switch (docs/dev/technical-design-keep-tabs-alive.md
- * §3.1). Default ON (decided 2026-09-30); the switch exists as a safety net
+ * §3.1). Default ON; the switch exists as a safety net
  * during the test phase. Set by App.tsx after loading settings and by the
  * Settings button; App subscribes, so a change applies immediately.
  */

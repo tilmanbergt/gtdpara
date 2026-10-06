@@ -6,10 +6,10 @@
  *
  * Unlike ui/useCachedItems.ts, the calling component re-renders only when
  * one of those fields changes somewhere, not on every cache change (task
- * edits, meeting saves, the background rebuild on every reopen). Added
- * 2026-09-30 (docs/dev/technical-design-render-perf-ab.md §7): the memoized
- * QuickAddWidget re-rendered twice per reopen through useCachedItems,
- * ~130 ms each, for changes it never displays.
+ * edits, meeting saves, the background rebuild on every reopen)
+ * (docs/dev/technical-design-render-perf-ab.md §7): through useCachedItems
+ * the memoized QuickAddWidget would re-render twice per reopen, ~130 ms
+ * each, for changes it never displays.
  *
  * Always returns the CURRENT cache items (read at render time), so a render
  * triggered by anything else still sees fresh data.

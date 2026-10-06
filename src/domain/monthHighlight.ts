@@ -2,17 +2,13 @@
  * Month-view highlights (docs/dev/technical-design-monthly-view.md §2.4): a
  * meeting is a highlight when its line carries the bare tag `#monthly`, and
  * its optional short form is the trailing bracket of its title - e.g.
- * "Art of Transformation Session (AoT)". The short form is plain title text
- * (Tilman, 2026-09-23: "abbreviated form just in brackets ... can be filled
- * in by hand or added explicitly"), so it shows everywhere the title does.
+ * "Art of Transformation Session (AoT)". The short form is plain title text,
+ * filled in by hand, so it shows everywhere the title does and is edited as
+ * part of the title in Quick Add.
  *
- * 2026-09-29 (docs/dev/technical-design-meeting-lists.md §2.2, Tilman: "any
- * final brackets should be used as short form"): ANY trailing bracket counts
- * now - spaces, umlauts and punctuation included ("(Geburtstag Jörg)",
- * "(AoT-2)"), up to 40 characters. It used to be 1-12 ASCII letters/digits
- * only, so most real brackets silently fell back to the full title. The
- * Month day panel's SHORT editor (setShortForm/isValidShortForm) is gone -
- * the bracket is edited as part of the title in Quick Add.
+ * ANY trailing bracket counts (docs/dev/technical-design-meeting-lists.md
+ * §2.2) - spaces, umlauts and punctuation included ("(Geburtstag Jörg)",
+ * "(AoT-2)"), up to 40 characters.
  * Pure, zero RN/SDK imports (domain/ convention).
  */
 import {hasBareTag, setBareTag, stripBareTags} from './flowState';

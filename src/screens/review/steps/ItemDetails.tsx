@@ -28,24 +28,21 @@ import {noopAddMeeting, reviewCurrentItem, statusLabel} from '../shared';
 /**
  * Stalled-project/neglected-area detail panel (Steps: Stalled projects,
  * Neglected areas) - `ui/ItemContextBlock.tsx` (Area/Scope/Last goal) up
- * top, per round-2 requirement (a), then the rest of what used to be
- * `ReviewItemCard`'s content, relocated unchanged (docs/dev/technical-design-
- * review-master-detail.md §5.2): a quick-add task fixed to this item, its
- * open tasks, up to 2 upcoming meetings, shelved Someday/Maybe tasks with a
- * one-tap "→ Next" promotion, and status/archive pills. `statusOptions` is
- * the 3-way Active/On Hold/Done set for Projects or the 2-way Active/On
- * Hold set for Areas (Areas never reach 'done' - domain/types.ts's
- * ItemStatus doc comment).
+ * top, then (docs/dev/technical-design-review-master-detail.md §5.2): a
+ * quick-add task fixed to this item, its open tasks, up to 2 upcoming
+ * meetings, shelved Someday/Maybe tasks with a one-tap "→ Next" promotion,
+ * and status/archive pills. `statusOptions` is the 3-way Active/On
+ * Hold/Done set for Projects or the 2-way Active/On Hold set for Areas
+ * (Areas never reach 'done' - domain/types.ts's ItemStatus doc comment).
  *
- * `items` is the live cache (2026-09-02 feedback: "show newly created tasks
- * in the list") - `reviewCurrentItem` looks the item back up on every
- * render (falling back to a safe default if it's vanished from the cache)
- * and this panel recomputes both its open-tasks list and its shelvedTasks
- * list from there (reviewAggregate.ts's exported isActionableOpenTask/
- * shelvedTasksFor - the same rules the aggregate itself uses), rather than
- * trusting the frozen `entry`'s own copies - what keeps a just-added task,
- * or a just-promoted shelved task, showing up immediately even though the
- * item's membership in the step stays frozen.
+ * `items` is the live cache - `reviewCurrentItem` looks the item back up on
+ * every render (falling back to a safe default if it's vanished from the
+ * cache) and this panel recomputes both its open-tasks list and its
+ * shelvedTasks list from there (reviewAggregate.ts's exported
+ * isActionableOpenTask/shelvedTasksFor - the same rules the aggregate
+ * itself uses), rather than trusting the frozen `entry`'s own copies. That
+ * keeps a just-added task, or a just-promoted shelved task, showing up
+ * immediately even though the item's membership in the step stays frozen.
  */
 export function ReviewItemDetail({
   entry,
@@ -197,14 +194,12 @@ export function ReviewItemDetail({
 
 /**
  * Done-project/On-Hold-item detail panel (Steps: Done awaiting review, On
- * Hold reconsideration) - `ItemContextBlock` (round-2 requirement b) +
- * status action pills (unchanged from the old `StatusActionCard`: Archive
+ * Hold reconsideration) - `ItemContextBlock` + status action pills (Archive
  * here is a physical folder move, storage/archive.ts, rather than a plain
  * frontmatter status change, and "→ Done" only makes sense for Projects,
- * `showMarkDone`) + two new sections, both reusing existing shared row
- * primitives rather than `ProjectDataPanel.tsx`'s own `TodosSection`/
- * `MeetingsSection` (see the technical design's §6.3 for why those two
- * aren't reused wholesale):
+ * `showMarkDone`) + two sections, both using shared row primitives rather
+ * than `ProjectDataPanel.tsx`'s own `TodosSection`/`MeetingsSection` (see
+ * the technical design's §6.3 for why those two aren't reused wholesale):
  * - **All tasks** - `current.tasks` unfiltered (not just open ones, unlike
  *   `ReviewItemDetail` above) via `ui/TaskRow.tsx` directly, `context="flat"`
  *   read-only (no edit/link affordances - this view is look-then-decide,
@@ -212,10 +207,9 @@ export function ReviewItemDetail({
  * - **All meetings** - `current.meetings` unfiltered via `ui/MeetingRow.tsx`
  *   directly, same read-only treatment.
  *
- * No `reviewAggregate.ts` changes were needed for this (§4.1) - `doneList`/
- * `onHoldList` stay bare `ReviewItemRef[]`; this panel does the same live
- * `reviewCurrentItem` lookup every other detail panel here does and simply
- * doesn't filter the result.
+ * `doneList`/`onHoldList` stay bare `ReviewItemRef[]` (§4.1); this panel
+ * does the same live `reviewCurrentItem` lookup every other detail panel
+ * here does and simply doesn't filter the result.
  */
 export function DoneOnHoldDetail({
   itemRef,

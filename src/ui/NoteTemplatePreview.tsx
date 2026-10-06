@@ -3,37 +3,26 @@
  * (docs/dev/technical-design-note-templates.md §6). Shows each piece's position
  * and rough relative size as a scaled label inside a page-shaped box; tapping
  * a piece selects it, same as tapping its row in the piece list below -
- * either one drives the single shared ui/NudgePad.tsx (Tilman's UI-draft
- * feedback: "selecting a piece either on the preview or in the list below
- * makes this the one that is displayed and can be adjusted").
+ * either one drives the single shared ui/NudgePad.tsx, so the selected
+ * piece is the one shown and adjusted.
  *
- * Renders the actual selected MyStyle background behind the piece labels
- * as of 2026-09-18 (Tilman: "please also show this image in the background
- * where the pieces of information are positioned, so the user can make it
- * fit into the background") - follow-up to screens/Settings.tsx's "Choose
- * background" page already doing the same `<Image source={{uri:
- * 'file://'+path}}}>` load (docs/dev/technical-design-note-templates.md §7
- * Phase 5 item #1). Each piece label gets its own translucent white
- * backing (`styles.pieceLabel`'s `backgroundColor`) so its text stays
- * legible over an arbitrary PNG rather than only over the plain box - the
- * z-ordering/legibility pass this file's own doc comment used to flag as a
- * separate follow-up. No chosen-background label of its own either
- * (2026-09-18: dropped the "Background: <name>" caption this used to
- * render above the box - Tilman, looking at the edit form's two columns
- * together: "no need to repeat name of template on top, as it shows to the
- * left" - the left column's own compact "Background: <name>  Change…" row
- * already says it once).
+ * Renders the selected MyStyle background behind the piece labels so the
+ * user can fit the pieces to it - the same `<Image source={{uri:
+ * 'file://'+path}}}>` load as screens/Settings.tsx's "Choose background"
+ * page (docs/dev/technical-design-note-templates.md §7 Phase 5 item #1).
+ * Each piece label gets its own translucent white backing
+ * (`styles.pieceLabel`'s `backgroundColor`) so its text stays legible over
+ * an arbitrary PNG. There is no background-name caption: the edit form's
+ * left column already shows "Background: <name>  Change…".
  *
- * Max-width cap made visible (2026-09-23, docs/dev/technical-design-textbox-
- * metrics.md - Tilman: "add a width parameter to the tag rules screen that
- * defines the maximum width for text pieces (should be visible in the
- * preview screen as well)"): each piece's label now gets a scaled `width`
+ * Max-width cap made visible (docs/dev/technical-design-textbox-metrics.md):
+ * each piece's label gets a scaled `width`
  * equal to `min(pieceMaxWidthPx(piece), pieceWidthPx(piece.x))` instead of
  * auto-sizing to its (truncated) text, so the box shown here is literally the
  * boundary the real note-page textbox will be capped at (storage/
  * notePieceMetrics.ts's `measureNotePieceRect` never writes a box wider than
  * this) - it updates live as the plus/minus-25 control in ui/NudgePad.tsx is
- * used on the selected piece. Still `numberOfLines={1}` - this previews the
+ * used on the selected piece. Labels stay `numberOfLines={1}` - this previews the
  * WIDTH boundary, not real on-device line-wrapping (that needs the native
  * measurement call, an async round trip this synchronous preview doesn't
  * make - see the concept doc's non-goals section).
@@ -78,7 +67,7 @@ interface Props {
   pieces: NotePiece[];
   selectedIndex: number | null;
   onSelectPiece: (index: number) => void;
-  /** '' = blank/no template picked - same convention TagRule.template already uses; renders no <Image> at all, same as before this prop existed. */
+  /** '' = blank/no template picked - same convention TagRule.template uses; renders no <Image> at all. */
   background: string;
   textColor: string;
   borderColor: string;
@@ -103,7 +92,7 @@ export default function NoteTemplatePreview({
   // Tracks the filename an <Image> load last FAILED for, not a plain
   // boolean - same reasoning as screens/Settings.tsx's own
   // templatePreviewFailedFor: switching to a different background (or back
-  // to a previously-good one) re-attempts a load rather than staying stuck
+  // to an earlier good one) re-attempts a load rather than staying stuck
   // on a stale failure.
   const [previewFailedFor, setPreviewFailedFor] = useState<string | null>(null);
 
@@ -129,8 +118,8 @@ export default function NoteTemplatePreview({
             // light "paper," independent of this Settings screen's own
             // theme), and a backing is what keeps that legible over
             // whatever the PNG looks like underneath. No background
-            // selected: unchanged from before this prop existed - plain
-            // `textColor`, no backing, matching the rest of this form.
+            // selected: plain `textColor`, no backing, matching the rest of
+            // this form.
             const overImage = background !== '' && previewFailedFor !== background;
             const boxWidthPx = Math.min(pieceMaxWidthPx(piece), pieceWidthPx(piece.x));
             return (

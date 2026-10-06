@@ -1,12 +1,11 @@
 /**
- * FocusedItemRow — one "name (tap to open) + ✕ (tap to remove)" row,
- * extracted from `ui/DailyFocusPanel.tsx`'s `FixedSlotSection` (2026-09-16,
- * docs/dev/technical-design-review-master-detail.md §5.4/§6.4) so Review's new
- * Unfocused-next-items "Current focus" panel shows the exact same
- * remove-affordance as the Daily tab's own focus list, rather than a
- * second, differently-styled copy.
+ * FocusedItemRow — one "name (tap to open) + ✕ (tap to remove)" row, shared
+ * by `ui/DailyFocusPanel.tsx`'s `FixedSlotSection` and Review's
+ * Unfocused-next-items "Current focus" panel
+ * (docs/dev/technical-design-review-master-detail.md §5.4/§6.4), so both show
+ * the exact same remove-affordance.
  *
- * Deliberately NOT reused by `ui/WeeklyFocusPanel.tsx`'s own
+ * Deliberately NOT used by `ui/WeeklyFocusPanel.tsx`'s own
  * `FixedSlotSection` - that one wraps its name+✕ pair inside a taller,
  * un-bordered card that also shows Next/Someday/meeting counts and an
  * inline goal editor (`GoalRow`), so its header row isn't the same
@@ -14,10 +13,7 @@
  * shape through this component would mean threading extra layout props for
  * a component whose whole point is being a small, fixed shape - the kind of
  * trade-off `ui/ItemContextBlock.tsx`'s own module doc comment (§6.2)
- * argues against forcing. `DailyFocusPanel.tsx`'s row and Review's own
- * Daily/Weekly current-focus rows *are* the same shape (a standalone
- * bordered row, nothing else in it), so those two get the real, full reuse
- * this extraction is for.
+ * argues against.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';

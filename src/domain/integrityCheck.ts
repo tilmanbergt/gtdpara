@@ -2,38 +2,29 @@
  * Integrity Check (docs/dev/technical-design-integrity-check.md) - domain layer
  * for a Settings > Folders action that scans every Project/Area/Archive/
  * Inbox data file for known problems and reports what it finds. Built as a
- * small registry (INTEGRITY_CHECKS) rather than one hardcoded check, so a
- * second check is a matter of writing one more function and registering it
- * (Tilman, 2026-09-23: "right now just hash, but should be setup to easily
- * integrate further checks"). Report-only by design, no auto-fix (Tilman,
- * same conversation).
+ * small registry (INTEGRITY_CHECKS) so adding a check means writing one more
+ * function and registering it. Report-only by design, no auto-fix.
  *
- * Two check shapes now exist:
+ * Two check shapes:
  * - `IntegrityCheck` - runs once per scanned item (Project/Area/Archive
  *   entry/Inbox), given that item's parsed Tasks/Meetings plus enough of its
  *   raw file/frontmatter state to check structure and cross-references
- *   (`IntegrityCheckInput`, extended 2026-09-23 for the round of checks
- *   below).
- * - `WholeRunCheck` (new 2026-09-23) - runs ONCE per scan, given every
- *   scanned item's summary at once (`ScannedItemSummary[]`), for checks that
- *   are inherently cross-item (does this Project's `area:` field match any
- *   real Area? do two items share the same `abbrev`?) rather than about one
- *   item in isolation. Pure/synchronous - by the time a WholeRunCheck runs,
- *   every item has already been read, so there's no device I/O left to do.
+ *   (`IntegrityCheckInput`).
+ * - `WholeRunCheck` - runs ONCE per scan, given every scanned item's summary
+ *   at once (`ScannedItemSummary[]`), for checks that are inherently
+ *   cross-item (does this Project's `area:` field match any real Area? do two
+ *   items share the same `abbrev`?). Pure/synchronous - by the time a
+ *   WholeRunCheck runs, every item has already been read.
  *
  * A per-item check MAY need device I/O - `hashNotePath`/`linkedFileMissing`/
  * `defaultResourceFolderMissing` below do, since telling a genuine problem
  * apart from a false alarm means checking whether something real exists on
- * disk. Rather than importing supernote/fileSystem.ts directly and breaking
- * this file's "zero RN/SDK imports" convention (design-overview.md §3,
- * matches domain/sharedNotePages.ts and friends), every `IntegrityCheck`
- * takes a small `IntegrityCheckIO` capability instead - the real
- * implementation (using `fileExists`/`folderExists`) lives in
- * storage/integrityCheck.ts, which already does device I/O, so this file
- * stays a plain, swappable interface. That keeps the decision logic here
- * testable with a fake `io` (see the standalone verification script) while
- * production wiring lives one layer down, same split as the rest of the
- * domain/storage boundary in this codebase.
+ * disk. To keep this file's "zero RN/SDK imports" convention
+ * (design-overview.md §3, matches domain/sharedNotePages.ts and friends),
+ * every `IntegrityCheck` takes a small `IntegrityCheckIO` capability instead
+ * of importing supernote/fileSystem.ts. The real implementation (using
+ * `fileExists`/`folderExists`) lives in storage/integrityCheck.ts, so the
+ * decision logic here stays testable with a fake `io`.
  */
 import {closeOutInterrupted, parsePlan} from './closeOut/plan';
 import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, stripPageAnchor} from './sharedNotePages';
@@ -78,27 +69,20 @@ export interface IntegrityCheckIO {
 export type IntegrityCheck = (input: IntegrityCheckInput, io: IntegrityCheckIO) => Promise<IntegrityFinding[]>;
 
 /**
- * The bugfix_shared_note_content_missing check, now on its third round.
- * Rounds 1-2 (2026-09-22/23) fixed how a shared anchor is PARSED and how new
- * filenames are BUILT; this check (round 3, 2026-09-23) is about telling a
- * currently-broken notePath apart from one that just happens to contain '#'
- * for an innocent reason - a distinction `storage/noteLinks.ts`'s
- * `resolveNotePath` itself now also makes, the same way, for the same
- * reason (see its own doc comment): a notePath containing '#' is either a
- * genuine shared anchor (verify: does `parseSharedNoteAnchor`'s `filePath`
- * half resolve to a real file?), a pre-fix own-note file that legitimately
- * has a tag in its name (verify: does the WHOLE string, taken literally,
- * resolve to a real file?), or - if NEITHER does - a genuinely broken link
+ * Flags a notePath containing '#' that resolves to nothing. Such a path is
+ * either a genuine shared anchor (verify: does `parseSharedNoteAnchor`'s
+ * `filePath` half resolve to a real file?), an older own-note file that
+ * legitimately has a tag in its name (verify: does the WHOLE string, taken
+ * literally, resolve to a real file?), or - if NEITHER does - a broken link
  * (the note was deleted or moved outside the app, or the notePath is
  * otherwise stale) that needs a person to re-link or clear it by hand.
+ * `storage/noteLinks.ts`'s `resolveNotePath` makes the same distinction (see
+ * its doc comment).
  *
- * Deliberately does NOT flag the second case (a real pre-fix own-note file)
- * even though its filename still has '#' in it: `resolveNotePath`'s own
- * fallback already makes that case open correctly, so flagging it here
- * would just be manual-rename busywork with no actual problem behind it.
- * Only the third case - neither reading resolves - is worth a person's
- * attention, which is also the one case `resolveNotePath` genuinely cannot
- * recover from on its own.
+ * Deliberately does NOT flag the second case: `resolveNotePath`'s fallback
+ * already opens it correctly, so flagging it would only cause manual-rename
+ * busywork. Only the third case - which `resolveNotePath` cannot recover
+ * from on its own - is worth a person's attention.
  */
 export async function checkHashNotePath(input: IntegrityCheckInput, io: IntegrityCheckIO): Promise<IntegrityFinding[]> {
   const findings: IntegrityFinding[] = [];
@@ -127,7 +111,8 @@ export async function checkHashNotePath(input: IntegrityCheckInput, io: Integrit
     const ownCandidate = joinNotePath(input.itemPath, notePath);
 
     if (anchorCandidate && (await io.fileExists(anchorCandidate))) return; // genuine shared anchor
-    if (await io.fileExists(ownCandidate)) return; // real pre-fix own-note file - resolveNotePath's fallback handles it fine
+    if (await io.fileExists(ownCandidate)) return; // older own-note file with '#' in its name - resolveNotePath's fallback handles it
+
 
     findings.push({
       checkId: 'hashNotePath',
@@ -159,11 +144,9 @@ export async function checkHashNotePath(input: IntegrityCheckInput, io: Integrit
 const RECOGNIZED_HEADINGS = ['## Scope', '## Tasks', '## Meetings', '## Weekly Goals', '## Monthly Goals', '## Marks'];
 
 /**
- * File-structure soundness (2026-09-23, from Tilman finding a real area.txt
- * with two `## <heading>` sections after some manual editing). Two things,
- * both derived from exactly how domain/markdown.ts's `getSpan`/
- * `getFrontMatterSpan` actually read a file - not a generic "looks odd"
- * heuristic:
+ * File-structure soundness. Two things, both derived from exactly how
+ * domain/markdown.ts's `getSpan`/`getFrontMatterSpan` read a file - not a
+ * generic "looks odd" heuristic:
  *
  * 1. **Duplicate section heading.** `getSpan(content, heading)` finds the
  *    FIRST line that exactly matches `heading` and stops at the next line
@@ -174,12 +157,13 @@ const RECOGNIZED_HEADINGS = ['## Scope', '## Tasks', '## Meetings', '## Weekly G
  *    editable, and preserved byte-for-byte untouched by every future save
  *    (`setSpan`'s `after` starts exactly at that second heading). A person
  *    could have real tasks or meetings sitting there, permanently hidden,
- *    with nothing in the UI ever hinting they exist.
+ *    with nothing in the UI ever hinting they exist. Manual editing can
+ *    produce this.
  * 2. **Missing/malformed frontmatter block.** `getFrontMatterSpan` requires
  *    the file's very first line to be exactly "---" and a later line to
  *    close it with another exact "---" - if either isn't true,
  *    `parseFrontMatter` silently falls back to `status: 'active'` and every
- *    other frontmatter field defaulting to unset, the same way it already
+ *    other frontmatter field defaulting to unset, the same way it
  *    tolerates a hand-edited file with unrecognized field values (never
  *    throws). That's the right behavior for the app to keep running, but it
  *    also means a corrupted/missing frontmatter block is otherwise
@@ -261,10 +245,10 @@ async function checkDuplicateHeadingsAsync(input: IntegrityCheckInput): Promise<
 
 /**
  * A linked *existing* file (Task.linkedFile/Meeting.linkedFile,
- * technical-design-linked-files.md) that no longer exists on disk - the
- * same idea as `hashNotePath`, but for "point at an existing file" links
- * rather than "create/open a new .note" links, and much simpler: no
- * anchor-parsing ambiguity to untangle, just "does this file exist?".
+ * technical-design-linked-files.md) that is missing on disk - the same idea
+ * as `hashNotePath`, but for "point at an existing file" links rather than
+ * "create/open a new .note" links, and much simpler: no anchor-parsing
+ * ambiguity to untangle, just "does this file exist?".
  * `linkedFile` is always stored base-root-relative (storage/linkedFiles.ts's
  * own doc comment), never item-relative, so it resolves against
  * `input.basePath` rather than `input.itemPath`.
@@ -305,9 +289,9 @@ export async function checkLinkedFileMissing(input: IntegrityCheckInput, io: Int
 
 /**
  * A Project/Area's `defaultResourceFolder:` (technical-design-linked-
- * files.md §3.1) naming a Resources subfolder that no longer exists -
- * same idea as `linkedFileMissing`, but for a FOLDER under Resources rather
- * than a file, so it uses `io.folderExists` instead of `io.fileExists`, and
+ * files.md §3.1) naming a Resources subfolder that is missing - same idea
+ * as `linkedFileMissing`, but for a FOLDER under Resources rather than a
+ * file, so it uses `io.folderExists` instead of `io.fileExists`, and
  * resolves against `input.resourcesPath` (the field is documented as
  * "relative to paths.resources", domain/markdown.ts's ParsedFrontMatter).
  */
@@ -359,8 +343,8 @@ export async function checkCloseOutInterrupted(input: IntegrityCheckInput): Prom
 }
 
 /**
- * A "Mark for later" line (lasso 0.8, `## Marks`) whose note or PDF no
- * longer exists - the mark can't be opened or processed against its page.
+ * A "Mark for later" line (lasso 0.8, `## Marks`) whose note or PDF is
+ * missing - the mark can't be opened or processed against its page.
  * Relative paths resolve against the item folder (the Inbox's are absolute).
  */
 export async function checkMarkNoteMissing(input: IntegrityCheckInput, io: IntegrityCheckIO): Promise<IntegrityFinding[]> {
@@ -422,13 +406,12 @@ export interface ScannedItemSummary {
 export type WholeRunCheck = (items: ScannedItemSummary[]) => IntegrityFinding[];
 
 /**
- * A Project's `area:` field naming an Area that no longer exists anywhere
+ * A Project's `area:` field naming an Area that exists nowhere
  * (technical-design-project-area-assignment.md §2) - checked against every
  * Area-kind item this SAME scan found, under EITHER Areas or Archive.
- * Archive is deliberately included in what counts as "valid" (Tilman,
- * 2026-09-23): archiving an Area cascade-archives its Done Projects
- * alongside it (storage/archive.ts) without ever clearing their `area:`
- * field, so a Done Project sitting in Archive still pointing at its
+ * Archive deliberately counts as "valid": archiving an Area cascade-archives
+ * its Done Projects alongside it (storage/archive.ts) without clearing their
+ * `area:` field, so a Done Project in Archive still pointing at its
  * (also-archived) Area is normal, expected state, not corruption - only a
  * name matching NEITHER live Areas NOR Archive means the Area folder is
  * genuinely gone (renamed or deleted outside the app).
@@ -458,11 +441,10 @@ function checkOrphanedAreaAssignment(items: ScannedItemSummary[]): IntegrityFind
 /**
  * Two different LIVE Projects/Areas sharing the exact same `abbrev:` value
  * (case-insensitively) - the same uniqueness rule domain/abbrev.ts's
- * `validateAbbrev` already enforces when saving through the app's own UI,
- * checked here for anything hand-edited directly (e.g. in Obsidian), where
- * nothing enforces it. Archive is deliberately EXCLUDED (Tilman, 2026-09-23:
- * "live items only") - an archived item's abbrev is no longer shown or used
- * anywhere, so a collision there isn't worth surfacing.
+ * `validateAbbrev` enforces when saving through the app's own UI, checked
+ * here for anything hand-edited directly (e.g. in Obsidian), where nothing
+ * enforces it. Archive is deliberately EXCLUDED - an archived item's abbrev
+ * is not shown or used anywhere, so a collision there isn't worth surfacing.
  */
 function checkDuplicateAbbrev(items: ScannedItemSummary[]): IntegrityFinding[] {
   const byNormalizedAbbrev = new Map<string, ScannedItemSummary[]>();
@@ -526,7 +508,7 @@ export function legacyInboxLeftovers(rootEntries: ListedEntry[]): string[] {
 
 /**
  * Whole-scan finding for anything at the base root from where the Inbox lived
- * up to 0.1.0: Inbox.txt, Todos/ or Meetings/. gtdpara no longer moves these
+ * up to 0.1.0: Inbox.txt, Todos/ or Meetings/. gtdpara does not move these
  * itself (direct upgrades from 0.1.0 are not supported); the finding tells the
  * user to move them by hand.
  */

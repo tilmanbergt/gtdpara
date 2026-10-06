@@ -1,17 +1,16 @@
 /**
  * A small generic segmented switcher (docs/dev/technical-design-google-
- * calendar.md §8) - one shared primitive used two ways, per the "uniform
- * across the app" requirement: 2-way (existing view | Google Calendar) in
+ * calendar.md §8) - one shared primitive used two ways, uniform across the
+ * app: 2-way (existing view | Google Calendar) in
  * every calendar-showing area (DailyView/ProjectDataPanel/InboxScreen/
  * ReviewScreen's Week-ahead step), and 3-way (Folders | Focus | Calendar) in
  * Settings.tsx. Deliberately just a row of labels with an active underline
  * - no icons, no counts - so it reads the same in every context it's used.
  *
- * `disabled` (2026-09-09, ui/FileBrowserPane.tsx's Browse-tab rework): a tab
- * can be greyed out and non-tappable without disappearing from the row -
- * the "don't add/remove tabs, just change what tapping them does" principle
- * that rework settled on. Omitted (undefined) is "enabled", same as every
- * other MiniTabs caller today - no behavior change for them.
+ * `disabled` (used by ui/FileBrowserPane.tsx's Browse tab): a tab can be
+ * greyed out and non-tappable without disappearing from the row - tabs are
+ * not added or removed, only what tapping them does changes. Omitted
+ * (undefined) means "enabled".
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';

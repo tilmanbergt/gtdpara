@@ -1,20 +1,14 @@
 /**
- * Small black-stroke SVG icons for the linked-files feature
- * (technical-design-linked-files.md §6/§7/§9.3) - drawn with `react-native-
- * svg` rather than emoji, per explicit e-ink-legibility feedback during the
- * UX rounds (emoji color rendering was rejected twice; a plain black glyph
- * reads reliably on Supernote's screen). Paths are lifted directly from the
- * approved Cowork mockup ("Link a File", rev. 3) so the shipped icons match
- * what was actually signed off on, not a re-interpretation of them.
- *
- * `react-native-svg` is a new dependency (not already in package.json) -
- * see that file's own note; needs an actual `npm install` on-device before
- * this builds.
+ * Small black-stroke SVG icons (technical-design-linked-files.md §6/§7/§9.3),
+ * drawn with `react-native-svg` rather than emoji: emoji color rendering
+ * does not read well on e-ink, a plain black glyph reads reliably on
+ * Supernote's screen. Paths are taken from the approved Cowork mockup
+ * ("Link a File", rev. 3).
  *
  * ClipIcon has no "linked"/"unlinked" visual variant of its own - the two
  * row states differ by prefixing a literal "+" character before a bare
- * ClipIcon (armable/unlinked) vs. the bare icon alone (linked), exactly as
- * the mockup does (`clip-cluster`: plus + icon-clip) - see ui/TaskRow.tsx/
+ * ClipIcon (armable/unlinked) vs. the bare icon alone (linked), as the
+ * mockup does (`clip-cluster`: plus + icon-clip) - see ui/TaskRow.tsx/
  * ui/MeetingRow.tsx's render rule.
  */
 import React from 'react';
@@ -43,9 +37,9 @@ export function ClipIcon({size = 16, color = '#000000'}: IconProps): React.JSX.E
 
 /**
  * Feather-style trash can, stroke-only - QuickAddWidget's edit-mode "delete"
- * button (2026-09-21: replaces the text label "Delete" to free ~40px in Row
- * 4, which already holds up to five controls). Same black-stroke convention
- * as ClipIcon so it reads reliably on e-ink.
+ * button (an icon instead of a text label saves ~40px in Row 4, which holds
+ * up to five controls). Same black-stroke convention as ClipIcon so it reads
+ * reliably on e-ink.
  */
 export function TrashIcon({size = 18, color = '#000000'}: IconProps): React.JSX.Element {
   return (
@@ -109,7 +103,7 @@ export function PinIcon({size = 18, color = '#000000', filled = false}: IconProp
   );
 }
 
-/** Outline warning triangle with a filled bang - the missing-linked-file indicator (no separate text banner, per the "⚠ is enough" decision). */
+/** Outline warning triangle with a filled bang - the missing-linked-file indicator (no separate text banner). */
 export function WarningIcon({size = 14, color = '#000000'}: IconProps): React.JSX.Element {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -123,10 +117,9 @@ export function WarningIcon({size = 14, color = '#000000'}: IconProps): React.JS
 /**
  * Four corner arrows pointing inward - focus mode's exit mark
  * (docs/dev/technical-design-now-focus-mode.md §4.2, design-philosophy.md §8).
- * Path lifted from the approved "GtdPara Focus Batch" design canvas
- * (DailyFocusHidden.dc.html) so the shipped icon matches what was signed
- * off on. Stroke-only, solid (not low-opacity) - a low-contrast mark
- * doesn't read reliably on this screen's e-ink, so quietness here comes
+ * Path taken from the approved "GtdPara Focus Batch" design canvas
+ * (DailyFocusHidden.dc.html). Stroke-only, solid (not low-opacity) - a
+ * low-contrast mark doesn't read reliably on e-ink, so quietness here comes
  * from size/placement (screens/DailyView.tsx renders this small, in the
  * bottom-right corner) rather than from opacity.
  */

@@ -2,10 +2,9 @@
  * "gtdpara was updated - restart to load it cleanly" warning
  * (docs/dev/technical-design-host-update-crash.md).
  *
- * Since 2026-09-29 this renders nothing itself: it publishes a global
- * warning to the central status slot (docs/dev/technical-design-status-slot.md
- * §2B), so it no longer pushes the screen down when it appears. Mounted
- * once, at App level, for every mode.
+ * Renders nothing itself: it publishes a global warning to the central status
+ * slot (docs/dev/technical-design-status-slot.md §2B), so it never pushes the
+ * screen down when it appears. Mounted once, at App level, for every mode.
  *
  * Checks once on mount whether an older gtdpara build is still loaded in the
  * host process (supernote/pluginRuntime.ts). A new install creates a fresh
@@ -38,7 +37,7 @@ export default function StaleBuildBanner(): null {
     setRestarting(true);
     // restartPluginHost schedules the kill ~400 ms later; closing the plugin
     // view first lets the NOTE app see a normal close before the host dies
-    // (2026-09-29 experiment: does this avoid the host's "not updated" dialog?).
+    // (meant to avoid the host's "not updated" dialog; not yet confirmed).
     restartPluginHost(`stale build(s) loaded: ${staleBuilds.join(', ')}`);
     try {
       PluginManager.closePluginView();

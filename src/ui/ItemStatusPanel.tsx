@@ -1,34 +1,22 @@
 /**
  * Status (Active/On Hold/Done) + Archive + Assign to Area - the Current
- * tab's left pane, below Files (docs/dev/technical-design-inbox-tab.md §4,
- * 2026-09-03: Status+Archive relocated here from the right pane's
- * screens/ProjectDataPanel.tsx, which used to render Status/Focus/Archive
- * as the very first thing above Todos).
+ * tab's left pane, below Files (docs/dev/technical-design-inbox-tab.md §4).
  *
- * Focus briefly lived here too (2026-09-09, right above Archive, per direct
- * feedback that "docked to the right/bottom, out of the way of the widget"
- * was the preferred placement then) but moved back out on 2026-09-13
- * (Tilman: "move now the focus selection and display to the top of that
- * column, above the file panel") into its own file, ui/ItemFocusPanel.tsx,
- * now pinned to the TOP of the same column instead - see that file's
- * module doc comment for the full reasoning (independent load, the weekly
- * goal line it grew, and the accepted eventual-consistency window between
- * it and this component). `dailyFocus`/`weeklyFocus` stay on this
- * component's own StatusPanelState below regardless - changeStatus/
- * handleAssignArea/handleUnassignArea still need them to round-trip the
- * frontmatter block without clobbering them, even though nothing here
- * renders them anymore.
+ * Focus is shown by ui/ItemFocusPanel.tsx at the TOP of the same column -
+ * see that file's module doc comment (independent load, the weekly goal
+ * line, and the accepted eventual-consistency window between it and this
+ * component). `dailyFocus`/`weeklyFocus` stay on this component's own
+ * StatusPanelState anyway: changeStatus/handleAssignArea/handleUnassignArea
+ * need them to round-trip the frontmatter block without clobbering them,
+ * even though nothing here renders them.
  *
- * Extract, don't lift: rather than hoist ProjectDataPanel's PanelState/
- * changeStatus/handleArchivePress up into screens/ItemDetail.tsx (which
- * would make ItemDetail a second owner of item data), this component does
- * its own small, independent ensureItemCached load - the same "independent
- * per-section state, synchronized only through the shared cache +
- * write-through" pattern DailyFocusKindSection/ItemsList/ProjectDataPanel/
- * ui/ItemFocusPanel.tsx already use side-by-side without sharing state
- * directly (design-overview.md §3's "reads should prefer the cache").
- * StatusSection/ArchiveAction/changeStatus/handleArchivePress below are a
- * near-verbatim lift of ProjectDataPanel's former versions of the same.
+ * Extract, don't lift: rather than hoist status state up into
+ * screens/ItemDetail.tsx (which would make ItemDetail a second owner of item
+ * data), this component does its own small, independent ensureItemCached
+ * load - the same "independent per-section state, synchronized only through
+ * the shared cache + write-through" pattern DailyFocusKindSection/ItemsList/
+ * ProjectDataPanel/ui/ItemFocusPanel.tsx use side-by-side without sharing
+ * state directly (design-overview.md §3's "reads should prefer the cache").
  *
  * **Assign to Area** (technical-design-project-area-assignment.md §4.1,
  * Projects only) sits in the same row as "🗄 Archive…", to its right - a
@@ -36,13 +24,12 @@
  * once assigned. Picking works the same way linked-files arming does: this
  * component doesn't own a FileBrowserPane of its own (that's a sibling,
  * owned by screens/ItemDetail.tsx), so pressing the button reports a full
- * `LinkTarget` up via `onRequestAreaAssignment` - the exact same
- * report-a-LinkTarget shape ProjectDataPanel's `onLinkTargetChange` already
- * uses, just from a different UI element. `onPick`/`onCancel` are fully
- * owned/constructed here (this component has everything it needs - state,
- * kind, path), same "the closure that owns the mutation also builds the
- * callback" convention ProjectDataPanel's own armTarget/onPick already
- * follows.
+ * `LinkTarget` up via `onRequestAreaAssignment` - the same
+ * report-a-LinkTarget shape ProjectDataPanel's `onLinkTargetChange` uses.
+ * `onPick`/`onCancel` are fully owned/constructed here (this component has
+ * everything it needs - state, kind, path), same "the closure that owns the
+ * mutation also builds the callback" convention ProjectDataPanel's own
+ * armTarget/onPick follows.
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -69,7 +56,7 @@ interface Props {
   kind: 'project' | 'area';
   name: string;
   path: string;
-  /** Called once this item's folder has actually moved to Archive - same convention as ProjectDataPanel's former prop of the same name (the caller navigates away, since `path` no longer resolves to anything under Projects/Areas). */
+  /** Called once this item's folder has actually moved to Archive (the caller navigates away, since `path` then points at nothing under Projects/Areas). */
   onArchived?: () => void;
   /**
    * Projects only: when set, "Archive…" becomes "Close out…" and opens the
@@ -133,8 +120,8 @@ export default function ItemStatusPanel({
   const statusApi = useStatusApi();
   const [archiveError, setArchiveError] = useState<string | null>(null);
   useErrorStatus('ItemStatusPanel.archiveError', archiveError, () => setArchiveError(null));
-  // "Can't archive yet" (was a native dialog) and the archive confirm (was
-  // a native Alert) - both in the central status slot now (D10).
+  // "Can't archive yet" and the archive confirm are both shown in the
+  // central status slot (D10).
   const [archiveBlock, setArchiveBlock] = useState<string | null>(null);
   const [archiveConfirm, setArchiveConfirm] = useState<{text: string; detail: string; run: () => void} | null>(null);
   useStatus(
@@ -347,7 +334,7 @@ export default function ItemStatusPanel({
     }
   }, [state, kind, name, path]);
 
-  /** Presses "Assign to Area…" (or re-taps the "Area: <name>" pill to reassign) - arms the Browse tab, landing directly inside its Areas category (`startAt: 'area'`, ui/FileBrowserPane.tsx's `startAt` doc comment - 2026-09-09 follow-up, replacing the screen's former standalone Areas root), same way ProjectDataPanel arms a file-link/refile. */
+  /** Presses "Assign to Area…" (or re-taps the "Area: <name>" pill to reassign) - arms the Browse tab, landing directly inside its Areas category (`startAt: 'area'`, see ui/FileBrowserPane.tsx's `startAt` doc comment), same way ProjectDataPanel arms a file-link/refile. */
   const handleArmAreaAssignment = useCallback(() => {
     onRequestAreaAssignment?.({
       mode: 'arming',

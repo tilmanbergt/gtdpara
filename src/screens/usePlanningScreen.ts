@@ -1,7 +1,7 @@
 /**
  * Everything the Week and Month planning screens share that isn't layout
- * (docs/dev/technical-design-monthly-view.md §5.10) - extracted verbatim from
- * screens/WeekView.tsx so screens/MonthView.tsx doesn't carry a second copy:
+ * (docs/dev/technical-design-monthly-view.md §5.10), so screens/WeekView.tsx
+ * and screens/MonthView.tsx don't carry two copies:
  * loading settings/cache/Inbox and every
  * meeting action a planning screen offers (add, edit, cancel, quick-file,
  * prep/review tick, note, linked file, Month highlight + short form) plus
@@ -80,8 +80,8 @@ export function usePlanningScreen({logTag}: Options) {
   const [error, setError] = useState<string | null>(null);
   // The meeting open in Quick Add's edit mode, by meetingKey (ui/useEditTarget.ts).
   const {target: editingKey, start: startEdit, cancel: cancelEditTarget, set: setEditingKey, flushEditRef, afterSave} = useEditTarget<string>();
-  // Both go to the central status slot (docs/dev/technical-design-status-slot.md §7.4)
-  // - the Week/Month screens no longer render them inline.
+  // Both go to the central status slot (docs/dev/technical-design-status-slot.md §7.4),
+  // not inline on the Week/Month screens.
   const widgetAction = useActionError('planning.widgetError', `${logTag}: widget action failed`);
   const meetingsAction = useActionError('planning.meetingsActionError', `${logTag}: meeting action failed`);
   const widgetError = widgetAction.error;
@@ -93,8 +93,8 @@ export function usePlanningScreen({logTag}: Options) {
       setLoading(true);
       setError(null);
       // Settings are applied together with Inbox/paths below (one render
-      // round instead of two - docs/dev/technical-design-render-perf-ab.md §3 B3);
-      // still applied on a later failure, as before.
+      // round instead of two - docs/dev/technical-design-render-perf-ab.md §3 B3),
+      // and also on a later failure.
       let loadedSettings: GtdParaSettings | null = null;
       try {
         loadedSettings = await loadSettings();
@@ -305,7 +305,7 @@ export function usePlanningScreen({logTag}: Options) {
 
   /**
    * The planning day panel's row (2-line by default): M toggle, tracking,
-   * note, open linked file (no linking here - decided 2026-09-27), source.
+   * note, open linked file (no linking from here), source.
    * Spread onto <MeetingRow key=... {...dayRowProps(...)} />.
    */
   const dayRowProps = (

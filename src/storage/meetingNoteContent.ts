@@ -1,41 +1,24 @@
 /**
  * Builds and writes note-creation content (docs/dev/technical-design-meeting-
- * notes.md §5, generalized by docs/dev/technical-design-note-templates.md §4/§5
- * Phase 2, 2026-09-18): the per-piece textboxes a `TagRule`
- * describes, plus (when the item has a `linkedFile`) a real tappable
- * "Link:" element - always regenerated from scratch, never merged/diffed
- * against whatever was there before (the "always regenerate, discard
- * edits" decision, unchanged from Phase 1 of the meeting-notes feature).
+ * notes.md §5, docs/dev/technical-design-note-templates.md §4/§5): the
+ * per-piece textboxes a `TagRule` describes - always regenerated from
+ * scratch, never merged/diffed against what was there before (the "always
+ * regenerate, discard edits" decision).
  *
- * One population path (2026-09-25, docs/dev/technical-design-linked-file-piece.md):
+ * One population path (docs/dev/technical-design-linked-file-piece.md):
  * `populateNoteFromRule` - one element per non-empty piece, positioned/
  * sized from that piece's own x/y/fontSize/maxWidth. A `link` piece becomes a
  * tappable link element to the item's `linkedFile` (only when that file still
- * exists); a rule without a `link` piece writes no link at all. The old fixed
- * Meeting fallback block (`populateMeetingNoteBlockFallback`) and the
- * always-auto-appended "Link:" element were removed in the same pass - a
- * Meeting that matches no rule now gets no content, exactly like a Todo.
- * Old notes still carrying either legacy marker get them cleaned up on their
- * next refresh (isNoteTemplateManagedElement still recognises both).
+ * exists); a rule without a `link` piece writes no link at all. A Meeting or
+ * Todo that matches no rule gets no content. Older notes still carrying a
+ * legacy marker get it cleaned up on their next refresh
+ * (isNoteTemplateManagedElement recognises both).
  *
- * FILE NAME NOTE (2026-09-18, Phase 2): §4/§8 call for renaming this file to
- * `storage/noteTemplateContent.ts` now that it's no longer meeting-only.
- * Not done in this pass - same reason as domain/meetingNoteBlock.ts's own
- * doc comment: this session has no file-delete capability on the linked
- * device, so a rename would leave an orphaned duplicate rather than a clean
- * move. Trivial manual follow-up, alongside that file's own rename and the
- * one import line in each of DailyView.tsx/InboxScreen.tsx/ReviewScreen.tsx/
- * ProjectDataPanel.tsx that names this file's current path. Still true after
- * Phase 3 below adds a Todo counterpart to this same file, if anything more
- * so.
+ * The file name is narrower than its content (it is not meeting-only);
+ * §4/§8 name `storage/noteTemplateContent.ts` as the intended name.
  *
- * Phase 3 (2026-09-18, same day - Todo notes): `refreshTodoNoteBlock` below
- * mirrors `refreshMeetingNoteBlock` almost exactly - resolve a `'todo'`
- * definition, render its pieces, call `populateNoteFromRule` - with no
- * fallback-block equivalent (Todos have no pre-existing fixed shape to
- * preserve the way Meetings do; `resolveNoteTemplate` returning `null` just
- * means no pieces get written, same "blank note" behavior every context had
- * before this feature existed). Both refresh functions now also gate the
+ * `refreshMeetingNoteBlock` and `refreshTodoNoteBlock` resolve a definition,
+ * render its pieces and call `populateNoteFromRule`. Both gate the
  * *re*-populate-on-open path on a freeze rule (domain/meetingTime.ts's
  * `isMeetingAutoUpdateFrozen` / domain/tagRules.ts's
  * `isTodoAutoUpdateFrozen`) via an `isInitialPopulation` option that only
@@ -49,39 +32,24 @@
  * implicit "currently open in the NOTE app" requirement this feature's
  * trigger can't satisfy).
  *
- * Shared Note Pages, Slice 2 of 4 (2026-09-22, docs/dev/technical-design-
- * shared-note-pages.md §5/§12): every function below that used to hardcode
- * page 0 (`deleteStaleManagedElements`, `buildLinkElement`,
- * `populateNoteFromRule`) now
- * takes a real `page` parameter, defaulting to `0` everywhere it's optional -
- * so every existing own-note call site (which never had a page to think
- * about) is byte-for-byte unaffected. `refreshMeetingNoteBlock`/
- * `refreshTodoNoteBlock` expose it as `options.page` (also defaulting to
- * `0`), the same options-object extension pattern `isInitialPopulation`
- * already established, rather than a new positional parameter every call
- * site would need touching for.
+ * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §5/§12):
+ * `deleteStaleManagedElements`, `buildLinkElement` and `populateNoteFromRule`
+ * take a `page` parameter, defaulting to `0` where optional, so own-note
+ * call sites need no page. `refreshMeetingNoteBlock`/`refreshTodoNoteBlock`
+ * expose it as `options.page` (also defaulting to `0`).
  *
- * Shared Note Pages, Slice 3 of 4 (2026-09-22, §6-§8): `openOrCreateMeetingNote`/
- * `openOrCreateTodoNote` at the bottom of this file are the "one shared
- * branch, reused by all 5 screens" entry point §6 describes - each screen's
- * separate create-note/open-note handler pair collapses into one call to
- * these. Placed HERE rather than in `storage/noteLinks.ts` (the design doc's
- * original suggestion) to avoid a real import cycle: this file already
- * imports `resolveNotePath` from noteLinks.ts one-way, and these new
- * functions need `refreshMeetingNoteBlock`/`refreshTodoNoteBlock`, both of
- * which live in THIS file - putting the entry point in noteLinks.ts would
- * need it to import back from here, a cycle. This file already needs
- * `createLinkedNote` from noteLinks.ts too (own-target branch), which is a
- * new import but the same direction as the existing one, so no cycle either
- * way. `storage/sharedNotePages.ts` stays exactly what its module doc
- * comment says - the page engine - and knows nothing about Task/Meeting or
- * which target a definition resolves to; all of that lives here.
+ * `openOrCreateMeetingNote`/`openOrCreateTodoNote` at the bottom of this file
+ * are the single entry point every screen's note-icon tap calls (§6-§8).
+ * They live here rather than in `storage/noteLinks.ts` to avoid an import
+ * cycle: this file imports `resolveNotePath`/`createLinkedNote` from
+ * noteLinks.ts, and the entry points need `refreshMeetingNoteBlock`/
+ * `refreshTodoNoteBlock` from this file. `storage/sharedNotePages.ts` stays
+ * the page engine and knows nothing about Task/Meeting or which target a
+ * definition resolves to.
  *
- * Textbox metrics + per-piece max width (2026-09-23,
- * docs/dev/technical-design-textbox-metrics.md, combined with that doc's Phase 3
- * per Tilman: "can be one thing"): `populateNoteFromRule` no longer hand-spells
- * `createElement(ELEMENT_TYPE_TEXT)` + a `textBox` literal - it builds
- * its rect via `storage/notePieceMetrics.ts`'s `measureNotePieceRect`
+ * Textbox metrics + per-piece max width
+ * (docs/dev/technical-design-textbox-metrics.md): `populateNoteFromRule`
+ * builds each rect via `storage/notePieceMetrics.ts`'s `measureNotePieceRect`
  * (real on-device text measurement, content-fit width, capped at each
  * piece's own `maxWidthPx` - see domain/tagRules.ts's `NotePiece`) and
  * the element itself via `supernote/noteElements.ts`'s `buildTextboxElement`.
@@ -169,9 +137,9 @@ function fileNameOf(absolutePath: string): string {
 
 /**
  * The item's `linkedFile`, resolved to an absolute path + bare file name -
- * or `null` when the item has no linked file OR the file no longer exists
- * (docs/dev/technical-design-linked-file-piece.md §1.4, Tilman 2026-09-25: "skip
- * the link in that case"). One folder listing (storage/linkedFiles.ts's
+ * or `null` when the item has no linked file OR the file doesn't exist any
+ * more (docs/dev/technical-design-linked-file-piece.md §1.4: the link is
+ * skipped then). One folder listing (storage/linkedFiles.ts's
  * linkedFileStatus), only for items that actually carry a link.
  */
 async function existingLinkedFile(
@@ -195,7 +163,7 @@ async function existingLinkedFile(
  * the page edge), marked with the piece's own per-index userData like every
  * other piece.
  *
- * `page` (Slice 2 of docs/dev/technical-design-shared-note-pages.md) is the page
+ * `page` (docs/dev/technical-design-shared-note-pages.md) is the page
  * THIS link element lives on within `notePath` - unrelated to `destPage`
  * below, which is the page the link JUMPS TO inside the *linked* file
  * (always 0, that file's own first page, regardless of where this element
@@ -256,20 +224,18 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
 }
 
 /**
- * (Re)builds `notePath`'s `page` from `definition`'s pieces - the Phase 2
- * generalized path (docs/dev/technical-design-note-templates.md §4). Steps:
- * read every existing element on `page`, delete any carrying ANY marker
- * this whole feature has ever used (isNoteTemplateManagedElement - not just
- * this function's own per-piece markers, so a note written before 2026-09-25
- * still carrying the old fixed fallback block or the old auto-appended
- * "Link:" element gets those cleaned up too), then build and insert the fresh set in one
+ * (Re)builds `notePath`'s `page` from `definition`'s pieces
+ * (docs/dev/technical-design-note-templates.md §4). Steps: read every
+ * existing element on `page`, delete any carrying ANY marker this feature
+ * has ever used (isNoteTemplateManagedElement - not just the per-piece
+ * markers, so an older note's legacy fixed block or auto-appended "Link:"
+ * element gets cleaned up too), then build and insert the fresh set in one
  * `insertElements` call so a failure partway can't leave a half-written
  * note.
  *
- * `page` defaults to `0` (Slice 2 of docs/dev/technical-design-shared-note-pages.md
- * §5) - every own-note call today implicitly meant page 0, so the default
- * keeps every existing call site's behavior identical without touching it;
- * a shared-target note passes its resolved page explicitly (Slice 3).
+ * `page` defaults to `0` (docs/dev/technical-design-shared-note-pages.md
+ * §5) - an own note lives on page 0; a shared-target note passes its
+ * resolved page explicitly.
  *
  * `pieceContent[i]` is `definition.pieces[i]` already rendered to text (the
  * caller - refreshMeetingNoteBlock below - builds this via
@@ -278,16 +244,14 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  * piece whose rendered text is `''` (an unset `time`, a `related` piece
  * with nothing to show) gets no element at all - same "omit rather than
  * show empty" convention (a `link` piece is empty when the item has no
- * linked file or it no longer exists).
+ * linked file or the file is missing).
  *
  * Deviates from technical-design-note-templates.md §4's literal signature
  * (`populateNoteFromRule(notePath, definition, pieceContent,
- * settings)`) by dropping the `settings` param: every field GtdParaSettings
- * still carries after Phase 2's retirement of meetingNoteBlockTopX/Y/
- * MaxWidth turned out unused here - positioning is fully piece-driven, and
- * background selection (storage/noteLinks.ts's resolveNoteBackgroundTemplate)
- * happens at note-*creation* time, not here. Flagged rather than carrying a
- * dead parameter.
+ * settings)`) by dropping the `settings` param: no GtdParaSettings field is
+ * needed here - positioning is fully piece-driven, and background selection
+ * (storage/noteLinks.ts's resolveNoteBackgroundTemplate) happens at
+ * note-*creation* time, not here.
  *
  * `linkedFileAbsolutePath` is only read by a `link` piece (docs/technical-
  * design-linked-file-piece.md) - the caller passes it only when the file
@@ -348,9 +312,9 @@ export async function populateNoteFromRule(
   try {
     await insertElements(notePath, page, elements);
   } catch (e) {
-    // Safety net (bugfix 2026-09-28): the host rejects the WHOLE insert when
-    // it doesn't accept a link element (e.g. a link type that doesn't match
-    // the target file), which used to cost the note all of its content. Retry
+    // Safety net: the host rejects the WHOLE insert when it doesn't accept a
+    // link element (e.g. a link type that doesn't match the target file),
+    // which would cost the note all of its content. Retry
     // once without link elements so the rest of the note still arrives; the
     // failure itself stays in the log. Nothing to retry when there was no link.
     const withoutLinks = elements.filter(el => !linkElements.has(el));
@@ -363,24 +327,20 @@ export async function populateNoteFromRule(
 }
 
 /**
- * The per-screen-callable wrapper (§6) every `handleCreateNote`/
- * `handleOpenNote` call site calls - unchanged public signature from before
- * Phase 2 (docs/dev/technical-design-note-templates.md §5: "no behavior
- * change" at this call boundary), so none of DailyView.tsx/InboxScreen.tsx/
- * ReviewScreen.tsx/ProjectDataPanel.tsx needed touching for this phase.
+ * The per-screen-callable wrapper (§6) behind every note create/open
+ * (docs/dev/technical-design-note-templates.md §5).
  *
- * New Phase 2 behavior inside: resolves `resolveNoteTemplate('meeting',
- * meeting.tags, settings.tagRules)`. When it finds a
+ * Resolves `resolveNoteTemplate('meeting', meeting.tags,
+ * settings.tagRules)`. When it finds a
  * definition, renders every piece via domain/tagRules.ts's
  * renderPieceText (building a PieceRenderContext from this Meeting + its
  * related todos) and calls populateNoteFromRule. When it returns
- * `null` (no matching/enabled Meeting definition) nothing is written - the
- * old fixed fallback block was removed 2026-09-25 (docs/dev/technical-design-
- * linked-file-piece.md §4, Tilman: "everything should behave the same, user
- * decides how the default layout works"), same as Todos.
+ * `null` (no matching/enabled Meeting definition) nothing is written, same
+ * as Todos (docs/dev/technical-design-linked-file-piece.md §4: the user's
+ * rules decide the layout).
  *
  * `inbox` is an explicit optional 4th param, defaulting to `null` - non-
- * Inbox screens call this exactly as before (3 args); InboxScreen.tsx/
+ * Inbox screens call this with 3 args; InboxScreen.tsx/
  * ReviewScreen.tsx pass their own already-loaded Inbox.txt tasks as the 4th
  * arg. No-ops (does nothing, doesn't throw) when `meeting.notePath` is
  * empty - defensive, since every real call site only calls this once a note
@@ -388,7 +348,7 @@ export async function populateNoteFromRule(
  * same "a hand-edited/incomplete record doesn't throw" posture rather than
  * assuming a caller invariant always holds.
  *
- * `options.isInitialPopulation` (Phase 3, 2026-09-18): every `handleOpenNote`
+ * `options.isInitialPopulation`: every `handleOpenNote`
  * call site leaves this `false` (the default) - the auto-update freeze rule
  * (`isMeetingAutoUpdateFrozen`) applies, and this no-ops once the meeting is
  * frozen, leaving whatever content is already on the page alone. Every
@@ -396,11 +356,9 @@ export async function populateNoteFromRule(
  * note, so the note's initial content always gets written regardless of how
  * frozen the meeting already is at that moment.
  *
- * `options.page` (Slice 2 of docs/dev/technical-design-shared-note-pages.md §5):
- * defaults to `0`, so every existing call site (which never passes it) still
- * refreshes page 0, exactly as before. A shared-target Meeting's resolved
- * page is passed here explicitly once Slice 3's `openOrCreateItemNote`
- * exists - this function itself has no notion of shared vs. own targets, it
+ * `options.page` (docs/dev/technical-design-shared-note-pages.md §5):
+ * defaults to `0` (an own note). A shared-target Meeting's resolved page is
+ * passed explicitly by the open-or-create entry point - this function itself has no notion of shared vs. own targets, it
  * only writes to whichever page it's told.
  */
 export async function refreshMeetingNoteBlock(
@@ -441,8 +399,8 @@ export async function refreshMeetingNoteBlock(
 }
 
 /**
- * The Todo counterpart to `refreshMeetingNoteBlock` above (Phase 3,
- * 2026-09-18, docs/dev/technical-design-note-templates.md) - same shape, same
+ * The Todo counterpart to `refreshMeetingNoteBlock` above
+ * (docs/dev/technical-design-note-templates.md) - same shape, same
  * call contract (`handleCreateNote` passes `options.isInitialPopulation:
  * true`; `handleOpenNote` leaves it `false`), called from the matching
  * handlers in ProjectDataPanel.tsx's TodosSection, DailyView.tsx,
@@ -450,7 +408,7 @@ export async function refreshMeetingNoteBlock(
  *
  * `resolveNoteTemplate('todo', ...)` returning `null` (no matching/enabled
  * Todo definition) means `populateNoteFromRule` is never called at
- * all: the note stays blank - the same rule Meetings follow since 2026-09-25.
+ * all: the note stays blank - the same rule Meetings follow.
  *
  * `ctx.title` is `stripAllTags(task.text)`, not `task.text` verbatim -
  * unlike a Meeting's title, a task's text routinely ends with `#next`/
@@ -458,13 +416,13 @@ export async function refreshMeetingNoteBlock(
  * domain/markdown.ts's `stripAllTags` doc comment). `ctx.relatedItems`
  * reuses the same `relatedItemsFor` aggregate the Meeting path uses, tagged
  * with this task's own `tags` and excluding this task's own `notePath` so
- * it never lists itself (see storage/meetingNoteAggregate.ts's Phase 3 doc
+ * it never lists itself (see storage/meetingNoteAggregate.ts's doc
  * comment on `excludeNotePath`). No `date`/`time` fields are set on `ctx` -
  * those piece types are meeting-only (domain/tagRules.ts's
  * `PIECE_CONTEXTS`), so a Todo definition's Add-piece list never offers them
  * in the first place.
  *
- * `options.page` - same Slice 2 addition and default as
+ * `options.page` - same meaning and default as
  * `refreshMeetingNoteBlock`'s own (see that function's doc comment).
  */
 export async function refreshTodoNoteBlock(
@@ -497,7 +455,7 @@ export async function refreshTodoNoteBlock(
   await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
 }
 
-// ---- Open-or-create entry point (Slice 3, docs/dev/technical-design-shared-note-pages.md §6-§8;
+// ---- Open-or-create entry point (docs/dev/technical-design-shared-note-pages.md §6-§8;
 // plan-then-confirm and file-name placeholders: docs/dev/technical-design-split-by-tag.md §3.3-§3.5) ----
 
 /**
@@ -736,8 +694,7 @@ async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
   }
 
   // A page with this keyword may already exist (two items with the same
-  // keyword, or an earlier attempt that never got its link saved - the
-  // shared-note bugfix's hardening). Linking to it is confirmed too, since
+  // keyword, or an earlier attempt that never got its link saved). Linking to it is confirmed too, since
   // that page may already hold content; freeze rules still apply to it.
   const existingPage = await findKeywordPage(absoluteFile, currentKeyword);
   if (existingPage !== null) {

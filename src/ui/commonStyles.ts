@@ -1,10 +1,9 @@
 /**
- * Style objects shared by two or more screens (2026-09-14 style cleanup
- * pass - docs/dev/technical-design-style-cleanup.md). These were found
- * byte-identical across DailyView.tsx and ReviewScreen.tsx's own local
- * `StyleSheet.create` blocks; pulling them out here means retuning one of
- * them retunes every screen that uses it, and a screen's own StyleSheet
- * now only holds what's actually specific to that screen.
+ * Style objects shared by two or more screens
+ * (docs/dev/technical-design-style-cleanup.md), e.g. DailyView.tsx and
+ * ReviewScreen.tsx. Keeping them here means retuning one of them retunes
+ * every screen that uses it, and a screen's own StyleSheet only holds what's
+ * actually specific to that screen.
  *
  * Import as `import {common} from '../ui/commonStyles'` and reference
  * e.g. `common.container` in place of a screen's own `styles.container`.

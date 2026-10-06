@@ -1,21 +1,12 @@
 /**
  * Pure selection-splicing helpers behind the custom Select All/Copy/Cut/
- * Paste overlay ui/QuickAddWidget.tsx's task-text/meeting-title fields got
- * on 2026-09-11 - added because Android's native text-selection toolbar
- * (the floating Cut/Copy/Paste/Select-all bar, plus draggable handles)
- * doesn't reliably appear at all inside Supernote's plugin-host window,
- * most likely because that window isn't a plain Activity the OS's
- * `ActionMode` machinery expects. These buttons work entirely off the
- * field's last-known selection (tracked in a `useRef`, never React state -
- * see the `Selection` doc comment below for why) and `@react-native-
- * clipboard/clipboard`.
- *
- * Extracted here (2026-09-11, same day as the original bugfix) so
- * ui/ClipboardTextInput.tsx - a reusable version of the same field, for any
- * *new* plain text input that wants the same copy/paste affordance (e.g.
- * ItemsList.tsx's Create Project/Area name field) - can share this logic
- * instead of re-deriving it. ui/QuickAddWidget.tsx now imports these same
- * functions rather than keeping its own copies.
+ * Paste buttons of ui/QuickAddWidget.tsx and ui/ClipboardTextInput.tsx.
+ * Android's native text-selection toolbar (Cut/Copy/Paste/Select-all bar,
+ * drag handles) doesn't reliably appear inside Supernote's plugin-host
+ * window, most likely because that window isn't a plain Activity the OS's
+ * `ActionMode` machinery expects. The buttons work off the field's
+ * last-known selection (tracked in a `useRef`, see `Selection` below) and
+ * `@react-native-clipboard/clipboard`.
  */
 
 /**
@@ -25,7 +16,7 @@
  * fires on essentially every cursor/selection movement, and a setState-
  * driven re-render on every one of those is what broke native text
  * selection (drag handles, the copy/cut/paste/select-all action bar) on
- * Android in the first place (2026-09-11 bugfix). A ref updates for free
+ * Android. A ref updates for free
  * with no re-render, which is all this needs since it's only ever read
  * imperatively, never rendered.
  */
@@ -53,9 +44,8 @@ export function spliceAtSelection(text: string, selection: Selection, insert: st
  * The range Copy/Cut act on: the field's actual selection when it's a real
  * (non-collapsed) one, otherwise the whole field. Native drag-select is
  * unreliable on this hardware (see the module doc comment above), so most
- * Copy/Cut taps land with nothing actively selected - falling back to "the
- * whole field" matches what was actually asked for ("select everything and
- * copy/cut") without requiring drag-select to work first.
+ * Copy/Cut taps land with nothing actively selected - falling back to the
+ * whole field makes Copy/Cut work without drag-select.
  */
 export function copyCutRange(text: string, selection: Selection): {start: number; end: number} {
   if (selection && selection.start !== selection.end) {
@@ -68,7 +58,7 @@ export function copyCutRange(text: string, selection: Selection): {start: number
  * The text of a REAL (non-collapsed) selection, or '' when there is none
  * (`null` = the field never reported a selection, or a collapsed cursor).
  * Unlike `copyCutRange` there is deliberately no "whole field" fallback -
- * for the read-only Gmail email text (ui/GmailBodyPane.tsx, 2026-09-21) an
+ * for the read-only Gmail email text (ui/GmailBodyPane.tsx) an
  * action that silently took the entire email when the user had merely not
  * selected anything would be a surprising thing to create a Todo from, so
  * the caller greys its buttons out instead and offers an explicit "All".

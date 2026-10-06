@@ -72,7 +72,7 @@ export function formatClock(date: Date): string {
   return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-/** `Tue 28.9.` - a weekday plus date, used where a relative word ("today", "3 days ago") no longer fits. */
+/** `Tue 28.9.` - a weekday plus date, used where a relative word ("today", "3 days ago") does not fit. */
 export function formatWeekdayDate(date: Date, today?: string): string {
   const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   return formatDayHeader(iso, today);

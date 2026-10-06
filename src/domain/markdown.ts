@@ -51,7 +51,7 @@ const LINKED_FILE_RE = /\s*\+\[\[([^\]]+)\]\]\s*$/;
 
 // A tag is "#" followed by a letter/digit, optionally extended with "-",
 // nested "/segment" parts and a ":value" suffix - #next, #waiting, #team-jf,
-// #coaching/sabina, #due:2026-09-01 are all one tag each (design-overview.md
+// #coaching/sabina, #due:YYYY-MM-DD are all one tag each (design-overview.md
 // §3's "one tag mechanism": GTD flow-state, context, and due dates all share
 // this instead of separate syntaxes). Nested tags (docs/dev/technical-design-
 // split-by-tag.md §3.1) use the same "/" syntax as Obsidian; a segment needs
@@ -69,14 +69,13 @@ const DUE_TAG_ANY_RE = /#due:\d{4}-\d{2}-\d{2}\b/gi;
 
 /**
  * Collapses any run of whitespace right after every `#` in `text` down to
- * nothing (feature_abbrev_quick_file, 2026-09-17, docs/dev/technical-design-
- * abbrev-quick-file.md) - Supernote's handwriting recognition often inserts
- * a space there, and TAG_RE above requires a non-space character right
- * after `#` to parse as a tag at all, so today a "# " sequence doesn't just
- * look wrong, it silently fails to ever become a tag. Wired into every
- * ui/QuickAddWidget.tsx text field's onChangeText, so it applies live
- * regardless of whether the text arrived by typing, handwriting
- * recognition, or paste.
+ * nothing (docs/dev/technical-design-abbrev-quick-file.md) - Supernote's
+ * handwriting recognition often inserts a space there, and TAG_RE above
+ * requires a non-space character right after `#` to parse as a tag at all,
+ * so a "# " sequence doesn't just look wrong, it silently never becomes a
+ * tag. Wired into every ui/QuickAddWidget.tsx text field's onChangeText, so
+ * it applies live regardless of whether the text arrived by typing,
+ * handwriting recognition, or paste.
  */
 export function stripSpaceAfterHash(text: string): string {
   return text.replace(/#\s+/g, '#');
@@ -101,18 +100,15 @@ function deriveDueDate(tags: string[]): string | null {
 }
 
 /**
- * Derives a task's `tags`/`dueDate`/`flowState`/`waitingOn` from its `text` -
- * the same read `parseTasksSpan` does on load, exported so UI code can keep
- * an in-memory `Task` internally consistent the moment `text` is set or
- * edited (screens/ProjectDataPanel.tsx's TodosSection, screens/DailyView.tsx,
- * ui/TaskQuickAdd.tsx, ui/TaskEditCard.tsx), rather than leaving stale
- * derived fields sitting there until the next full reload re-parses the
- * file from scratch. `flowState`/`waitingOn` (technical-design-tags.md §1)
- * are additive on top of the original tags/dueDate pair - every existing
- * caller already spreads `...deriveTaskFields(text)` onto a Task object, so
- * they pick up the two new fields with no call-site changes. `now`
- * (docs/dev/technical-design-now-focus-mode.md §2) is the same story again -
- * additive, every caller already spreads this whole object onto a Task.
+ * Derives a task's `tags`/`dueDate`/`flowState`/`waitingOn`/`now` from its
+ * `text` - the same read `parseTasksSpan` does on load, exported so UI code
+ * can keep an in-memory `Task` internally consistent the moment `text` is
+ * set or edited (screens/ProjectDataPanel.tsx's TodosSection,
+ * screens/DailyView.tsx, ui/TaskQuickAdd.tsx, ui/TaskEditCard.tsx), rather
+ * than leaving stale derived fields until the next full reload re-parses
+ * the file. Callers spread `...deriveTaskFields(text)` onto a Task object
+ * (technical-design-tags.md §1, docs/dev/technical-design-now-focus-mode.md
+ * §2).
  */
 export function deriveTaskFields(
   text: string,
@@ -129,14 +125,11 @@ export function deriveTaskFields(
 
 /**
  * Derives a meeting's `tags` from its `title` - the Meeting counterpart to
- * deriveTaskFields above (technical-design-context-tags.md §3). `Meeting`
- * already carries a `tags: string[]` field (domain/types.ts) but every
- * construction site hardcoded `tags: []`; this is the one place that reads
- * them out, mirroring deriveTaskFields's shape exactly (`extractTags` is
- * already shared, no change needed there - just a second caller) so every
+ * deriveTaskFields above (technical-design-context-tags.md §3). This is the
+ * one place a meeting's `tags` (domain/types.ts) are read out, so every
  * add/edit call site can spread `...deriveMeetingFields(title)` the same way
- * Task call sites already spread `...deriveTaskFields(text)`. Meetings have
- * no flow-state/due-date/waiting-on/now fields, so this returns tags alone.
+ * Task call sites spread `...deriveTaskFields(text)`. Meetings have no
+ * flow-state/due-date/waiting-on/now fields, so this returns tags alone.
  */
 export function deriveMeetingFields(title: string): {tags: string[]} {
   return {tags: extractTags(title)};
@@ -198,13 +191,12 @@ export function splitTextWithTags(text: string): TextSegment[] {
 /**
  * Removes every `#tag` from `text` entirely, collapsing any resulting run of
  * whitespace down to single spaces and trimming the ends (docs/technical-
- * design-note-templates.md Phase 3, 2026-09-18) - used for a Todo note's
- * `title` piece, where `task.text` routinely carries trailing `#next`/
- * context tags that have no business in a note's title (unlike a Meeting's
- * `title`, which is used as-is - a meeting title rarely carries tags the
- * way task text always does, so no equivalent stripping happens there).
- * Built on `splitTextWithTags`'s existing text/tag segment walk - one
- * tokenization, reused, rather than a second ad-hoc regex over `TAG_RE`.
+ * design-note-templates.md) - used for a Todo note's `title` piece, where
+ * `task.text` routinely carries trailing `#next`/context tags that have no
+ * business in a note's title (a Meeting's `title` is used as-is - a meeting
+ * title rarely carries tags the way task text always does). Built on
+ * `splitTextWithTags`'s text/tag segment walk - one tokenization, reused,
+ * rather than a second ad-hoc regex over `TAG_RE`.
  */
 export function stripAllTags(text: string): string {
   const stripped = splitTextWithTags(text)
@@ -219,7 +211,7 @@ export function stripAllTags(text: string): string {
  * §8) - tapping a suggested tag chip in ui/QuickAddWidget.tsx's Row 3 calls
  * this rather than always appending, so a tag lands where the cursor
  * actually was. `position` is clamped to `text`'s length when null or out of
- * range - the "in doubt, at the end" fallback the chat decision called for.
+ * range - when in doubt, at the end.
  * A space is added on whichever side needs one (not already whitespace, and
  * not the very start/end of `text`), so inserting mid-word still reads as
  * two separate tokens. Returns the new cursor position (right after the
@@ -246,9 +238,9 @@ export function insertTagAtPosition(
  * space, collapsing any resulting double space - the counterpart to
  * insertTagAtPosition above, used when tapping an already-selected/pinned
  * chip in Row 3 to remove it again (technical-design-context-tags.md §8).
- * Same "strip via regex, collapse doubled spaces, trim" shape
- * setFlowStateTag/setDueTag already establish, just parameterized on which
- * tag rather than a fixed reserved word.
+ * Same "strip via regex, collapse doubled spaces, trim" shape as
+ * setFlowStateTag/setDueTag, just parameterized on which tag rather than a
+ * fixed reserved word.
  */
 export function removeTagFromText(text: string, tag: string): string {
   const escapedTag = tag.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -427,13 +419,12 @@ function setFrontMatterSpan(content: string, newLines: string[]): string {
 
 /**
  * Every frontmatter field this plugin reads/writes, as ONE object
- * (docs/dev/technical-design-monthly-view.md §2.1, 2026-09-23). Replaces the old
- * 8-10 positional parameters of writeFrontMatterIntoContent/saveFrontMatter/
- * updateItemFrontMatter: every call site now spreads the item's current
- * fields (storage/dataCache.ts's `frontMatterOf`) and overrides only what it
- * changes, so adding a field (like `monthlyFocus`) can no longer silently
- * clear another one at a call site that forgot to pass it through - the
- * `area`/`abbrev` pitfall the old signature documented.
+ * (docs/dev/technical-design-monthly-view.md §2.1). Every call site of
+ * writeFrontMatterIntoContent/saveFrontMatter/updateItemFrontMatter spreads
+ * the item's current fields (storage/dataCache.ts's `frontMatterOf`) and
+ * overrides only what it changes, so adding a field (like `monthlyFocus`)
+ * can't silently clear another one at a call site that forgot to pass it
+ * through.
  */
 export interface FrontMatterFields {
   /** From a `status:` line - defaults to 'active' if the line is missing, or its value isn't one of ItemStatus's known values (a stray hand-edit, or a file written before this field existed). Never throws on an unrecognized value; see technical-design-status-archive.md §2. */
@@ -452,7 +443,7 @@ export interface FrontMatterFields {
   extraLines: string[];
 }
 
-/** Kept as an alias - parseFrontMatter's result is exactly the write shape now. */
+/** Kept as an alias - parseFrontMatter's result is exactly the write shape. */
 export type ParsedFrontMatter = FrontMatterFields;
 
 const STATUS_LINE_RE = /^status:\s*(.*)$/;
@@ -525,11 +516,11 @@ export function parseFrontMatter(content: string): FrontMatterFields {
  * Rebuilds only the frontmatter block; everything else in `content` is
  * untouched. `status` is always written (it always has a meaningful value,
  * unlike the focus flags below); the three focus-flag lines are written
- * only when true, so a file with nothing focused keeps as clean a
- * frontmatter block as it has today. No-op (same as setFrontMatterSpan) if
- * `content` has no well-formed frontmatter block yet - callers should run
- * `ensureSkeleton` first, same as writeTasksIntoContent/writeMeetingsIntoContent
- * already do. `defaultResourceFolder`/`area`/`abbrev` are omitted when null.
+ * only when true, so a file with nothing focused keeps a clean frontmatter
+ * block. No-op (same as setFrontMatterSpan) if `content` has no well-formed
+ * frontmatter block yet - callers should run `ensureSkeleton` first, same
+ * as writeTasksIntoContent/writeMeetingsIntoContent do.
+ * `defaultResourceFolder`/`area`/`abbrev` are omitted when null.
  */
 export function writeFrontMatterIntoContent(content: string, fm: FrontMatterFields): string {
   const lines = [...fm.extraLines, `status: ${fm.status}`];
@@ -548,23 +539,18 @@ export function writeFrontMatterIntoContent(content: string, fm: FrontMatterFiel
  * frontmatter plus empty Scope/Tasks/Meetings sections so all three
  * headings always exist from the first save onward, regardless of which
  * one is actually filled in first. `kind` is written into the frontmatter
- * verbatim (widened from 'project' | 'area' to the full GtdParaKind so
- * Inbox.txt gets `kind: inbox` the same way project.txt/area.txt get
- * their own kind).
+ * verbatim (the full GtdParaKind, so Inbox.txt gets `kind: inbox` the same
+ * way project.txt/area.txt get their own kind).
  *
- * `## Scope` (docs/dev/technical-design-item-scope.md, 2026-09-14) is
- * scaffolded here too - deliberately, unlike `## Weekly Goals` below,
- * which stays lazy - specifically so a brand-new Project/Area already
- * has the heading to type into directly from Obsidian, with no
- * dependency on ever opening the item in the app first. Placed right
- * after the frontmatter block, before Tasks/Meetings, matching its
- * top-of-page position on the detail screen. This only affects
- * brand-new files (this function still no-ops the instant `content` is
- * non-empty) - an item created before this change, or hand-created in
- * Obsidian without going through the app, still gets `## Scope` the old
- * lazy way (via `setSpan`, in `writeScopeIntoContent` below) the first
- * time a scope is actually set on it, so no migration is needed for
- * existing files.
+ * `## Scope` (docs/dev/technical-design-item-scope.md) is scaffolded here
+ * too - deliberately, unlike `## Weekly Goals` below, which stays lazy - so
+ * a brand-new Project/Area already has the heading to type into directly
+ * from Obsidian, without ever opening the item in the app first. Placed
+ * right after the frontmatter block, before Tasks/Meetings, matching its
+ * top-of-page position on the detail screen. A file without the heading
+ * (e.g. hand-created in Obsidian) gets `## Scope` lazily (via `setSpan`, in
+ * `writeScopeIntoContent` below) the first time a scope is set on it, so
+ * no migration is needed.
  */
 export function ensureSkeleton(content: string, kind: GtdParaKind): string {
   if (content.trim().length > 0) return content;
@@ -579,9 +565,8 @@ export function ensureSkeleton(content: string, kind: GtdParaKind): string {
  * preserves a hand-edited multi-line/multi-paragraph Scope exactly as
  * written (a blank line between two sentences round-trips untouched),
  * rather than collapsing it to one line. Returns '' if the heading is
- * absent (a pre-feature file that's never had one added) or present but
- * empty (the scaffolded-but-unfilled case `ensureSkeleton` now creates
- * for every new Project/Area).
+ * absent or present but empty (the scaffolded-but-unfilled case
+ * `ensureSkeleton` creates for every new Project/Area).
  */
 export function parseScopeSpan(content: string): string {
   const {lines} = getSpan(content, SCOPE_HEADING);

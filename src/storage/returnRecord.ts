@@ -1,7 +1,7 @@
 /**
  * In-memory slot for "the last file the plugin opened itself" - the input to
  * domain/returnContext.ts's decideLanding() (docs/dev/technical-design-return-to-
- * origin.md). Memory-only on purpose (design decision D3, 2026-09-19): the
+ * origin.md). Memory-only on purpose (design decision D3): the
  * whole feature is about resuming a still-alive plugin instance's screen
  * state, and a fresh process has no such state to return to, so a persisted
  * record would have nothing to resume anyway. Same lifetime as

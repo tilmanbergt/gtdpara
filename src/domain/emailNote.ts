@@ -3,7 +3,7 @@
  * 3.5): the note's file name and its text. No RN/SDK imports.
  */
 
-/** Emails longer than this many pages are cut (Tilman, 2026-09-21: cap at 10 pages, end with "mail capped"). */
+/** Emails longer than this many pages are cut, ending with "mail capped". */
 import {sanitizeFileNameComponent} from './fileName';
 
 export const EMAIL_NOTE_MAX_PAGES = 10;

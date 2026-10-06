@@ -1,8 +1,7 @@
 /**
  * The Week AND Month views' Focus/Projects/Areas panel (docs/dev/technical-design-
- * monthly-view.md §5.4) - ui/WeeklyFocusPanel.tsx generalized by `scope`, so
- * weekly and monthly focus have the same UX by construction (Tilman,
- * 2026-09-23: "weekly and monthly focus have very similar UX experience").
+ * monthly-view.md §5.4) - parameterized by `scope`, so weekly and monthly
+ * focus have the same UX by construction.
  * Same three mini-tabs (Focus | Projects | Areas), same arm-and-pick for an
  * empty slot (ui/FileBrowserPane.tsx's `LinkTarget` arming), same
  * tab-blocking-while-armed and leave-the-screen-cancels-the-arm behavior as
@@ -20,9 +19,8 @@
  * ui/PeriodGoalsHistoryPanel.tsx instead. Focus and goal writes are the
  * caller's (`onToggle`/`onSaveGoal`) - this panel only renders and collects.
  *
- * Self-measuring (see WeeklyFocusPanel's former `viewportHeight` note): with
- * `viewportHeight` omitted, this panel's root is `flex:1` and both
- * FileBrowserPanes measure the bounded box they're given.
+ * Self-measuring: with `viewportHeight` omitted, this panel's root is
+ * `flex:1` and both FileBrowserPanes measure the bounded box they're given.
  */
 import React, {useCallback, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -68,13 +66,11 @@ interface Props {
   /**
    * The Projects/Areas tabs' own `FileBrowserPane` viewport, in px.
    *
-   * Optional (2026-09-17, [[feature_pagination_fixed_height]]) - omitted
-   * (today's only caller, screens/WeekView.tsx), this panel's own root gets
+   * Optional - when omitted (screens/WeekView.tsx), this panel's own root gets
    * a conditional `flex:1` and forwards `undefined` into both `FileBrowserPane`
    * calls, which self-measure on their own - see the module doc comment.
    * Passed explicitly, it goes straight to both calls instead, bypassing
-   * self-measuring entirely (the escape hatch, same shape every other
-   * optional `viewportHeight` prop this session has).
+   * self-measuring entirely (the escape hatch).
    */
   viewportHeight?: number;
   textColor: string;
@@ -183,7 +179,7 @@ function PeriodFocusPanel({
   ];
 
   // Monthly defaults to more areas than projects (3 A / 2 P), so Areas lead
-  // there; weekly keeps its original Projects-first order.
+  // there; weekly keeps Projects first.
   const sectionOrder: FocusKind[] = scope === 'monthly' ? ['area', 'project'] : ['project', 'area'];
 
   const cardFor = (path: string): PeriodFocusCardData | null =>

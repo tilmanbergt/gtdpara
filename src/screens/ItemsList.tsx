@@ -1,21 +1,16 @@
 /**
  * ItemsList — Projects/Areas top-level tabs (App.tsx). Two-column layout
- * (docs/dev/technical-design-pagination-fixed-height.md §3.5, Batch 4,
- * 2026-09-15): left column "Active" (its own `PagedSection`), right column
- * split top/bottom into "On Hold" and "Done — awaiting review" (Projects),
- * or just "On Hold" alone filling the whole right column (Areas — matches
- * `groupByStatus`'s existing "Areas get no Done group" rule). Replaces the
- * old single full-width `PageControls`-paginated list that flattened all
- * three status groups into one `FlatRow` sequence — with each group now
- * its own independent `PagedSection` (which renders its own header), that
- * flattening/union type isn't needed at all any more; `groupByStatus`
- * returns a plain `{active, onHold, done}` triple instead.
+ * (docs/dev/technical-design-pagination-fixed-height.md §3.5): left column
+ * "Active" (its own `PagedSection`), right column split top/bottom into
+ * "On Hold" and "Done — awaiting review" (Projects), or just "On Hold"
+ * alone filling the whole right column (Areas — matches `groupByStatus`'s
+ * "Areas get no Done group" rule). Each group is its own `PagedSection`
+ * (which renders its own header); `groupByStatus` returns a plain
+ * `{active, onHold, done}` triple.
  *
- * Every group's box renders unconditionally at its fixed `viewportHeight`,
- * even with zero items — `PagedSection`'s own `emptyHint` fills the box
- * instead ("Nothing active."/"Nothing on hold."/"Nothing done yet."),
- * unlike the old `groupByStatus`, which filtered empty groups out of the
- * sequence entirely. This is §1.3's general fixed-height guarantee applied
+ * Every group's box renders unconditionally, even with zero items —
+ * `PagedSection`'s own `emptyHint` fills the box instead ("Nothing
+ * active."/"Nothing on hold."/"Nothing done yet."). This is §1.3's general fixed-height guarantee applied
  * here: the right column's two halves are always exactly half its height
  * each, never reflowing based on whether either currently has anything.
  *
@@ -41,24 +36,16 @@
  * TaskRow.tsx's `taskRowHeight`/ui/FileBrowserPane.tsx's `fileEntryHeight`
  * exactly - same `activeLineEstimator`, same FONT.medium/22px-line-height
  * convention - since a long project/area name (plus the ★/› decoration)
- * can wrap to a second line, same as those. This screen already capped
- * entries at `numberOfLines={2}` before this pass, but had no computed
- * height to match under the old fixed-row-count pagination (a real but
- * harmless gap, since a fixed row count didn't care about individual row
- * height) - now that pagination is height-driven, the two have to agree.
+ * can wrap to a second line, same as those. Entries are capped at
+ * `numberOfLines={2}`; since pagination is height-driven, the computed
+ * height and the rendered row have to agree.
  *
- * Viewport-height constant (`FULL_VIEWPORT_PX`) is a fresh screen budget
- * (docs/dev/design-device-rendering.md §6's method) rather than carried over
- * from the old `PAGE_SIZE.full` - this is the first call site in this pass
- * that's an actual layout change, not just a chrome swap (design doc §8
- * point 3), so there's no old per-list pixel budget to preserve the way
- * earlier batches preserved theirs. A starting point, same "tune once
- * on-device" convention as every other constant in this pass. Still used
- * by the Areas tab's lone "On Hold" box (§ below) - the Projects tab's own
- * right column no longer needs a matching `HALF_VIEWPORT_PX` (removed
- * 2026-09-17, docs/dev/technical-design-flex-weight-stacking.md §3.2): its
- * On Hold/Done split is now an equal 1:1 `flex` weight, not a shared pixel
- * budget - see `columnRight`'s own render comment.
+ * The viewport-height constant (`FULL_VIEWPORT_PX`) is a screen budget
+ * (docs/dev/design-device-rendering.md §6's method), a starting point to
+ * tune on the device. It is used by the Areas tab's lone "On Hold" box; the
+ * Projects tab's right column splits On Hold/Done by an equal 1:1 `flex`
+ * weight instead (docs/dev/technical-design-flex-weight-stacking.md §3.2) -
+ * see `columnRight`'s own render comment.
  */
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {StyleSheet, Pressable, Text, View} from 'react-native';
@@ -96,8 +83,8 @@ const CREATE_PLACEHOLDER: Record<'project' | 'area', string> = {
 };
 
 // Two-column width (COLUMN_WIDTH_PX) and row-sizing helpers
-// (itemEntryHeight/itemEntryLines) now live in ui/itemEntryRow.ts (extracted
-// 2026-09-16, docs/dev/technical-design-review-master-detail.md) so Review's
+// (itemEntryHeight/itemEntryLines) live in ui/itemEntryRow.ts
+// (docs/dev/technical-design-review-master-detail.md) so Review's
 // master-detail left lists can render rows with identical sizing/display
 // logic instead of a second copy.
 
@@ -158,9 +145,9 @@ interface StatusGroups {
 
 /**
  * Splits `entries` (already filtered to one `kind`) into the status groups
- * this screen renders, each its own `PagedSection` now (§3.5) - no longer
- * filtered down to only non-empty groups, since every group's box shows
- * unconditionally (its own `emptyHint` fills an empty one). Areas get no
+ * this screen renders, each its own `PagedSection` (§3.5). Empty groups are
+ * kept, since every group's box shows unconditionally (its own `emptyHint`
+ * fills an empty one). Areas get no
  * "Done" group - see domain/types.ts's ItemStatus doc comment. Active items
  * currently focused sort first; Array.prototype.sort is stable, so the
  * rest keep whatever order they arrived in (the native folder listing's own
@@ -194,7 +181,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
   });
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Create Project/Area row (2026-09-11) - name field + button at the very
+  // Create Project/Area row - name field + button at the very
   // top of this screen. Deliberately separate from `error` above (which is
   // the manual-rebuild failure state) so a failed create doesn't also show
   // the "Not built yet"/rebuild messaging.
@@ -230,8 +217,8 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
   }, []);
 
   /**
-   * Create Project/Area (2026-09-11, storage/createItem.ts). Deliberately
-   * doesn't navigate into the new item afterward (chat decision) - it just
+   * Create Project/Area (storage/createItem.ts). Deliberately
+   * doesn't navigate into the new item afterward - it just
    * clears the name field and lets the new item show up in its Active
    * group, same as any other item. If a cache already exists,
    * createItem's own ensureItemCached call pushes the new item straight
@@ -279,8 +266,8 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
         onPress={() => onOpenItem(kind, {name: item.name, path: item.path, isFolder: true})}
         // {height, minHeight: height} together, not height alone - an
         // explicit height doesn't override a stylesheet minHeight floor on
-        // its own (ui/TaskRow.tsx's Batch-2-bugfix-round doc comment has
-        // the full story) - this row has no such floor today, but pairing
+        // its own (see ui/TaskRow.tsx's doc comment) - this row has no
+        // such floor, but pairing
         // them defensively keeps this row consistent with every other
         // computed-height row in the app.
         style={[styles.entryRow, {height: heightPx, minHeight: heightPx}]}>
@@ -337,16 +324,13 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
       {cache && entries.length > 0 && (
         <View style={styles.twoColumn}>
           <View style={styles.columnLeft}>
-            {/* Self-measured (2026-09-17, [[feature_pagination_fixed_height]]) -
-                `viewportHeight` deliberately omitted: this is the only thing
+            {/* Self-measured - `viewportHeight` deliberately omitted: this is the only thing
                 in columnLeft (flex:1, common.container's own flex:1 chain
                 above it), so ui/PagedSection.tsx's own flex:1+onLayout gets
                 exactly this column's real available height instead of
                 FULL_VIEWPORT_PX's hand-derived estimate. columnRight's
-                'area'-kind branch is left on FULL_VIEWPORT_PX for now,
-                rather than have the same JSX self-measure differently by
-                kind - it stays the odd one out on purpose (see that
-                branch's own comment). */}
+                'area'-kind branch uses FULL_VIEWPORT_PX on purpose (see
+                that branch's own comment). */}
             <PagedSection
               header="Active"
               rows={groups.active}
@@ -359,14 +343,11 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
           </View>
           <View style={styles.columnRight}>
             {kind === 'project' ? (
-              // Flex-weight split (2026-09-17, docs/dev/technical-design-flex-
+              // Flex-weight split (docs/dev/technical-design-flex-
               // weight-stacking.md §3.2) - "On Hold"/"Done" each claim an
-              // equal `flex:1` share of columnRight (itself flex:1) instead
-              // of both being told the same hand-derived HALF_VIEWPORT_PX;
-              // each PagedSection now self-measures (`viewportHeight`
-              // omitted) into its own weighted box. Reproduces the old
-              // 1:1 split exactly - HALF_VIEWPORT_PX was already the same
-              // value for both.
+              // equal `flex:1` share of columnRight (itself flex:1); each
+              // PagedSection self-measures (`viewportHeight` omitted) into
+              // its own weighted box.
               <>
                 <View style={styles.halfBoxTop}>
                   <PagedSection
@@ -392,12 +373,10 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
                 </View>
               </>
             ) : (
-              // Deliberately still on the explicit FULL_VIEWPORT_PX
-              // constant rather than self-measuring (which columnRight's
-              // flex:1/sole-occupant shape would otherwise make eligible
-              // for, same as columnLeft above) - kept as-is per the
-              // 2026-09-17 self-measuring pass note this branch already
-              // carried, out of scope for this flex-weight pass too.
+              // Deliberately on the explicit FULL_VIEWPORT_PX constant
+              // rather than self-measuring (which columnRight's
+              // flex:1/sole-occupant shape would make possible, same as
+              // columnLeft above).
               <PagedSection
                 header="On Hold"
                 rows={groups.onHold}
@@ -439,8 +418,7 @@ const styles = StyleSheet.create({
   // Equal 1:1 flex-weight split (docs/dev/technical-design-flex-weight-
   // stacking.md §3.2) - both boxes flex:1 inside columnRight (itself
   // flex:1), so RN's own flexbox proportional-splitting gives each half of
-  // columnRight's real available height, same value HALF_VIEWPORT_PX used
-  // to hand-compute for both.
+  // columnRight's real available height.
   halfBoxTop: {
     flex: 1,
     marginBottom: HALF_BOX_GAP_PX,
@@ -450,8 +428,8 @@ const styles = StyleSheet.create({
   },
   entryRow: {
     // No alignItems/justifyContent override - default column-flex top-
-    // alignment is exactly what's wanted here (ui/TaskRow.tsx's/ui/
-    // MeetingRow.tsx's Batch-2-bugfix-round lesson: centering a
+    // alignment is exactly what's wanted here (as in ui/TaskRow.tsx/ui/
+    // MeetingRow.tsx: centering a
     // variable-height row inside its own reserved box makes a
     // shorter-than-reserved row visually "float" instead of sitting at the
     // top with any misprediction slack at the bottom).
@@ -459,19 +437,12 @@ const styles = StyleSheet.create({
   },
   entry: {
     fontSize: FONT.medium,
-    // Test (2026-09-17, [[feature_pagination_fixed_height]]) - Tilman
-    // noticed descenders (the bottom of a "g") getting clipped exactly at
-    // the entryRow/entryRow boundary, with visible unused headroom above
-    // the glyphs - consistent with Android's default `includeFontPadding`
-    // (true) reserving extra space above cap-height for arbitrary-script
-    // accents without a matching reservation below the baseline for
-    // descenders, rather than entryRow's own fixed-height budget
-    // (itemEntryHeight/ITEM_ENTRY_LINE_HEIGHT_PX) being short overall.
-    // `false` asks Android to lay text out tight to its real ascent/
-    // descent metrics instead. Scoped to Projects/Areas (this file) only,
-    // to see the effect before deciding whether to roll it out to
-    // TaskRow.tsx/MeetingRow.tsx/FileBrowserPane.tsx's own row Text
-    // styles, which share the same unset-includeFontPadding default today.
+    // Android's default `includeFontPadding` (true) reserves extra space
+    // above cap-height for accents without a matching reservation below
+    // the baseline, which clips descenders (the bottom of a "g") at the
+    // entryRow boundary. `false` lays text out tight to its real ascent/
+    // descent metrics instead. Only set here (Projects/Areas); TaskRow.tsx/
+    // MeetingRow.tsx/FileBrowserPane.tsx's row Text styles keep the default.
     includeFontPadding: false,
   },
   entryLink: {

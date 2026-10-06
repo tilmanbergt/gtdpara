@@ -16,11 +16,9 @@ import {GoogleCalendarEvent} from '../domain/googleCalendarEvent';
 import {ensureItemCached, reloadCachedInbox, updateItemMeetings} from './dataCache';
 import {loadProjectFile, saveMeetings} from './projectFile';
 
-/** Exported so ui/GoogleCalendarPanel.tsx's optimistic Inbox update builds the exact same Meeting (it used to carry its own literal copy). */
+/** Exported so ui/GoogleCalendarPanel.tsx's optimistic Inbox update builds the exact same Meeting. */
 export function buildMeetingFromEvent(event: GoogleCalendarEvent, opts?: {highlight?: boolean}): Meeting {
-  // Copied from the Month view -> a Month highlight right away (Tilman,
-  // 2026-09-23: "if I add on the monthly view from the google calendar: the
-  // item should automatically be Monthly highlight").
+  // Copied from the Month view -> a Month highlight right away.
   const title = opts?.highlight ? setHighlight(event.title, true) : event.title;
   return {
     title,

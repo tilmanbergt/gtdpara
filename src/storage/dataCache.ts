@@ -1,13 +1,10 @@
 /**
- * The disposable cross-project cache (design-overview.md §4) - now covering
- * both halves the design doc describes: which Project/Area folders exist
- * (previously storage/folderIndex.ts, now folded in here), AND each one's
- * own parsed Tasks/Meetings (previously read fresh, per item, every time a
- * screen opened it - the part that "will get slow" as the number of
- * Projects/Areas grows, since Home and Daily each read every file on every
- * open).
+ * The disposable cross-project cache (design-overview.md §4), covering both
+ * halves the design doc describes: which Project/Area folders exist, AND
+ * each one's own parsed Tasks/Meetings - so Home and Daily don't read every
+ * file on every open, which gets slow as the number of Projects/Areas grows.
  *
- * Kept current the two ways the design doc calls for:
+ * Kept current in these ways:
  *
  * 1. A full rebuild (rebuildCache) - rereads every project.txt/area.txt
  *    from scratch. On demand via Settings → Advanced → "Reload all files",
@@ -20,34 +17,31 @@
  *    re-opening the same item later) sees the change immediately without
  *    needing a rebuild.
  *
- * 3. Change notification (subscribeCache/getCacheVersion, 2026-09-20,
+ * 3. Change notification (subscribeCache/getCacheVersion,
  *    docs/dev/technical-design-cache-subscription-and-shared-add-path.md §A) -
  *    write-through mutates cache items IN PLACE (the very same array and item
  *    objects a screen already holds), so a screen's `setItems(cache.items)`
- *    was a same-reference no-op and React never re-rendered (Week view did
- *    not show meetings filed to a Project/Area until something else
- *    re-rendered it). Every mutation below now bumps a version and notifies
- *    subscribers; ui/useCachedItems.ts turns that into a re-render plus a
- *    fresh array identity per change, so no screen has to remember a manual
- *    refresh step.
+ *    alone would be a same-reference no-op and React would not re-render.
+ *    Every mutation below bumps a version and notifies subscribers;
+ *    ui/useCachedItems.ts turns that into a re-render plus a fresh array
+ *    identity per change, so no screen has to remember a manual refresh step.
  *
- * 4. Incremental refresh (refreshCache, 0.6.0, docs/dev/technical-design-
- *    files-0.6.md §3.2) - what App.tsx runs on every open now: lists the
+ * 4. Incremental refresh (refreshCache, docs/dev/technical-design-
+ *    files-0.6.md §3.2) - what App.tsx runs on every open: lists the
  *    Project/Area folders, stats every data file plus Inbox.txt in one
  *    native call, and re-reads only files whose stamp (exists, modified
  *    time, size) differs from the one recorded when they were read. Notifies
  *    only when something really changed. "Reload all files" stays a full
  *    rebuild.
  *
- * Still fully disposable: rebuildCache always reproduces the cache
- * correctly from the files, which remain the only real data - this is a
- * responsiveness layer on top, never a second source of truth. A single
- * item that isn't in the cache yet (ensureItemCached) is loaded on demand
- * rather than forcing a full rebuild just to open one Project/Area.
+ * Fully disposable: rebuildCache always reproduces the cache correctly from
+ * the files, which remain the only real data - this is a responsiveness
+ * layer on top, never a second source of truth. A single item that isn't in
+ * the cache yet (ensureItemCached) is loaded on demand rather than forcing a
+ * full rebuild just to open one Project/Area.
  *
- * Resources/Archive stay unscanned, same as the folder-index-only version
- * before it - they're hidden from Home for now (a prior, explicit decision,
- * not an oversight of this change).
+ * Resources/Archive stay unscanned - they're hidden from Home (a deliberate
+ * decision).
  */
 import {ExistingAbbrev, generateDefaultAbbrev} from '../domain/abbrev';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
@@ -89,7 +83,7 @@ export interface CachedItem {
   defaultResourceFolder: string | null;
   /** The Area this Project supports, by bare folder name, or null - Projects only, always null for Areas (technical-design-project-area-assignment.md §2). */
   area: string | null;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - filled in for every item by the one-time migration `doRebuildCache` runs below, so in practice this is only ever null for an item this session hasn't rebuilt the cache since the feature shipped, or one whose migration write failed and will retry on the next rebuild. */
+  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - filled in for every item by the one-time migration `doRebuildCache` runs below, so in practice this is only null for an item not yet seen by a rebuild, or one whose migration write failed and will retry on the next rebuild. */
   abbrev: string | null;
   frontMatterExtraLines: string[];
   /** Set when this item's own file failed to load during the last rebuild - the item still shows (the folder itself was found fine) but with empty tasks/meetings until a rebuild succeeds. */
@@ -282,18 +276,17 @@ async function loadOneItem(kind: 'project' | 'area', name: string, path: string)
 }
 
 /**
- * ONE-TIME MIGRATION (2026-09-14, docs/dev/technical-design-project-area-
+ * ONE-TIME MIGRATION (docs/dev/technical-design-project-area-
  * abbreviations.md) - fills in a generated `abbrev` for every item that
  * doesn't have one yet, every time the cache does a full rebuild (which
- * already runs automatically on every plugin open/foreground - App.tsx's
- * `reorient` - so real items pick one up on their own shortly after this
- * ships, no separate action needed). Idempotent: only touches items with
- * `abbrev === null`, so running it again after everything already has one
- * is a fast no-op scan. Tilman's call (2026-09-14 chat) was "one time pass
- * ... then we can remove that again": once every real Project/Area has
- * picked one up (spot-check, or a rebuild with nothing left to fill),
- * DELETE this function and its one call site in doRebuildCache below - the
- * `abbrev` field stays, this is just the backfill for items that predate it.
+ * runs automatically on plugin open/foreground - App.tsx's `reorient` - so
+ * real items pick one up on their own, no separate action needed).
+ * Idempotent: only touches items with `abbrev === null`, so running it again
+ * after everything has one is a fast no-op scan. Meant as a one-time pass:
+ * once every real Project/Area has picked one up (spot-check, or a rebuild
+ * with nothing left to fill), DELETE this function and its one call site in
+ * doRebuildCache below - the `abbrev` field stays, this is just the backfill
+ * for items that predate it.
  *
  * Processes items in the order doRebuildCache already produced them
  * (folder-scan order), reserving each freshly generated value into
@@ -371,23 +364,17 @@ export async function assignDefaultAbbrevIfMissing(item: CachedItem): Promise<vo
  * - a partial failure on one item doesn't fail the rebuild, it's recorded
  * on that item's `loadError` instead (see loadOneItem).
  *
- * De-duped (2026-09-11, Tilman: entering Review right after opening the
- * plugin felt like "overload" and slowed things down): App.tsx's `reorient`
- * already kicks off a background rebuild on every plugin open/foreground,
- * and separately, most screens' own `load()` falls back to `await
- * rebuildCache(...)` themselves when they find no cache yet
- * (DailyView/InboxScreen/ReviewScreen/CaptureScreen) - landing on any of
- * those screens before reorient's own background rebuild finishes used to
- * fire a second, fully redundant full-vault scan racing the first one, each
- * paying the same disk-I/O cost independently. A caller that arrives while
- * one's already running now gets that same in-flight promise back instead
- * of starting its own - same pattern as storage/googleCalendarCache.ts's
- * `refreshGoogleCalendar` / supernote/pluginPermissions.ts's `pending` map.
- * A `settings` argument arriving while another call's rebuild is already in
- * flight is silently ignored in favor of whichever settings started that
- * rebuild - accepted the same way in those other two call sites, since two
- * rebuild requests landing within milliseconds of each other essentially
- * never disagree on settings in practice.
+ * De-duped: App.tsx's `reorient` kicks off a background rebuild on every
+ * plugin open/foreground, and most screens' own `load()` falls back to
+ * `await rebuildCache(...)` when they find no cache yet (DailyView/
+ * InboxScreen/ReviewScreen/CaptureScreen). A caller that arrives while a
+ * rebuild is already running gets that same in-flight promise back instead
+ * of starting a second, redundant full-vault scan - same pattern as
+ * storage/googleCalendarCache.ts's `refreshGoogleCalendar` /
+ * supernote/pluginPermissions.ts's `pending` map. A `settings` argument
+ * arriving while another call's rebuild is in flight is ignored in favor of
+ * whichever settings started that rebuild - two rebuild requests landing
+ * within milliseconds of each other essentially never disagree on settings.
  */
 export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   if (rebuildInFlight) {
@@ -778,8 +765,8 @@ export function updateItemFrontMatter(path: string, rawContent: string, fm: Fron
 
 /**
  * Drops `path` from the cache entirely - used after storage/archive.ts
- * moves an item's folder out of Projects/Areas, since it's no longer under
- * either root and every other write-through here assumes the item stays
+ * moves an item's folder out of Projects/Areas, since it then sits under
+ * neither root and every other write-through here assumes the item stays
  * put. No-op if there's no cache yet or the item isn't in it.
  */
 export function removeCachedItem(path: string): void {

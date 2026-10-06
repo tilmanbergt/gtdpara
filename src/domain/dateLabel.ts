@@ -1,7 +1,7 @@
 /**
  * Short "where did it go" wording for a just-added meeting's date
- * (docs/dev/technical-design-cache-subscription-and-shared-add-path.md §C,
- * 2026-09-20). ui/QuickAddWidget.tsx appends it to its centre note - e.g.
+ * (docs/dev/technical-design-cache-subscription-and-shared-add-path.md §C).
+ * ui/QuickAddWidget.tsx appends it to its centre note - e.g.
  * `✓ Added "Team sync" - next week` - when the meeting's date is NOT part of
  * the list the screen currently shows (Week view: outside the displayed
  * week; Daily: not the shown Today/Tomorrow tab), so an Add that

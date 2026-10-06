@@ -1,10 +1,9 @@
 /**
  * Creates and names the .note files linked to todos/meetings
- * (design-overview.md §3's "→ [[...]]" note-linking, now built for both
- * Tasks and Meetings). A linked note lives in a "Meetings" or "Todos"
- * subfolder of the Project/Area it belongs to - sibling to project.txt/
- * area.txt, not nested under wherever the user happens to be browsing in
- * the left-pane file tree.
+ * (design-overview.md §3's "→ [[...]]" note-linking, for both Tasks and
+ * Meetings). A linked note lives in a "Meetings" or "Todos" subfolder of the
+ * Project/Area it belongs to - sibling to project.txt/area.txt, not nested
+ * under wherever the user happens to be browsing in the left-pane file tree.
  */
 import {RESERVED_BARE_TAGS, setFlowStateTag, stripBareTags} from '../domain/flowState';
 import {setDueTag} from '../domain/markdown';
@@ -24,25 +23,19 @@ export const TODOS_SUBFOLDER = 'Todos';
 /**
  * Supernote's built-in blank page, referenced by the exact name
  * PluginFileAPI.createNote expects - the fallback getNoteTemplate below uses
- * when no custom MyStyle template is picked. Matches the working pattern
- * from the textboxHelper project's import flow, which creates notes the
- * same way - a fixed name, not one picked at runtime from
- * getNoteSystemTemplates() (a vUri/hUri resource reference from that call is
- * what produced "Background template file does not exist" here before).
+ * when no custom MyStyle template is picked. A fixed name, not one picked at
+ * runtime from getNoteSystemTemplates(): a vUri/hUri resource reference from
+ * that call produces "Background template file does not exist".
  */
 const BLANK_TEMPLATE_NAME = 'style_white';
 
 /**
- * The one remaining caller of this is `storage/standaloneNotes.ts`'s
- * `createStandaloneNote` (Project/Area standalone notes, Phase 4 - not
- * wired through `resolveNoteTemplate`/`TagRule` at all yet,
- * so they still just get a blank note). Used to also resolve a
- * settings-backed global `meetingNoteTemplate` filename (retired 2026-09-18,
- * Phase 3, docs/dev/technical-design-note-templates.md - see domain/settings.ts's
- * revision history for that field) - now a trivial constant, kept as its own
- * named function rather than inlined at the one call site so a future
- * per-context standalone-note background (flagged, not yet built - see
- * createStandaloneNote's own doc comment) has an obvious place to grow into.
+ * Background for `storage/standaloneNotes.ts`'s `createStandaloneNote`
+ * (Project/Area standalone notes, which are not wired through
+ * `resolveNoteTemplate`/`TagRule`, so they get a blank note). A trivial
+ * constant, kept as its own named function so a future per-context
+ * standalone-note background (see createStandaloneNote's doc comment) has
+ * an obvious place to grow into.
  */
 export function getNoteTemplate(): string {
   return BLANK_TEMPLATE_NAME;
@@ -53,21 +46,11 @@ export function getNoteTemplate(): string {
  * should use, the same way `storage/meetingNoteContent.ts` resolves that
  * note's *content*: `resolveNoteTemplate(context, tags, ...)`, using the
  * matched definition's own `template` field (`''` meaning blank/
- * `style_white`, same convention `TagRule.template`'s own doc
- * comment uses). Falls back to blank (`BLANK_TEMPLATE_NAME`) when
- * `resolveNoteTemplate` finds no matching/enabled definition for this
- * context+tags - mirrors `refreshMeetingNoteBlock`/`refreshTodoNoteBlock`
- * both simply doing nothing in that same "no definition" case on the
- * content side, so a context with zero definitions configured (every Todo
- * definition, until the user adds one - see domain/tagRules.ts's module
- * doc comment on why none is auto-seeded there) still just gets a blank
- * note, same as before this feature existed anywhere.
- *
- * Originally (2026-09-18) fell back to `getNoteTemplate(settings)` - the
- * global `meetingNoteTemplate` setting - instead of blank directly; that
- * field was retired the same day (Phase 3) once every context resolved its
- * background per-definition, so this fallback simplified to the same
- * `BLANK_TEMPLATE_NAME` `getNoteTemplate` itself now always returns.
+ * `style_white`, same convention as `TagRule.template`). Falls back to blank
+ * (`BLANK_TEMPLATE_NAME`) when no matching/enabled definition exists for
+ * this context+tags - mirroring `refreshMeetingNoteBlock`/
+ * `refreshTodoNoteBlock`, which do nothing in that case - so a context with
+ * zero definitions configured gets a blank note.
  */
 export function resolveNoteBackgroundTemplate(
   settings: GtdParaSettings,
@@ -99,8 +82,7 @@ export function meetingNoteBaseName(meeting: Pick<Meeting, 'date' | 'title'>): s
  * `#now`/`#prepped`/`#reviewed`): machine-managed state that changes over the
  * todo's life and doesn't belong in a file name. Free/context tags
  * (`#daily`, `#music`, ...) stay - they're part of what the todo *is*, and
- * are exactly the ones a Daily row shows in its text. Fixed 2026-09-21: the
- * raw `task.text` used to end up in the file name, flow-state tag included.
+ * are exactly the ones a Daily row shows in its text.
  *
  * Unlike domain/taskLabels.ts's `displayTaskText`, which strips a functional tag
  * only where a label already conveys it, this strips them all unconditionally
@@ -122,15 +104,11 @@ export function todoNoteBaseName(task: Pick<Task, 'text'>): string {
  * link keeps working if the Project/Area folder itself is later renamed or
  * moved, since it's always resolved against the item's current path.
  *
- * `tags` (2026-09-18 bugfix, see `resolveNoteBackgroundTemplate`'s own doc
- * comment) is the new/Task's/Meeting's own tags at the moment of creation -
- * every call site already has the Task/Meeting object in hand here, so this
- * is always its `.tags`, never a separate lookup. `context` isn't a
- * separate parameter - derived from `subfolder`, since the two already move
- * in lockstep at every call site (MEETINGS_SUBFOLDER only ever pairs with a
- * Meeting, TODOS_SUBFOLDER only ever with a Task) and adding a second
- * parameter that has to agree with the first would just be one more way for
- * a call site to get it wrong.
+ * `tags` is the Task's/Meeting's own tags at the moment of creation (used
+ * by `resolveNoteBackgroundTemplate`). `context` isn't a separate parameter -
+ * it's derived from `subfolder`, since MEETINGS_SUBFOLDER only ever pairs
+ * with a Meeting and TODOS_SUBFOLDER with a Task; a second parameter that
+ * has to agree with the first would be one more way to get it wrong.
  */
 export async function createLinkedNote(
   itemPath: string,
@@ -175,48 +153,25 @@ export async function insertNoteKeywords(absolutePath: string, keywords: readonl
 }
 
 /**
- * Resolves a Task/Meeting's notePath against `itemPath`. Every notePath a
- * *linked note* creates via createLinkedNote above is relative (e.g.
- * "Todos/....note") since that note lives inside the item's own folder and
- * should keep working if the folder is later renamed/moved. The lasso
- * capture flow's "link to source note" option is different - it points back
- * at whatever note the user was lassoing from, which isn't necessarily
- * anywhere under the destination Project/Area (or under a Project/Area at
- * all, e.g. when the destination is Inbox), so relative-path math doesn't
- * make sense for it. Rather than force that case into the relative
- * convention, a notePath starting with '/' is treated as an absolute path
- * and used as-is; anything else resolves relative to itemPath exactly as
- * before. No existing notePath ever starts with '/', so this is a
- * backward-compatible extension, not a breaking change.
+ * Resolves a Task/Meeting's notePath against `itemPath`. Every notePath
+ * createLinkedNote above creates is relative (e.g. "Todos/....note"), so it
+ * keeps working if the item's folder is renamed/moved. The lasso capture
+ * flow's "link to source note" option points back at whatever note the user
+ * was lassoing from, which needn't be under the destination Project/Area (or
+ * any Project/Area, e.g. Inbox), so a notePath starting with '/' is treated
+ * as an absolute path and used as-is; anything else resolves relative to
+ * itemPath.
  *
  * A shared-note anchor (docs/dev/technical-design-shared-note-pages.md §2.2,
  * `"relativePath#keyword"` via `parseSharedNoteAnchor`) resolves by its
- * `filePath` half only - the keyword plays no part in *file* resolution,
- * only in finding the right *page* once the file is open (§4/§6, Slice 2/3
- * territory, not this function's job).
+ * `filePath` half only - the keyword only matters for finding the right
+ * *page* once the file is open (§4/§6).
  *
- * Now VERIFIES that guess against the real filesystem before trusting it
- * (2026-09-23, [[bugfix_shared_note_content_missing]] round 3 - async since
- * this addition), rather than trusting `parseSharedNoteAnchor` returning
- * non-null on its own. Originally reasoned "returns null for every notePath
- * that isn't a shared-note anchor... so this is unconditionally safe" - true
- * of the STRING, false in practice: `todoNoteBaseName`/`meetingNoteBaseName`
- * kept context tags like `#daily` in a note's file name until
- * `sanitizeFileNameComponent` started stripping `#` (round 2, same
- * afternoon), so plenty of already-created own-note files legitimately
- * contain `#` - correctly linked, correctly named, just misread as an
- * anchor by this function on every single reopen (confirmed on-device
- * 2026-09-23: Tilman found several via the Integrity Check
- * [[feature_integrity_check]] - real files, notePath matching them exactly,
- * still failing to open). Since `parseSharedNoteAnchor`'s split gives a
- * filePath candidate that's cheap to check for real, there's no reason to
- * keep guessing: if the anchor's filePath resolves to an actual file, trust
- * it as a genuine shared anchor (unchanged behavior); if it doesn't, fall
- * back to treating the whole original string as a plain own-note path
- * instead of failing outright - this makes every one of those pre-existing
- * files work again with no manual rename needed, and closes this ambiguity
- * for good rather than requiring a fourth bugfix round for the next place
- * it turns up.
+ * The anchor reading is verified against the real filesystem: older
+ * own-note files can legitimately contain `#` in their name, which
+ * `parseSharedNoteAnchor` misreads as an anchor. If the anchor's filePath is
+ * an actual file, it's a genuine shared anchor; otherwise the whole original
+ * string is treated as a plain own-note path.
  */
 export async function resolveNotePath(itemPath: string, notePath: string): Promise<string> {
   // A page link (lasso 0.8) names the file before `#page=`.
@@ -245,7 +200,7 @@ export type NotePathClass =
  * Decides whether a stored notePath is an own note or a shared-note anchor,
  * and whether its file exists (docs/dev/technical-design-split-by-tag.md
  * §3.4) for storage/meetingNoteContent.ts's note planning. Same existence-verified
- * reading `resolveNotePath` introduced in round 3 of the `#` bugfix:
+ * reading as `resolveNotePath`:
  * 1. Anchor-shaped and the anchor's file exists -> shared.
  * 2. Otherwise the literal path exists -> own (older own-note files can
  *    have `#` in their real name).

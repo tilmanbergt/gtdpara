@@ -1,6 +1,6 @@
 /**
  * Archiving a Project/Area (technical-design-status-archive.md §5; target
- * layout since 2026-09-28: docs/dev/technical-design-project-close-out.md §5.1 -
+ * layout: docs/dev/technical-design-project-close-out.md §5.1 -
  * Archive/<year>/[<Area>/]<Project>/ for Projects, Archive/<year>/<Area>/
  * merged for Areas, plus an `archivedAt:` date): the one
  * action that moves the folder out of Projects/Areas and into Archive/ AND
@@ -33,7 +33,7 @@ import {errorMessage} from '../utils/errorMessage';
  * before anything moves if a name collides), then stamps
  * `status: archived` (and clears both focus flags, same as any other
  * status change) into the file at its *new* location, then drops the item
- * from the cross-project cache since it's no longer under Projects/Areas.
+ * from the cross-project cache since it now lives outside Projects/Areas.
  *
  * Ordering matters: the physical move happens first, so if the frontmatter
  * write in step 2 fails, the folder is still correctly out of Projects/

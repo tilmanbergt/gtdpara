@@ -1,18 +1,15 @@
 /**
  * Daily view's Focus/Projects/Areas panel (technical-design-daily-focus-
- * panel.md) - replaces the old full-width `focusRow` (two side-by-side
- * `DailyFocusKindSection`s, DailyView.tsx §2.11) with a single narrower panel
- * that sits directly below the Calendar column, freeing the Open-tasks
- * column to use the row height that full-width row used to occupy.
+ * panel.md) - a single narrow panel directly below the Calendar column, so
+ * the Open-tasks column keeps the full height.
  *
  * Three direct mini-tabs - Focus | Projects | Areas, never a single wrapping
- * "Browse" tab (that was tried and rejected during this feature's mockup
- * rounds):
+ * "Browse" tab:
  *
- * - **Focus** - today's fixed-slot display, unchanged in spirit: every
- *   currently-focused item of a kind gets a row with "✕" to remove,
- *   followed by `limit - focused.length` empty "+ Add {kind}" slots. Tapping
- *   a focused row's name navigates to it (`onOpenItem`), same as before.
+ * - **Focus** - today's fixed-slot display: every currently-focused item of
+ *   a kind gets a row with "✕" to remove, followed by
+ *   `limit - focused.length` empty "+ Add {kind}" slots. Tapping a focused
+ *   row's name navigates to it (`onOpenItem`).
  * - **Projects** / **Areas** - a plain, alphabetically-ordered browse of
  *   every *Active* item of that kind (not just focused ones); tapping a name
  *   navigates to it too. Built from a single-root `ui/FileBrowserPane.tsx`
@@ -27,7 +24,7 @@
  *
  * **Arm-and-pick.** Tapping an empty "+ Add {kind}" slot on Focus arms the
  * matching tab as a picker instead of expanding an inline candidate list in
- * place (the mechanism `DailyFocusKindSection` used to use): it switches to
+ * place: it switches to
  * that tab, and while armed its `FileBrowserPane` root's `entryFilter`
  * narrows to Active-and-not-already-focused items, with `linkTarget` in
  * `arming`/`pickKind: 'folder'` mode so a tap on a name **picks** (calls
@@ -44,10 +41,8 @@
  * `disabled` flag - the exact same silent grey-out-and-non-tappable
  * convention `ui/FileBrowserPane.tsx` already uses for its own Resources tab
  * while refile-arming (`disabled`'s own doc comment there: "don't add/remove
- * tabs, just change what tapping them does") - rather than a separate
- * dimmed-tab-plus-text-message widget (what the interactive mockup used,
- * being throwaway HTML/JS not bound by this app's real component set).
- * While armed for one kind, Focus and the *other* kind's tab grey out and
+ * tabs, just change what tapping them does") - not a separate
+ * dimmed-tab-plus-text-message widget. While armed for one kind, Focus and the *other* kind's tab grey out and
  * stop responding to taps; the armed tab itself stays fully active so the
  * pick (or cancelling via the arming badge's "✕", rendered by
  * `FileBrowserPane` itself) can happen.
@@ -72,14 +67,11 @@
  * (`dailyFocusProjectCount + dailyFocusAreaCount`, defaults 3 + 2 = 5) is
  * `ui/pagination.ts`'s `PAGE_SIZE.dailyFocusPanel` - Projects/Areas page at
  * the same size, so the panel's outer height never grows or shrinks per
- * tab. (2026-09-17, [[feature_pagination_fixed_height]]) - now passed as an
- * explicit `viewportHeight={focusPanelViewportHeightPx}` on each
- * `FileBrowserPane` call rather than via its old `FileBrowserRoot.pageSize`
- * field (superseded, see that field's own doc comment) - same pixel value,
- * just plumbed through the newer prop. This whole panel is still on the
- * explicit/fixed path, not yet self-measuring - see that feature's "Next
- * steps" for why (this panel's own root has no bounding `flex:1` yet, and
- * the Focus tab's own fixed-slot content doesn't self-measure at all).
+ * tab. The size is passed as an explicit
+ * `viewportHeight={focusPanelViewportHeightPx}` on each `FileBrowserPane`.
+ * This panel uses a fixed height, not self-measuring: its root has no
+ * bounding `flex:1`, and the Focus tab's fixed-slot content doesn't
+ * self-measure at all.
  */
 import React, {useCallback, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -109,7 +101,7 @@ interface Props {
   dailyFocusAreaCount: number;
   /** Jump the whole app to a Project/Area's Current tab - same prop DailyView itself receives from App.tsx, passed straight through (App.tsx's `openItem`). */
   onOpenItem: (kind: FocusKind, entry: FolderEntry) => void;
-  /** Adds/removes `item` from daily focus - DailyView's existing `handleToggleItemFocus`, unchanged (it already runs `focusBlockedReason` before turning a flag on and write-throughs via `storage/focusSlots.ts`'s `setItemFocus`). Reused as-is for both a Focus-tab row's "✕" and a successful arm-and-pick. */
+  /** Adds/removes `item` from daily focus - DailyView's `handleToggleItemFocus` (it runs `focusBlockedReason` before turning a flag on and writes through via `storage/focusSlots.ts`'s `setItemFocus`). Used for both a Focus-tab row's "✕" and a successful arm-and-pick. */
   onToggle: (item: CachedItem, value: boolean) => Promise<void>;
   textColor: string;
   borderColor: string;
@@ -148,7 +140,7 @@ function DailyFocusPanel({
    * composite involved), so it's exactly `item.name`/the last path segment.
    * Looks the item up in the already-warm cache, re-checks nothing itself
    * beyond what `onToggle` already does (it runs `focusBlockedReason`
-   * defensively right before writing, same as it always has) - this arm's
+   * defensively right before writing) - this arm's
    * own `entryFilter` (active-and-not-already-focused) is what normally
    * keeps a full slot from ever being offered as a candidate in the first
    * place.
@@ -198,12 +190,8 @@ function DailyFocusPanel({
     entryFilter: focusArm?.kind === 'area' ? activeAndNotFocused('area') : activeOnly,
     onNavigateToItem: (kind, name, path) => onOpenItem(kind, {name, path, isFolder: true}),
   };
-  // FileBrowserPane's own `pageSize`-per-root override is superseded
-  // (2026-09-17, [[feature_pagination_fixed_height]]) - the component-level
-  // `viewportHeight` prop below reproduces this panel's exact previous
-  // sizing until this panel's own conditional-flex:1/self-measuring
-  // conversion (memory's "Next steps" - depends on checking this panel's
-  // own mount point one level up first).
+  // Fixed panel height, passed as the component-level `viewportHeight` prop
+  // (see the module doc comment's "Sizing" note).
   const focusPanelViewportHeightPx = fileBrowserViewportHeightPx(PAGE_SIZE.dailyFocusPanel);
 
   const linkTargetFor = (tabKind: FocusKind): LinkTarget | null =>
@@ -279,11 +267,9 @@ function DailyFocusPanel({
 /**
  * One kind's row of daily-focus slots (Projects, or Areas) - every
  * currently-focused item of `kind`, each removable, followed by however many
- * empty slots remain under `limit`. Tapping an empty slot now calls
- * `onAddEmpty` (arms the matching mini-tab) instead of expanding an inline
- * picker in place - the only behavioral change from the retired
- * `DailyFocusKindSection`; everything else (a focused row's tap-to-navigate,
- * "✕" to remove, `pending`/`actionError`) is unchanged.
+ * empty slots remain under `limit`. Tapping an empty slot calls
+ * `onAddEmpty` (arms the matching mini-tab); a focused row's name navigates
+ * to it, "✕" removes it, and `pending`/`actionError` show progress/errors.
  */
 function FixedSlotSection({
   kind,

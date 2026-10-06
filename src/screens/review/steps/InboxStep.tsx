@@ -350,11 +350,10 @@ return (
         Clear every capture: file it to a Project/Area, finish it on the spot, or cancel it.
       </Text>
 
-      {/* One shared widget above both lists (2026-09-09, docs/technical-
-          design-unified-quickadd.md §3/§8) - it isn't Tasks- or Meetings-
-          exclusive, so it sits above both rather than nested in either,
-          same placement rule ProjectDataPanel.tsx/InboxScreen.tsx already
-          applied in step 2. */}
+      {/* One shared widget above both lists (docs/technical-design-unified-
+          quickadd.md §3/§8) - it isn't Tasks- or Meetings-exclusive, so it
+          sits above both rather than nested in either, same placement rule
+          as ProjectDataPanel.tsx/InboxScreen.tsx. */}
       <QuickAddWidget
         fixedDestination={FIXED_INBOX_DESTINATION}
         onAddTask={onAddTask}
@@ -388,17 +387,15 @@ return (
 
       <View style={[common.divider, {backgroundColor: borderColor}]} />
 
-      {/* Flex-weight stacking (2026-09-17, docs/dev/technical-design-flex-
+      {/* Flex-weight stacking (docs/dev/technical-design-flex-
           weight-stacking.md §3.4) - stackedColumn (flex:1) splits its
           real available height 8:6 between the Tasks/Meetings
           PagedSections below via plain sibling `flex` weights. */}
       <View style={styles.stackedColumn}>
       <View style={{flex: TASKS_WEIGHT}}>
-      {/* "Tasks" heading + PageControls merged into one PagedSection
-          (2026-09-16, same mechanical swap Batch 2 already made for
-          screens/InboxScreen.tsx's own Tasks pane) - the old separate
-          `{inboxOpenTasks.length === 0 && <Text>...}` folds into
-          `emptyHint`. No header/group rows here (unlike InboxScreen's own
+      {/* "Tasks" heading and page controls live in one PagedSection, like
+          screens/InboxScreen.tsx's Tasks pane; the empty text is its
+          `emptyHint`. No header/group rows here (unlike InboxScreen's
           flow-state-grouped list), so no `isCountableRow` needed - every
           row in `inboxOpenTasks` is a real entry. */}
       <PagedSection

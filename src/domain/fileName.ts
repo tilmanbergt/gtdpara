@@ -7,12 +7,12 @@
  *   the Supernote or on the computers the files sync to.
  * - `#`: reserved by domain/sharedNotePages.ts's anchor encoding
  *   (`"relativePath#keyword"`) to mark where a shared-note anchor's file path
- *   ends - a `#` in an own note's name was misread as that separator (fixed
- *   2026-09-23). It also breaks Obsidian links.
+ *   ends, so a `#` in an own note's name would be misread as that separator.
+ *   It also breaks Obsidian links.
  * - `[ ] ^`: break Obsidian's `[[link]]` targets (`|` is already above), so
  *   files synced into an Obsidian vault stay linkable.
  *
- * Only affects names created from now on; existing files keep theirs.
+ * Applies to names gtdpara creates; existing files keep their names.
  */
 
 // eslint-disable-next-line no-control-regex -- control characters are exactly what is not allowed

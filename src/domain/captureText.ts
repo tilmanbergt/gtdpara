@@ -51,8 +51,8 @@ export interface PreparedCaptureText {
 
 /**
  * Boxes and dots that start a new item even in the middle of a line: the
- * recognizer returns some lists without any line break ("☐ a b☐ c d☐ e",
- * device check 2026-10-05). Dashes and numbers only count at a line start -
+ * recognizer returns some lists without any line break ("☐ a b☐ c d☐ e").
+ * Dashes and numbers only count at a line start -
  * "Anna - budget" or "e-mail" must stay one item.
  */
 const INLINE_BULLET_RE = /([^\n])[ \t]*([☐□☑☒•])/g;

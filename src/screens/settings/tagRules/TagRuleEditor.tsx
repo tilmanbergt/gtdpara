@@ -28,7 +28,7 @@ export const CONTEXT_TABS: MiniTabDef<NoteContext>[] = [
   {key: 'meeting', label: 'Meeting'},
 ];
 
-/** Todo/Meeting-only (docs/dev/technical-design-shared-note-pages.md §6): whether this rule's notes each get their own file ('own', today's behavior) or land as pages inside one shared file per Project/Area ('shared'). */
+/** Todo/Meeting-only (docs/dev/technical-design-shared-note-pages.md §6): whether this rule's notes each get their own file ('own', the default) or land as pages inside one shared file per Project/Area ('shared'). */
 const NOTE_TARGET_TABS: MiniTabDef<NoteTarget>[] = [
   {key: 'own', label: 'Own file'},
   {key: 'shared', label: 'Shared file'},
@@ -45,13 +45,10 @@ interface PieceRow {
   index: number;
 }
 
-// Piece-list row height - self-measuring now (styles.pieceListBody), not a
-// fixed viewportHeight, so this is only the *row* height PagedSection still
-// needs (see PagedSection's own doc comment on why self-measuring only
-// removes the viewport height input, not this one). Used to also pair with
-// a PIECE_LIST_MAX_VISIBLE_ROWS row-count cap before the 2026-09-18
-// rearrangement made this list self-measuring like the definitions list
-// above.
+// Piece-list row height - the list self-measures its viewport
+// (styles.pieceListBody), so this is only the *row* height PagedSection
+// still needs (see PagedSection's own doc comment on why self-measuring only
+// removes the viewport height input, not this one).
 const PIECE_ROW_HEIGHT = 40;
 
 /**
@@ -126,7 +123,7 @@ export default function TagRuleEditor({
                   ? withDefaultPieces({...draftDef, context, pieces: []}).pieces
                   : draftDef.pieces.filter(p => PIECE_CONTEXTS[p.type].includes(context));
               // Prep/review tracking is meeting-only (domain/meetingTracking.ts) -
-              // dropped along with the pieces that no longer apply.
+              // dropped along with the pieces that don't apply.
               // Note target (docs/dev/technical-design-shared-note-pages.md §6)
               // only applies to Todo/Meeting rules - reset back to 'own'
               // (and its shared-file fields cleared) leaving Project/Area
@@ -196,7 +193,7 @@ export default function TagRuleEditor({
 
           {/* Todo/Meeting-only (docs/dev/technical-design-shared-note-pages.md
               §6) - whether this rule's notes land in their own file
-              (today's behavior) or as pages inside one shared file per
+              (the default) or as pages inside one shared file per
               Project/Area. Absent for Project/Area rules, which have no
               shared-file concept of their own to point at. */}
           {(draftDef.context === 'meeting' || draftDef.context === 'todo') && (
@@ -254,12 +251,8 @@ export default function TagRuleEditor({
           )}
         </View>
 
-        {/* Pieces - moved here from the right column, and from a fixed
-            PIECE_LIST_MAX_VISIBLE_ROWS-capped box to a real self-
-            measuring PagedSection (2026-09-18, Tilman: "the pieces need
-            to better visible and should go into a paginated pane, in
-            case they become more" - same self-measuring treatment the
-            definitions list above already got). `styles.pieceListBody`
+        {/* Pieces - a self-measuring PagedSection, so a long piece list
+            pages instead of overflowing. `styles.pieceListBody`
             (flex: 1) is what makes it self-measure correctly - see that
             style's own comment. */}
         <View style={styles.pieceListBody}>
@@ -289,8 +282,8 @@ export default function TagRuleEditor({
             borderColor={borderColor}
           />
 
-          {/* Adding a piece is its own page now too ('edit-piece',
-              below) - see the module doc comment. */}
+          {/* Adding a piece is its own page ('edit-piece') - see the
+              module doc comment. */}
           <Pressable onPress={handleOpenAddPiece} hitSlop={8} style={styles.addDefRow}>
             <Text style={[styles.addDefRowText, {color: textColor}]}>+ Add piece</Text>
           </Pressable>
@@ -333,11 +326,8 @@ export default function TagRuleEditor({
         <View style={styles.columnSpacer} />
 
         {/* Compact "current choice + Change…" row, not the picker
-            itself - choosing a background is its own page now
-            ('edit-template', below), same "pieces [and] template...
-            on a second page" shape as the original UI draft's
-            overlay (module doc comment). Moved here from the left
-            column, 2026-09-18. */}
+            itself - choosing a background is its own page
+            ('edit-template'). */}
         <Text style={[styles.label, {color: textColor}]}>Background</Text>
         <Pressable onPress={handleOpenTemplatePicker} hitSlop={4} style={[styles.templateFieldRow, {borderColor}]}>
           <Text style={[styles.templateFieldRowText, {color: textColor}]} numberOfLines={1}>
@@ -346,9 +336,7 @@ export default function TagRuleEditor({
           <Text style={[styles.templateFieldChange, {color: textColor}]}>Change…</Text>
         </Pressable>
 
-        {/* Moved here from the left column, 2026-09-18 - Save is
-            slightly wider than Cancel (styles.saveButtonWide) per
-            Tilman's request. */}
+        {/* Save is slightly wider than Cancel (styles.saveButtonWide). */}
         <View style={styles.formButtonRow}>
           <Pressable style={[styles.saveButton, styles.saveButtonWide]} onPress={handleSaveDefinitionDraft}>
             <Text style={styles.saveButtonText}>{editingDefIndex === null ? 'Create' : 'Save'}</Text>

@@ -41,16 +41,14 @@ type UnfocusedNextRow =
 /**
  * Groups `list` into header+entry rows, one header per item followed by its
  * own live #next tasks (`nextTasksFor` recomputed against the current
- * cache, same "membership frozen, task list live" split every other step's
- * detail lookup uses) - same flattening convention `ProjectDataPanel.tsx`'s
- * `TodosSection`/`MeetingsSection` already use for a grouped `PagedSection`
+ * cache - "membership frozen, task list live", like every other step's
+ * detail lookup) - the same flattening `ProjectDataPanel.tsx`'s
+ * `TodosSection`/`MeetingsSection` use for a grouped `PagedSection`
  * (docs/dev/technical-design-review-master-detail.md §5.4). A "note" row fills
  * in for an item whose #next tasks were all resolved OR given a due date
- * during this review visit (`nextTasksFor` excludes a due-dated task the
- * same way it excludes a resolved one, see reviewAggregate.ts's own doc
- * comment - 2026-09-16, Tilman feedback) - still frozen into the step (see
- * the module doc comment's "Frozen snapshots" note) but with nothing left
- * to act on until it gets a new, not-yet-due #next task.
+ * during this review visit (`nextTasksFor` excludes both, see
+ * reviewAggregate.ts) - still frozen into the step, but with nothing left to
+ * act on until it gets a new, not-yet-due #next task.
  */
 function flattenUnfocusedNext(list: ReviewUnfocusedNextEntry[], items: CachedItem[]): UnfocusedNextRow[] {
   const rows: UnfocusedNextRow[] = [];
@@ -93,13 +91,11 @@ function unfocusedNextRowHeight(row: UnfocusedNextRow): number {
  * Renders one row of the Unfocused-next-items left list - header/note/entry,
  * per flattenUnfocusedNext above. `selected` only ever applies to an 'entry'
  * row (ReviewMasterDetail's own isSelectable gates header/note rows out of
- * selection). `focused` (2026-09-16, Tilman feedback) is likewise only ever
- * true for an 'entry' row - see its caller, renderUnfocusedNextItems, for
- * how it's computed (the parent item's LIVE Daily-or-Weekly focus state,
- * not a frozen flag) - and marks every task row under a project/area the
- * moment that item is focused from the detail panel, with a "✓ " prefix,
- * same convention ReviewLeftRow's own `actedOn` checkmark uses elsewhere in
- * this file.
+ * selection). `focused` is also only true for an 'entry' row - computed by
+ * renderUnfocusedNextItems from the parent item's LIVE focus state, not a
+ * frozen flag - and marks every task row under an item with a "✓ " prefix
+ * the moment that item is focused from the detail panel, like
+ * ReviewLeftRow's `actedOn` checkmark.
  */
 function UnfocusedNextRowView({
   row,
@@ -154,19 +150,14 @@ function UnfocusedNextRowView({
 /**
  * Unfocused-next-items detail panel, for the selected task - task text as
  * heading (tap to open its parent item), the parent project/area name as a
- * caption, Someday/Maybe/Done/Cancel/Set-due-date pills for the task
- * (Set-due-date is new, 2026-09-16, Tilman feedback - see onSetDueDate),
- * "+ Add to Daily/Weekly/Monthly focus" pills for the parent item (Monthly
- * added 2026-09-28; grayed out the
- * moment that item is already focused in that scope - also 2026-09-16
- * feedback, live via `isFocused`/`reviewCurrentItem` rather than a frozen
- * flag, so a removal below un-grays it immediately), and a
- * live "Current focus" section restricted to the selected task's OWN kind
- * (2026-09-16 feedback: an Area task's Current-focus only lists focused
- * Areas, a Project task's only lists focused Projects - showing the other
- * kind here was never actionable from an Area/Project task's own detail
- * panel, just noise) so a full Daily/Weekly slot can be freed without
- * leaving Review.
+ * caption, Someday/Maybe/Done/Cancel/Set-due-date pills for the task (see
+ * onSetDueDate), "+ Add to Daily/Weekly/Monthly focus" pills for the parent
+ * item (grayed out while that item is already focused in that scope - live
+ * via `isFocused`/`reviewCurrentItem`, so a removal below un-grays it
+ * immediately), and a live "Current focus" section restricted to the
+ * selected task's OWN kind (an Area task lists only focused Areas, a
+ * Project task only focused Projects - the other kind isn't actionable
+ * here), so a full Daily/Weekly slot can be freed without leaving Review.
  */
 function UnfocusedNextTaskDetail({
   entry,
@@ -424,19 +415,15 @@ export default function UnfocusedNextStep({
   };
 
   /**
-   * "+ Set due date" on an Unfocused-next-items task (2026-09-16, Tilman
-   * feedback) - a task with no other way back onto Daily's radar can be
-   * given one right here instead of leaving it stuck; `setDueTag` (same
-   * helper ui/QuickAddWidget.tsx's own due-date field uses) writes/clears
-   * the `#due:` tag, same findCachedItem/saveTasks/updateItemTasks write-
-   * through as every other task mutation on this screen. `dueDate: null`
-   * clears it (the UI's own "✕" clear affordance). Once saved,
-   * reviewAggregate.ts's `nextTasksFor` excludes any task with a due date,
-   * so this task drops out of the currently-viewed item's live task list on
-   * the very next render - the same "note" fallback flattenUnfocusedNext
-   * already shows when every #next task on an item gets resolved covers
-   * this case too (a due date isn't a resolution, but it's the same "this
-   * item has nothing left needing this step's attention right now" state).
+   * "+ Set due date" on an Unfocused-next-items task - a task with no other
+   * way back onto Daily can be given a due date right here. `setDueTag` (same
+   * helper as ui/QuickAddWidget.tsx's due-date field) writes/clears the
+   * `#due:` tag, with the same findCachedItem/saveTasks/updateItemTasks
+   * write-through as every other task mutation on this screen. `dueDate: null`
+   * clears it (the UI's "✕"). Once saved, reviewAggregate.ts's `nextTasksFor`
+   * excludes the task, so it drops out of the item's live task list on the
+   * next render, and flattenUnfocusedNext's "note" row covers an item left
+   * with no #next tasks.
    */
   const handleSetTaskDueDate = async (entry: ReviewNextTaskEntry, dueDate: string | null): Promise<void> => {
     const cachedItem = findCachedItem(entry.item.path);
@@ -484,16 +471,13 @@ export default function UnfocusedNextStep({
   };
 
   /**
-   * "Add to Weekly focus" on an Unfocused-next-items card (2026-09-16,
-   * round-2 requirement c) - reuses handleToggleItemWeeklyFocus (the Focus
-   * Reset step's own toggle handler) rather than duplicating its
-   * focusBlockedReason-then-setItemFocus shape a second time; that handler
-   * already does the settings-loaded/blocked-reason check, the actual
-   * setItemFocus call, refreshFromCache, and the 'weeklyFocusAdded' bump
-   * when `value` is true - this just resolves the frozen `itemRef` to a live
-   * `CachedItem` first (findCachedItem, same guard every other action on
-   * this screen uses) and marks the card acted-on afterward, same as
-   * handleAddToDailyFocus above.
+   * "Add to Weekly focus" on an Unfocused-next-items card - reuses
+   * handleToggleItemWeeklyFocus (the Focus Reset step's toggle handler),
+   * which already does the settings-loaded/blocked-reason check, the
+   * setItemFocus call, refreshFromCache and the 'weeklyFocusAdded' bump when
+   * `value` is true. This just resolves the frozen `itemRef` to a live
+   * `CachedItem` first (findCachedItem) and marks the card acted-on
+   * afterward, same as handleAddToDailyFocus above.
    */
   const handleAddToWeeklyFocus = async (itemRef: ReviewItemRef): Promise<void> => {
     const cachedItem = findCachedItem(itemRef.path);
@@ -502,7 +486,7 @@ export default function UnfocusedNextStep({
     frozen.markActed(itemRef.path);
   };
 
-  /** "+ Add to Monthly focus" (2026-09-28, docs/dev/technical-design-review-monthly-focus.md §2) - same shape as handleAddToWeeklyFocus above. */
+  /** "+ Add to Monthly focus" (docs/dev/technical-design-review-monthly-focus.md §2) - same shape as handleAddToWeeklyFocus above. */
   const handleAddToMonthlyFocus = async (itemRef: ReviewItemRef): Promise<void> => {
     const cachedItem = findCachedItem(itemRef.path);
     if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - Settings → Advanced → Reload all files.`);
@@ -511,38 +495,21 @@ export default function UnfocusedNextStep({
   };
 
   /**
-   * Removes a Daily or Weekly focus slot from the Unfocused-next-items
-   * step's own "Current focus" panel (round-2 requirement c) - shared by
-   * both scopes since turning a focus flag *off* is never blocked
-   * (focusBlockedReason only ever gates turning one *on* - see
-   * handleToggleFocus/toggleFocus's own comments in ui/ItemFocusPanel.tsx),
-   * so this needs no settings/blocked-reason check at all, just the same
-   * setItemFocus + refreshFromCache write-through every other focus change
-   * on this screen uses. Doesn't touch any step's acted-on set - removing a
-   * *different* item's focus slot from this panel isn't an action on the
-   * currently-selected item itself.
+   * Removes a Daily or Weekly focus slot from the Unfocused-next-items step's
+   * "Current focus" panel - shared by both scopes since turning a focus flag
+   * *off* is never blocked (focusBlockedReason only gates turning one *on* -
+   * see ui/ItemFocusPanel.tsx), so no settings/blocked-reason check, just the
+   * same setItemFocus + refreshFromCache write-through as every other focus
+   * change on this screen. Doesn't touch any step's acted-on set - freeing a
+   * *different* item's slot isn't an action on the selected item.
    *
-   * Removal gets one more step (2026-09-16, Tilman feedback - widened same
-   * day once the "unfocused" criterion itself was widened): reviewAggregate.
-   * ts's `unfocusedNextItems` criterion is `!isFocused(item)` (neither daily
-   * NOR weekly focus - storage/dailyAggregate.ts now requires either one for
-   * a #next task to show on Daily view, see that file's own doc comment), so
-   * removing EITHER scope can make `item` newly qualify as an unfocused-next
-   * item in its own right, the moment the OTHER scope's flag is also unset -
-   * a project/area you're freeing a focus slot from, right here, might
-   * itself now have #next work nobody will see anywhere. Originally this
-   * only ran for Daily-scope removal (back when the criterion was
-   * `!dailyFocus` alone, so only a Daily removal could ever flip it); now it
-   * checks whichever flag DIDN'T just change (`item`'s pre-removal value,
-   * since only `scope`'s own flag is being cleared) and runs for both
-   * scopes. Normally a step's left list is frozen at step-entry (this
-   * file's "Frozen snapshots" convention) and wouldn't pick this up until
-   * Unfocused-next-items is re-entered, but Tilman asked for it to appear
-   * immediately instead - so this appends a fresh entry straight into
-   * `unfocusedNextSnapshot` (only while that snapshot is already live, i.e.
-   * we're on this step; harmless no-op otherwise, since re-entering the
-   * step re-freezes from the aggregate anyway) rather than waiting for the
-   * next freeze.
+   * reviewAggregate.ts's `unfocusedNextItems` criterion is `!isFocused(item)`,
+   * so removing a scope can make `item` newly qualify once no OTHER focus
+   * level is set (checked against `item`'s pre-removal flags). A step's left
+   * list is normally frozen at step-entry, but such an item should appear
+   * immediately, so this appends a fresh entry straight into
+   * `unfocusedNextSnapshot` (only while that snapshot is live, i.e. we're on
+   * this step; re-entering the step re-freezes from the aggregate anyway).
    */
   const handleRemoveItemFocus = async (item: CachedItem, scope: FocusScope): Promise<void> => {
     await setItemFocus(
@@ -552,8 +519,8 @@ export default function UnfocusedNextStep({
     );
     log('ReviewScreen: removed focus', item.path, scope);
     refreshFromCache();
-    // Any OTHER focus level still set? (monthly joined 2026-09-28 -
-    // `item` holds the pre-removal flags, so clear just `scope`'s own.)
+    // Any OTHER focus level still set? (`item` holds the pre-removal flags, so
+    // clear just `scope`'s own.)
     const otherScopeStillFocused = isFocused({
       dailyFocus: scope === 'daily' ? false : item.dailyFocus,
       weeklyFocus: scope === 'weekly' ? false : item.weeklyFocus,

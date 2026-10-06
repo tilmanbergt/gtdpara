@@ -25,7 +25,7 @@ export const TASK_COLUMN_WIDTH_PX = 678;
 // Checkbox glyph width + its marginRight (ui/TaskRow.tsx styles.checkbox).
 const CHECKBOX_WIDTH_PX = 28;
 // Note icon (📓 / +📓) and clip icon with their margins, both assumed shown -
-// they sit beside the text block and take its width (2026-09-15 bugfix).
+// they sit beside the text block and take its width.
 const TRAILING_ICON_ALLOWANCE_PX = 90;
 /** Space between the title and each label, as rendered. */
 export const LABEL_GAP = '  ';

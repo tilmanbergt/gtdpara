@@ -1,29 +1,16 @@
 /**
- * Width-based paging for QuickAddWidget's Row 3 tag chips (bugfix
- * 2026-09-29, Tilman: "the tags offered in line 3 are sometimes flowing to
- * the right outside the visible box and they are also overlaying the file
- * attachment icon").
+ * Width-based paging for QuickAddWidget's Row 3 tag chips.
  *
- * Root cause of that bug: ui/TagChips.tsx paged by a fixed chip *count*
- * (2 / 5 / 6 per page), regardless of how wide each chip actually was, and
- * pinned tags (already in the text) were never counted against page 0 at
- * all. Long or uppercased tags, several pinned tags, or edit mode's
- * attachment cluster sharing the row made the chips overflow - and nothing
- * clipped them, so they painted past the card edge and over the ✕.
- *
- * Fix (chat decision, option "B + A's safety net"):
- * - Pages are filled by *width*: the caller measures Row 3's real width
- *   (onLayout), subtracts whatever shares the row (flow chips / meeting
- *   time field on page 0, the attachment cluster in edit mode), and every
- *   chip's width is estimated from its label via ui/textLineEstimator.ts's
- *   char-class estimator. Pinned tags consume width like any other chip and
- *   may spill onto page 1+.
- * - Labels longer than 8 characters are shortened to 8 + "…" (Tilman:
- *   "Long tag names (>8 characters) can be shortened with '...'").
- * - Safety net lives in the styles (TagChips/QuickAddWidget): the chip area
- *   clips (overflow hidden) and the attachment cluster never shrinks, so an
- *   estimate that runs short can at worst cut a chip at the edge, never
- *   cover the ✕ again.
+ * - Pages are filled by *width*, not by chip count: the caller measures Row 3's
+ *   real width (onLayout), subtracts whatever shares the row (flow chips /
+ *   meeting time field on page 0, the attachment cluster in edit mode), and
+ *   every chip's width is estimated from its label via ui/textLineEstimator.ts's
+ *   char-class estimator. Pinned tags (already in the text) consume width like
+ *   any other chip and may spill onto page 1+.
+ * - Labels longer than 8 characters are shortened to 8 + "…".
+ * - Safety net in the styles (TagChips/QuickAddWidget): the chip area clips
+ *   (overflow hidden) and the attachment cluster never shrinks, so an estimate
+ *   that runs short can at worst cut a chip at the edge, never cover the ✕.
  */
 import {useRef, useState} from 'react';
 import {LayoutChangeEvent} from 'react-native';
@@ -96,8 +83,8 @@ export function paginateByWidth<T>(items: T[], widthOf: (item: T) => number, pag
  * Measures one Row 3 variant's budget: the whole row, the element sharing
  * page 0 with the tags (FlowStateChips / meeting time field), and the
  * attachment cluster. Every real width change triggers requestEinkRefresh()
- * - the re-pack is a layout-driven (not tap-driven) state change, exactly
- * the kind bugfix_eink_refresh showed doesn't flush on its own.
+ * - the re-pack is a layout-driven (not tap-driven) state change, which
+ * does not flush to the e-ink screen on its own.
  */
 type RowWidths = {row: number | null; lead: number; attach: number};
 
@@ -111,7 +98,7 @@ const widthCache = new Map<string, RowWidths>();
 
 export function useTagRowBudget(
   hasAttachment: boolean,
-  /** Optional: remember widths across mounts under this key. Without it, behavior is as before. */
+  /** Optional: remember widths across mounts under this key. */
   cacheKey?: string,
 ): {
   onRowLayout: (e: LayoutChangeEvent) => void;

@@ -59,18 +59,16 @@ interface FocusFlags {
 }
 
 /**
- * Exported (2026-09-03 Daily-cleanup pass, technical-design-daily-compact-
- * ui.md §3/§6) so storage/dailyAggregate.ts's groupDailyTasksByItem and
- * screens/ItemsList.tsx can share this one "focused floats to top" check
- * instead of each keeping their own copy - ItemsList.tsx used to have an
- * identical private isFocused of its own. Widened to the minimal shape this
- * needs (just the two focus flags, not the full DestinationCandidate with
+ * Shared by storage/dailyAggregate.ts's groupDailyTasksByItem and
+ * screens/ItemsList.tsx as the one "focused floats to top" check
+ * (technical-design-daily-compact-ui.md §3/§6). Takes the minimal shape it
+ * needs (just the focus flags, not the full DestinationCandidate with
  * `status`) so a plain CachedItem/DailyItemRef satisfies it structurally.
  *
- * Widened 2026-09-28 (docs/dev/technical-design-review-monthly-focus.md §1) to
- * include Monthly focus: a Project/Area in ANY focus level counts as
- * focused, so its #next tasks show on Daily (storage/dailyAggregate.ts) and
- * it no longer counts as "unfocused" in Review (storage/reviewAggregate.ts).
+ * A Project/Area in ANY focus level (daily, weekly, monthly) counts as
+ * focused (docs/dev/technical-design-review-monthly-focus.md §1), so its
+ * #next tasks show on Daily (storage/dailyAggregate.ts) and it doesn't count
+ * as "unfocused" in Review (storage/reviewAggregate.ts).
  */
 export function isFocused(item: FocusFlags): boolean {
   return item.dailyFocus || item.weeklyFocus || item.monthlyFocus;

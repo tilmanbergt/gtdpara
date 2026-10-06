@@ -13,7 +13,7 @@
  *   anything copied from a Google tab on this screen becomes a highlight
  *   (`#monthly`) automatically.
  * - Right column: Quick Add on top (always - needed to edit a meeting's
- *   time/length and to add one to the selected day; decided 2026-09-23),
+ *   time/length and to add one to the selected day),
  *   then EITHER the day panel (ui/DayMeetingsPanel.tsx, shared with Week and
  *   Daily - after tapping a day: all of that day's meetings as the standard
  *   2-line rows, pick highlights with the M toggle) OR the

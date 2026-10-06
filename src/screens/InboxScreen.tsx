@@ -1,129 +1,86 @@
 /**
- * Inbox as its own tab (docs/dev/technical-design-inbox-tab.md §2, 2026-09-03) -
- * the fallback destination for every task/meeting captured with no
- * Project/Area (unchanged from before this feature).
+ * Inbox tab (docs/dev/technical-design-inbox-tab.md §2) - the fallback
+ * destination for every task/meeting captured with no Project/Area.
  *
- * Layout (technical-design-linked-files.md §1/§8/§10.5, 2026-09-07 rebuild;
- * docs/dev/technical-design-filing-unification.md §3, 2026-09-07 filing
- * unification): mirrors screens/ItemDetail.tsx's two-pane shape - left pane
- * is ui/FileBrowserPane.tsx with two roots, `resources` and `browse` (a
- * two-level, always-Active-only Projects/Areas browser - 2026-09-09,
- * replacing the earlier separate `projects`/`areas` roots this comment used
- * to describe; see ui/FileBrowserPane.tsx's `sources` doc comment), right pane
- * stacks Tasks above Meetings (previously side by side - stacking is what
- * makes room for the Files pane on the left, same as ItemDetail's
- * Files-pane-on-the-left / data-on-the-right split).
+ * Layout (technical-design-linked-files.md §1/§8/§10.5;
+ * docs/dev/technical-design-filing-unification.md §3): the same two-pane shape
+ * as screens/ItemDetail.tsx. The left pane is ui/FileBrowserPane.tsx with two
+ * roots, `resources` and `browse` (a two-level, always-Active-only
+ * Projects/Areas browser; see ui/FileBrowserPane.tsx's `sources` doc comment).
+ * The right pane stacks Tasks above Meetings, which leaves room for the Files
+ * pane on the left.
  *
- * Reads Inbox.txt directly via storage/projectFile.ts's loadProjectFile -
- * same as screens/DailyView.tsx's and screens/ReviewScreen.tsx's own Inbox
- * reads, since it's a single flat file outside storage/dataCache.ts's
- * per-item scan. `items` (the cache) is loaded alongside it to keep the
- * Files pane's Browse root's Active-only `entryFilter` fresh after a File
- * action - this screen itself never reads/writes any cached item's own
- * tasks/meetings. `paths` (domain/settings.ts's ResolvedParaPaths, off the
- * same cache) is what the Files pane's roots and every
- * storage/linkedFiles.ts call below need - see rebuildCache's own `paths`
- * field.
+ * Reads Inbox.txt directly via storage/projectFile.ts's loadProjectFile, like
+ * screens/DailyView.tsx and screens/ReviewScreen.tsx, since it is a single
+ * flat file outside storage/dataCache.ts's per-item scan. `items` (the cache)
+ * is loaded alongside it to keep the Browse root's Active-only `entryFilter`
+ * fresh after a File action - this screen never reads/writes any cached
+ * item's own tasks/meetings. `paths` (domain/settings.ts's ResolvedParaPaths)
+ * feeds the Files pane's roots and every storage/linkedFiles.ts call below.
  *
  * Every row is the shared ui/TaskRow.tsx/ui/MeetingRow.tsx
- * (docs/dev/technical-design-inbox-tab.md §1) - the same components
- * ProjectDataPanel.tsx, ReviewScreen.tsx, and DailyView.tsx's Inbox-sourced
- * rows use - so this screen adds zero new row markup of its own, just wires
- * its own handlers into them. Unlike Daily's Inbox-sourced rows, every row
- * here gets `onArmLink` (this tab, Current, and now Weekly Review's
- * Inbox-to-zero step are the linking surfaces - see the module doc
- * comment's "Linked file" note below). Filing (moving a row into a
- * Project/Area) has no row-level affordance any more - the old row-level
- * `onArmFile` "File" action (docs/dev/technical-design-filing-unification.md
- * §3/§4) was retired 2026-09-09 in favor of a single "Refile" button inside
- * QuickAddWidget's edit mode (storage/inboxFiling.ts's module doc comment) -
- * open the row for editing, then tap Refile.
+ * (docs/dev/technical-design-inbox-tab.md §1), so this screen adds no row
+ * markup of its own, just its handlers. Unlike Daily's Inbox-sourced rows,
+ * every row here gets `onArmLink`. Filing (moving a row into a Project/Area)
+ * has no row-level affordance: open the row for editing, then tap Refile in
+ * QuickAddWidget's edit mode (storage/inboxFiling.ts's module doc comment).
  *
  * Scope is everything, unfiltered (docs/dev/technical-design-inbox-tab.md §2,
- * requirement 4) - no today/tomorrow-style window like Daily's Calendar,
- * every open task regardless of flow-state or due date. Tasks are grouped
- * by flow-state (domain/flowState.ts's groupTasksByFlowState - Next,
- * Waiting For, Someday, Maybe, Other) with a "Hide done tasks" toggle,
- * exactly the same convention ProjectDataPanel.tsx's own TodosSection
- * already established (GtdParaSettings.hideDoneInboxTasks, a sibling
- * setting to that screen's hideDoneProjectTasks). See
- * ProjectDataPanel.tsx's own TodosSection for why hideDone is applied
- * *after* grouping (filtering each already-indexed group's entries) rather
- * than by pre-filtering `tasks` before the group call - pre-filtering would
- * renumber entries relative to a shorter array, breaking every row action's
- * `tasks.slice(); next[index] = ...` addressing (that exact bug was found
- * and fixed there in the same pass this screen was originally built). Meetings
- * show every not-cancelled meeting, Upcoming/Past (domain/meetingTime.ts's
- * splitAndSortMeetings - same split ProjectDataPanel.tsx's own
- * MeetingsSection uses), not just today/tomorrow.
+ * requirement 4): every open task regardless of flow-state or due date.
+ * Tasks are grouped by flow-state (domain/flowState.ts's
+ * groupTasksByFlowState) with a "Hide done tasks" toggle
+ * (GtdParaSettings.hideDoneInboxTasks), the same convention as
+ * ProjectDataPanel.tsx's TodosSection. hideDone is applied *after* grouping
+ * (filtering each already-indexed group's entries): pre-filtering `tasks`
+ * would renumber entries relative to a shorter array and break every row
+ * action's `tasks.slice(); next[index] = ...` addressing. Meetings show every
+ * not-cancelled meeting, split Upcoming/Past (domain/meetingTime.ts's
+ * splitAndSortMeetings).
  *
  * Mutations: saveInboxTasks/saveInboxMeetings below are this screen's own
- * small "re-fetch-index, apply, write, update local state" pair - the same
- * save-shape screens/DailyView.tsx's saveEntryTasks/saveEntryMeetings and
- * screens/ReviewScreen.tsx's handleInboxTaskDone/etc. already use against
- * `inbox` state, just without those two screens' extra "which surface does
- * this row actually belong to" branching, since every row here is always an
- * Inbox row. Filing and quick-file go through storage/entryMove.ts's
- * moveTask/moveMeeting, like every other move.
+ * "re-fetch-index, apply, write, update local state" pair, the same
+ * save-shape DailyView and ReviewScreen use against `inbox` state, without
+ * their "which surface does this row belong to" branching. Filing and
+ * quick-file go through storage/entryMove.ts's moveTask/moveMeeting.
  *
  * Linked file / filing / one arm target (technical-design-linked-files.md
- * §8; docs/dev/technical-design-filing-unification.md §3): the exact same lift
- * screens/ProjectDataPanel.tsx got for linking, extended with an `intent`
- * ('link' | 'file') so the one `armTarget` can drive either action - this
- * screen owns both the Tasks and Meetings sections directly, so
- * `editTarget`/`armTarget` (which row, task or meeting, is being edited or
- * armed - only one of either across the whole screen) live here as plain
- * state rather than being reported up through an `onLinkTargetChange` prop
- * the way ProjectDataPanel.tsx reports up into screens/ItemDetail.tsx. The
- * derived `linkTarget` feeds straight into this screen's own
- * FileBrowserPane - `handlePickLinkedFile` (intent 'link') always resolves
- * against whichever root was tapped, `resources` or `browse` (drilled below
- * its own depth-0 chooser - see §3.1's flagged linking side effect);
- * `handlePickFile` (intent 'file') resolves via storage/inboxFiling.ts's
- * resolveFilingPick and only ever sees 'projects'/'areas' - synthesized by
- * ui/FileBrowserPane.tsx itself from a Browse pick one level below its
- * depth-0 "Projects"/"Areas" chooser (2026-09-09, its `sources` doc
- * comment), since Resources is disabled (not removed - Tilman's "don't
- * add/remove tabs" call) while file-arming. Locating an existing link reuses
- * storage/linkedFiles.ts's
- * locateLinkedFile by passing `paths.resources` as the "item root"
- * argument - since Inbox has no item root of its own, this makes the
- * function's two checks (under item vs. under resources) identical, which
- * is exactly what's wanted: either the link resolves somewhere under
- * Resources (the only place Inbox ever links from, absent a Project/Area
- * link picked via the new tabs) or it doesn't resolve at all, and either
- * way the returned folderPath/fileName are already correctly relative to
- * `paths.resources`.
+ * §8; docs/dev/technical-design-filing-unification.md §3): one `armTarget`
+ * with an `intent` ('link' | 'file') drives either action. This screen owns
+ * both sections, so `editTarget`/`armTarget` (only one of each across the
+ * whole screen) are plain state here instead of being reported up the way
+ * ProjectDataPanel.tsx reports to screens/ItemDetail.tsx. The derived
+ * `linkTarget` feeds this screen's FileBrowserPane. `handlePickLinkedFile`
+ * (intent 'link') resolves against whichever root was tapped, `resources` or
+ * `browse` (see §3.1's flagged linking side effect); `handlePickFile`
+ * (intent 'file') resolves via storage/inboxFiling.ts's resolveFilingPick
+ * and only ever sees 'projects'/'areas', which ui/FileBrowserPane.tsx
+ * synthesizes from a Browse pick one level below its depth-0
+ * "Projects"/"Areas" chooser. Resources is disabled (not removed, so the tab
+ * set keeps its shape) while file-arming. Locating an existing link reuses
+ * storage/linkedFiles.ts's locateLinkedFile with `paths.resources` as the
+ * "item root" argument: Inbox has no item root, so the function's two checks
+ * become identical - the link either resolves under Resources or not at all,
+ * and the returned folderPath/fileName are relative to `paths.resources`.
  *
- * Google Calendar tab (docs/dev/technical-design-google-calendar.md §9): now
- * lives inside the Meetings section (moved along with Meetings when this
- * screen's layout stacked) rather than the old Meetings-pane's own top-level
- * mini-tab - same <MiniTabs> (ui/MiniTabs.tsx) pattern, same "Google" =
- * shared ui/GoogleCalendarPanel.tsx at `maxDays={30}`, self-measuring
- * (2026-09-17, see below) rather than a fixed pageSize now.
+ * Google Calendar tab (docs/dev/technical-design-google-calendar.md §9):
+ * inside the Meetings section as a <MiniTabs> (ui/MiniTabs.tsx), "Google"
+ * being the shared ui/GoogleCalendarPanel.tsx at `maxDays={30}`,
+ * self-measuring its height.
  *
  * Pagination + edit reuse (docs/dev/technical-design-pagination-edit-reuse.md
- * §2/§4/§5, 2026-09-06): both the Tasks and Meetings sections page
- * (ui/PagedSection.tsx/ui/pagination.ts's `usePagedByHeight`, replacing the
- * row-count `usePagination`/`ui/PageControls.tsx` pair per docs/technical-
- * design-pagination-fixed-height.md §3.4, Batch 2, 2026-09-15) instead of
- * scrolling, flattening their own grouping (flow-state for Tasks,
- * Upcoming/Past for Meetings) into one paginated sequence with group
- * headers as in-sequence rows - same pattern DailyView/ProjectDataPanel
- * use.
+ * §2/§4/§5): both sections page (ui/PagedSection.tsx/ui/pagination.ts's
+ * `usePagedByHeight`, docs/technical-design-pagination-fixed-height.md §3.4)
+ * instead of scrolling, flattening their grouping (flow-state for Tasks,
+ * Upcoming/Past for Meetings) into one paginated sequence with group headers
+ * as in-sequence rows - same pattern as DailyView/ProjectDataPanel.
  *
- * Flex-weight stacking (2026-09-17, docs/dev/technical-design-flex-weight-
- * stacking.md §3.4): the Tasks/Meetings pixel budgets this section used to
- * carry (`PAGE_SIZE.inboxTasks`/`inboxMeetings`/`googleCalendarInbox`) are
- * gone - `rightPane`'s Tasks/Meetings stack is now an 8:6 `flex`-weighted
- * split of `styles.stackedColumn` (the same ratio those two retired
- * constants had), each stacked section self-measuring into its own
- * weighted box (see `stackedColumn`'s own style comment and the render
- * below). Editing swaps the
- * shared ui/QuickAddWidget.tsx (docs/dev/technical-design-unified-quickadd.md,
- * 2026-09-08 - one widget above both stacked sections, replacing the former
- * pair of ui/TaskQuickAdd.tsx / ui/MeetingQuickAdd.tsx widgets) into its
- * `editingTask`/`editingMeeting` mode instead of an inline row form.
+ * Flex-weight stacking (docs/dev/technical-design-flex-weight-stacking.md
+ * §3.4): `rightPane`'s Tasks/Meetings stack is an 8:6 `flex`-weighted split
+ * of `styles.stackedColumn`, each section self-measuring into its weighted
+ * box. Editing switches the shared ui/QuickAddWidget.tsx
+ * (docs/dev/technical-design-unified-quickadd.md; one widget above both
+ * sections) into its `editingTask`/`editingMeeting` mode instead of an
+ * inline row form.
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Keyboard, Pressable, StyleSheet, Text, View} from 'react-native';
@@ -180,12 +137,9 @@ import {useCachedInbox} from '../ui/useCachedInbox';
 // and its not-yet-verified-on-device caveat, which applies here too.
 const COLUMN_WIDTH_PX = 678;
 
-// Flex weights (docs/dev/technical-design-flex-weight-stacking.md §3.4,
-// 2026-09-17) - see screens/ProjectDataPanel.tsx's own TODOS_WEIGHT/
-// MEETINGS_WEIGHT comment for the general reasoning; same approach here.
-// 8:6 carries forward the same ratio the old `PAGE_SIZE.inboxTasks`/
-// `inboxMeetings` pixel-budget constants had (Tilman, 2026-09-17 -
-// explicitly requested this exact ratio, not the simplified 4:3).
+// Flex weights (docs/dev/technical-design-flex-weight-stacking.md §3.4) - see
+// screens/ProjectDataPanel.tsx's TODOS_WEIGHT/MEETINGS_WEIGHT comment for the
+// reasoning. 8:6 is the requested ratio here, not the simplified 4:3.
 const TASKS_WEIGHT = 8;
 const MEETINGS_WEIGHT = 6;
 
@@ -197,7 +151,7 @@ const SUBHEADING_ROW_PX = 30;
 interface Props {
   /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
-  /** The Files pane's Browse tab (2026-09-09) - plain-browsing a top-level Project/Area entry there jumps the whole app to it (App.tsx's `openItem`), same as opening one from the Projects/Areas tabs or screens/ReviewScreen.tsx's own cards. Optional purely so this screen still type-checks if App.tsx ever forgot to wire it - Browse's navigate behavior is just a no-op without it, not a crash. */
+  /** The Files pane's Browse tab - plain-browsing a top-level Project/Area entry there jumps the whole app to it (App.tsx's `openItem`), same as opening one from the Projects/Areas tabs or screens/ReviewScreen.tsx's cards. Optional so this screen still type-checks without it; Browse's navigate behavior is then a no-op, not a crash. */
   onOpenItem?: (kind: 'project' | 'area', entry: FolderEntry) => void;
 }
 
@@ -245,8 +199,7 @@ export default function InboxScreen({
   const [error, setError] = useState<string | null>(null);
   const [hideDone, setHideDone] = useState(false);
   // Meetings/Google mini-tab (docs/dev/technical-design-google-calendar.md §9) -
-  // same pattern as DailyView's calendarMainTab, now inside the Meetings
-  // section rather than the old Meetings-pane's own top-level tab row.
+  // same pattern as DailyView's calendarMainTab, inside the Meetings section.
   const [mainTabState, setMainTab] = useState<MeetingsMainTab>('meetings');
   // The Google tab only while the experimental Google Calendar integration
   // is on (docs/dev/technical-design-about-debug-experimental.md §3.2).
@@ -273,12 +226,11 @@ export default function InboxScreen({
 
   const tasksAction = useActionError('InboxScreen.tasksActionError', 'InboxScreen: task action failed');
   const meetingsAction = useActionError('InboxScreen.meetingsActionError', 'InboxScreen: meeting action failed');
-  // QuickAddWidget's own add/edit/delete error surface (docs/technical-
-  // design-unified-quickadd.md §6/§10 step 2) - one shared widget now
-  // covers both types, so its own failures get one shared error line
-  // rather than tasksActionError/meetingsActionError (those stay as they
-  // were, for the row-level actions - toggle done, create/open note, file -
-  // that are still per-type).
+  // QuickAddWidget's add/edit/delete error surface (docs/technical-
+  // design-unified-quickadd.md §6/§10 step 2) - one widget covers both types,
+  // so its failures get one shared error line. tasksActionError/
+  // meetingsActionError cover the per-type row-level actions (toggle done,
+  // create/open note, file).
   const widgetAction = useActionError('InboxScreen.widgetError', 'InboxScreen: widget action failed');
 
   const load = useCallback(async (forceRebuild: boolean) => {
@@ -341,9 +293,8 @@ export default function InboxScreen({
       .catch(e => logError('InboxScreen: save hideDoneInboxTasks failed', errorMessage(e)));
   };
 
-  // Still used by every other Tasks-row action below (toggle done, create/
-  // open note, file, link) - add/edit/delete now go through runWidgetAction
-  // instead, see that function's own doc comment.
+  // Used by every other Tasks-row action below (toggle done, create/open
+  // note, file, link); add/edit/delete go through runWidgetAction instead.
   const runTaskAction = tasksAction.run;
 
   const handleToggleTaskDone = (taskIndex: number) => {
@@ -362,10 +313,10 @@ export default function InboxScreen({
   const armFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
 
   /**
-   * QuickAddWidget's own add/edit/delete error surface (docs/technical-
-   * design-unified-quickadd.md §6/§10 step 2) - mirrors runTaskAction/
-   * runMeetingAction above exactly (catches and surfaces the error rather
-   * than rethrowing), now shared by commitTaskEdit/commitMeetingEdit/
+   * QuickAddWidget's add/edit/delete error surface (docs/technical-
+   * design-unified-quickadd.md §6/§10 step 2) - like runTaskAction/
+   * runMeetingAction above, it catches and surfaces the error rather than
+   * rethrowing. Shared by commitTaskEdit/commitMeetingEdit/
    * handleDeleteEditForWidget below since one widget serves both types.
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
@@ -378,12 +329,9 @@ export default function InboxScreen({
    * this only needs to write through. `nextLinkedFile` is assigned straight
    * onto the field - it's never embedded in `nextText` (see
    * domain/markdown.ts's extractLinkedFile/appendLinkedFile doc comments).
-   * Closes edit mode only on a successful save - runWidgetAction swallows
-   * errors internally (so its own promise always resolves), so chaining
-   * `.then(() => cancelEditTarget())` after it, the way this used to work,
-   * would close edit mode even on a failed save; calling cancelEditTarget()
-   * from inside the try instead (same fix screens/ProjectDataPanel.tsx's
-   * MeetingsSection.commitEdit got in the same pass) avoids that.
+   * cancelEditTarget() is called inside the try so edit mode closes only on
+   * a successful save: runWidgetAction swallows errors, so chaining
+   * `.then(() => cancelEditTarget())` would close it even on failure.
    */
   const commitTaskEdit = (nextText: string, nextLinkedFile: string): Promise<boolean> => {
     if (editTarget?.type !== 'task') return Promise.resolve(false);
@@ -400,13 +348,11 @@ export default function InboxScreen({
   };
 
   /**
-   * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §6/§9,
-   * Slice 3, 2026-09-22): replaces the old separate handleCreateTaskNote/
-   * handleOpenTaskNote pair with one call into `openOrCreateTodoNote`.
+   * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §6/§9):
+   * creates or opens the task's note via `openOrCreateTodoNote`.
    * `options.forceOwnTarget: true` - Inbox items have no Project/Area to
-   * anchor a shared file to (§9), so this always keeps today's own-note
-   * behavior even if the matched Tag Rule is configured as a shared target
-   * (that target simply never applies here).
+   * anchor a shared file to (§9), so this always keeps the own-note
+   * behavior even if the matched Tag Rule is configured as a shared target.
    */
   const handleTaskNote = (taskIndex: number) => {
     Keyboard.dismiss();
@@ -441,16 +387,15 @@ export default function InboxScreen({
       log('InboxScreen: added task');
     } else {
       // Abbreviation quick-file recognized a #tag while composing on the
-      // Inbox tab (feature_abbrev_quick_file, 2026-09-17) - create it
-      // straight in the named Project/Area instead of Inbox.
+      // Inbox tab - create it straight in the named Project/Area instead of
+      // Inbox.
       await addTaskToDestination(newTask, destination, {inbox: null, inboxPath: null});
       log('InboxScreen: added task directly to', destination.path);
     }
   };
 
-  // Still used by every other Meetings-row action below (create/open note,
-  // file, link) - add/edit/delete now go through runWidgetAction instead,
-  // same split runTaskAction above notes.
+  // Used by every other Meetings-row action below (create/open note, file,
+  // link); add/edit/delete go through runWidgetAction instead.
   const runMeetingAction = meetingsAction.run;
 
   /**
@@ -473,7 +418,7 @@ export default function InboxScreen({
     });
   };
 
-  /** The soft-delete both row types' old ✕ used to trigger, now sourced from QuickAddWidget's single "Delete" button in edit mode instead - see the now-removed handleDeleteTaskEdit/handleDeleteMeetingEdit for the pre-unification, per-type version of this. */
+  /** Soft-deletes the edited row; triggered by QuickAddWidget's "Delete" button in edit mode, for both row types. */
   const handleDeleteEditForWidget = () => {
     if (!editTarget) return;
     Keyboard.dismiss();
@@ -573,14 +518,14 @@ export default function InboxScreen({
       log('InboxScreen: added meeting');
     } else {
       // Abbreviation quick-file recognized a #tag while composing on the
-      // Inbox tab (feature_abbrev_quick_file, 2026-09-17) - create it
-      // straight in the named Project/Area instead of Inbox.
+      // Inbox tab - create it straight in the named Project/Area instead of
+      // Inbox.
       await addMeetingToDestination(newMeeting, destination, {inbox: null, inboxPath: null});
       log('InboxScreen: added meeting directly to', destination.path);
     }
   };
 
-  // Grouped by flow-state, same convention (and same index-safety fix) as
+  // Grouped by flow-state, same convention (and same index-safety rule) as
   // ProjectDataPanel.tsx's own TodosSection - see the module doc comment.
   const tasks = inbox?.tasks ?? [];
   const groupsByFlowState = groupTasksByFlowState(tasks);
@@ -631,11 +576,10 @@ export default function InboxScreen({
   /**
    * `arming` mode's onPick for intent 'link' - branches on which root was
    * tapped, same shape as ProjectDataPanel.tsx's own `rootPathFor`. 'browse'
-   * (2026-09-09, replacing the old separate 'projects'/'areas' roots) is the
-   * two-level Projects/Areas browser - however far it's drilled, relativePath
-   * is relative to `paths.base` (the `sources` root's nominal rootPath -
-   * ui/FileBrowserPane.tsx's `sources` doc comment), same as browsing any
-   * other root.
+   * is the two-level Projects/Areas browser - however far it's drilled,
+   * relativePath is relative to `paths.base` (the `sources` root's nominal
+   * rootPath - ui/FileBrowserPane.tsx's `sources` doc comment), same as
+   * browsing any other root.
    */
   const rootPathFor = (root: string): string | null =>
     root === 'resources' ? paths?.resources ?? null : root === 'browse' ? paths?.base ?? null : null;
@@ -677,9 +621,8 @@ export default function InboxScreen({
    * `arming` mode's onPick for intent 'file' (docs/dev/technical-design-filing-
    * unification.md §3.4) - resolveFilingPick only ever sees 'projects'/
    * 'areas', synthesized by ui/FileBrowserPane.tsx from a Browse pick one
-   * level below its depth-0 "Projects"/"Areas" chooser (2026-09-09) since
-   * Resources is disabled, not removed, while file-arming (see
-   * `fileBrowserRoots` below).
+   * level below its depth-0 "Projects"/"Areas" chooser, since Resources is
+   * disabled, not removed, while file-arming (see `fileBrowserRoots` below).
    */
   const handlePickFile = useCallback(
     (root: string, relativePath: string) => {
@@ -706,8 +649,7 @@ export default function InboxScreen({
 
   // See the module doc comment's "Linked file / filing / one arm target"
   // note on why `paths.resources` doubles as the "item root" argument here.
-  // `root: 'browse'` (2026-09-09, was 'projects') - refile-arming now always
-  // auto-switches to the merged Browse tab, not a standalone Projects root.
+  // `root: 'browse'` - refile-arming always auto-switches to the Browse tab.
   const linkTarget: LinkTarget | null = armTarget
     ? armTarget.intent === 'file'
       ? {mode: 'arming', onPick: handlePickFile, onCancel: cancelArming, pickKind: 'folder', label: ARMING_TEXT.refile(armTarget.type), root: 'browse'}
@@ -727,16 +669,14 @@ export default function InboxScreen({
     : null;
 
   // Active-only, same entryFilter area-assignment uses
-  // (technical-design-project-area-assignment.md §4.2) - reused verbatim for
-  // filing (docs/dev/technical-design-filing-unification.md §3.1) and now for
-  // Browse's own per-category listings (always active-only, per Tilman's
-  // "only the top-level Projects/Areas management tabs show everything"
-  // call - Browse isn't one of those).
+  // (technical-design-project-area-assignment.md §4.2) - also used for
+  // filing (docs/dev/technical-design-filing-unification.md §3.1) and for
+  // Browse's per-category listings. Only the top-level Projects/Areas
+  // management tabs show everything.
   const activeOnly = (entry: FolderEntry) => findCachedItem(entry.path)?.status === 'active';
-  // Resources is never a valid refile destination - Browse (2026-09-09,
-  // replacing separate Projects/Areas tabs) is the one root that's always
-  // present but ONLY enabled for picking while refile-arming (see
-  // ui/FileBrowserPane.tsx's `disabled` doc comment): the tab set itself
+  // Resources is never a valid refile destination - Browse is the one root
+  // that's always present but ONLY enabled for picking while refile-arming
+  // (see ui/FileBrowserPane.tsx's `disabled` doc comment): the tab set itself
   // never changes shape, only which tabs you can switch to.
   const isFileArming = armTarget?.intent === 'file';
   const fileBrowserRoots: FileBrowserRoot[] = paths
@@ -830,7 +770,7 @@ export default function InboxScreen({
             {/* Open marks of every project, area and the Inbox (lasso 0.8 §3.10). */}
             <MarksCard scope={ALL_MARKS} returnTo="inbox" textColor={textColor} borderColor={borderColor} />
             <View style={[common.divider, {backgroundColor: borderColor}]} />
-            {/* Flex-weight stacking (2026-09-17, docs/dev/technical-design-
+            {/* Flex-weight stacking (docs/dev/technical-design-
                 flex-weight-stacking.md §3.4) - stackedColumn (flex:1)
                 splits its real available height 8:6 between the Tasks/
                 Meetings stackedSections below via plain sibling `flex`
@@ -846,12 +786,10 @@ export default function InboxScreen({
                 </Pressable>
               )}
 
-              {/* "Tasks" heading + PageControls merged into one PagedSection
+              {/* "Tasks" heading and page controls live in one PagedSection
                   (docs/dev/technical-design-pagination-fixed-height.md §3.4,
-                  same mechanical swap as screens/ProjectDataPanel.tsx's
-                  TodosSection) - the old separate `{taskGroups.length === 0
-                  && <Text>Inbox is at zero. 🎉</Text>}` folds into
-                  `emptyHint`. */}
+                  same as screens/ProjectDataPanel.tsx's TodosSection); the
+                  "Inbox is at zero" text is its `emptyHint`. */}
               <PagedSection
                 header="Tasks"
                 rows={taskFlatRows}
@@ -895,11 +833,9 @@ export default function InboxScreen({
 
             <View style={{flex: MEETINGS_WEIGHT}}>
             <View style={styles.stackedSection}>
-              {/* Standalone "Meetings" label removed (2026-09-15, Tilman:
-                  "please remove it here as well," confirming the same call
-                  already made for screens/WeekView.tsx's Meetings column) -
-                  PagedSection's own `header="Meetings"` below already says
-                  it, on the list itself, same redundancy WeekView's had. */}
+              {/* No standalone "Meetings" label - PagedSection's own
+                  `header="Meetings"` below already says it, on the list
+                  itself (same as screens/WeekView.tsx's Meetings column). */}
               <MiniTabs
                 tabs={mainTabs.tabs}
                 activeKey={mainTab}
@@ -909,15 +845,10 @@ export default function InboxScreen({
               />
               {mainTab === 'meetings' ? (
                 <>
-                  {/* "Meetings" heading is PagedSection's own header text
-                      now - the standalone label above (this pane's own
-                      `paneTitle`) was confirmed redundant and removed
-                      (2026-09-15, see this pane's own render above), same
-                      call already made for screens/WeekView.tsx's Meetings
-                      column and screens/ProjectDataPanel.tsx's identical
-                      MeetingsSection. The old separate `{upcoming.length ===
-                      0 && past.length === 0 && <Text>No meetings
-                      yet.</Text>}` folds into `emptyHint`. */}
+                  {/* "Meetings" heading is PagedSection's own header text,
+                      same as screens/WeekView.tsx's Meetings column and
+                      screens/ProjectDataPanel.tsx's MeetingsSection. The
+                      "No meetings yet" text is its `emptyHint`. */}
                   <MeetingList
                     listId="inbox"
                     defaultLayout="oneLine"
@@ -996,21 +927,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Bounded flex:1 column (docs/dev/technical-design-flex-weight-stacking.md
-  // §3.4, 2026-09-17) - splits its real available height 8:6 between the
-  // Tasks/Meetings stackedSections via the weighted `<View style={{flex:
-  // TASKS_WEIGHT}}>`/`{flex: MEETINGS_WEIGHT}}` boxes wrapping them in this
-  // screen's render, above. Supersedes the old "no flex-splitting, each
-  // section sized by its own fixed row count" approach this file's
-  // stackedSection style used to describe.
+  // §3.4) - splits its real available height 8:6 between the Tasks/Meetings
+  // stackedSections via the weighted `<View style={{flex: TASKS_WEIGHT}}>`/
+  // `{flex: MEETINGS_WEIGHT}}` boxes wrapping them in this screen's render,
+  // above.
   stackedColumn: {
     flex: 1,
   },
   // Tasks-above-Meetings (technical-design-linked-files.md §1/§10.5) -
-  // flex:1 (2026-09-17, same doc as stackedColumn above): each section is
-  // now the sole occupant of its own weighted box, so its own PagedSection
-  // (and, for the Meetings section, its Google mini-tab) can self-measure
-  // into whatever real height that box resolves to instead of a fixed
-  // pixel viewport.
+  // flex:1 (same doc as stackedColumn above): each section is the sole
+  // occupant of its own weighted box, so its own PagedSection (and, for the
+  // Meetings section, its Google mini-tab) can self-measure into whatever
+  // real height that box resolves to instead of a fixed pixel viewport.
   stackedSection: {
     flex: 1,
   },

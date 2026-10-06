@@ -1,12 +1,11 @@
 /**
- * The Week overview (docs/dev/technical-design-meeting-lists.md §2.7, replaces
- * ui/WeeklyMeetingsColumn.tsx): seven day blocks, each a two-column grid of
+ * The Week overview (docs/dev/technical-design-meeting-lists.md §2.7): seven day blocks, each a two-column grid of
  * ui/MeetingChip.tsx, filled down the left column first so reading order is
- * time order. Fixed capacity per page (Tilman 2026-09-27/29): weekdays 4 rows
+ * time order. Fixed capacity per page: weekdays 4 rows
  * x 2 = 8, weekend 2 x 2 = 4 - no measuring, no flex weights; an overfull day
  * pages on its own ("+N ‹ ›" in its header). Blocks are content-sized
  * (30 + 4 x 34 dp), which fits the ~1113 dp Week column (calibrated on
- * Tilman's 2026-09-29 screenshot).
+ * a device screenshot).
  *
  * Tapping a chip opens that day's panel and edits the meeting; tapping a day
  * header opens the panel only (screens/usePlanningScreen.ts's

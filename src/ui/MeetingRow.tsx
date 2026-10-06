@@ -1,6 +1,6 @@
 /**
- * The one standard meeting row (docs/dev/technical-design-meeting-lists.md §2.3,
- * 2026-09-29) - used by every list that shows meetings: Daily, the day panel
+ * The one standard meeting row (docs/dev/technical-design-meeting-lists.md
+ * §2.3) - used by every list that shows meetings: Daily, the day panel
  * (Week/Month), Project, Inbox, the Review steps and focus mode's "Coming up".
  *
  * - Two layouts with FIXED heights (MEETING_ROW_HEIGHT): `oneLine` 37 dp and
@@ -12,14 +12,10 @@
  *   so a list switches features on/off by the props it passes instead of by
  *   having its own row.
  * - `state`: editing/arming/selected rows get a clear black 4 dp bar on the
- *   left (Tilman 2026-09-29: "clear black line, same everywhere").
+ *   left, the same everywhere.
  * - twoLine: line 2 shows the source; without a source a long title wraps
  *   onto line 2 instead. The M (highlight) only shows in twoLine rows, at the
  *   end with the other icons.
- *
- * The pre-2026-09-29 row (single-line with a `showSource` badge, per-title
- * height estimation via meetingRowSizing/meetingEntryHeight, a `compact`
- * variant) was removed in design step 9 once every caller had moved over.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -96,7 +92,7 @@ export interface MeetingRowProps {
   time: MeetingTimeMode;
   /** oneLine: bold "#abbrev" at the end of the line; twoLine: the full name on line 2. Both tap through to the item. Omit in single-item lists. */
   source?: {abbrev: string; name: string; onPress?: () => void};
-  /** twoLine only (Tilman 2026-09-29: M "is not essential" in 1-line rows): 'mark' = read-only M, 'toggle' = tappable box. */
+  /** twoLine only (M is not essential in 1-line rows): 'mark' = read-only M, 'toggle' = tappable box. */
   highlight?: 'mark' | 'toggle';
   onToggleHighlight?: () => void;
   tracking?: MeetingTrackingConfig;
@@ -140,7 +136,7 @@ function MeetingRowV2({
   const done = state === 'done';
 
   // 2-line row without a source line (single-item lists): the title may use
-  // both lines (Tilman 2026-09-29) - 2 x 21 dp fits the same 42 dp content box.
+  // both lines - 2 x 21 dp fits the same 42 dp content box.
   const titleWraps = twoLine && !source;
   const title = (
     <Text style={[v2.title, titleWraps && v2.titleWrapped, {color: textColor}]} numberOfLines={titleWraps ? 2 : 1}>
@@ -156,7 +152,7 @@ function MeetingRowV2({
       style={[
         v2.row,
         // Bottom border only: a whole-row `borderColor` could win over the
-        // marked row's black left bar and grey it out (Tilman 2026-09-29).
+        // marked row's black left bar and grey it out.
         {borderBottomColor: borderColor, height: MEETING_ROW_HEIGHT[layout]},
         twoLine ? v2.rowTwo : v2.rowOne,
         (state === 'editing' || state === 'arming' || state === 'selected') && v2.rowMarked,
@@ -196,7 +192,7 @@ function MeetingRowV2({
           )}
         </View>
       </Pressable>
-      {/* M sits with the other icons at the end of the row (Tilman 2026-09-29), 2-line rows only. */}
+      {/* M sits with the other icons at the end of the row, 2-line rows only. */}
       {twoLine && highlight === 'toggle' && (
         <View style={[v2.action, v2.actionTwo]}>
           <HighlightMark on={highlighted} variant="toggle" onPress={onToggleHighlight} textColor={textColor} />

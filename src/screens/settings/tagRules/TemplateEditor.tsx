@@ -12,15 +12,14 @@ import {styles} from '../settingsStyles';
 import {TagRuleDraft} from './useTagRuleDraft';
 import {MyStyleBackgrounds} from './useMyStylePngs';
 
-// The "Choose background" page's file-row height (2026-09-18 - Tilman: "let
-// the template pagination work exactly as other file panels we have
-// already... (areas, projects)") - same chrome+line-height derivation
-// `ui/FileBrowserPane.tsx`'s own `FILE_ENTRY_CHROME_PX`/
-// `FILE_ENTRY_LINE_HEIGHT_PX` use for a single-line entry (paddingVertical
-// 5+5, FONT.medium's 22px line-height figure), just without that
-// component's doubled row+text padding - these rows are plain single-line
-// filenames (`numberOfLines={1}`), never the 2-line folder/file names
-// FileBrowserPane budgets for.
+// The "Choose background" page's file-row height, so its pagination works
+// exactly like the other file panels (areas, projects) - same
+// chrome+line-height derivation `ui/FileBrowserPane.tsx`'s own
+// `FILE_ENTRY_CHROME_PX`/`FILE_ENTRY_LINE_HEIGHT_PX` use for a single-line
+// entry (paddingVertical 5+5, FONT.medium's 22px line-height figure), just
+// without that component's doubled row+text padding - these rows are plain
+// single-line filenames (`numberOfLines={1}`), never the 2-line
+// folder/file names FileBrowserPane budgets for.
 const TEMPLATE_BROWSE_ROW_HEIGHT = 32;
 
 export default function TemplateEditor({
@@ -88,9 +87,9 @@ export default function TemplateEditor({
         </View>
 
         <View style={[common.column, styles.formColumnCard, {borderColor}]}>
-          {/* Real MyStyle background, not a blank box (2026-09-18) -
-              `templateBrowsePreviewBox` already sizes itself to the
-              column's full width at the real page aspect ratio
+          {/* Real MyStyle background, not a blank box -
+              `templateBrowsePreviewBox` sizes itself to the column's full
+              width at the real page aspect ratio
               (NOTE_PAGE_WIDTH_PX/HEIGHT_PX), so the image just fills it
               exactly; `resizeMode="cover"` rather than "stretch" so a
               MyStyle PNG that isn't pixel-exact to that ratio doesn't
@@ -98,7 +97,7 @@ export default function TemplateEditor({
               selection mounts a fresh <Image> instead of reusing one
               still showing the previous background while the new file
               decodes. "None" (fileName === '') renders no <Image> at
-              all - an empty bordered box, same as before this change. */}
+              all - an empty bordered box. */}
           <View style={[styles.templateBrowsePreviewBox, {borderColor}]}>
             {draftDef.template !== '' && templatePreviewFailedFor !== draftDef.template && (
               <Image

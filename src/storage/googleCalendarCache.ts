@@ -15,18 +15,18 @@
  * same instinct as dataCache.ts's single shared cache, just for a different
  * kind of data.
  *
- * Persistence (2026-09-11, Tilman's request): the last successful fetch is
- * also mirrored to AsyncStorage (same mechanism as storage/settingsStorage.ts
- * - plugin-internal, disposable, not part of the PARA vault, not something
- * the user browses to) so it survives a plugin/app restart. Only successful
- * fetches are persisted - an error never overwrites good data on disk, same
- * "stale but shown" principle `doRefresh` already applies to the in-memory
- * `cached` variable. `hydrateFromDisk` runs once at module load and fills in
- * `cached` if nothing's there yet; `whenGoogleCalendarCacheHydrated()` lets a
- * panel await that one-time read before its first render so cold-opening the
- * app shows last-known events immediately, with no network call and without
- * touching the explicit-tap-only rule for *fetching* (2026-09-07 decision) -
- * a disk read isn't a fetch.
+ * Persistence: the last successful fetch is also mirrored to AsyncStorage
+ * (same mechanism as storage/settingsStorage.ts - plugin-internal,
+ * disposable, not part of the PARA vault, not something the user browses
+ * to) so it survives a plugin/app restart. Only successful fetches are
+ * persisted - an error never overwrites good data on disk, same "stale but
+ * shown" principle `doRefresh` applies to the in-memory `cached` variable.
+ * `hydrateFromDisk` runs once at module load and fills in `cached` if
+ * nothing's there yet; `whenGoogleCalendarCacheHydrated()` lets a panel
+ * await that one-time read before its first render so cold-opening the app
+ * shows last-known events immediately, with no network call and without
+ * touching the explicit-tap-only rule for *fetching* - a disk read isn't a
+ * fetch.
  */
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -77,7 +77,7 @@ export function getGoogleCalendarCache(): GoogleCalendarCacheState | null {
   return cached;
 }
 
-/** Nothing in this feature calls this today (kept for completeness/testing, same as before) - now also clears the persisted copy, so it'd be a real reset if something ever wires it up. */
+/** Nothing in this feature calls this (kept for completeness/testing) - also clears the persisted copy, so it is a real reset if something wires it up. */
 export function clearGoogleCalendarCache(): void {
   cached = null;
   AsyncStorage.removeItem(profileScopedKey(PERSIST_KEY)).catch(e => {
@@ -140,16 +140,13 @@ export function getGoogleCalendarLoadingState(): GoogleCalendarLoadingState {
  * refreshGoogleCalendar - lets every mounted panel reflect the one real
  * shared fetch instead of each tracking its own local `loading` flag.
  *
- * 2026-09-07 fix: previously each panel's own `loading` state reset to
- * false on mount and its effect re-triggered a fetch whenever
- * getGoogleCalendarCache() was still null - which is true for the entire
- * duration of an in-flight fetch, not just "never fetched". Switching a
- * screen's MiniTabs away from Google Calendar and back before the first
- * fetch resolved (or opening the tab on a second screen while one was
- * already running) therefore fired a redundant second concurrent fetch.
- * Now the cache module is the single source of truth for loading state and
+ * The cache module is the single source of truth for loading state and
  * de-dupes the fetch itself (see refreshGoogleCalendar); panels just
- * subscribe and reflect it.
+ * subscribe. A per-panel `loading` flag would reset on mount, and since
+ * getGoogleCalendarCache() is still null for the whole duration of an
+ * in-flight first fetch, switching a screen's MiniTabs away and back (or
+ * opening the tab on a second screen) would fire a redundant concurrent
+ * fetch.
  */
 export function subscribeGoogleCalendarLoading(
   listener: (state: GoogleCalendarLoadingState) => void,
@@ -211,7 +208,7 @@ function todayKey(now: Date): string {
  *
  * De-duped: a refresh already in flight is returned as-is rather than
  * starting a second concurrent fetch - see subscribeGoogleCalendarLoading's
- * doc comment for why this matters (2026-09-07 fix).
+ * doc comment for why this matters.
  */
 export function refreshGoogleCalendar(icsUrl: string): Promise<GoogleCalendarCacheState> {
   if (inFlight) return inFlight;

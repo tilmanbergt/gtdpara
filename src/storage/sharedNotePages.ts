@@ -7,35 +7,19 @@
  * decision that doesn't need the device to the pure helpers in
  * `domain/sharedNotePages.ts`.
  *
- * Slice 2 of 4 (technical-design-shared-note-pages.md §12) - the page
- * engine, plus threading a real `page` parameter through
- * `storage/meetingNoteContent.ts`'s population functions (§5, done in that
- * file).
+ * `writeRecreatedNotice` is the one piece of §7's "page not found ->
+ * recreate" behavior that lives here. The rest of the wiring (§6-§8) is in
+ * `storage/meetingNoteContent.ts` (`openOrCreateMeetingNote`/
+ * `openOrCreateTodoNote`); this file is only the page engine and never
+ * decides own-vs-shared or reads a Task/Meeting.
  *
- * Slice 3 (2026-09-22, §6-§8) added `writeRecreatedNotice` below - the one
- * piece of §7's "page not found -> recreate" behavior that belongs here
- * rather than in `openOrCreateMeetingNote`/`openOrCreateTodoNote`
- * (`storage/meetingNoteContent.ts` - see that file's own doc comment for why
- * the open-or-create entry points live there instead of `storage/
- * noteLinks.ts`, the design doc's original suggestion). Everything else the
- * design doc describes as "wiring" (§6-§8) is in that file, not this one -
- * this file stays exactly what its own name says: the page engine, nothing
- * that decides own-vs-shared or reads a Task/Meeting.
- *
- * Slice 4 (2026-09-22, §4/§12) wrapped the four functions §4 names
- * (`ensureSharedNoteFile`/`findKeywordPage`/`insertChronologicalPage`/
- * `renameKeywordAt`) in `recordDebugLogEntry` (`supernote/fileSystem.ts`,
- * the same on-device diagnostic-file mechanism `bugfix_createnote_blocked`
- * built for `createNote`) - one attempt + success/failure + timing entry
- * per call, written to the device regardless of whether a computer is
- * connected, so the feature's first real device run doubles as the
- * verification pass for §10's open risks without needing `adb logcat` live
- * at the moment something goes wrong. Each function's own `try`/`catch`
- * only adds the log entry - it always rethrows the original error
- * unchanged, so this never changes what a caller sees on failure, only
- * what gets recorded alongside it. `writeRecreatedNotice` below is NOT
- * wrapped the same way - §4's code block doesn't list it, and it already
- * had its own plain `log()` call from Slice 3.
+ * The four functions §4 names (`ensureSharedNoteFile`/`findKeywordPage`/
+ * `insertChronologicalPage`/`renameKeywordAt`) record one attempt +
+ * success/failure + timing entry per call via `recordDebugLogEntry`
+ * (`supernote/fileSystem.ts`'s on-device diagnostic file), so §10's open
+ * risks can be checked on the device without `adb logcat`. Their
+ * `try`/`catch` only adds the log entry and always rethrows the original
+ * error unchanged. `writeRecreatedNotice` uses a plain `log()` instead.
  */
 import {
   chronologicalInsertIndex,
@@ -69,7 +53,7 @@ import {
 import {log} from '../utils/log';
 import {errorMessage} from '../utils/errorMessage';
 
-/** Every keyword currently on `filePath`, as `{page, keyword}` pairs (exported 2026-09-29 for the close-out scan - storage/closeOut/scan.ts) - one `getNoteTotalPageNum` + one `getKeyWords` call covering every page, never one call per page. Resolves `[]` for a brand-new (zero-page) file without calling `getKeyWords` at all - passing an empty `pageList` is untested API territory, so this sidesteps it rather than relying on it resolving sensibly. */
+/** Every keyword currently on `filePath`, as `{page, keyword}` pairs (also used by the close-out scan, storage/closeOut/scan.ts) - one `getNoteTotalPageNum` + one `getKeyWords` call covering every page, never one call per page. Resolves `[]` for a brand-new (zero-page) file without calling `getKeyWords` at all - passing an empty `pageList` is untested API territory, so this sidesteps it rather than relying on it resolving sensibly. */
 export async function readAllKeywords(filePath: string): Promise<{keywords: PageKeyword[]; totalPages: number}> {
   const totalPages = await getNoteTotalPageNum(filePath);
   if (totalPages <= 0) return {keywords: [], totalPages};
@@ -82,9 +66,9 @@ export async function readAllKeywords(filePath: string): Promise<{keywords: Page
  * Ensures `folderPath/fileName.note` exists (creating the folder and/or the
  * note itself as needed) and returns its absolute path. Existence is
  * checked via `listFolderEntries`, not by attempting `createNote` and
- * inspecting the failure - `createNote`'s own error message for "already
- * exists" isn't a case this codebase has had reason to distinguish before,
- * so checking first is the safer, already-proven pattern (mirrors
+ * inspecting the failure - `createNote`'s error message for "already
+ * exists" isn't one this codebase distinguishes, so checking first is the
+ * safer pattern (mirrors
  * `createLinkedNote`'s own `ensureFolderExists` + collision-avoidance
  * style, just checking existence instead of avoiding a name collision).
  */
@@ -122,9 +106,7 @@ export async function ensureSharedNoteFile(folderPath: string, fileName: string,
 /**
  * The page carrying an exact-match `keyword` on `filePath`, or `null` if
  * none does (design doc §4's `findKeywordPage`). Reads the whole keyword
- * index in one round trip (`readAllKeywords`) rather than paging through it,
- * matching the "the whole point of one call" framing from the original API
- * research.
+ * index in one round trip (`readAllKeywords`) rather than paging through it.
  */
 export async function findKeywordPage(filePath: string, keyword: string): Promise<number | null> {
   const start = Date.now();
@@ -219,7 +201,7 @@ export async function insertChronologicalPage(
  * `oldKeyword` - deciding that requires comparing against every OTHER
  * cached item, which this file has no access to and shouldn't (that check
  * is `storage/meetingNoteContent.ts`'s `openOrCreateMeetingNote`/
- * `openOrCreateTodoNote`, Slice 3); this function only carries out whichever
+ * `openOrCreateTodoNote`); this function only carries out whichever
  * decision the caller already made. When `oldKeyword` isn't found on the
  * page at all (already renamed, or hand-edited away), the delete step is
  * silently skipped either way - `newKeyword` still gets added, which is

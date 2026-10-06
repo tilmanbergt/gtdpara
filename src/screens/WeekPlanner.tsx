@@ -9,8 +9,7 @@
  * - Right: Quick Add on top, then EITHER the shared day panel
  *   (ui/DayMeetingsPanel.tsx, after tapping a chip or a day header) OR the
  *   weekly focus panel / goal history - the same pattern as the Month view.
- *   The old "Focus" label above Quick Add is gone so Week and Month line up
- *   (decided 2026-09-29).
+ *   No "Focus" label above Quick Add, so Week and Month line up.
  *
  * All state and actions come from screens/usePlanningScreen.ts, which the
  * host screen owns (it also owns loading/refresh) and passes in.

@@ -3,17 +3,16 @@
  *
  * Rendered by App.tsx as the content of the "Current" tab (App.tsx's
  * tab-based navigation) whenever `currentItem` is set - no header/back
- * button of its own; switching tabs is the only navigation now.
+ * button of its own; switching tabs is the only navigation.
  *
  * Left: ui/FileBrowserPane.tsx, with two roots (technical-design-linked-
  * files.md §5/§8) - 'project' (this item's own folder, always scoped to the
  * *project/area root* regardless of how deep the pane is drilled, same as
  * the Todos/Meetings on the right) and 'resources' (the user's shared
  * Resources folder, per domain/settings.ts's resolvePaths - the "attach an
- * existing file" flow's second, more common source). Extracted from this
- * screen's former single-root inline browser once screens/InboxScreen.tsx
- * needed the exact same shape - see FileBrowserPane's own module doc
- * comment for the roots/locating/arming/pin behavior it now owns.
+ * existing file" flow's second, more common source). See FileBrowserPane's
+ * own module doc comment for the roots/locating/arming/pin behavior it owns
+ * (shared with screens/InboxScreen.tsx).
  *
  * `linkTarget` (locating a linked file's row, or arming a "pick a file for
  * this task/meeting" selection) is owned by ProjectDataPanel - the right
@@ -50,30 +49,22 @@
  *
  * Right: ProjectDataPanel - the item's own Todos and Meetings, always
  * scoped to the project/area root.
- *
- * Left pane, pinned to the very TOP (2026-09-13, Tilman: "move now the
- * focus selection and display to the top of that column, above the file
- * panel"): ui/ItemFocusPanel.tsx - the Daily/Weekly focus checkboxes plus
- * the weekly-goal line (docs/dev/technical-design-item-goal-display.md). This
- * used to be part of ui/ItemStatusPanel.tsx (2026-09-09 through
- * 2026-09-13, right above Archive) - see that file's own module doc
- * comment for why it split into its own component once it needed a
- * position on the opposite side of Files from Status/Archive.
+ * Left pane, pinned to the very TOP: ui/ItemFocusPanel.tsx - the
+ * Daily/Weekly focus checkboxes plus the weekly-goal line
+ * (docs/dev/technical-design-item-goal-display.md). It is its own component
+ * because it sits on the opposite side of Files from Status/Archive.
  *
  * Left pane, pinned to the very bottom: ui/ItemStatusPanel.tsx - Status +
- * Archive + Assign to Area (2026-09-03, docs/dev/technical-design-inbox-tab.md
- * §4: Status+Archive relocated here from the top of the right pane's
- * ProjectDataPanel, which now starts with its QuickAddWidget instead).
- * `onArchived` is sourced from here rather than ProjectDataPanel now, same
- * bubble-up shape as before. `styles.filesArea` wraps the Files title/
- * error/FileBrowserPane in its own `flex: 1` box (2026-09-09, per direct
- * feedback) so this panel always sits flush at the bottom of the left pane
- * regardless of how few or many files/folders are showing above it, rather
- * than trailing wherever FileBrowserPane's own (unpadded, page-length-
- * dependent) content happens to end. ui/ItemFocusPanel.tsx above it, by
- * contrast, is sized to its own content (no `flex: 1`) - it's pinned to the
- * top by document order alone, not by absorbing leftover space the way
- * `filesArea` does for the bottom panel.
+ * Archive + Assign to Area (docs/dev/technical-design-inbox-tab.md §4);
+ * `onArchived` is sourced from there. `styles.filesArea` wraps the Files
+ * title/error/FileBrowserPane in its own `flex: 1` box so this panel always
+ * sits flush at the bottom of the left pane regardless of how few or many
+ * files/folders are showing above it, rather than trailing wherever
+ * FileBrowserPane's own (unpadded, page-length-dependent) content happens to
+ * end. ui/ItemFocusPanel.tsx above it, by contrast, is sized to its own
+ * content (no `flex: 1`) - it's pinned to the top by document order alone,
+ * not by absorbing leftover space the way `filesArea` does for the bottom
+ * panel.
  *
  * **File browser roots** (technical-design-project-area-assignment.md §4.4):
  * a Project always gets 'project'/'resources', plus a third 'area' root once
@@ -84,14 +75,11 @@
  * cache every other cross-item lookup in this app prefers over a filesystem
  * scan.
  *
- * Every kind also always gets one more: 'browse' (2026-09-09, Tilman's
- * "don't add/remove tabs, just switch tabs and change what tapping them
- * does" feedback) - a two-level, always-Active-only Projects/Areas browser
- * (ui/FileBrowserPane.tsx's `sources`) that's a permanent tab rather than
- * something conjured only while refile-arming, the way this used to work.
- * A Project used to also get a standalone 'areas' root (every Active area,
- * for area-assignment) - removed the same day, once Browse could reach the
- * same listing itself (`startAt: 'area'`, below).
+ * Every kind also always gets one more: 'browse' - a two-level,
+ * always-Active-only Projects/Areas browser (ui/FileBrowserPane.tsx's
+ * `sources`) that's a permanent tab: tabs are never added or removed, only
+ * what tapping them does changes. Area-assignment picks through it too
+ * (`startAt: 'area'`, below).
  * `isRefileArming`/`isAreaAssignmentArming`/`disableOthersWhileArming` below
  * grey out every root except Browse (never remove them) while either a
  * refile or an area-assignment is being picked, and Browse itself handles
@@ -133,9 +121,8 @@ import {errorMessage} from '../utils/errorMessage';
  * validateAbbrev) - kept here rather than in domain/abbrev.ts since it's
  * display copy, not logic (domain/ stays pure per the repo's own
  * convention). Covers all three AbbrevInvalidReason kinds; only 'reserved'
- * and 'duplicate' are ever actually shown by AbbrevPill below (2026-09-14,
- * Tilman: single conditional, non-dimmed error line, no permanent hint -
- * see that component's doc comment) - 'empty' is included for completeness/
+ * and 'duplicate' are ever actually shown by AbbrevPill below (see that
+ * component's doc comment) - 'empty' is included for completeness/
  * defense-in-depth (e.g. Save somehow reached with a blank draft).
  */
 function abbrevErrorMessage(validation: AbbrevValidation): string {
@@ -154,11 +141,11 @@ interface Props {
   kind: 'project' | 'area';
   name: string;
   path: string;
-  /** Called once ui/ItemStatusPanel.tsx's Archive action has actually moved this item's folder - App.tsx navigates away, since `path` no longer resolves to anything under Projects/Areas. */
+  /** Called once ui/ItemStatusPanel.tsx's Archive action has actually moved this item's folder - App.tsx navigates away, since `path` then points at nothing under Projects/Areas. */
   onArchived?: (kind: 'project' | 'area') => void;
   /** Threaded straight through to ProjectDataPanel's MeetingsSection (docs/dev/technical-design-google-calendar.md §9) - switches to Settings' Calendar sub-tab from the Google mini-tab's empty state. */
   onOpenCalendarSettings?: () => void;
-  /** The Files pane's Browse tab (2026-09-09, see the module doc comment's "Browse tab" note) - plain-browsing a top-level Project/Area entry there swaps the "Current" tab to that item, same App.tsx `openItem` used to open one from the Projects/Areas tabs. */
+  /** The Files pane's Browse tab (see the module doc comment's "browse" note) - plain-browsing a top-level Project/Area entry there swaps the "Current" tab to that item, via the same App.tsx `openItem` the Projects/Areas tabs open one with. */
   onOpenItem?: (kind: 'project' | 'area', entry: FolderEntry) => void;
   /** Projects: opens the close-out wizard from the status panel's "Close out…" (docs/dev/technical-design-project-close-out.md §6.2). */
   onStartCloseOut?: (projectPath: string) => void;
@@ -251,7 +238,7 @@ export default function ItemDetail({
   // Explicit e-ink refresh once the initial ensureItemCached load lands -
   // see src/utils/screenRefresh.ts.
   // `resourceFolderState === null` covers the mount-time load above, which
-  // (unlike most other screens) never had its own loading flag before this.
+  // has no loading flag of its own.
   useEinkRefreshOnLoad(resourceFolderState === null);
 
   /** The Resources root's pin (ui/FileBrowserPane.tsx's onSetDefaultSubfolder) - writes the new pinned subfolder into this item's frontmatter, write-through into the shared cache, same as ui/ItemStatusPanel.tsx's changeStatus. */
@@ -320,7 +307,7 @@ export default function ItemDetail({
 
   // Reported up from FileBrowserPane's own onActiveLocationChange (its doc
   // comment) - the Files pane's currently-displayed root/folder, for the
-  // "Note" quick-add tab (memory: feature_standalone_note_quickadd.md).
+  // "Note" quick-add tab.
   // `noteFolderPath` is that folder's absolute path, but only while the
   // active root is this item's own ('project' key, labeled "Project Files"/
   // "Area Files") - null on every other root (Resources, Area Files of an
@@ -341,42 +328,40 @@ export default function ItemDetail({
   // `sources` below.
   const activeOnly = (entry: FolderEntry) => findCachedItem(entry.path)?.status === 'active';
 
-  // Refile-arming (2026-09-09, storage/inboxFiling.ts's module doc comment):
+  // Refile-arming (storage/inboxFiling.ts's module doc comment):
   // ProjectDataPanel.tsx's own armTarget can arm for 'refile' as well as
   // 'link', both bubbled up through the same dataPanelLinkTarget/onPick
   // shape (its own onLinkTargetChange doc comment). `pickKind === 'folder'`
   // alone isn't enough to tell refile-arming apart from area-assignment's
   // own folder pick (ui/ItemStatusPanel.tsx's "Assign to Area…", reported
-  // through the separate areaLinkTarget merged below) - both now route
+  // through the separate areaLinkTarget merged below) - both route
   // through Browse (`root: 'browse'`), so checking `dataPanelLinkTarget`
   // specifically (never populated by area-assignment's own, separate
   // areaLinkTarget state) is what actually tells them apart here.
   const isRefileArming =
     dataPanelLinkTarget?.mode === 'arming' && dataPanelLinkTarget.pickKind === 'folder' && dataPanelLinkTarget.root === 'browse';
   // Area-assignment-arming (ui/ItemStatusPanel.tsx's "Assign to Area…",
-  // 2026-09-09 follow-up: moved from its own dedicated Areas root onto
-  // Browse via `startAt: 'area'` - see ui/FileBrowserPane.tsx's `startAt`
-  // doc comment). Same reasoning as isRefileArming above for disabling every
-  // other root while it's active: a tap on e.g. Resources mid-arm would
-  // otherwise try to pick a folder there using area-assignment's own onPick,
-  // which expects a Browse-shaped (root, relativePath) pair.
+  // picked on Browse via `startAt: 'area'` - see ui/FileBrowserPane.tsx's
+  // `startAt` doc comment). Same reasoning as isRefileArming above for
+  // disabling every other root while it's active: a tap on e.g. Resources
+  // mid-arm would otherwise try to pick a folder there using
+  // area-assignment's own onPick, which expects a Browse-shaped
+  // (root, relativePath) pair.
   const isAreaAssignmentArming = areaLinkTarget?.mode === 'arming';
 
-  // Browse tab (2026-09-09, Tilman's "don't add/remove tabs, just switch
-  // tabs and change behavior on tap" call; reworked same day into a
-  // two-level Projects/Areas chooser, see ui/FileBrowserPane.tsx's `sources`
-  // doc comment), always present rather than swapped in only while
-  // refile-arming. Three behaviors, all handled by FileBrowserPane itself
-  // from `sources`/`onNavigateToItem`/pickKind/`startAt`: plain browsing
-  // jumps the "Current" tab to whichever Project/Area you tap (onOpenItem,
-  // this screen's own equivalent of App.tsx's `openItem`); picking
-  // (pickKind:'folder' - refile-arming, or area-assignment via `startAt:
-  // 'area'`) selects one immediately; link-arming (the default
-  // pickKind:'file') drills into one so you can pick a file inside it.
-  // Neither kind's own roots below offer a way to browse *every* Project (a
-  // Project's own roots have no 'projects' sibling) or, for an Area, every
-  // other Area - this is that missing capability, once, rather than the
-  // universal-roots swap this replaced.
+  // Browse tab (a two-level Projects/Areas chooser, see
+  // ui/FileBrowserPane.tsx's `sources` doc comment), always present - tabs
+  // are switched, never added/removed. Three behaviors, all handled by
+  // FileBrowserPane itself from `sources`/`onNavigateToItem`/pickKind/
+  // `startAt`: plain browsing jumps the "Current" tab to whichever
+  // Project/Area you tap (onOpenItem, this screen's own equivalent of
+  // App.tsx's `openItem`); picking (pickKind:'folder' - refile-arming, or
+  // area-assignment via `startAt: 'area'`) selects one immediately;
+  // link-arming (the default pickKind:'file') drills into one so you can
+  // pick a file inside it. Neither kind's own roots below offer a way to
+  // browse *every* Project (a Project's own roots have no 'projects'
+  // sibling) or, for an Area, every other Area - this is that capability,
+  // once.
   const browseRoot: FileBrowserRoot | null = paths
     ? {
         key: 'browse',
@@ -520,15 +505,15 @@ export default function ItemDetail({
 
 /**
  * Trailing `#tag` pill in the header (docs/dev/technical-design-project-area-
- * abbreviations.md) - always last, after the kindTag (2026-09-14, Tilman:
- * "please put the tag always at the end"). Tap to edit inline, mirroring ui/
- * ItemFocusPanel.tsx's ItemScopeRow tap-to-edit pattern (draft state +
- * Save/Cancel text buttons). Always rendered once resourceFolderState has
- * loaded - migrateMissingAbbrevs (storage/dataCache.ts) guarantees every
- * Project/Area already has a non-null abbrev by the time this screen can
- * show one, so there's no "+ Add" empty state the way Scope/Goal have; a
- * still-null value (should not happen post-migration) just shows an empty
- * "#" pill, itself tappable to fill one in.
+ * abbreviations.md) - always last, after the kindTag. Tap to edit inline,
+ * mirroring ui/ItemFocusPanel.tsx's ItemScopeRow tap-to-edit pattern (draft
+ * state + Save/Cancel text buttons). Always rendered once
+ * resourceFolderState has loaded - migrateMissingAbbrevs
+ * (storage/dataCache.ts) guarantees every Project/Area already has a
+ * non-null abbrev by the time this screen can show one, so there's no
+ * "+ Add" empty state the way Scope/Goal have; a still-null value (should
+ * not happen post-migration) just shows an empty "#" pill, itself tappable
+ * to fill one in.
  *
  * Validates live against the same two rules the storage-side save enforces
  * (domain/abbrev.ts's validateAbbrev) - reserved flow-state word, or already
@@ -537,14 +522,10 @@ export default function ItemDetail({
  * editing starts (startEdit), rather than risking a mount-time list going
  * stale as other items change while this screen sits open.
  *
- * One conditional error line (2026-09-14, Tilman: "We don't need the
- * reserved line for flow states in addition to the already used, just show
- * that line if the user enters exactly a flow state (but then not in
- * gray).") - no permanently-visible hint line, and no separate dimmed
- * reserved-word line. A single `common.error`-styled line (already undimmed
- * - see ui/commonStyles.ts) appears only while the current draft is
- * actually invalid, covering the reserved-word and duplicate cases the same
- * way Save is caught to for a write-time failure.
+ * One conditional error line: no permanently-visible hint line, and no
+ * separate dimmed reserved-word line. A single `common.error`-styled line
+ * (undimmed - see ui/commonStyles.ts) appears only while the current draft
+ * is actually invalid, covering the reserved-word and duplicate cases.
  */
 function AbbrevPill({
   abbrev,
@@ -669,10 +650,9 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     marginRight: 16,
   },
-  // Absorbs all the left pane's leftover vertical space (2026-09-09) so
-  // ItemStatusPanel, right after it in document order, always lands flush
-  // at the very bottom of the left pane - see the module doc comment's
-  // placement note.
+  // Absorbs all the left pane's leftover vertical space so ItemStatusPanel,
+  // right after it in document order, always lands flush at the very bottom
+  // of the left pane - see the module doc comment's placement note.
   filesArea: {
     flex: 1,
   },

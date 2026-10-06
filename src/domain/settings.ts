@@ -46,12 +46,11 @@ export interface GtdParaSettings {
    */
   reviewSteps: ReviewStepsMap;
   /**
-   * "Hide done tasks" toggle state, remembered across visits (2026-09-03
-   * Daily-cleanup pass) - independent per surface since a Project/Area's
-   * Todos list and Daily's Inbox are different contexts (a long-lived
-   * project accumulates done tasks fast; Inbox is meant to be triaged to
-   * empty quickly, so there's rarely anything to hide there). Both default
-   * to false (shown) - no behavior change until someone taps the toggle.
+   * "Hide done tasks" toggle state, remembered across visits - independent
+   * per surface since a Project/Area's Todos list and Daily's Inbox are
+   * different contexts (a long-lived project accumulates done tasks fast;
+   * Inbox is meant to be triaged to empty quickly, so there's rarely anything
+   * to hide there). Both default to false (shown).
    */
   hideDoneProjectTasks: boolean;
   hideDoneInboxTasks: boolean;
@@ -85,22 +84,17 @@ export interface GtdParaSettings {
    * design-note-templates.md) - context + optional tag match + background +
    * an ordered set of content pieces, resolved by domain/tagRules.ts's
    * resolveNoteTemplate. Plugin config, not PARA content, same reasoning as
-   * every other field here. Phase 1 (2026-09-18) added this field, inert
-   * until Phase 2 wired Meeting-note creation through it and Phase 3 (same
-   * day) wired Todo-note creation through it too - both resolve against
-   * this list at note-creation/refresh time now (storage/
+   * every other field here. Meeting- and Todo-note creation resolve against
+   * this list at note-creation/refresh time (storage/
    * meetingNoteContent.ts's refreshMeetingNoteBlock/refreshTodoNoteBlock).
-   * Each definition's own `template` field also fully replaced the old
-   * global `meetingNoteTemplate` setting in Phase 3 (removed from this
-   * interface) - background selection is per-definition now, not global.
+   * Each definition carries its own background `template` - there is no
+   * global note background setting.
    */
   tagRules: TagRule[];
   /**
    * Simple incrementing counter used as the next `TagRule.id`
-   * (domain/tagRules.ts's `createEmptyTagRule`) - chosen over a UUID
-   * as the simpler option (Tilman, 2026-09-18: "id as counter is fine").
-   * Definition export/import was flagged as a plausible future idea this
-   * doesn't need to accommodate now.
+   * (domain/tagRules.ts's `createEmptyTagRule`) - simpler than a UUID and
+   * enough here.
    */
   nextTagRuleId: number;
   /**
@@ -274,7 +268,7 @@ export function resolvePaths(settings: GtdParaSettings): ResolvedParaPaths {
   };
 }
 
-/** Whether `folderPath` is the configured Inbox folder (exact match, trailing slashes ignored). Used to keep it out of every Area listing. */
+/** Whether `folderPath` is the configured Inbox folder (exact match, trailing slashes ignored). Keeps it out of every Area listing. */
 export function isInboxFolder(paths: ResolvedParaPaths, folderPath: string): boolean {
   if (paths.inboxFolder === paths.base) return false; // legacy location: the base root is never an Area folder
   return folderPath.replace(/\/+$/, '') === paths.inboxFolder;
@@ -321,7 +315,7 @@ export function findEnclosingItem(
   ];
   // The Inbox folder sits inside Areas but is never an Area
   // (technical-design-inbox-as-area.md §3.1) - a note in it has no
-  // enclosing Project/Area, the same as a note in the old root Inbox.
+  // enclosing Project/Area.
   if (isUnderInboxFolder(paths, filePath)) return null;
   for (const {kind, root} of roots) {
     const prefix = `${root.replace(/\/+$/, '')}/`;

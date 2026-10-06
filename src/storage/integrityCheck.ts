@@ -2,19 +2,16 @@
  * Integrity Check (docs/dev/technical-design-integrity-check.md) - orchestration
  * for Settings > Folders' "Run Integrity Check" action: walks every
  * Project/Area/Archive folder plus the single root Inbox file, reuses
- * loadProjectFile (storage/projectFile.ts) for the exact same parsing the
- * app already trusts, runs every registered domain/integrityCheck.ts check
+ * loadProjectFile (storage/projectFile.ts) for the same parsing the app
+ * uses everywhere, runs every registered domain/integrityCheck.ts check
  * against each item, and writes one summary report to the debug log folder.
- * Report-only (Tilman, 2026-09-23) - no auto-fix.
+ * Report-only - no auto-fix.
  *
  * Archive is included deliberately, unlike storage/dataCache.ts's cache
- * (which explicitly skips Resources/Archive, "hidden from Home for now") -
- * once something's archived, "there's no restore/browse-Archive UI...
- * nothing in the app reads the item back" (storage/archive.ts's own doc
- * comment), so it's the one place a stale corrupted notePath could
- * otherwise sit forever with no other way to find it. Resources is NOT
- * scanned - it holds linked/attached files only, no Task/Meeting/notePath
- * data structurally.
+ * (which skips Resources/Archive) - nothing in the app reads an archived
+ * item back (storage/archive.ts's doc comment), so this is the one place a
+ * stale corrupted notePath there can be found. Resources is NOT scanned - it
+ * holds linked/attached files only, no Task/Meeting/notePath data.
  *
  * Archived items sit at several depths under Archive (flat, or under a year
  * and Area folder after a close-out); domain/closeOut/archiveScan.ts finds
@@ -22,8 +19,8 @@
  *
  * Deliberately no SCAN_TIMEOUT_MS wrapper the way dataCache.ts's rebuild
  * has - that one runs automatically on every app open/foreground and needs
- * to fail fast; this is a manual, on-demand action, so letting a slow scan
- * simply take longer is an acceptable trade rather than added complexity.
+ * to fail fast; this is a manual, on-demand action, so a slow scan may
+ * simply take longer.
  * A single item's load failure doesn't abort the whole run - it becomes its
  * own finding instead, since a file that can't even be read is itself
  * exactly the kind of thing an integrity check should surface.

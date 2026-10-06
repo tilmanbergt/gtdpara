@@ -2,7 +2,7 @@
  * Date/time helpers for Meetings: today's-date default, flexible time-entry
  * parsing, the upcoming/past split+sort ProjectDataPanel's Meetings section
  * uses, and the combined title/date/time validation every Meeting add/edit
- * form (ProjectDataPanel's, and now DailyView's own) runs before saving.
+ * form (ProjectDataPanel's, DailyView's) runs before saving.
  * Pure, zero RN/SDK imports (domain/ convention, see markdown.ts) - all
  * wall-clock reads happen through an injectable `now` parameter so this
  * stays testable without mocking global Date.
@@ -201,7 +201,7 @@ export function meetingTimestampMs(
  * a timestamp one: a meeting earlier today that already started still counts
  * (unlike `meetingTimestampMs`/`splitAndSortMeetings`' upcoming/past split,
  * which is time-aware). Used by Review's Inbox-to-zero step, which only
- * wants to surface meetings that can still be acted on (2026-09-21). A
+ * wants to surface meetings that can still be acted on. A
  * malformed/missing date is treated as "keep it" so such an entry can never
  * silently drop out of the review. Plain string comparison is correct here
  * because both sides are zero-padded YYYY-MM-DD.
@@ -230,14 +230,13 @@ function parseIsoDateLocal(iso: string): {year: number; month: number; day: numb
 
 /**
  * The instant a Meeting's note stops getting auto-*re*populated on open
- * (docs/dev/technical-design-note-templates.md Phase 3, 2026-09-18 - Tilman:
- * "auto update of data will only happen till the day (including that day)
- * and the time (including that time + 1h)"). A date-only meeting (no time
- * given) freezes at the end of its date - 23:59:59.999 local - since
- * nothing pins it to a specific hour; a timed meeting freezes one hour past
- * its start. Built from calendar fields via `parseIsoDateLocal` +
- * `new Date(year, month-1, day, ...)`, same local-time-construction
- * convention `isoDateOffset` above already follows, so this
+ * (docs/dev/technical-design-note-templates.md Phase 3): auto-update runs
+ * through the meeting's day and until one hour after its time. A date-only
+ * meeting (no time given) freezes at the end of its date - 23:59:59.999
+ * local - since nothing pins it to a specific hour; a timed meeting freezes
+ * one hour past its start. Built from calendar fields via
+ * `parseIsoDateLocal` + `new Date(year, month-1, day, ...)`, same
+ * local-time-construction convention `isoDateOffset` above follows, so this
  * never shifts a day depending on the device's timezone offset. This is
  * *only* the cutoff instant - see `isMeetingAutoUpdateFrozen` below for the
  * actual frozen/not-frozen check, which also folds in `cancelled`.
@@ -246,14 +245,14 @@ export function meetingAutoUpdateCutoffMs(meeting: MeetingEndInput): number {
   return meetingEndMs(meeting);
 }
 
-/** What `meetingEndMs` reads - `endTime`/`days` optional so older call sites' narrower Picks still fit (missing = no end / 1 day). */
+/** What `meetingEndMs` reads - `endTime`/`days` optional so callers' narrower Picks still fit (missing = no end / 1 day). */
 export type MeetingEndInput = Pick<Meeting, 'date' | 'time'> & Partial<Pick<Meeting, 'endTime' | 'days'>>;
 
 /**
- * The instant a meeting is over (docs/dev/technical-design-monthly-view.md §3.2,
- * 2026-09-23 - Tilman: "use real meeting end if available"):
+ * The instant a meeting is over (docs/dev/technical-design-monthly-view.md
+ * §3.2), using the real meeting end when available:
  * - timed with an end time -> that end time
- * - timed without one      -> start + 1 h (the old rule, unchanged)
+ * - timed without one      -> start + 1 h
  * - date-only              -> end (23:59:59.999) of its LAST covered day
  * Used for the note-refresh freeze and the prep->review switch
  * (domain/meetingTracking.ts), so both follow the real end.
@@ -278,12 +277,11 @@ export function meetingEndMs(meeting: MeetingEndInput): number {
  * Whether a Meeting's note should stop being auto-*re*populated on open
  * (storage/meetingNoteContent.ts's `refreshMeetingNoteBlock`) - true once
  * `now` is past `meetingAutoUpdateCutoffMs`, or immediately for a cancelled
- * meeting (2026-09-18, Tilman: "yes, treat cancelled the same" - a
- * cancelled meeting's note is done changing regardless of its date/time).
- * Never gates *creation* - a newly-linked note always gets populated once
- * regardless of how frozen its meeting already is ("newly created notes...
- * will still get the initial data") - callers pass an explicit bypass for
- * that path rather than this function trying to distinguish the two itself.
+ * meeting (a cancelled meeting's note is done changing regardless of its
+ * date/time). Never gates *creation* - a newly-linked note always gets its
+ * initial data once, however frozen its meeting already is - callers pass
+ * an explicit bypass for that path rather than this function trying to
+ * distinguish the two itself.
  */
 export function isMeetingAutoUpdateFrozen(
   meeting: MeetingEndInput & Pick<Meeting, 'cancelled'>,

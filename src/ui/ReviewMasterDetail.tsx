@@ -1,66 +1,38 @@
 /**
- * ReviewMasterDetail — the shared left-list/right-detail shell used by all
- * five converted screens/ReviewScreen.tsx steps (Stalled projects, Done
- * awaiting review, On Hold reconsideration, Neglected areas, Unfocused next
- * items). New component, 2026-09-16 (docs/dev/technical-design-review-master-
- * detail.md §3) - this is the piece that actually finishes the pagination-
- * unification goal (docs/dev/technical-design-pagination-fixed-height.md's
- * Batch 7 was blocked on Review's old cards holding multiple unbounded
- * lists at once; master-detail sidesteps that rather than solving it head
- * on): the left list is a single `PagedSection`, so once every step uses
- * this shell, `ui/PageControls.tsx`/`usePagination`/`Paged<T>` have zero
- * remaining callers anywhere in the app.
+ * ReviewMasterDetail — the shared left-list/right-detail shell used by the
+ * screens/ReviewScreen.tsx steps (Stalled projects, Done awaiting review, On
+ * Hold reconsideration, Neglected areas, Unfocused next items;
+ * docs/dev/technical-design-review-master-detail.md §3). The left list is a
+ * single `PagedSection`, so a step never holds several unbounded lists at
+ * once (docs/dev/technical-design-pagination-fixed-height.md).
  *
  * Owns exactly two pieces of UI-only state, neither of which is review data:
  * - `selectedKey` - which left-list row's detail is showing on the right.
- *   Starts `null` on every step entry (no pre-selection - decided in the
- *   requirements chat) and resets whenever `resetKey` changes, the same
- *   reset convention `ui/PagedSection.tsx`'s own `resetKey` already uses.
- *   ReviewScreen passes its own per-step snapshot identity as `resetKey`,
- *   so entering/re-entering a step (goToStep) or a manual 🔄 reload (which
- *   re-freezes the snapshot) both clear the selection, but re-rendering for
- *   an unrelated reason (a sibling step's action, a live cache update)
- *   doesn't.
+ *   Starts `null` on every step entry (no pre-selection) and resets whenever
+ *   `resetKey` changes, the same convention as `ui/PagedSection.tsx`'s
+ *   `resetKey`. ReviewScreen passes its per-step snapshot identity as
+ *   `resetKey`, so entering/re-entering a step (goToStep) or a manual 🔄
+ *   reload (which re-freezes the snapshot) both clear the selection, but
+ *   re-rendering for an unrelated reason (a sibling step's action, a live
+ *   cache update) doesn't.
  * - Row selection wiring - which row is tappable (`isSelectable`) and what
  *   tapping it does (`setSelectedKey`). Everything else about how a row or
  *   the detail panel *looks* is the caller's own `renderRow`/`renderDetail`
- *   callback, not this shell's concern - this is deliberately a thin
- *   layout+selection shell, not a second place review-specific rendering
- *   logic lives.
+ *   callback - this is deliberately a thin layout+selection shell, not a
+ *   second place review-specific rendering logic lives.
  *
- * `actedOnKeys` is a controlled prop, not local state (unlike the design
- * doc's very first sketch) - ReviewScreen already owns one frozen-snapshot
- * Set per step (the direct generalization of today's stalledSnapshot/
- * neglectedSnapshot arrays - see that file's module doc comment), so the
- * "acted-on but still visible, checkmarked, reopenable" bookkeeping lives
- * there, right next to the action handlers that populate it, rather than
- * being duplicated inside this shell.
+ * `actedOnKeys` is a controlled prop, not local state - ReviewScreen owns
+ * one frozen-snapshot Set per step (see that file's module doc comment), so
+ * the "acted-on but still visible, checkmarked, reopenable" bookkeeping
+ * lives right next to the action handlers that populate it.
  *
- * Bugfix (2026-09-16, Tilman: couldn't get Stalled projects' one-and-only
- * listed project to open its detail panel by tapping it, though tapping
- * "worked fine" on other steps): `wrappedRenderRow`'s `onPress` was a plain,
- * fully synchronous `setSelectedKey(key)` with no `requestEinkRefresh()`
- * call - exactly the class of bug `bugfix_eink_refresh.md`'s Follow-ups 3/4
- * already diagnosed for `ReviewScreen.tsx`'s own `goToStep` (a direct-tap
- * state change isn't guaranteed to flush on this device without an explicit
- * refresh call; `useEinkRefreshOnLoad`'s `loading` flag doesn't cover a
- * purely-local, non-async UI state like this one at all). This shell is new
- * code from this same session, added after that fix landed, so it simply
- * never got the call. The actual selection always worked (state updates,
- * `stalledList.find` always resolves) - the native e-ink panel just didn't
- * necessarily repaint to show it, a race whose odds get worse the more the
- * detail panel has to draw (Follow-up 4's finding), which is consistent
- * with Stalled/Neglected's richer detail panel (quick-add + context block +
- * task/meeting/shelved lists) being a less favorable case than a step with
- * less to paint - not something actually specific to a one-row list, just
- * where Tilman happened to notice it first.
+ * A row tap calls `requestEinkRefresh()` after `setSelectedKey`: a direct-tap
+ * state change isn't guaranteed to repaint on this device without an
+ * explicit refresh, and `useEinkRefreshOnLoad`'s `loading` flag doesn't
+ * cover purely local UI state. Without it the selection works but the
+ * e-ink panel may not show it, more likely the more the detail panel draws.
  *
- * Self-measuring, tabbed-pane follow-on (2026-09-17, [[feature_pagination_
- * fixed_height]]): `viewportHeight` is now optional - see that prop's own
- * doc comment below. Every one of ReviewScreen's 5 steps that uses this
- * shell shares one bounded flex:1 box (`stepScroll`), one step mounted at a
- * time, so all 5 became eligible to self-measure at once via this single
- * change.
+ * `viewportHeight` is optional - see that prop's doc comment below.
  */
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, Pressable, View} from 'react-native';
@@ -86,27 +58,22 @@ interface Props<T> {
   /** Which rows show the checkmark - see the module doc comment on why this is controlled, not local. */
   actedOnKeys: Set<string>;
   /** The left list's own fixed viewport, same "fresh screen budget" convention as every other PagedSection call site (docs/dev/design-device-rendering.md §6) - computed by the caller (ReviewScreen), not guessed here.
-   *
-   * Optional (2026-09-17, [[feature_pagination_fixed_height]]'s tabbed-pane
-   * follow-on) - every caller today (ReviewScreen's 5 steps) sits inside
-   * the same bounded `stepScroll` (flex:1), one step mounted at a time, and
-   * `styles.col` below already gives `PagedSection` an unconditional
-   * flex:1 parent - so omitting this just forwards `undefined` straight
-   * into `PagedSection`, which self-measures on its own. No wrapper-style
-   * change needed here at all, unlike ui/GoogleCalendarPanel.tsx's own root
-   * (which had no style before and needed a conditional flex:1). */
+     *
+     * Optional - ReviewScreen's steps sit inside the same bounded `stepScroll`
+     * (flex:1), one step mounted at a time, and `styles.col` below gives
+     * `PagedSection` an unconditional flex:1 parent - so omitting this
+     * forwards `undefined` into `PagedSection`, which self-measures. */
   viewportHeight?: number;
   /** Clears `selectedKey` on change - pass the step's frozen-snapshot identity (or the step index) so re-entering the step resets the selection. */
   resetKey?: string | number;
   emptyHint?: string;
   /**
-   * Optional CONTROLLED selection (2026-09-28, docs/dev/technical-design-review-
+   * Optional CONTROLLED selection (docs/dev/technical-design-review-
    * monthly-focus.md §4.2) - when `selectedKey` is passed (anything but
    * `undefined`), the caller owns the selection: a row tap only calls
    * `onSelectedKeyChange`, and the caller also resets it on step entry
    * itself. Used by the Gmail step, which moves the selection to the next
-   * email after an archive. Every other step leaves both unset (internal
-   * state, unchanged behavior).
+   * email after an archive. Other steps leave both unset (internal state).
    */
   selectedKey?: string | null;
   onSelectedKeyChange?: (key: string | null) => void;
@@ -141,9 +108,9 @@ export default function ReviewMasterDetail<T>({
     else setInternalSelectedKey(key);
   };
 
-  // No pre-selection on step entry (requirements chat: "Leer mit
-  // Hinweistext") - resets whenever the caller's resetKey changes, same
-  // convention PagedSection's own resetKey already uses.
+  // No pre-selection on step entry (an empty detail panel with a hint) -
+  // resets whenever the caller's resetKey changes, same convention as
+  // PagedSection's own resetKey.
   useEffect(() => {
     setInternalSelectedKey(null);
     // Deliberately keyed only on resetKey, not on `rows`/`actedOnKeys` -
@@ -192,12 +159,11 @@ export default function ReviewMasterDetail<T>({
 }
 
 const styles = StyleSheet.create({
-  // Equal 50/50 split (requirements chat: "ich denke 50% sind gut ...
-  // sollte also eigentlich überall eher die wiederverwendung erleichtern,
-  // bei 50% zu bleiben") - two equal-flex columns rather than a fixed-pixel
-  // split, so this shell doesn't need to know the screen's exact usable
-  // width; every current call site's own outer container is already the
-  // same full-content-width flex row every other two-column screen uses.
+  // Equal 50/50 split, which keeps the shell easy to reuse - two equal-flex
+  // columns rather than a fixed-pixel split, so this shell doesn't need to
+  // know the screen's exact usable width; every call site's own outer
+  // container is the same full-content-width flex row every other
+  // two-column screen uses.
   columns: {
     flexDirection: 'row',
     flex: 1,

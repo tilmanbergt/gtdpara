@@ -10,8 +10,8 @@
  *
  * Which checkpoint is relevant depends only on time: before the meeting's end
  * it's prep, after it it's review. "End" is domain/meetingTime.ts's
- * `meetingAutoUpdateCutoffMs` (its real end since 2026-09-23 - end time, or start + 1h, or end of the last day for a date-only
- * meeting) - deliberately the same instant that already freezes a meeting's
+ * `meetingAutoUpdateCutoffMs` (its end time, or start + 1h, or end of the last
+ * day for a date-only meeting) - deliberately the same instant that already freezes a meeting's
  * note, so the app has one notion of "the meeting is over".
  *
  * State lives in tags, one flag per meeting line (the app has no recurring

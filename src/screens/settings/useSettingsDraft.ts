@@ -83,12 +83,7 @@ export const FOCUS_COUNT_FIELDS: Array<{key: FocusCountKey; label: string}> = [
  * the input); parsed back to a non-negative integer on save, falling back
  * to `fallback` for anything blank/invalid - same "never resolve to
  * something broken" spirit as the folder-name fields' trim()||default.
- * Renamed from `parseFocusCount` (2026-09-18, docs/dev/technical-design-
- * meeting-notes.md Phase 3) once the (now-retired, see the module doc
- * comment's Phase 2 note) meeting-note block position fields started
- * sharing this same parse/fallback shape - the logic was never actually
- * focus-specific, just named after its first caller. Still used by
- * FOCUS_COUNT_FIELDS alone today.
+ * Used by FOCUS_COUNT_FIELDS.
  */
 function parseNonNegativeInt(text: string, fallback: number): number {
   const n = Number(text.trim());
@@ -159,17 +154,11 @@ export function useSettingsDraft() {
   const handleSave = async () => {
     setSaveError(null);
     try {
-      // Spread `values` first (2026-09-18 bugfix, found incidentally while
-      // adding the meeting-note fields below: this literal used to list
-      // only the Folders/Focus/Calendar fields by name, silently omitting
-      // every field added to GtdParaSettings since - hideDoneProjectTasks/
-      // hideDoneInboxTasks/lastReviewCompletedAt/lastReviewSummary/
-      // focusModeActive - which meant tapping Save here reset all five of
-      // those back to their DEFAULT_SETTINGS value every time, even though
-      // nothing on this screen edits them. Spreading `values` first, then
-      // overriding only the fields this screen actually edits/parses, fixes
-      // that. Blank fields fall back to the default rather than resolving
-      // to a broken/empty path segment.
+      // Spread `values` first, then override only the fields this screen
+      // edits/parses, so settings edited elsewhere (hideDoneProjectTasks,
+      // focusModeActive, ...) keep their value on Save. Blank fields fall
+      // back to the default rather than resolving to a broken/empty path
+      // segment.
       // Written elsewhere while this screen may be open (the What's-new
       // notice in App.tsx) - keep what is stored, not this screen's copy.
       const storedNow = await loadSettings();
@@ -251,8 +240,8 @@ export function useSettingsDraft() {
       setFocusCountText(focusCountsToText(cleaned));
       setSaved(true);
     } catch (e) {
-      // Without this, a failed AsyncStorage write used to fail completely
-      // silently - the button would look like it did nothing at all.
+      // Show a failed AsyncStorage write, so the button never looks like it
+      // did nothing at all.
       setSaveError(errorMessage(e));
     }
   };

@@ -41,17 +41,14 @@ import {errorMessage} from '../../../utils/errorMessage';
 export type AddPieceSelection = {kind: 'type'; type: PieceType} | {kind: 'text'; id: string} | {kind: 'new'} | null;
 
 export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<SetStateAction<GtdParaSettings>>) {
-  // "Templates" tab - four pages, not two (see the module doc comment's
-  // "Edit form is three pages" note): 'list', the two-column 'edit' form,
-  // and the two full-page pickers it delegates to, 'edit-template' and
-  // 'edit-piece'. The definition being edited is held as its own draft
-  // (`draftDef`), separate from `values.tagRules`, so
-  // Cancel can discard in-progress edits without touching the
-  // saved-in-`values` list; `editingDefIndex` is null while creating a new
-  // definition (not yet in the list) and the index being edited otherwise.
-  // `draftTagsText` is edited as free text (same "don't fight the input"
-  // reasoning as the number fields above) and parsed to
-  // `TagRule.tags` only on save.
+  // Four pages: 'list', the two-column 'edit' form, and the two full-page
+  // pickers it delegates to, 'edit-template' and 'edit-piece'. The rule being
+  // edited is held as its own draft (`draftDef`), separate from
+  // `values.tagRules`, so Cancel can discard in-progress edits without
+  // touching the saved list; `editingDefIndex` is null while creating a new
+  // rule (not yet in the list) and the index being edited otherwise.
+  // `draftTagsText` is edited as free text (so clearing and retyping doesn't
+  // fight the input) and parsed to `TagRule.tags` only on save.
   const [templatesView, setTemplatesView] = useState<'list' | 'edit' | 'edit-template' | 'edit-piece'>('list');
   const [editingDefIndex, setEditingDefIndex] = useState<number | null>(null);
   const [draftDef, setDraftDef] = useState<TagRule | null>(null);
@@ -69,23 +66,20 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
   const [addNotice, setAddNotice] = useState<string | null>(null);
   useStatus('Settings.addNotice', addNotice ? {kind: 'success', text: addNotice, onDismiss: () => setAddNotice(null)} : null);
   const [confirmDeleteTextId, setConfirmDeleteTextId] = useState<string | null>(null);
-  // "Choose background" page's real-image preview (2026-09-18, docs/
-  // technical-design-note-templates.md §7 Phase 5 item #1 - first-ever
-  // <Image> use anywhere in this codebase, see that doc's investigation
-  // note). Tracks the filename an <Image> load last FAILED for, not a
-  // plain boolean - comparing it against draftDef.template on render means
-  // switching to a different background (or back to a previously-good one)
-  // re-attempts a load rather than staying stuck on a stale failure, with
-  // no separate reset effect needed.
+  // "Choose background" page's real-image preview (docs/
+  // technical-design-note-templates.md §7 Phase 5 item #1). Tracks the
+  // filename an <Image> load last FAILED for, not a plain boolean -
+  // comparing it against draftDef.template on render means switching to a
+  // different background (or back to one that loaded fine) re-attempts a
+  // load rather than staying stuck on a stale failure, with no separate
+  // reset effect needed.
   const [templatePreviewFailedFor, setTemplatePreviewFailedFor] = useState<string | null>(null);
   // Surfaces a failed persistTagRules() write (create/save/delete on this
-  // tab now persist immediately - see persistTagRules's own doc comment)
-  // inline within the Templates tab itself, since the global saveError text
-  // it would otherwise have shared sits in the global footer, which this
-  // tab no longer renders (see the footer's own `activeTab !== 'templates'`
-  // guard below).
+  // tab persist immediately - see persistTagRules's own doc comment) inline
+  // within the Templates tab itself, since the global saveError text sits in
+  // the global footer, which this tab does not render.
   const [templatesSaveError, setTemplatesSaveError] = useState<string | null>(null);
-  // Integrity Check result (was a native dialog) -> central status slot (D10).
+  // Integrity Check result -> central status slot (D10).
   useErrorStatus('Settings.templatesSaveError', templatesSaveError, () => setTemplatesSaveError(null));
 
 
@@ -108,14 +102,13 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     setEditingDefIndex(index);
     // '#'-prefixed, space-separated - matches both the list view's own
     // `#tag` rendering and what handleSaveDefinitionDraft's parse expects
-    // back (see the module doc comment - the old `.join(', ')` here was a
-    // latent bug, not just a style mismatch).
+    // back.
     setDraftTagsText(def.tags.map(t => `#${t}`).join(' '));
     setSelectedPieceIndex(null);
     setTemplatesView('edit');
   };
 
-  /** Wraps `setDraftTagsText` the same way `ui/QuickAddWidget.tsx`'s own tag-bearing field setters wrap theirs (Tilman, 2026-09-18: "remove spaces after # as is done in the quickadd widget"), so typing "# " never leaves a stray space between the hash and the tag text. */
+  /** Wraps `setDraftTagsText` the same way `ui/QuickAddWidget.tsx`'s own tag-bearing field setters wrap theirs, so typing "# " never leaves a stray space between the hash and the tag text. */
   const setDraftTagsTextStripped = (text: string) => {
     setDraftTagsText(stripSpaceAfterHash(text));
   };
@@ -127,7 +120,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     setTemplatesView('list');
   };
 
-  /** Returns from either full-page picker ('edit-template'/'edit-piece') back to the two-column 'edit' form - both pickers commit their change immediately on selection (see the module doc comment), so "back" here is never a discard. */
+  /** Returns from either full-page picker ('edit-template'/'edit-piece') back to the two-column 'edit' form - both pickers commit their change immediately on selection, so "back" here is never a discard. */
   const handleBackToEditForm = () => {
     setTemplatesView('edit');
   };
@@ -136,7 +129,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     setTemplatesView('edit-template');
   };
 
-  /** Sets the draft's background - stays on the 'edit-template' page (2026-09-18 revision: Tilman wanted a browse-then-"Apply" flow, not the earlier tap-and-return-immediately behavior - "tapping on a file shows the preview on the right side, and the big apply button uses that for the definition"). `handleBackToEditForm` doubles as the Apply action - there's nothing left to commit once a row's been tapped, so "Apply" is really just "done browsing." */
+  /** Sets the draft's background - stays on the 'edit-template' page, which is a browse-then-"Apply" flow (tapping a file shows its preview on the right). `handleBackToEditForm` doubles as the Apply action - there's nothing left to commit once a row's been tapped, so "Apply" is really just "done browsing." */
   const handleChooseTemplate = (fileName: string) => {
     updateDraftDef({template: fileName});
   };
@@ -152,21 +145,16 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
 
   /**
    * Writes a new `tagRules` list straight to disk - used by
-   * both handleSaveDefinitionDraft and handleDeleteDefinition below now that
-   * the Templates tab's own Save/Cancel/Delete persist immediately rather
-   * than waiting for this screen's global Save button (2026-09-18, Tilman:
-   * "we have our own save/cancel buttons and use should not need to tap
-   * two. So restrict these to the other settings pages" - see the global
-   * footer's own `activeTab !== 'templates'` guard below for the other half
-   * of this change). Deliberately re-`loadSettings()`s from disk and merges
-   * just the definitions/id fields into THAT, rather than persisting the
-   * in-memory `values` object this screen already has - `values` is shared
-   * across every tab's draft edits, so a Folders/Focus/Calendar/Meeting Note
-   * field the user has mid-typed-but-not-yet-tapped-global-Save-for could
-   * otherwise get silently written to disk as a side effect of an unrelated
-   * Templates definition save. This keeps the two persistence paths fully
-   * isolated: Templates definitions save themselves immediately, everything
-   * else still only saves on this screen's own global Save tap.
+   * handleSaveDefinitionDraft and handleDeleteDefinition, since the Tag Rules
+   * tab's own Save/Cancel/Delete persist immediately instead of waiting for
+   * the Settings screen's global Save button (the footer's
+   * `activeTab !== 'templates'` guard hides it here). Deliberately
+   * re-`loadSettings()`s from disk and merges just the definitions/id fields
+   * into THAT, rather than persisting the in-memory `values` object - `values`
+   * is shared across every tab's draft edits, so a half-typed, unsaved field
+   * on another tab would otherwise be written to disk as a side effect. This
+   * keeps the two persistence paths isolated: Tag Rules save themselves
+   * immediately, everything else saves only on the global Save tap.
    */
   const persistTagRules = async (
     tagRules: TagRule[],
@@ -180,7 +168,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     });
   };
 
-  /** Parses the free-text tags field (space-separated, not comma - Tilman, 2026-09-18) back into `TagRule.tags` and writes the draft into `values`, then persists immediately (see persistTagRules above) - Templates definitions no longer wait for this screen's global Save button. These tags are OR'd by domain/tagRules.ts's resolveNoteTemplate - a note matches this definition if it carries ANY one of them, not all at once. Lowercased here (2026-09-18, Tilman: "tags should be normalized to small in the config") so the config's own stored tags are always lowercase regardless of how the user typed them - resolveNoteTemplate additionally matches case-insensitively on top of this, so a note's own mixed-case tags still match either way. */
+  /** Parses the free-text tags field (space-separated, not comma) back into `TagRule.tags` and writes the draft into `values`, then persists immediately (see persistTagRules above). These tags are OR'd by domain/tagRules.ts's resolveNoteTemplate - a note matches this definition if it carries ANY one of them, not all at once. Lowercased here so the config's stored tags are always lowercase regardless of how the user typed them - resolveNoteTemplate additionally matches case-insensitively, so a note's own mixed-case tags still match either way. */
   const handleSaveDefinitionDraft = async () => {
     if (!draftDef) return;
     const tags = draftTagsText
@@ -212,7 +200,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     }
   };
 
-  /** Immediate, no arm/confirm second tap - matches `ui/QuickAddWidget.tsx`'s own Delete button (see the module doc comment); nothing else in the Templates tab uses a confirm step either. Persists immediately too, same as handleSaveDefinitionDraft above - there's no separate Save step for a delete from the list view to wait for. */
+  /** Immediate, no arm/confirm second tap - matches `ui/QuickAddWidget.tsx`'s own Delete button. Persists immediately too, same as handleSaveDefinitionDraft above - there's no separate Save step for a delete from the list view to wait for. */
   const handleDeleteDefinition = async (index: number) => {
     const list = values.tagRules.filter((_, i) => i !== index);
     setValues(prev => ({
@@ -235,7 +223,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
   // Everything here edits `draftDef` only - texts are part of the rule, so
   // they are saved (or discarded) with the rule's own Create/Save/Cancel, not
   // persisted on their own. The page STAYS OPEN after "+ Add"/"Remove" so
-  // several pieces can be placed in one visit (Tilman, 2026-09-20).
+  // several pieces can be placed in one visit.
 
   const handleSelectPieceType = (type: PieceType) => {
     setAddSelection({kind: 'type', type});

@@ -27,7 +27,7 @@ export interface RuntimeDiagnostics {
   /** Builds that registered in this process so far, oldest first ("build@loader@loadedAtMs"). */
   registry: string[];
   scanError: string | null;
-  /** Device facts (added 2026-09-30; absent on older native builds). */
+  /** Device facts (absent on older native builds). */
   model?: string;
   manufacturer?: string;
   /** Android Build.DISPLAY - on the Supernote usually the firmware version string. */

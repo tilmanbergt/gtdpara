@@ -229,15 +229,13 @@ export default function MeetingsCloseOutStep({
   };
 
   /**
-   * Meetings-to-close-out step: opens the meeting's note - deliberately NOT
-   * migrated to `openOrCreateMeetingNote` (Slice 3, docs/dev/technical-design-
-   * shared-note-pages.md §6, 2026-09-22): this step never offers a "create"
-   * action (the guard right below throws when there's no note yet), unlike
-   * every other note-icon handler in this app, which always pairs create
-   * with open. Going through the open-or-create entry point here would
-   * silently start CREATING a note from a place that never did before - an
-   * unrequested behavior change - so this keeps calling
-   * `refreshMeetingNoteBlock`/`openPath` directly, exactly as before.
+   * Meetings-to-close-out step: opens the meeting's note. Deliberately does
+   * not use `openOrCreateMeetingNote` (docs/dev/technical-design-
+   * shared-note-pages.md §6): this step never offers a "create" action (the
+   * guard right below throws when there's no note yet), unlike every other
+   * note-icon handler in this app, which pairs create with open. Going through
+   * the open-or-create entry point would silently start CREATING notes from
+   * here, so this calls `refreshMeetingNoteBlock`/`openPath` directly.
    */
   const handleOpenCloseOutNote = async (entry: ReviewMeetingEntry): Promise<void> => {
     const current = findCachedItem(entry.item.path)?.meetings[entry.meetingIndex];

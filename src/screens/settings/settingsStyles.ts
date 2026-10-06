@@ -19,12 +19,11 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
-  // The bounded flex:1 box every tab's content renders inside (2026-09-18,
-  // docs/dev/technical-design-note-templates.md §6) - what makes
+  // The bounded flex:1 box every tab's content renders inside
+  // (docs/dev/technical-design-note-templates.md §6) - what makes
   // ui/PagedSection.tsx's self-measuring mode work for the Templates tab's
-  // list. Folders/Focus/Calendar/Meeting Note don't fill it and don't
-  // yet get their own scroll if they ever do (Tilman: "other pages are not
-  // really full anyway, so we can take care of them later").
+  // list. Folders/Focus/Calendar/Meeting Note don't fill it and get no
+  // scroll of their own.
   tabBody: {
     flex: 1,
   },
@@ -104,12 +103,10 @@ export const styles = StyleSheet.create({
     opacity: 0.7,
   },
   // Tighter than `fieldSpacer` above - the 'edit' form's own top section
-  // (Name/Context/Tags/Default+Enabled) only, per Tilman's 2026-09-18
-  // rearrangement request: "Make sure these all take minimum space, there
-  // is today still space below name input and tags input". Kept separate
-  // from `fieldSpacer` rather than just retuning that shared constant,
-  // since `fieldSpacer` is still used for the Background label on the
-  // right column below, where the more generous spacing reads fine.
+  // (Name/Context/Tags/Default+Enabled) only, so those fields take minimum
+  // space. Kept separate from `fieldSpacer`, which is still used for the
+  // Background label on the right column below, where the more generous
+  // spacing reads fine.
   compactFieldSpacer: {
     marginTop: SPACING.xs,
   },
@@ -134,19 +131,16 @@ export const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   // Wraps each standalone ClipboardTextInput (Name/Tags above) in a
-  // `flexDirection: 'row'` container (2026-09-19 bugfix, Tilman: "does not
-  // even show ... the name input and tags input fields"). ClipboardTextInput
+  // `flexDirection: 'row'` container. ClipboardTextInput
   // (ui/ClipboardTextInput.tsx)'s own root `wrap` style is `flex: 1` -
-  // exactly the "fill available width, natural single-line height" behavior
-  // its other call sites all rely on (ItemsList.tsx's `createRow`,
-  // QuickAddWidget's own text fields), every one of them a `flexDirection:
-  // 'row'` parent. Placed directly in a plain column `View` (this section's
-  // previous shape), that same `flex: 1` instead competes for *vertical*
-  // space along the column's main axis - collapsing to ~0 height, since
-  // this section's own wrapping View sizes itself to its content rather
-  // than handing out leftover height (module doc comment: "deliberately
-  // NOT flex"). A one-child row sidesteps this the same way every working
-  // usage already does, without touching the shared component.
+  // the "fill available width, natural single-line height" behavior its
+  // other call sites rely on (ItemsList.tsx's `createRow`, QuickAddWidget's
+  // own text fields), every one of them a `flexDirection: 'row'` parent.
+  // Placed directly in a plain column `View`, that same `flex: 1` instead
+  // competes for *vertical* space along the column's main axis - collapsing
+  // to ~0 height, since this section's own wrapping View sizes itself to its
+  // content (module doc comment: "deliberately NOT flex"). A one-child row
+  // avoids this without touching the shared component.
   clipboardFieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -191,38 +185,38 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  // The 'edit' form's own row (2026-09-18 rearrangement) - deliberately its
-  // own style rather than reusing `twoColumn` above, and the opposite
-  // alignItems choice: this row wants BOTH columns stretched to match its
-  // own full height (RN's default `alignItems: 'stretch'`, so nothing is
-  // set here to override it), because the left column's `pieceListBody`
-  // and the right column's `columnSpacer` (both below) are `flex: 1`
-  // sections that need a real bounded height to grow into/self-measure
-  // against - the exact opposite need `twoColumn`'s own `flex-start` fix
-  // was written for. `flex: 1` so this row itself fills `styles.tabBody`
-  // (the bounded flex column every tab's content already sits inside),
-  // same precondition `styles.templatesListBody` already relies on for the
-  // definitions list's own self-measuring PagedSection above.
+  // The 'edit' form's own row - deliberately its own style rather than
+  // reusing `twoColumn` above, and the opposite alignItems choice: this row
+  // wants BOTH columns stretched to match its own full height (RN's default
+  // `alignItems: 'stretch'`, so nothing is set here to override it),
+  // because the left column's `pieceListBody` and the right column's
+  // `columnSpacer` (both below) are `flex: 1` sections that need a real
+  // bounded height to grow into/self-measure against - the exact opposite
+  // need `twoColumn`'s own `flex-start` fix serves. `flex: 1` so this row
+  // itself fills `styles.tabBody` (the bounded flex column every tab's
+  // content sits inside), same precondition `styles.templatesListBody`
+  // relies on for the definitions list's own self-measuring PagedSection
+  // above.
   templatesEditRow: {
     flexDirection: 'row',
     flex: 1,
   },
-  // The Templates edit form's two-column "card" look (2026-09-18 - Tilman:
-  // "fully align it rather with the UI used on daily view etc.") - same
-  // borderWidth/padding as `ui/QuickAddWidget.tsx`'s own card rows,
-  // `RADII.md` matching its `borderRadius: 6` almost exactly.
+  // The Templates edit form's two-column "card" look, aligned with the UI
+  // on Daily view etc. - same borderWidth/padding as
+  // `ui/QuickAddWidget.tsx`'s own card rows, `RADII.md` matching its
+  // `borderRadius: 6` almost exactly.
   formColumnCard: {
     borderWidth: 1,
     borderRadius: RADII.md,
     padding: 10,
   },
   // Wraps the piece list + "+ Add piece" row in the left column's bottom
-  // section (2026-09-18 rearrangement) - same `flex: 1` self-measuring-
-  // boundary role `styles.templatesListBody` already plays for the
-  // definitions list above: this section's own natural-height siblings
-  // (the top fields View above it) stay untouched by `templatesEditRow`'s
-  // stretch, and this box alone claims whatever's left, which is what lets
-  // the `PagedSection` inside it self-measure a real number instead of 0.
+  // section - same `flex: 1` self-measuring-boundary role
+  // `styles.templatesListBody` plays for the definitions list above: this
+  // section's own natural-height siblings (the top fields View above it)
+  // stay untouched by `templatesEditRow`'s stretch, and this box alone
+  // claims whatever's left, which is what lets the `PagedSection` inside it
+  // self-measure a real number instead of 0.
   pieceListBody: {
     flex: 1,
     marginTop: SPACING.md,
@@ -260,13 +254,13 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  // "Choose background" page (2026-09-18). `flex: 1` on both this and
+  // "Choose background" page. `flex: 1` on both this and
   // `templateBrowseColumns` below - unlike `twoColumn`'s `flex-start` fix
-  // above, this row's left column genuinely wants "whatever space is
-  // there" (Tilman) for its self-measuring `PagedSection` (same bounded-
-  // flex-column precondition `styles.templatesListBody` already satisfies
-  // for the definitions list), so this one keeps RN's default
-  // `alignItems: 'stretch'` rather than opting out of it.
+  // above, this row's left column wants whatever space is there for its
+  // self-measuring `PagedSection` (same bounded-flex-column precondition
+  // `styles.templatesListBody` satisfies for the definitions list), so this
+  // one keeps RN's default `alignItems: 'stretch'` rather than opting out
+  // of it.
   templateBrowsePage: {
     flex: 1,
   },
@@ -276,7 +270,8 @@ export const styles = StyleSheet.create({
   },
   // Plain file-row look, not a bordered/card row - matches
   // `ui/FileBrowserPane.tsx`'s own `entryRow` (paddingVertical only, no
-  // border), the "exactly as other file panels" instruction.
+  // border), so it looks exactly like other file panels.
+
   templateBrowseListRow: {
     paddingVertical: 5,
   },
@@ -286,12 +281,11 @@ export const styles = StyleSheet.create({
   templateBrowseListRowTextSelected: {
     fontWeight: '700',
   },
-  // Page-aspect-ratio box, real MyStyle PNG rendered inside it as of
-  // 2026-09-18 (docs/dev/technical-design-note-templates.md §7 Phase 5 item
-  // #1) - no filename caption on it either way (module doc comment).
-  // `overflow: 'hidden'` so the <Image> (which fills the box exactly,
-  // width/height 100%) respects this box's own rounded corners instead of
-  // squaring them off.
+  // Page-aspect-ratio box with the real MyStyle PNG rendered inside it
+  // (docs/dev/technical-design-note-templates.md §7 Phase 5 item #1) - no
+  // filename caption on it (module doc comment). `overflow: 'hidden'` so
+  // the <Image> (which fills the box exactly, width/height 100%) respects
+  // this box's own rounded corners instead of squaring them off.
   templateBrowsePreviewBox: {
     width: '100%',
     aspectRatio: NOTE_PAGE_WIDTH_PX / NOTE_PAGE_HEIGHT_PX,
@@ -332,12 +326,12 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: SPACING.lg,
   },
-  // "Save with slightly wider button" (2026-09-18, Tilman, moving Save/
-  // Cancel to the right column) - `saveButton` itself has no explicit
-  // width (hugs its own text/padding inside `formButtonRow`), so this just
-  // adds a floor wide enough to read as visibly bigger than Cancel next to
-  // it without needing to touch the shared `saveButton` style every other
-  // Save/Apply/Add/Run button in this file also uses.
+  // Slightly wider Save button in the right column - `saveButton` itself
+  // has no explicit width (hugs its own text/padding inside
+  // `formButtonRow`), so this just adds a floor wide enough to read as
+  // visibly bigger than Cancel next to it without touching the shared
+  // `saveButton` style every other Save/Apply/Add/Run button in this file
+  // also uses.
   saveButtonWide: {
     minWidth: 120,
   },
@@ -373,7 +367,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     paddingHorizontal: 6,
   },
-  // ---- "Add piece" page (§6.1, 2026-09-20) ------------------------------
+  // ---- "Add piece" page (§6.1) -----------------------------------------
   // `flex: 1` wrapper so the PagedSection above the pinned "+ New text" row
   // self-measures against a real bounded height - same role `pieceListBody`
   // plays on the 'edit' form (minus its top margin, which this card doesn't

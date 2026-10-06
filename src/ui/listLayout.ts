@@ -1,10 +1,10 @@
 /**
- * Session-only memory of each meeting list's 1-line/2-line choice
- * (docs/dev/technical-design-meeting-lists.md §2.4, Tilman 2026-09-29: "per
- * list, session only"). A module-level map, so the choice survives tab
- * switches and remounts, and resets when the plugin process restarts - no
- * settings file involved. `dayPanel` is one id shared by Daily, Week, Month
- * and Review's week ahead, so switching it once applies to all of them.
+ * Session-only memory of each meeting list's 1-line/2-line choice, per list
+ * (docs/dev/technical-design-meeting-lists.md §2.4). A module-level map, so
+ * the choice survives tab switches and remounts, and resets when the plugin
+ * process restarts - no settings file involved. `dayPanel` is one id shared
+ * by Daily, Week, Month and Review's week ahead, so switching it once
+ * applies to all of them.
  */
 import {useEffect, useState} from 'react';
 import {MeetingRowLayout} from './MeetingRow';

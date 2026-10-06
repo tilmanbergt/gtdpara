@@ -1,6 +1,6 @@
 /**
  * Close-out readiness checklist (docs/dev/technical-design-project-close-out.md
- * §5.3, severities as decided 2026-09-28 in §11). Pure: every input is plain
+ * §5.3, severities in §11). Pure: every input is plain
  * data, so the same rules run in the wizard, in the Done step's row status
  * and in tests.
  *
