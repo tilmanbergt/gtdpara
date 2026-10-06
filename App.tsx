@@ -11,7 +11,7 @@ import TabBar, {AppTab} from './src/ui/TabBar';
 import {getKeptTabsGeneration, setKeepTabsAlive, useKeepTabsAlive} from './src/ui/keepAliveStore';
 import KeptTab from './src/ui/KeptTab';
 import ItemsList from './src/screens/ItemsList';
-import Settings, {SettingsTab} from './src/screens/Settings';
+import Settings, {SettingsTab} from './src/screens/settings/Settings';
 import ItemDetail from './src/screens/ItemDetail';
 import DailyView from './src/screens/DailyView';
 import WeekView from './src/screens/WeekView';
