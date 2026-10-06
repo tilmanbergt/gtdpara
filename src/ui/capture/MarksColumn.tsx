@@ -1,5 +1,5 @@
 /**
- * The left column of the capture screen (docs/dev/technical-design-lasso-0.8.md
+ * The left column of the capture screen (docs/dev/history/technical-design-lasso-0.8.md
  * §3.7, screen design A/C): "This lasso" first when the screen came from
  * the lasso, then the open marks grouped by note (this note first). A mark
  * always shows its picture (checkpoint B); the line below it gives page,

@@ -15,7 +15,7 @@
  * eventual-consistency window every other pair of independently-loaded
  * sections on this screen has. Scope is never affected by status.
  *
- * Scope (docs/dev/technical-design-item-scope.md): rendered ABOVE "Focus" in
+ * Scope (docs/dev/history/technical-design-item-scope.md): rendered ABOVE "Focus" in
  * the same block and the same load, so a separate panel would only duplicate
  * this component's load/error-state boilerplate. A short (1-3 sentence, not
  * length-limited) free-text description of what this Project/Area is about,
@@ -26,7 +26,7 @@
  * (empty) into every newly-created Project/Area, so it's already there to
  * type into directly from Obsidian.
  *
- * Weekly goal (docs/dev/technical-design-item-goal-display.md): below the
+ * Weekly goal (docs/dev/history/technical-design-item-goal-display.md): below the
  * checkboxes, one line shows this item's most-recently-set goal - the entry
  * with the latest ISO week key in `weeklyGoals[]`. If that week is the real
  * current week, it's shown plain; otherwise it's labeled "Last goal (Week
@@ -40,7 +40,7 @@
  * deliberately - the Week tab's ui/WeeklyGoalsHistoryPanel.tsx is the only
  * place a goal's full history is browsable.
  *
- * Monthly focus + monthly goal (docs/dev/technical-design-monthly-view.md
+ * Monthly focus + monthly goal (docs/dev/history/technical-design-monthly-view.md
  * §5.7): a third checkbox, and a second goal row (this month's goal) below
  * the week's. Each checkbox carries its D/W/M letter
  * (ui/FocusBadges.tsx's FocusLetter), the same marks the Week/Month focus
@@ -155,7 +155,7 @@ export default function ItemFocusPanel({
   };
 
   /**
-   * Saves Scope (docs/dev/technical-design-item-scope.md). Save-only - Scope
+   * Saves Scope (docs/dev/history/technical-design-item-scope.md). Save-only - Scope
    * never touches frontmatter, so no limit check and no status gate: Scope
    * stays editable regardless of the item's status.
    */
@@ -167,7 +167,7 @@ export default function ItemFocusPanel({
     resync();
   };
 
-  /** Sets the CURRENT week's / month's goal (docs/dev/technical-design-item-goal-display.md) - storage/periodGoals.ts's saveItemGoal. */
+  /** Sets the CURRENT week's / month's goal (docs/dev/history/technical-design-item-goal-display.md) - storage/periodGoals.ts's saveItemGoal. */
   const handleSaveGoal = (scope: PeriodScope) => async (text: string) => {
     const item = current();
     if (!item) return;

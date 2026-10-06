@@ -1,10 +1,10 @@
 /**
- * Shared pagination logic (docs/dev/technical-design-pagination-edit-reuse.md §2)
+ * Shared pagination logic (docs/dev/history/technical-design-pagination-edit-reuse.md §2)
  * - every list in the app pages through a fixed set of rows instead of
  * scrolling, so e-ink only ever has to redraw one fixed-size box rather than
  * an arbitrary, growing scroll region.
  *
- * `usePagedByHeight` (docs/dev/technical-design-pagination-fixed-height.md)
+ * `usePagedByHeight` (docs/dev/history/technical-design-pagination-fixed-height.md)
  * is the app's pagination hook - fits as many rows as their real, per-row
  * `rowHeight` allows into a fixed pixel `viewportHeight`, so the box's total
  * height never varies with content. `PAGE_SIZE` below is a per-list-type
@@ -62,7 +62,7 @@ export const PAGE_SIZE = {
   stacked: 4,
   /** Project/Area panel's Todos section. Independent of `projectMeetings`:
    * Todos is usually the longer list and can afford more rows per page
-   * (docs/dev/technical-design-pagination-grayscale-proposal.md §1) - well under
+   * (docs/dev/history/technical-design-pagination-grayscale-proposal.md §1) - well under
    * the column's estimated vertical slack. */
   projectTodos: 8,
   /** Project/Area panel's Meetings section - deliberately smaller than
@@ -74,7 +74,7 @@ export const PAGE_SIZE = {
    * Inbox stacks Tasks above Meetings, same shape as the Project/Area panel,
    * so it uses the same values as `projectTodos`/`projectMeetings`. Kept as
    * its own constant so on-device tuning of one doesn't silently move the
-   * other (docs/dev/technical-design-pagination-grayscale-proposal.md §1). */
+   * other (docs/dev/history/technical-design-pagination-grayscale-proposal.md §1). */
   inboxTasks: 8,
   /** Inbox tab's Meetings section - see inboxTasks. Same reasoning as
    * projectMeetings (last element in its column). */
@@ -103,12 +103,12 @@ export const PAGE_SIZE = {
    * setting won't resize the panel to match (the design doc's §7.3 flags
    * this trade-off explicitly). */
   dailyFocusPanel: 5,
-  /** Week view's Google mini-tab (docs/dev/technical-design-weekly-view.md §7) -
+  /** Week view's Google mini-tab (docs/dev/history/technical-design-weekly-view.md §7) -
    * independent of `googleCalendarDaily`/`googleCalendarReview`/etc, same
    * "on-device tuning of one shouldn't silently move another" rule those
    * follow. */
   googleCalendarWeekly: 14,
-  /** Week view's WeeklyFocusPanel (docs/dev/technical-design-weekly-view.md §7) -
+  /** Week view's WeeklyFocusPanel (docs/dev/history/technical-design-weekly-view.md §7) -
    * the weekly-focus counterpart of `dailyFocusPanel` above, independent of
    * it since the two panels' configured slot counts
    * (weeklyFocusProjectCount/weeklyFocusAreaCount default to 5/3, vs daily's
@@ -142,7 +142,7 @@ export interface PagedByHeight<T> {
 }
 
 /**
- * The app's pagination hook (docs/dev/technical-design-pagination-fixed-height.md
+ * The app's pagination hook (docs/dev/history/technical-design-pagination-fixed-height.md
  * §1.1) - fits as many rows as their real `rowHeight` allows into a fixed-
  * height box, instead of a fixed row count. Used by ui/PagedSection.tsx
  * and, via ui/FileBrowserPane.tsx, by the fixed focus-slot lists

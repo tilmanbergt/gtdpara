@@ -1,9 +1,9 @@
 /**
  * "gtdpara was updated - restart to load it cleanly" warning
- * (docs/dev/technical-design-host-update-crash.md).
+ * (docs/dev/history/technical-design-host-update-crash.md).
  *
  * Renders nothing itself: it publishes a global warning to the central status
- * slot (docs/dev/technical-design-status-slot.md §2B), so it never pushes the
+ * slot (docs/dev/history/technical-design-status-slot.md §2B), so it never pushes the
  * screen down when it appears. Mounted once, at App level, for every mode.
  *
  * Checks once on mount whether an older gtdpara build is still loaded in the

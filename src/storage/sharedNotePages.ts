@@ -1,5 +1,5 @@
 /**
- * Shared Note Pages - the page engine (docs/dev/technical-design-shared-note-pages.md
+ * Shared Note Pages - the page engine (docs/dev/history/technical-design-shared-note-pages.md
  * §4). Wraps the PluginFileAPI calls `supernote/fileSystem.ts` exposes
  * (`insertNotePage`/`insertKeyWord`/`getKeyWords`/`deleteKeyWord`/
  * `getNoteTotalPageNum`/`createNote`/`ensureFolderExists`/`listFolderEntries`)

@@ -39,7 +39,7 @@ import {useFrozenStepList} from '../useFrozenStepList';
 
 
 /**
- * A close-out list row (docs/dev/technical-design-meeting-lists.md §3): the
+ * A close-out list row (docs/dev/history/technical-design-meeting-lists.md §3): the
  * standard MeetingRow as a selector - date+time column, the item as source,
  * no actions (the master-detail shell owns the tap). Reads the meeting and the
  * item's abbreviation from the live cache so an edit in the detail shows.
@@ -289,7 +289,7 @@ export default function MeetingsCloseOutStep({
       isSelectable={() => true}
       rowKey={closeOutKey}
       renderRow={(entry, selected, actedOn) => (
-        // The standard row as a selector (docs/dev/technical-design-meeting-lists.md
+        // The standard row as a selector (docs/dev/history/technical-design-meeting-lists.md
         // §3): date+time column, source, no actions - the tap selects (the
         // master-detail shell owns it); acted-on rows are greyed with a ✓.
         <CloseOutMeetingRow

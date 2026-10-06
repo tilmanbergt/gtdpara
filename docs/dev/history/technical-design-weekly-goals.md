@@ -1,7 +1,7 @@
 # Technical design: Weekly Goals (V2 of the Week view)
 
 Status: proposed, 2026-09-13 - awaiting sign-off before implementation.
-Builds on: `docs/dev/technical-design-weekly-view.md` (V1, implemented), [[feature_weekly_view]] project memory.
+Builds on: `docs/dev/history/technical-design-weekly-view.md` (V1, implemented), [[feature_weekly_view]] project memory.
 
 ## 1. What this adds
 

@@ -1,5 +1,5 @@
 /**
- * Content of the demo space (docs/dev/technical-design-profiles-demo-space.md
+ * Content of the demo space (docs/dev/history/technical-design-profiles-demo-space.md
  * §3.5): a small, fictional PARA setup with todos, meetings, tags, goals and
  * focus, dated relative to `today` so it always looks current. Pure - the
  * files are written by storage/demoSpace.ts. Everything here is written in
@@ -157,7 +157,7 @@ export function buildDemoFiles(today: Date): DemoFile[] {
   });
 
   files.push({
-    // The Inbox's own folder under Areas (docs/dev/technical-design-inbox-as-area.md).
+    // The Inbox's own folder under Areas (docs/dev/history/technical-design-inbox-as-area.md).
     path: `${DEFAULT_SETTINGS.areasFolder}/${DEFAULT_SETTINGS.inboxFolder}/${INBOX_FILE_NAME}`,
     content: [
       '---',

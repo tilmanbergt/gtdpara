@@ -1,5 +1,5 @@
 /**
- * Settings → Advanced → Profiles (docs/dev/technical-design-profiles-demo-space.md §3.6):
+ * Settings → Advanced → Profiles (docs/dev/history/technical-design-profiles-demo-space.md §3.6):
  * the profile files in EXPORT/gtdpara/profiles, Save for the active one,
  * Switch (after a confirm in the status slot) for the others, and
  * "Create demo space". The actual switch - reset caches, remount the app -

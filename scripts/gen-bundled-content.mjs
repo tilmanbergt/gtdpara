@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Build info, changelog and user guide (in-app help) for the app, and small helpers for release.ps1.
-// Design: docs/dev/technical-design-versioning-release.md
+// Design: docs/dev/history/technical-design-versioning-release.md
 //
 //   node scripts/gen-bundled-content.mjs                  dev: write src/generated/* (versionCode 0)
 //   node scripts/gen-bundled-content.mjs --build [--stage alpha|beta]
@@ -137,7 +137,7 @@ function generate({build, stage = 'alpha'}) {
   const next = renderBuildInfoTs(info);
   if (build || withoutDate(prev) !== withoutDate(next)) writeIfChanged(buildInfoPath, next);
   writeIfChanged(join(P.generatedDir, 'changelog.ts'), renderChangelogTs(changelog));
-  // In-app help (docs/dev/technical-design-in-app-help.md §3.1).
+  // In-app help (docs/dev/history/technical-design-in-app-help.md §3.1).
   const docFiles = existsSync(P.userDocsDir)
     ? readdirSync(P.userDocsDir)
         .filter(f => f.endsWith('.md'))

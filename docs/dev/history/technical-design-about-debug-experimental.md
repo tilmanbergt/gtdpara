@@ -209,7 +209,7 @@ Changed: `domain/settings.ts`, `storage/settingsStorage.ts`, `domain/reviewSteps
 
 ## 5. Step 4: device test pass (after implementing)
 
-A checklist file `docs/dev/device-test-0.1.0.md` covering: install over the current build;
+A checklist file `docs/dev/history/device-test-0.1.0.md` covering: install over the current build;
 both switches ON/OFF (entry points appear/disappear, credentials kept); Review step count and
 next/previous with Gmail off; About shows correct label/build; What's new pages through; Debug
 logging creates and rotates the file; Export debug bundle file contents (no password/ICS/email);

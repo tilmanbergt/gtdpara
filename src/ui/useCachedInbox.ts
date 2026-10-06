@@ -1,5 +1,5 @@
 /**
- * The shared Inbox state from storage/dataCache.ts (docs/dev/technical-design-files-0.6.md
+ * The shared Inbox state from storage/dataCache.ts (docs/dev/history/technical-design-files-0.6.md
  * §3.3) - Daily, Week/Month, Inbox and Review read the Inbox through this
  * hook and write it with dataCache's `setCachedInbox`, so a change made on one
  * screen is on every other one, and the reopen check (refreshCache) updates

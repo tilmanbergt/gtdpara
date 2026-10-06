@@ -1,5 +1,5 @@
 /**
- * refreshCache (docs/dev/technical-design-files-0.6.md §3.2): only files whose
+ * refreshCache (docs/dev/history/technical-design-files-0.6.md §3.2): only files whose
  * stamp changed are read again, subscribers are notified only on a real
  * change, and a missing cache / changed folders / missing native stat fall
  * back to a full rebuild.

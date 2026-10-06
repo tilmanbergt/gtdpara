@@ -1,5 +1,5 @@
 /**
- * Note creation templates (docs/dev/technical-design-note-templates.md).
+ * Note creation templates (docs/dev/history/technical-design-note-templates.md).
  *
  * A small, user-editable catalog of "note creation definitions" - context
  * (Project/Area/Todo/Meeting) + optional tag match + a MyStyle background +
@@ -23,7 +23,7 @@
  * located by keyword) instead of its own file per item - `noteTarget`/
  * `sharedFileName`/`sharedFileFolder` below, plus `effectiveNoteTarget`/
  * `resolvedSharedFileName`/`resolvedSharedFileFolder`
- * (docs/dev/technical-design-shared-note-pages.md §2.1/§12). The anchor
+ * (docs/dev/history/technical-design-shared-note-pages.md §2.1/§12). The anchor
  * encoding, keyword derivation and chronological-insertion math live in
  * `domain/sharedNotePages.ts`, so this file need not import `Task`/`Meeting`
  * tag-stripping logic.
@@ -38,7 +38,7 @@ import type {Task} from './types';
 
 export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
 /**
- * `link` (docs/dev/technical-design-linked-file-piece.md): a tappable
+ * `link` (docs/dev/history/technical-design-linked-file-piece.md): a tappable
  * Supernote link element to the item's own `linkedFile` (the paperclip
  * attachment) - Todo/Meeting only. A rule without a `link` piece writes no
  * link at all.
@@ -46,8 +46,8 @@ export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
 export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link';
 
 /**
- * Where a Meeting/Todo definition's note content ends up (docs/technical-
- * design-shared-note-pages.md §2.1) - 'own' is one file per item, 'shared'
+ * Where a Meeting/Todo definition's note content ends up (
+ * docs/dev/history/technical-design-shared-note-pages.md §2.1) - 'own' is one file per item, 'shared'
  * files it as a page in one shared `.note` per Project/Area, located by
  * keyword. Project/Area definitions never read this (§9 of the design doc:
  * there's no single natural shared file for a Project/Area's own standalone
@@ -76,7 +76,7 @@ export interface NotePiece {
   step: number;
   /**
    * Maximum textbox width in device px for THIS piece
-   * (docs/dev/technical-design-textbox-metrics.md) - per piece, not per
+   * (docs/dev/history/technical-design-textbox-metrics.md) - per piece, not per
    * definition. Read through `pieceMaxWidthPx` below, never compared to
    * `undefined` directly; absent resolves to `DEFAULT_MAX_PIECE_WIDTH_PX`. The
    * written textbox width is never wider than this AND never wider than
@@ -114,7 +114,7 @@ export interface TagRule {
   /** This rule's own reusable static texts (see NoteTextItem). Optional so rules saved before this existed need no migration (absent === none) - read through `ruleTexts`. */
   texts?: NoteTextItem[];
   /**
-   * Meeting context only (docs/dev/technical-design-meeting-tracking.md): meetings
+   * Meeting context only (docs/dev/history/technical-design-meeting-tracking.md): meetings
    * this definition resolves for track "prepare before" / "review after" as a
    * checkpoint - see domain/meetingTracking.ts. Optional so settings saved
    * before this existed need no migration (absent === false). Read off the
@@ -148,7 +148,7 @@ export const PIECE_CONTEXTS: Record<PieceType, NoteContext[]> = {
 
 /**
  * The pieces a freshly created rule starts with, in top-to-bottom order
- * (docs/dev/technical-design-linked-file-piece.md §4.1): Title, Date, Time,
+ * (docs/dev/history/technical-design-linked-file-piece.md §4.1): Title, Date, Time,
  * Link. Project/Area only get Title - Date/Time/Linked file don't exist in
  * those contexts.
  */
@@ -319,7 +319,7 @@ export function setPieceMaxWidth(definition: TagRule, index: number, maxWidthPx:
 }
 
 // ---- Once-only placement + rule-owned static texts ------------------------
-// The Add-piece page's model (docs/dev/technical-design-note-templates.md §6.1):
+// The Add-piece page's model (docs/dev/history/technical-design-note-templates.md §6.1):
 // every piece can be placed at most once per rule - Title/Date/Time/Related
 // by type, a static text by its `textId` - and a placed piece shows "Remove"
 // instead of "+ Add". Removing a text piece only takes it out of the rule;
@@ -495,7 +495,7 @@ export interface PieceRenderContext {
   time?: string;
   /** From a generalized relatedItemsFor(...) call (storage/meetingNoteAggregate.ts) - already filtered/matched by the caller; renderPieceText only formats what it's given. */
   relatedItems?: Array<{text: string}>;
-  /** Todo/Meeting only - bare file name of the item's `linkedFile`, set by the caller ONLY when that file actually exists (missing file -> unset -> the `link` piece is skipped, docs/dev/technical-design-linked-file-piece.md §1.4). */
+  /** Todo/Meeting only - bare file name of the item's `linkedFile`, set by the caller ONLY when that file actually exists (missing file -> unset -> the `link` piece is skipped, docs/dev/history/technical-design-linked-file-piece.md §1.4). */
   linkedFileName?: string;
 }
 
@@ -545,7 +545,7 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
  * new definition.
  */
 export function createDefaultMeetingRule(id: string): TagRule {
-  // docs/dev/technical-design-linked-file-piece.md §4.1: the standard Meeting
+  // docs/dev/history/technical-design-linked-file-piece.md §4.1: the standard Meeting
   // defaults (Title, Date, Time, Linked file) plus Related items at the bottom,
   // so this seeded rule also carries the related-todos content.
   let def = createEmptyTagRule(id, 'meeting');
@@ -563,7 +563,7 @@ export function createDefaultMeetingRule(id: string): TagRule {
  * "list is empty", not a one-shot migration flag: simpler, and idempotent -
  * if the user deletes every definition, this seeds a fresh default again.
  * That matters because there is no fixed fallback layout - a Meeting with no
- * matching rule gets no content (docs/dev/technical-design-linked-file-piece.md §4).
+ * matching rule gets no content (docs/dev/history/technical-design-linked-file-piece.md §4).
  */
 /**
  * Whether a Todo's note should stop being auto-*re*populated on open

@@ -1,5 +1,5 @@
 /**
- * Pure helpers for "Link email as note" (docs/dev/technical-design-gmail-email-note.md
+ * Pure helpers for "Link email as note" (docs/dev/history/technical-design-gmail-email-note.md
  * 3.5): the note's file name and its text. No RN/SDK imports.
  */
 

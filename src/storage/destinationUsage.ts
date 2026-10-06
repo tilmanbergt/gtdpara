@@ -1,5 +1,5 @@
 /**
- * Where capture saved to lately (docs/dev/technical-design-lasso-0.8.md
+ * Where capture saved to lately (docs/dev/history/technical-design-lasso-0.8.md
  * §3.9, checkpoint B): Project/Area paths, most recent first, for the short
  * "File to" list. Plugin-internal UI state per profile, like
  * storage/tagUsage.ts.

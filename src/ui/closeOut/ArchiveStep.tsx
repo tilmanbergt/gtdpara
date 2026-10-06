@@ -1,5 +1,5 @@
 /**
- * Close-out step 5 - Archive (docs/dev/technical-design-project-close-out.md
+ * Close-out step 5 - Archive (docs/dev/history/technical-design-project-close-out.md
  * §7/§8.2, mockup "5 · Archive"): the numbered list of exactly what will
  * happen - rendered from the same op list the executor runs
  * (domain/closeOut/archiveOps.ts) - then "Archive now". While and after

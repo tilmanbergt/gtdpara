@@ -1,6 +1,6 @@
 /**
  * The ordered list of operations the archive step performs
- * (docs/dev/technical-design-project-close-out.md §5.5/§7). Pure: the same list
+ * (docs/dev/history/technical-design-project-close-out.md §5.5/§7). Pure: the same list
  * is SHOWN in step 5 ("what happens when you tap Archive") and RUN by
  * storage/closeOut/execute.ts - what the user sees is what runs.
  *

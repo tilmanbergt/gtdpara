@@ -1,5 +1,5 @@
 /**
- * One error slot for a screen's actions (docs/dev/technical-design-cleanup-0.5.md
+ * One error slot for a screen's actions (docs/dev/history/technical-design-cleanup-0.5.md
  * S4): the error text, shown in the central status slot under `statusName`
  * (ui/status/StatusProvider.tsx's useErrorStatus) and logged as
  * `logError(logPrefix, message)`.

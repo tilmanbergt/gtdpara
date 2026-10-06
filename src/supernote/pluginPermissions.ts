@@ -121,7 +121,7 @@ export function ensureFileWritePermission(): Promise<boolean> {
 
 /**
  * FILE:DELETE, requested only AFTER the user confirmed a delete in the UI
- * (docs/dev/technical-design-inkhub-submission.md §3.4) - so `description`
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.4) - so `description`
  * names exactly what is about to be deleted, e.g. "Delete the empty folder
  * 2 Areas/Health after moving it to the Archive." Never requested eagerly.
  */

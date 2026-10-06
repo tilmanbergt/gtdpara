@@ -23,7 +23,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   // "‹ Back"/"Overview" on the left, "Skip ›"/"Reviewed ›" on the right of
-  // the step nav row (docs/dev/technical-design-review-hub.md §4.2).
+  // the step nav row (docs/dev/history/technical-design-review-hub.md §4.2).
   stepNavGroup: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -76,7 +76,7 @@ export const styles = StyleSheet.create({
   rightPane: {
     flex: 1,
   },
-  // Bounded flex:1 column (docs/dev/technical-design-flex-weight-stacking.md
+  // Bounded flex:1 column (docs/dev/history/technical-design-flex-weight-stacking.md
   // §3.4) - splits its real available height 8:6 between the
   // Inbox-to-zero step's Tasks/Meetings PagedSections via the weighted
   // `<View style={{flex: REVIEW_INBOX_TASKS_WEIGHT}}>`/`{flex:
@@ -123,7 +123,7 @@ export const styles = StyleSheet.create({
   },
   // ui/ReviewMasterDetail.tsx left-list rows (Stalled/Neglected/Done/On
   // Hold's flat ReviewLeftRow, and Unfocused next items' own flattened
-  // rows) - docs/dev/technical-design-review-master-detail.md §3.
+  // rows) - docs/dev/history/technical-design-review-master-detail.md §3.
   masterRow: {
     paddingVertical: 6,
     paddingHorizontal: 8,

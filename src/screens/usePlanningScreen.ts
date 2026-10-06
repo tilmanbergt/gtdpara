@@ -1,6 +1,6 @@
 /**
  * Everything the Week and Month planning screens share that isn't layout
- * (docs/dev/technical-design-monthly-view.md §5.10), so screens/WeekView.tsx
+ * (docs/dev/history/technical-design-monthly-view.md §5.10), so screens/WeekView.tsx
  * and screens/MonthView.tsx don't carry two copies:
  * loading settings/cache/Inbox and every
  * meeting action a planning screen offers (add, edit, cancel, quick-file,
@@ -80,7 +80,7 @@ export function usePlanningScreen({logTag}: Options) {
   const [error, setError] = useState<string | null>(null);
   // The meeting open in Quick Add's edit mode, by meetingKey (ui/useEditTarget.ts).
   const {target: editingKey, start: startEdit, cancel: cancelEditTarget, set: setEditingKey, flushEditRef, afterSave} = useEditTarget<string>();
-  // Both go to the central status slot (docs/dev/technical-design-status-slot.md §7.4),
+  // Both go to the central status slot (docs/dev/history/technical-design-status-slot.md §7.4),
   // not inline on the Week/Month screens.
   const widgetAction = useActionError('planning.widgetError', `${logTag}: widget action failed`);
   const meetingsAction = useActionError('planning.meetingsActionError', `${logTag}: meeting action failed`);
@@ -93,7 +93,7 @@ export function usePlanningScreen({logTag}: Options) {
       setLoading(true);
       setError(null);
       // Settings are applied together with Inbox/paths below (one render
-      // round instead of two - docs/dev/technical-design-render-perf-ab.md §3 B3),
+      // round instead of two - docs/dev/history/technical-design-render-perf-ab.md §3 B3),
       // and also on a later failure.
       let loadedSettings: GtdParaSettings | null = null;
       try {
@@ -126,7 +126,7 @@ export function usePlanningScreen({logTag}: Options) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.2):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.2):
   // settings are this screen's own copy, so re-read them quietly - no
   // spinner, and state only changes (= re-render) if they actually differ.
   // The Inbox is the shared cache copy (refreshed when gtdpara is reopened).
@@ -213,7 +213,7 @@ export function usePlanningScreen({logTag}: Options) {
     if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
   };
 
-  /** The row's prep/review checkpoint icon (docs/dev/technical-design-meeting-tracking.md). */
+  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md). */
   const handleToggleMeetingTracking = (entry: WeeklyMeetingEntry, kind: MeetingTrackingKind) =>
     runMeetingAction(async () => {
       await saveEntryMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));
@@ -242,7 +242,7 @@ export function usePlanningScreen({logTag}: Options) {
     );
   };
 
-  /** Flips a meeting's Month highlight (`#monthly`) in place - the Month day panel's "M" box (docs/dev/technical-design-monthly-view.md §5.9). */
+  /** Flips a meeting's Month highlight (`#monthly`) in place - the Month day panel's "M" box (docs/dev/history/technical-design-monthly-view.md §5.9). */
   const toggleHighlight = (entry: WeeklyMeetingEntry) =>
     runMeetingAction(async () => {
       await saveEntryMeetings(entry, meetings => {
@@ -279,7 +279,7 @@ export function usePlanningScreen({logTag}: Options) {
     onToggle: kind => handleToggleMeetingTracking(entry, kind),
   });
 
-  // --- Day panel (docs/dev/technical-design-meeting-lists.md §2.8) -------------
+  // --- Day panel (docs/dev/history/technical-design-meeting-lists.md §2.8) -------------
   // Shared by Week, Month and Review's week ahead: which day's panel is open
   // on the right (null = the focus panel), plus the three ways to get there.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -348,7 +348,7 @@ export function usePlanningScreen({logTag}: Options) {
     editingKey,
     widgetError,
     meetingsActionError,
-    // Stable identities (docs/dev/technical-design-render-perf-ab.md §3 B2) -
+    // Stable identities (docs/dev/history/technical-design-render-perf-ab.md §3 B2) -
     // these reach the React.memo'd QuickAddWidget/PeriodFocusPanel and are
     // only ever called from event handlers; each call runs the latest version.
     handleAddTask: stableAddTask,

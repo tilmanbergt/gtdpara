@@ -1,5 +1,5 @@
 // Pure rules for scripts/code-health.mjs - no I/O here, so scripts/test-code-health.mjs can test them.
-// Design: docs/dev/technical-design-quality-0.9.md §3.1. Rules and limits: docs/dev/DEVELOPMENT-POLICY.md §3, §5, §6.
+// Design: docs/dev/history/technical-design-quality-0.9.md §3.1. Rules and limits: docs/dev/DEVELOPMENT-POLICY.md §3, §5, §6.
 
 /** New source files stay at or below this many lines; longer existing files are listed in the baseline. */
 export const MAX_FILE_LINES = 1000;

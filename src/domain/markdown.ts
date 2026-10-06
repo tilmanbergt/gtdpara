@@ -24,7 +24,7 @@ const TASK_LINE_RE = /^-\s*\[([ xX-])\]\s?(.*)$/;
 // Time is optional (design-overview.md's linking spec plus the "leave the
 // time open" v1 requirement) - a meeting line is otherwise date + title.
 //
-// The slot between date and title (docs/dev/technical-design-monthly-view.md
+// The slot between date and title (docs/dev/history/technical-design-monthly-view.md
 // §2.3) is one of: "HH:mm" (start), "HH:mm-HH:mm" (start-end) or "Nd"
 // (date-only, N whole days). It is ALWAYS written ("1d" for a plain all-day
 // meeting) but stays optional here, so lines written before that rule still
@@ -69,7 +69,7 @@ const DUE_TAG_ANY_RE = /#due:\d{4}-\d{2}-\d{2}\b/gi;
 
 /**
  * Collapses any run of whitespace right after every `#` in `text` down to
- * nothing (docs/dev/technical-design-abbrev-quick-file.md) - Supernote's
+ * nothing (docs/dev/history/technical-design-abbrev-quick-file.md) - Supernote's
  * handwriting recognition often inserts a space there, and TAG_RE above
  * requires a non-space character right after `#` to parse as a tag at all,
  * so a "# " sequence doesn't just look wrong, it silently never becomes a
@@ -107,7 +107,7 @@ function deriveDueDate(tags: string[]): string | null {
  * screens/DailyView.tsx, ui/TaskQuickAdd.tsx, ui/TaskEditCard.tsx), rather
  * than leaving stale derived fields until the next full reload re-parses
  * the file. Callers spread `...deriveTaskFields(text)` onto a Task object
- * (technical-design-tags.md §1, docs/dev/technical-design-now-focus-mode.md
+ * (technical-design-tags.md §1, docs/dev/history/technical-design-now-focus-mode.md
  * §2).
  */
 export function deriveTaskFields(
@@ -190,8 +190,8 @@ export function splitTextWithTags(text: string): TextSegment[] {
 
 /**
  * Removes every `#tag` from `text` entirely, collapsing any resulting run of
- * whitespace down to single spaces and trimming the ends (docs/technical-
- * design-note-templates.md) - used for a Todo note's `title` piece, where
+ * whitespace down to single spaces and trimming the ends (
+ * docs/dev/history/technical-design-note-templates.md) - used for a Todo note's `title` piece, where
  * `task.text` routinely carries trailing `#next`/context tags that have no
  * business in a note's title (a Meeting's `title` is used as-is - a meeting
  * title rarely carries tags the way task text always does). Built on
@@ -419,7 +419,7 @@ function setFrontMatterSpan(content: string, newLines: string[]): string {
 
 /**
  * Every frontmatter field this plugin reads/writes, as ONE object
- * (docs/dev/technical-design-monthly-view.md §2.1). Every call site of
+ * (docs/dev/history/technical-design-monthly-view.md §2.1). Every call site of
  * writeFrontMatterIntoContent/saveFrontMatter/updateItemFrontMatter spreads
  * the item's current fields (storage/dataCache.ts's `frontMatterOf`) and
  * overrides only what it changes, so adding a field (like `monthlyFocus`)
@@ -431,13 +431,13 @@ export interface FrontMatterFields {
   status: ItemStatus;
   dailyFocus: boolean;
   weeklyFocus: boolean;
-  /** Monthly focus (docs/dev/technical-design-monthly-view.md) - same "written only when true" convention as the other two focus flags. */
+  /** Monthly focus (docs/dev/history/technical-design-monthly-view.md) - same "written only when true" convention as the other two focus flags. */
   monthlyFocus: boolean;
   /** From a `defaultResourceFolder:` line, relative to `paths.resources` (e.g. "Atruvia" or "Atruvia/Templates") - null if the line is absent (technical-design-linked-files.md §3.1). Lets a Project/Area pin which Resources subfolder its Files pane's "Resources" root opens into by default. */
   defaultResourceFolder: string | null;
   /** From an `area:` line - the bare folder name (under `paths.areas`) of the Area this Project supports, or null if absent (technical-design-project-area-assignment.md §2). Areas never have this set - the parser stays permissive about what it *reads* regardless of kind, same posture as `status`/`defaultResourceFolder`, but nothing in the UI ever writes it for an Area. */
   area: string | null;
-  /** From an `abbrev:` line (docs/dev/technical-design-project-area-abbreviations.md) - a short, user-editable, case-insensitive-unique tag for this Project/Area (e.g. "AT"), or null if never set. Casing is preserved exactly as saved - uniqueness/reserved-word checks (domain/abbrev.ts) are case-insensitive, but this parser doesn't normalize the stored value itself. */
+  /** From an `abbrev:` line (docs/dev/history/technical-design-project-area-abbreviations.md) - a short, user-editable, case-insensitive-unique tag for this Project/Area (e.g. "AT"), or null if never set. Casing is preserved exactly as saved - uniqueness/reserved-word checks (domain/abbrev.ts) are case-insensitive, but this parser doesn't normalize the stored value itself. */
   abbrev: string | null;
   /** Every other frontmatter line verbatim (kind, sortOrder, anything hand-added), in original order - preserved on save. Same reordering caveat as Task/Meeting extraLines: an unrecognized line survives, but always ends up before the lines this parser does recognize, regardless of where it originally sat. */
   extraLines: string[];
@@ -542,7 +542,7 @@ export function writeFrontMatterIntoContent(content: string, fm: FrontMatterFiel
  * verbatim (the full GtdParaKind, so Inbox.txt gets `kind: inbox` the same
  * way project.txt/area.txt get their own kind).
  *
- * `## Scope` (docs/dev/technical-design-item-scope.md) is scaffolded here
+ * `## Scope` (docs/dev/history/technical-design-item-scope.md) is scaffolded here
  * too - deliberately, unlike `## Weekly Goals` below, which stays lazy - so
  * a brand-new Project/Area already has the heading to type into directly
  * from Obsidian, without ever opening the item in the app first. Placed
@@ -558,7 +558,7 @@ export function ensureSkeleton(content: string, kind: GtdParaKind): string {
 }
 
 /**
- * Parses the `## Scope` span (docs/dev/technical-design-item-scope.md) - a
+ * Parses the `## Scope` span (docs/dev/history/technical-design-item-scope.md) - a
  * single free-text value, unlike Tasks/Meetings/Weekly Goals: there's no
  * per-line grammar here, so the whole span *is* the value. The span's
  * lines are joined back with '\n' and trimmed - this deliberately
@@ -711,7 +711,7 @@ export interface ParsedMonthlyGoals {
 }
 
 /**
- * One generic "keyed goals span" parser (docs/dev/technical-design-monthly-view.md
+ * One generic "keyed goals span" parser (docs/dev/history/technical-design-monthly-view.md
  * §2.2) - `## Weekly Goals` (`- YYYY-Www: text`) and `## Monthly Goals`
  * (`- YYYY-MM: text`) are the same shape, differing only in heading and key
  * syntax. Deliberately sparse, unlike Tasks/Meetings: most files have zero
@@ -763,7 +763,7 @@ function setKeyedGoal<T>(goals: T[], keyOf: (g: T) => string, make: (text: strin
   return [...without, make(trimmed)];
 }
 
-/** Parses the `## Weekly Goals` span (docs/dev/technical-design-weekly-goals.md) - see parseKeyedGoalsSpan. */
+/** Parses the `## Weekly Goals` span (docs/dev/history/technical-design-weekly-goals.md) - see parseKeyedGoalsSpan. */
 export function parseWeeklyGoalsSpan(content: string): ParsedWeeklyGoals {
   const {goals, extraLines} = parseKeyedGoalsSpan(content, WEEKLY_GOALS_HEADING, WEEKLY_GOAL_LINE_RE);
   return {goals: goals.map(g => ({weekKey: g.key, text: g.text})), extraLines};
@@ -783,7 +783,7 @@ export function setGoalForWeek(goals: WeeklyGoal[], weekKey: string, text: strin
   return setKeyedGoal(goals, g => g.weekKey, t => ({weekKey, text: t}), weekKey, text);
 }
 
-/** Parses the `## Monthly Goals` span (docs/dev/technical-design-monthly-view.md §2.2). */
+/** Parses the `## Monthly Goals` span (docs/dev/history/technical-design-monthly-view.md §2.2). */
 export function parseMonthlyGoalsSpan(content: string): ParsedMonthlyGoals {
   const {goals, extraLines} = parseKeyedGoalsSpan(content, MONTHLY_GOALS_HEADING, MONTHLY_GOAL_LINE_RE);
   return {goals: goals.map(g => ({monthKey: g.key, text: g.text})), extraLines};
@@ -799,7 +799,7 @@ export function writeMonthlyGoalsIntoContent(
 }
 
 /**
- * Parses the `## Marks` span (docs/dev/technical-design-lasso-0.8.md §3.1):
+ * Parses the `## Marks` span (docs/dev/history/technical-design-lasso-0.8.md §3.1):
  * one line per open "Mark for later". Other lines in the section are kept.
  */
 export function parseMarksSpan(content: string): {marks: Mark[]; extraLines: string[]} {

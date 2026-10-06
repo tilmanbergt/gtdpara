@@ -64,7 +64,7 @@ t('doc references', () => {
   const text = [
     'see docs/dev/design-overview.md §3',
     'and technical-design-tags.md §2',
-    'old path docs/technical-design-tags.md',
+    'old path docs/dev/technical-design-tags.md',
     'docs/dev/history/technical-design-tags.md is fine',
     'technical-design-missing.md',
   ].join('\n');

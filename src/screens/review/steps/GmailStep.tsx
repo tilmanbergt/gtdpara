@@ -1,5 +1,5 @@
 /**
- * Review step "Gmail inbox" (docs/dev/technical-design-review-gmail-inbox.md):
+ * Review step "Gmail inbox" (docs/dev/history/technical-design-review-gmail-inbox.md):
  * the Gmail inbox, fetched over IMAP only when the user taps Load/Refresh
  * (never automatically, so a failure can't turn into a retry loop). An
  * email can become a todo or meeting in the Inbox, its text or an
@@ -38,7 +38,7 @@ import {bump, visitStepId} from '../reviewVisit';
 
 /**
  * One Todo/Meeting created from a Gmail message during the current visit
- * (docs/dev/technical-design-review-gmail-inbox.md §8) - `index` is that item's
+ * (docs/dev/history/technical-design-review-gmail-inbox.md §8) - `index` is that item's
  * position in `inbox.tasks`/`inbox.meetings` (Gmail-created items are always
  * Inbox-resident, same fixedDestination as Week ahead's own quick-add), kept
  * so the detail panel can offer to link the email's own text or one of its
@@ -152,7 +152,7 @@ function GmailEmailRow({
  * time this uid is selected - see the mount effect below) in ui/
  * GmailBodyPane.tsx: scrollable (the app's one deliberate exception to the
  * no-scroll policy) and selectable, with Copy / -> Todo / -> Meeting acting
- * on the selection (docs/dev/technical-design-gmail-body-select.md).
+ * on the selection (docs/dev/history/technical-design-gmail-body-select.md).
  * -> Todo/-> Meeting hand the selected text to the QuickAddWidget above via
  * its `prefill` prop (appended to the draft, tab switched) - the item is
  * still created with that widget's own +Add, like any other.
@@ -410,7 +410,7 @@ export default function GmailStep({
 }: ReviewStepProps): React.JSX.Element {
   const {settings, inbox, inboxPath, paths, refreshFromCache} = data;
   /**
-   * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md) -
+   * Gmail inbox review step (docs/dev/history/technical-design-review-gmail-inbox.md) -
    * NOT a frozen snapshot of the usual kind: the source of truth is storage/
    * gmailInboxCache.ts's own module-level cache (a real IMAP fetch, not a
    * resnapshot of the already-warm item cache), mirrored into this plain
@@ -430,7 +430,7 @@ export default function GmailStep({
   const [gmailFetchedAt, setGmailFetchedAt] = useState<number | null>(getGmailFetchedAt());
   /** uid -> the Todo/Meeting(s) created from that email during this visit - drives both settings.gmailHideHandled's filtering and the detail panel's "link the email/an attachment to what you just created" affordance. Cleared on every step entry, same as every other step's own acted-on bookkeeping. */
   const [gmailCreatedItems, setGmailCreatedItems] = useState<Record<string, GmailCreatedItem[]>>({});
-  /** uid -> linkedFile of the .note already written for that email during this visit, so linking the email text onto a second item of the same email reuses the note instead of writing another one (docs/dev/technical-design-gmail-email-note.md 3.7). Reset with gmailCreatedItems on step entry. */
+  /** uid -> linkedFile of the .note already written for that email during this visit, so linking the email text onto a second item of the same email reuses the note instead of writing another one (docs/dev/history/technical-design-gmail-email-note.md 3.7). Reset with gmailCreatedItems on step entry. */
   const [gmailEmailNotes, setGmailEmailNotes] = useState<Record<string, string>>({});
   /** Generic "did something with this email" checkmark for `ui/ReviewMasterDetail.tsx`'s `actedOnKeys` - set by creating an item from the email (an archived email leaves the list immediately - see handleArchiveGmailMessage - so it never shows this checkmark). */
   const [gmailActedOn, setGmailActedOn] = useState<Set<string>>(new Set());
@@ -439,7 +439,7 @@ export default function GmailStep({
   /** A background archive that failed (the email is back in the list) - shown under the Refresh button until the next archive or refresh. */
   const [gmailArchiveErrorState, setGmailArchiveErrorState] = useState<string | null>(null);
   // Refresh/archive failures go to the central status slot and mark the
-  // Refresh pill (docs/dev/technical-design-status-slot.md §7.5). An archive
+  // Refresh pill (docs/dev/history/technical-design-status-slot.md §7.5). An archive
   // failure is published globally through the (App-level, always mounted)
   // status API, so it still appears when the background IMAP call fails
   // after the user left Review.
@@ -504,7 +504,7 @@ export default function GmailStep({
   }, [settings, setGmailArchiveError]);
 
   /**
-   * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md
+   * Gmail inbox review step (docs/dev/history/technical-design-review-gmail-inbox.md
    * §8) - "add task"/"add meeting" from a message. Always to the Inbox
    * (FIXED_INBOX_DESTINATION, same as Week ahead's own quick-add - an email
    * has no Project/Area of its own to file straight into), via the same
@@ -563,7 +563,7 @@ export default function GmailStep({
    * Links the email's own text, or one of its attachments, onto a Todo/
    * Meeting already created from it (docs/dev/technical-design-review-gmail-
    * inbox.md §8) - the email text is written as a multi-page .note
-   * (storage/gmailEmailNote.ts, docs/dev/technical-design-gmail-email-note.md),
+   * (storage/gmailEmailNote.ts, docs/dev/history/technical-design-gmail-email-note.md),
    * an attachment as the file itself (storage/gmailAttachments.ts); either way
    * the result is set as that item's `linkedFile` via storage/
    * itemMutations.ts's mutateEntryTasks/mutateEntryMeetings, the same
@@ -708,7 +708,7 @@ export default function GmailStep({
   );
 
   /**
-   * Gmail inbox (docs/dev/technical-design-review-gmail-inbox.md) - a
+   * Gmail inbox (docs/dev/history/technical-design-review-gmail-inbox.md) - a
    * ReviewMasterDetail step like Meetings to close out above, but its rows
    * come from storage/gmailInboxCache.ts's own IMAP-backed cache
    * (`gmailList`) rather than the local item cache, and there is no frozen-

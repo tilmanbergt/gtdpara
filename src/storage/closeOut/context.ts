@@ -1,6 +1,6 @@
 /**
  * Everything the close-out wizard shows, loaded in one place
- * (docs/dev/technical-design-project-close-out.md §8.2): the cached project,
+ * (docs/dev/history/technical-design-project-close-out.md §8.2): the cached project,
  * its plan, the folder scan, the grouped contents, the readiness findings
  * and the archive targets. The wizard reloads this after every action, so
  * each screen always reflects the files and the cache as they are now.

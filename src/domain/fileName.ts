@@ -1,5 +1,5 @@
 /**
- * The one rule for file and folder names gtdpara creates (docs/dev/technical-design-cleanup-0.5.md
+ * The one rule for file and folder names gtdpara creates (docs/dev/history/technical-design-cleanup-0.5.md
  * S3a). Pure, no RN/SDK imports.
  *
  * Replaced characters:

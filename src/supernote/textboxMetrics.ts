@@ -4,8 +4,8 @@
  * in GtdParaFilePackage) instead of the char-width guess in
  * ui/textLineEstimator.ts.
  *
- * Shared contract (docs/dev/technical-design-gmail-email-note.md 3.3/3.9, aligned
- * with docs/dev/technical-design-textbox-metrics.md):
+ * Shared contract (docs/dev/history/technical-design-gmail-email-note.md 3.3/3.9, aligned
+ * with docs/dev/history/technical-design-textbox-metrics.md):
  *  - `measureTextHeight` never throws.
  *  - The native call requests `widthPx - TEXT_MEASURE_WIDTH_ADJUSTMENT_PX`
  *    (the sister project NoteDraft/textboxHelper's on-device calibration:

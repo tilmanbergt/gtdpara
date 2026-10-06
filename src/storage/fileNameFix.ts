@@ -1,5 +1,5 @@
 /**
- * "Fix file names" (docs/dev/technical-design-files-0.6.md §3.5): renames the
+ * "Fix file names" (docs/dev/history/technical-design-files-0.6.md §3.5): renames the
  * note files the Integrity Check planned (domain/fileNameFix.ts) and rewrites
  * every link to them. Runs after one confirm in Settings.
  *

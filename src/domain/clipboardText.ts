@@ -74,7 +74,7 @@ export function selectedText(text: string, selection: Selection): string {
 
 /**
  * Like `spliceAtSelection`, but for inserting a whole word (a placeholder
- * chip such as `{year}` - docs/dev/technical-design-split-by-tag.md §3.6): a
+ * chip such as `{year}` - docs/dev/history/technical-design-split-by-tag.md §3.6): a
  * space is added on whichever side needs one, the same rule
  * domain/markdown.ts's `insertTagAtPosition` uses for tags, so the inserted
  * word never runs into its neighbours. A selected range is replaced; no

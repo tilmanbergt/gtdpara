@@ -1,6 +1,6 @@
 /**
  * Pure text/marker/measurement logic for note-creation content (docs/
- * technical-design-meeting-notes.md §3, docs/dev/technical-design-note-templates.md
+ * technical-design-meeting-notes.md §3, docs/dev/history/technical-design-note-templates.md
  * §4). Zero RN/SDK imports (domain/ convention, see markdown.ts) - reusing
  * ui/textLineEstimator.ts here is safe since that module is plain TS with
  * no RN import of its own.
@@ -13,7 +13,7 @@ import {activeLineEstimator} from '../ui/textLineEstimator';
 
 /**
  * LEGACY userData marker of the fixed-shape meeting-note block written by
- * older versions (docs/dev/technical-design-linked-file-piece.md §4 - a
+ * older versions (docs/dev/history/technical-design-linked-file-piece.md §4 - a
  * Meeting with no matching rule gets no content). Nothing writes it; kept
  * only so isNoteTemplateManagedElement cleans it off older notes.
  */
@@ -22,13 +22,13 @@ export const MEETING_NOTE_BLOCK_USERDATA = 'gtdpara:meeting-note-block:v1';
 /**
  * LEGACY userData marker of the always-auto-appended "Link: <file>" element
  * written by older versions; links are now the placeable `link` piece with
- * an ordinary per-piece marker (docs/dev/technical-design-linked-file-piece.md).
+ * an ordinary per-piece marker (docs/dev/history/technical-design-linked-file-piece.md).
  * Nothing writes it; kept only so isNoteTemplateManagedElement cleans it
  * off older notes.
  */
 export const NOTE_LINK_USERDATA = 'gtdpara:meeting-note-link:v1';
 
-/** Prefix for a definition-driven piece's own per-index userData marker (docs/dev/technical-design-note-templates.md §4: one marker per index, since piece count and order are data-driven). See notePieceUserData below. */
+/** Prefix for a definition-driven piece's own per-index userData marker (docs/dev/history/technical-design-note-templates.md §4: one marker per index, since piece count and order are data-driven). See notePieceUserData below. */
 const NOTE_PIECE_USERDATA_PREFIX = 'gtdpara:note-piece:';
 
 /** The userData marker `storage/meetingNoteContent.ts`'s populateNoteFromRule writes on the textbox element for `definition.pieces[index]` - one marker per piece, not one shared block marker, so a definition's pieces can be found/replaced/reordered independently. */
@@ -73,7 +73,7 @@ const NOTE_LINE_HEIGHT_MULTIPLIER = 1.2;
  * blank line calls estimateLines('', ...), which already returns 1 - no
  * separate "blank lines count as 1" case needed), then converting wrapped-
  * line count to px via NOTE_LINE_HEIGHT_MULTIPLIER. Called once per piece
- * (docs/dev/technical-design-note-templates.md §4); used as the fallback
+ * (docs/dev/history/technical-design-note-templates.md §4); used as the fallback
  * measurement by supernote/textboxMetrics.ts.
  *
  * This is a known-imprecise reuse - textLineEstimator was calibrated for

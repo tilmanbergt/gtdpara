@@ -7,7 +7,7 @@
  * Unlike ui/useCachedItems.ts, the calling component re-renders only when
  * one of those fields changes somewhere, not on every cache change (task
  * edits, meeting saves, the background rebuild on every reopen)
- * (docs/dev/technical-design-render-perf-ab.md §7): through useCachedItems
+ * (docs/dev/history/technical-design-render-perf-ab.md §7): through useCachedItems
  * the memoized QuickAddWidget would re-render twice per reopen, ~130 ms
  * each, for changes it never displays.
  *
@@ -28,7 +28,7 @@ function signatureOf(items: CachedItem[] | undefined): string {
 export function useAbbrevItems(): CachedItem[] {
   const [, setTick] = useState(0);
   // Paused while a kept tab is hidden; checked once on show
-  // (docs/dev/technical-design-keep-tabs-alive.md §5.1).
+  // (docs/dev/history/technical-design-keep-tabs-alive.md §5.1).
   const activity = useScreenActivity();
   const signatureRef = useRef<string | null>(null);
   const items = getCachedData()?.items;

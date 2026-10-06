@@ -431,7 +431,7 @@ return (
       <View style={[common.divider, {backgroundColor: borderColor}]} />
 
       <View style={{flex: MEETINGS_WEIGHT}}>
-      {/* The standard MeetingList (docs/dev/technical-design-meeting-lists.md
+      {/* The standard MeetingList (docs/dev/history/technical-design-meeting-lists.md
           §4.4) - same rows and options as InboxScreen.tsx's Meetings pane:
           1-line by default, date+time column, no source (all Inbox). */}
       <MeetingList

@@ -1,5 +1,5 @@
 /**
- * The standard paged meeting list (docs/dev/technical-design-meeting-lists.md
+ * The standard paged meeting list (docs/dev/history/technical-design-meeting-lists.md
  * §2.5): ui/PagedSection.tsx plus the 1-line/2-line switch (two small icons
  * in PagedSection's `headerAccessory` slot, so no extra header line) and
  * optional group headers (Upcoming/Past). No pagination logic of its own -

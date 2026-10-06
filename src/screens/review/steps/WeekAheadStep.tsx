@@ -1,5 +1,5 @@
 /**
- * The Review's "Week ahead" step (docs/dev/technical-design-meeting-lists.md §4.6),
+ * The Review's "Week ahead" step (docs/dev/history/technical-design-meeting-lists.md §4.6),
  * kept as close to the Week view as possible by reuse. It is the Week screen's body, screens/WeekPlanner.tsx,
  * with its own screens/usePlanningScreen.ts instance. The "‹ Week 40 ›"
  * navigation sits at the right end of the grid's Meetings | Google tab row:

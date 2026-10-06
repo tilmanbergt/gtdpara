@@ -1,8 +1,8 @@
 /**
- * Week view (docs/dev/technical-design-weekly-view.md) - the weekly counterpart
+ * Week view (docs/dev/history/technical-design-weekly-view.md) - the weekly counterpart
  * of screens/DailyView.tsx. This file is the header + week navigation only;
  * everything below the header lives in screens/WeekPlanner.tsx
- * (docs/dev/technical-design-meeting-lists.md §2.9/§4.2: the chip grid
+ * (docs/dev/history/technical-design-meeting-lists.md §2.9/§4.2: the chip grid
  * ui/WeekGrid.tsx, and the shared day panel ui/DayMeetingsPanel.tsx on the
  * right, like the Month view), so the Review's week-ahead step can show the
  * very same screen.
@@ -14,7 +14,7 @@
  * header shows the ISO week number + year.
  *
  * Load/meeting/focus/goal actions live in screens/usePlanningScreen.ts,
- * shared with the Month view (docs/dev/technical-design-monthly-view.md
+ * shared with the Month view (docs/dev/history/technical-design-monthly-view.md
  * §5.10); the focus panel is ui/PeriodFocusPanel.tsx (scope "weekly"), the
  * history panel ui/PeriodGoalsHistoryPanel.tsx, and the "can this week be
  * edited" rule domain/period.ts's canEditPeriod (the current week, plus next

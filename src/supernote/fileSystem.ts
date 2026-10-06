@@ -28,7 +28,7 @@ export interface KeyWord {
  * Fixed OS path where the Supernote's own MyStyle assets live (the same
  * folder `.snplg` builds are deployed to) - not a setting, unlike
  * `baseRoot`: nothing a user would want to redirect elsewhere. Used by the
- * meeting-note-template feature (docs/dev/technical-design-meeting-notes.md §1.2)
+ * meeting-note-template feature (docs/dev/history/technical-design-meeting-notes.md §1.2)
  * to list `.png` files a note-template setting can pick from.
  */
 export const MYSTYLE_FOLDER = '/storage/emulated/0/MyStyle';
@@ -36,7 +36,7 @@ export const MYSTYLE_FOLDER = '/storage/emulated/0/MyStyle';
 /**
  * Fixed, settings-independent home for on-device diagnostics: every event
  * `recordDebugLogEntry` logs (see its doc comment;
- * docs/dev/technical-design-shared-note-pages.md §4/§12), including the
+ * docs/dev/history/technical-design-shared-note-pages.md §4/§12), including the
  * host-side createNote rejection ("not allowed to use this API" - a gate in
  * HostCommImpl.checkAPIAvailable, unrelated to plugin.permission.FILE:WRITE,
  * that intermittently flips from denied to allowed within one app session).
@@ -48,15 +48,15 @@ export const MYSTYLE_FOLDER = '/storage/emulated/0/MyStyle';
  * Everything gtdpara exports lives under the device's EXPORT folder, not
  * under Note, so it doesn't fill the space used for working material:
  * EXPORT/gtdpara/debug (logs, bundles, reports, perf traces) and
- * EXPORT/gtdpara/profiles (docs/dev/technical-design-profiles-demo-space.md).
+ * EXPORT/gtdpara/profiles (docs/dev/history/technical-design-profiles-demo-space.md).
  */
 export const GTDPARA_EXPORT_ROOT = '/storage/emulated/0/EXPORT/gtdpara';
 const DEBUG_LOG_FOLDER = `${GTDPARA_EXPORT_ROOT}/debug`;
 
-/** Same folder, for UI text and the debug tools (docs/dev/technical-design-about-debug-experimental.md). */
+/** Same folder, for UI text and the debug tools (docs/dev/history/technical-design-about-debug-experimental.md). */
 export const DEBUG_LOG_FOLDER_PATH = DEBUG_LOG_FOLDER;
 
-/** Profile files (docs/dev/technical-design-profiles-demo-space.md §3.1). */
+/** Profile files (docs/dev/history/technical-design-profiles-demo-space.md §3.1). */
 export const PROFILES_FOLDER_PATH = `${GTDPARA_EXPORT_ROOT}/profiles`;
 
 /** "EXPORT/gtdpara/debug" - the part of a path a user sees in the Supernote file manager. */
@@ -77,7 +77,7 @@ export const ELEMENT_TYPE_LINK = 600;
  * meeting-note-block feature is built around - a free-form string that
  * round-trips through getElements/insertElements/modifyElements untouched,
  * letting a plugin-inserted element be found again later by tag rather than
- * by position (docs/dev/technical-design-meeting-notes.md §3.1/§5.1's "why not
+ * by position (docs/dev/history/technical-design-meeting-notes.md §3.1/§5.1's "why not
  * PluginNoteAPI.insertText" note - that convenience call has no such field).
  */
 export interface Element {
@@ -149,7 +149,7 @@ export interface ElementTextBox {
  * Rect`; this one is flat X/Y/width/height/page, and adds `category`/
  * `controlTrailNums` that the convenience call doesn't expose at all).
  * `category`/`style` meanings are undocumented beyond "number" - 0 is used
- * for both as a neutral default (docs/dev/technical-design-meeting-notes.md §8).
+ * for both as a neutral default (docs/dev/history/technical-design-meeting-notes.md §8).
  */
 export interface ElementLink {
   category: number;
@@ -274,7 +274,7 @@ export interface FileStat {
 }
 
 /**
- * Stats many files in ONE native call (docs/dev/technical-design-files-0.6.md
+ * Stats many files in ONE native call (docs/dev/history/technical-design-files-0.6.md
  * §3.1) - what storage/dataCache.ts's refreshCache uses to see which data
  * files changed since they were read. Resolves `null` on a native build that
  * doesn't have the call yet, so the caller can fall back to a full re-read.
@@ -554,7 +554,7 @@ export async function moveFolder(fromPath: string, toPath: string): Promise<void
 }
 
 /**
- * Moves one FILE (docs/dev/technical-design-project-close-out.md §2.2 - outcome
+ * Moves one FILE (docs/dev/history/technical-design-project-close-out.md §2.2 - outcome
  * moves and the project PDF). Never overwrites: rejects if `toPath` exists.
  * Missing parent folders are created. Same permission/logging shape as
  * moveFolder.
@@ -599,7 +599,7 @@ let privateTempDir: string | null = null;
  * gtdpara's temp folder inside the plugin's PRIVATE folder
  * (`.../files/plugins/<pluginID>/tmp`) - exempt from every plugin
  * permission and never visible in the user's file manager
- * (docs/dev/technical-design-inkhub-submission.md §3.2). Rendered PDF pages
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.2). Rendered PDF pages
  * live here, never under Note.
  */
 export async function getPrivateTempDir(): Promise<string> {
@@ -631,7 +631,7 @@ let privateDataDir: string | null = null;
  * gtdpara's own data folder inside the plugin's PRIVATE folder
  * (`.../files/plugins/<pluginID>/data`) - unlike the temp folder it is not
  * cleared on start. Holds the picture and stroke data of open "Mark for
- * later" marks (docs/dev/technical-design-lasso-0.8.md §3.3). Like the temp
+ * later" marks (docs/dev/history/technical-design-lasso-0.8.md §3.3). Like the temp
  * folder it needs no permission and isn't visible in the file manager.
  */
 export async function getPrivateDataDir(): Promise<string> {
@@ -724,7 +724,7 @@ let debugAttemptSeq = 0;
  * buffer (debug bundle), and in the log file only while the user has
  * switched on Debug logging - never a file of its own, since unannounced
  * file activity is ruled out by the InkHub review and our transparency rule
- * (docs/dev/technical-design-inkhub-submission.md §3.8). Never throws.
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.8). Never throws.
  */
 export async function recordDebugLogEntry(
   event: string,
@@ -750,7 +750,7 @@ export async function recordDebugLogEntry(
   else logWarn(`hostCall: ${event} FAIL`, `${durationMs}ms`, detail, context);
 }
 
-/** Where utils/perf.ts's trace files land (docs/dev/technical-design-perf-tracing.md §4). */
+/** Where utils/perf.ts's trace files land (docs/dev/history/technical-design-perf-tracing.md §4). */
 export const PERF_LOG_FOLDER = `${DEBUG_LOG_FOLDER}/perf`;
 let perfFolderEnsured = false;
 
@@ -773,7 +773,7 @@ export async function writePerfTraceFile(fileName: string, content: string): Pro
 }
 
 /**
- * Writes the Integrity Check's (docs/dev/technical-design-integrity-check.md,
+ * Writes the Integrity Check's (docs/dev/history/technical-design-integrity-check.md,
  * storage/integrityCheck.ts) single summary report for one run to
  * DEBUG_LOG_FOLDER. Unlike recordDebugLogEntry above - errors swallowed so a
  * failed diagnostic never becomes a user-facing failure - this IS the
@@ -893,7 +893,7 @@ export async function insertNotePage(path: string, page: number, template: strin
  * storage/standaloneNotes.ts's createStandaloneNote for the "Note" quick-add
  * tab and by the shared-note page engine. Signature confirmed against
  * https://docs.supernote.com/en/api-reference/supernote-plugin/plugin-file-api/insert-key-word -
- * `getKeyWords`/`deleteKeyWord` (docs/dev/technical-design-shared-note-pages.md
+ * `getKeyWords`/`deleteKeyWord` (docs/dev/history/technical-design-shared-note-pages.md
  * §4) are wrapped below.
  */
 export async function insertKeyWord(path: string, page: number, keyword: string): Promise<void> {
@@ -917,7 +917,7 @@ export async function insertKeyWord(path: string, page: number, keyword: string)
 
 /**
  * Reads every keyword on `path`'s pages in `pageList` (each 0-indexed) in
- * ONE call - docs/dev/technical-design-shared-note-pages.md §4's page engine
+ * ONE call - docs/dev/history/technical-design-shared-note-pages.md §4's page engine
  * builds `pageList` as every page (0..getNoteTotalPageNum-1) so a shared
  * note's whole keyword index comes back in a single round trip, never one
  * call per page. Signature confirmed against
@@ -1154,7 +1154,7 @@ export async function getElements(page: number, path: string): Promise<Element[]
   if (!response || !response.success) {
     const message = response?.error?.message || 'Could not read this page\'s elements.';
     logError('getElements: failed', path, message);
-    // Diagnostic (docs/dev/technical-design-shared-note-pages.md): logs BOTH
+    // Diagnostic (docs/dev/history/technical-design-shared-note-pages.md): logs BOTH
     // outcomes via recordDebugLogEntry, here and on insertElements/openPath
     // below, to localize which call fails with "File does not exist. Cannot
     // call the API." on a page just inserted via insertNotePage - without
@@ -1173,7 +1173,7 @@ export async function getElements(page: number, path: string): Promise<Element[]
  * read - see createElement's own doc comment) onto `path`'s `page`. Used by
  * the meeting-note-block feature to write its textbox + (optionally) link
  * element in one call, so a failure partway can't leave one without the
- * other (docs/dev/technical-design-meeting-notes.md §5 step 5).
+ * other (docs/dev/history/technical-design-meeting-notes.md §5 step 5).
  */
 export async function insertElements(path: string, page: number, elements: Element[]): Promise<void> {
   const granted = await ensureFileWritePermission();
@@ -1205,7 +1205,7 @@ export async function insertElements(path: string, page: number, elements: Eleme
  * elements page; `Element.numInPage`'s own doc comment flags
  * "starts from 1"). Used by the meeting-note-block feature to
  * remove whatever it inserted last time before inserting the fresh version
- * ("always regenerate" - docs/dev/technical-design-meeting-notes.md §5 step 2).
+ * ("always regenerate" - docs/dev/history/technical-design-meeting-notes.md §5 step 2).
  */
 export async function deleteElements(path: string, page: number, numsInPage: number[]): Promise<void> {
   const granted = await ensureFileWritePermission();

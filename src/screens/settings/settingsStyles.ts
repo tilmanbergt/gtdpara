@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   // The bounded flex:1 box every tab's content renders inside
-  // (docs/dev/technical-design-note-templates.md §6) - what makes
+  // (docs/dev/history/technical-design-note-templates.md §6) - what makes
   // ui/PagedSection.tsx's self-measuring mode work for the Templates tab's
   // list. Folders/Focus/Calendar/Meeting Note don't fill it and get no
   // scroll of their own.
@@ -282,7 +282,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
   },
   // Page-aspect-ratio box with the real MyStyle PNG rendered inside it
-  // (docs/dev/technical-design-note-templates.md §7 Phase 5 item #1) - no
+  // (docs/dev/history/technical-design-note-templates.md §7 Phase 5 item #1) - no
   // filename caption on it (module doc comment). `overflow: 'hidden'` so
   // the <Image> (which fills the box exactly, width/height 100%) respects
   // this box's own rounded corners instead of squaring them off.

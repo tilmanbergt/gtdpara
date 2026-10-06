@@ -103,7 +103,7 @@ export function ItemGoalRow({
 }: {
   /** This item's goals for `scope`, as `{key, text}` - storage/periodGoals.ts's `goalsOf`. */
   goals: PeriodGoal[];
-  /** Week or month (docs/dev/technical-design-monthly-view.md §5.6) - drives the current key, labels and "N weeks/months ago". */
+  /** Week or month (docs/dev/history/technical-design-monthly-view.md §5.6) - drives the current key, labels and "N weeks/months ago". */
   scope?: PeriodScope;
   disabled: boolean;
   onSaveGoal: (text: string) => Promise<void>;

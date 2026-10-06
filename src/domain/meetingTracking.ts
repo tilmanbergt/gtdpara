@@ -1,5 +1,5 @@
 /**
- * Meeting prep/review tracking (docs/dev/technical-design-meeting-tracking.md).
+ * Meeting prep/review tracking (docs/dev/history/technical-design-meeting-tracking.md).
  *
  * A Tag Rule (domain/tagRules.ts's TagRule) can switch on
  * two checkpoints for the meetings it resolves for: "prepare before" and

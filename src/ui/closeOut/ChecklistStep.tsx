@@ -1,5 +1,5 @@
 /**
- * Close-out step 1 - Checklist (docs/dev/technical-design-project-close-out.md
+ * Close-out step 1 - Checklist (docs/dev/history/technical-design-project-close-out.md
  * §8.2, mockup artboard "1 · Checklist"). Shows area, done date and the
  * archive targets, then every readiness finding (domain/closeOut/
  * readiness.ts) with inline actions for the two blockers: open todos

@@ -48,8 +48,8 @@ export function parseFlexibleTime(input: string): FlexibleTimeResult {
   if (trimmed.length === 0) return {ok: true, value: ''};
 
   const bareHour = /^(\d{1,2})$/.exec(trimmed);
-  // ":" or "." as the minute separator ("16:30" / "16.30") - docs/technical-
-  // design-monthly-view.md §3.2.
+  // ":" or "." as the minute separator ("16:30" / "16.30") -
+  // docs/dev/history/technical-design-monthly-view.md §3.2.
   const hourAndMinute = /^(\d{1,2})[:.](\d+)$/.exec(trimmed);
 
   let hour: number;
@@ -79,7 +79,7 @@ export function parseFlexibleTime(input: string): FlexibleTimeResult {
 
 export const MEETING_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** A meeting's "when" beyond its date - what the Quick Add time field parses to (docs/dev/technical-design-monthly-view.md §3.2). */
+/** A meeting's "when" beyond its date - what the Quick Add time field parses to (docs/dev/history/technical-design-monthly-view.md §3.2). */
 export interface MeetingWhen {
   /** HH:mm start, or '' for a date-only meeting. */
   time: string;
@@ -149,7 +149,7 @@ export function meetingDatePrefix(date: string, now: Date = new Date()): string 
   return date === today ? '' : formatDate(date, today);
 }
 
-/** Which Quick Add field a failed validation is about - drives the in-place ⚠ mark (docs/dev/technical-design-status-slot.md §6). */
+/** Which Quick Add field a failed validation is about - drives the in-place ⚠ mark (docs/dev/history/technical-design-status-slot.md §6). */
 export type MeetingField = 'title' | 'date' | 'time';
 
 export type MeetingFieldsValidation =
@@ -230,7 +230,7 @@ function parseIsoDateLocal(iso: string): {year: number; month: number; day: numb
 
 /**
  * The instant a Meeting's note stops getting auto-*re*populated on open
- * (docs/dev/technical-design-note-templates.md Phase 3): auto-update runs
+ * (docs/dev/history/technical-design-note-templates.md Phase 3): auto-update runs
  * through the meeting's day and until one hour after its time. A date-only
  * meeting (no time given) freezes at the end of its date - 23:59:59.999
  * local - since nothing pins it to a specific hour; a timed meeting freezes
@@ -249,7 +249,7 @@ export function meetingAutoUpdateCutoffMs(meeting: MeetingEndInput): number {
 export type MeetingEndInput = Pick<Meeting, 'date' | 'time'> & Partial<Pick<Meeting, 'endTime' | 'days'>>;
 
 /**
- * The instant a meeting is over (docs/dev/technical-design-monthly-view.md
+ * The instant a meeting is over (docs/dev/history/technical-design-monthly-view.md
  * §3.2), using the real meeting end when available:
  * - timed with an end time -> that end time
  * - timed without one      -> start + 1 h

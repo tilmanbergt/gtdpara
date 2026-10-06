@@ -1,5 +1,5 @@
 /**
- * Close-out step 3 - Outcomes (docs/dev/technical-design-project-close-out.md
+ * Close-out step 3 - Outcomes (docs/dev/history/technical-design-project-close-out.md
  * §8.2, mockup "3 · Outcomes"): which files live on after the project.
  * Left: the project's files that may move (not its own meeting/todo notes -
  * those are the project record). Right: "Stays in archive", or browse the

@@ -14,7 +14,7 @@ Confirmed in chat:
 
 - **Tag extraction and the Row 3 add/insert UI are app-wide** — they're a property of `ui/QuickAddWidget.tsx`, which every screen (Daily, Current/`ProjectDataPanel`, Inbox, Review) already shares. A tag typed on a Project's Todo is exactly as real as one typed on Daily.
 - **The context *filter* (viewing only tag-matching items) is Daily-only for v1** — explicitly scoped down ("reduce scope... start with Daily") from an earlier open question about whether it should be app-wide.
-- **Composing with `#now`/focus mode is out of scope** — that shipped today (2026-09-11, `docs/dev/technical-design-now-focus-mode.md`) as its own one-column Daily mode; this design doesn't touch it.
+- **Composing with `#now`/focus mode is out of scope** — that shipped today (2026-09-11, `docs/dev/history/technical-design-now-focus-mode.md`) as its own one-column Daily mode; this design doesn't touch it.
 - **No gesture change to existing rows** (see §7) — short-tap-to-edit stays exactly as it is everywhere.
 
 I'm flagging the first bullet prominently because it's a wider surface than "Daily-only" might suggest at a glance — the Row 3 tag row and Meeting-tag extraction touch every screen that renders `QuickAddWidget`/`TaskRow`/`MeetingRow`, not just Daily. If that's not actually wanted, this is the point to say so before §4 below multiplies across six files.
@@ -80,7 +80,7 @@ export async function getRecentTags(limit = 30): Promise<string[]> { /* most-rec
 
 ### State
 
-`screens/DailyView.tsx` gains local state: `const [dailyContext, setDailyContext] = useState<string | null>(null)`. Not persisted — resets to off every time the plugin reopens, same "nothing new to remember across a reopen unless it has to be" posture `docs/dev/technical-design-now-focus-mode.md` §5 already uses for focus mode's own state. Open question, not decided: should it survive a reopen instead? Easy to flip later; defaulting to session-only for v1.
+`screens/DailyView.tsx` gains local state: `const [dailyContext, setDailyContext] = useState<string | null>(null)`. Not persisted — resets to off every time the plugin reopens, same "nothing new to remember across a reopen unless it has to be" posture `docs/dev/history/technical-design-now-focus-mode.md` §5 already uses for focus mode's own state. Open question, not decided: should it survive a reopen instead? Easy to flip later; defaulting to session-only for v1.
 
 One shared setter, used both by the top-right indicator's ✕ and by any tag tap (§7): `toggleContext(tag: string) { setDailyContext(c => c === tag ? null : tag); }` — tapping the currently-active tag again clears it, tapping a different tag switches to it (single-select, matches the mockup).
 

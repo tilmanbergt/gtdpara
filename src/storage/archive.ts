@@ -1,6 +1,6 @@
 /**
  * Archiving a Project/Area (technical-design-status-archive.md §5; target
- * layout: docs/dev/technical-design-project-close-out.md §5.1 -
+ * layout: docs/dev/history/technical-design-project-close-out.md §5.1 -
  * Archive/<year>/[<Area>/]<Project>/ for Projects, Archive/<year>/<Area>/
  * merged for Areas, plus an `archivedAt:` date): the one
  * action that moves the folder out of Projects/Areas and into Archive/ AND
@@ -84,7 +84,7 @@ export function describeAreaArchiveBlock(areaName: string): string | null {
 }
 
 /**
- * Archive targets for `item` today (docs/dev/technical-design-project-close-out.md
+ * Archive targets for `item` today (docs/dev/history/technical-design-project-close-out.md
  * §5.1): a Project goes to Archive/<doneAt year>/[<Area>/]<name>/, an Area to
  * Archive/<this year>/<name>/ (merged). Exported for the close-out wizard,
  * which shows these paths before anything moves.
@@ -107,7 +107,7 @@ export function archiveTargetsFor(
  * True when archiving `item` will MERGE into an archive folder that already
  * exists - the only case that leaves an empty source folder behind. Callers
  * use it to name that folder in the confirmation text before archiving
- * (docs/dev/technical-design-inkhub-submission.md §3.4/§3.8).
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.4/§3.8).
  */
 export async function archiveLeavesEmptyFolder(
   item: Pick<CachedItem, 'kind' | 'name'> & FrontMatterSource,

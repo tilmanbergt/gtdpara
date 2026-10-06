@@ -1,5 +1,5 @@
 /**
- * The one standard meeting row (docs/dev/technical-design-meeting-lists.md
+ * The one standard meeting row (docs/dev/history/technical-design-meeting-lists.md
  * §2.3) - used by every list that shows meetings: Daily, the day panel
  * (Week/Month), Project, Inbox, the Review steps and focus mode's "Coming up".
  *

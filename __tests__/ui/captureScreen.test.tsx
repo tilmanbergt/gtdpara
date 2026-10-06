@@ -1,4 +1,4 @@
-// docs/dev/technical-design-lasso-0.8.md §3.7: the shared capture / marks screen.
+// docs/dev/history/technical-design-lasso-0.8.md §3.7: the shared capture / marks screen.
 const mockCalls: string[] = [];
 const mockAdded: Array<{text: string; notePath: string; linkedFile: string; dest: {type: string}}> = [];
 const mockState = {marksInbox: [] as unknown[], stored: {} as Record<string, string>, recognized: [] as string[]};

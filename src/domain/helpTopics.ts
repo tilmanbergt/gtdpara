@@ -1,5 +1,5 @@
 /**
- * In-app help (docs/dev/technical-design-in-app-help.md §3.2): which user-guide
+ * In-app help (docs/dev/history/technical-design-in-app-help.md §3.2): which user-guide
  * page opens for which tab, and the "same tab → last page read" rule.
  * Pure; the pages themselves come from src/generated/userDocs.ts.
  */

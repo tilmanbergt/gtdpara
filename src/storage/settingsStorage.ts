@@ -73,7 +73,7 @@ let reviewStepsWriteChain: Promise<unknown> = Promise.resolve();
 
 /**
  * Load-modify-save of just `settings.reviewSteps`, for the Review screen's
- * step-visit/empty-stamp writes (docs/dev/technical-design-review-hub.md §4.4).
+ * step-visit/empty-stamp writes (docs/dev/history/technical-design-review-hub.md §4.4).
  * Re-reads the stored settings each time (rather than saving the screen's own
  * possibly-stale copy) so a concurrent change made elsewhere - e.g. in
  * Settings - isn't overwritten, and chains every call behind the previous one

@@ -1,6 +1,6 @@
 /**
  * Lifecycle dates of a Project/Area - `doneAt` and `archivedAt`
- * (docs/dev/technical-design-project-close-out.md §4.1) - kept as plain
+ * (docs/dev/history/technical-design-project-close-out.md §4.1) - kept as plain
  * `key: YYYY-MM-DD` lines in the frontmatter block.
  *
  * They deliberately live in FrontMatterFields' `extraLines` (the verbatim

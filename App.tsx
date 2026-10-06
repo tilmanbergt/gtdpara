@@ -63,7 +63,7 @@ import {requestEinkRefresh, useEinkRefreshOnLoad} from './src/utils/screenRefres
 import {FONT, useThemeColors} from './src/ui/theme';
 import {errorMessage} from './src/utils/errorMessage';
 
-// Performance tracing (docs/dev/technical-design-perf-tracing.md). Wired once at
+// Performance tracing (docs/dev/history/technical-design-perf-tracing.md). Wired once at
 // module load: the cold-start trace starts here, as early as App's own code
 // runs, and is buffered until reorient() knows whether tracing is on
 // (settings.perfTracing) - perfEnable(false) then simply drops it.
@@ -74,7 +74,7 @@ perfConfigure({
 });
 perfBegin('cold', 'app');
 
-// Optional debug-log file (docs/dev/technical-design-about-debug-experimental.md
+// Optional debug-log file (docs/dev/history/technical-design-about-debug-experimental.md
 // §3.3): the writer is injected here so utils/log.ts stays import-free; the
 // file sink itself is only switched on by settings.debugLogging (reorient()).
 configureLogFileSink(
@@ -83,7 +83,7 @@ configureLogFileSink(
 );
 
 // Tabs whose screens stay mounted (hidden) after their first visit while
-// "Keep tabs in memory" is on (docs/dev/technical-design-keep-tabs-alive.md
+// "Keep tabs in memory" is on (docs/dev/history/technical-design-keep-tabs-alive.md
 // §2 D1). Inbox, Review and Settings keep the mount-while-visible behavior.
 const KEPT_TABS: AppTab[] = ['daily', 'week', 'month', 'current', 'projects', 'areas'];
 
@@ -105,12 +105,12 @@ interface CurrentItem {
 // Daily's focus mode. Deliberately separate from `activeTab`/`currentItem`
 // (which persist regardless of mode) - both the capture overlay and focus
 // mode sit on top of the tab shell rather than being one of its tabs.
-// 'focus' (docs/dev/technical-design-now-focus-mode.md §4) is the same
+// 'focus' (docs/dev/history/technical-design-now-focus-mode.md §4) is the same
 // DailyView instance as 'tabs'-mode Daily, just rendered with its
 // focusMode prop on instead of a separate screen component.
 type Mode = 'loading' | 'capture' | 'tabs' | 'focus';
 
-// The central status slot (docs/dev/technical-design-status-slot.md) needs its
+// The central status slot (docs/dev/history/technical-design-status-slot.md) needs its
 // provider above every mode, so App itself is only the provider + the
 // always-mounted StaleBuildBanner publisher; the real shell is AppShell.
 // Keep this `export default` - index.js is untyped JS, so tsc can't catch
@@ -124,12 +124,12 @@ export default function App(): React.JSX.Element {
   );
 }
 
-// Switching profiles (docs/dev/technical-design-profiles-demo-space.md §3.4)
+// Switching profiles (docs/dev/history/technical-design-profiles-demo-space.md §3.4)
 // remounts the whole shell via this key, so no kept-alive tab, draft or
 // screen state from the previous data set survives; the normal start path
 // (reorient) then runs against the new profile's settings.
 //
-// "Mark for later" (docs/dev/technical-design-lasso-0.8.md §3.6) runs from
+// "Mark for later" (docs/dev/history/technical-design-lasso-0.8.md §3.6) runs from
 // index.js without this view; when it needs to say something it stores an
 // outcome and opens the view - drawn here on top of whatever the shell shows,
 // so the shell (and its kept tabs) stays as it was.
@@ -160,7 +160,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   useEinkRefreshOnLoad(mode === 'loading');
   const [activeTab, setActiveTab] = useState<AppTab>('projects');
   const [currentItem, setCurrentItem] = useState<CurrentItem | null>(null);
-  // The open project close-out (docs/dev/technical-design-project-close-out.md
+  // The open project close-out (docs/dev/history/technical-design-project-close-out.md
   // §8.3): while set, the Review tab shows the close-out wizard instead of
   // ReviewScreen. Kept when switching tabs, so coming back to Review (or
   // back from checking the PDF) continues the same close-out.
@@ -195,7 +195,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // effect isn't needed (a tab switch away always unmounts it first).
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('folders');
 
-  // In-app help (docs/dev/technical-design-in-app-help.md §3.3): the page
+  // In-app help (docs/dev/history/technical-design-in-app-help.md §3.3): the page
   // shown in the overlay, or null while it's closed. The last page read per
   // tab is remembered for this session only.
   const [helpPage, setHelpPage] = useState<string | null>(null);
@@ -210,7 +210,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setHelpPage(null);
   }, [activeTab]);
   // Leftovers of an interrupted PDF export live only in the plugin's private
-  // temp folder (docs/dev/technical-design-inkhub-submission.md §3.2) - clear
+  // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - clear
   // them once per start. Best-effort: older native builds lack the call.
   useEffect(() => {
     getPrivateTempDir()
@@ -235,7 +235,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // tab and updates `currentItem`; a miss switches to the "Daily" tab
   // instead (the closest useful landing spot, as there's no "Home" tab)
   // without touching whatever `currentItem` already held.
-  // Exception (docs/dev/technical-design-return-to-origin.md): if the note open
+  // Exception (docs/dev/history/technical-design-return-to-origin.md): if the note open
   // now is the one this plugin itself last opened (openPath), neither jump
   // happens - the plugin resumes exactly where it was left.
   //
@@ -276,14 +276,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // (text, kind, destination, linkToSource, warnings) and re-runs `load()`
   // against whatever is actually lassoed right now.
   //
-  // Real useState, not useRef (docs/dev/technical-design-filing-unification.md
+  // Real useState, not useRef (docs/dev/history/technical-design-filing-unification.md
   // §9): a ref mutation doesn't trigger a re-render, and when `mode` is
   // already 'capture', `setMode('capture')` is a same-value call that React
   // bails out of (Object.is), so the `key={captureNonce}` JSX line would
   // never re-evaluate. `setCaptureNonce(n => n + 1)` always produces a new
   // value, so the remount doesn't depend on `setMode`.
   const [captureNonce, setCaptureNonce] = useState(0);
-  // What the capture screen shows (docs/dev/technical-design-lasso-0.8.md §3.7):
+  // What the capture screen shows (docs/dev/history/technical-design-lasso-0.8.md §3.7):
   // the lasso (lasso button) or open marks (a "marks to process" card).
   const [captureRequest, setCaptureRequest] = useState<CaptureRequest>({source: 'lasso'});
 
@@ -298,12 +298,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   useEffect(() => {
     let cancelled = false;
     // Which build is running - first thing to look for in a log
-    // (docs/dev/technical-design-versioning-release.md 3.4).
+    // (docs/dev/history/technical-design-versioning-release.md 3.4).
     log('App: gtdpara', BUILD_INFO.label, 'build', BUILD_INFO.versionCode, 'built', BUILD_INFO.builtAt);
 
     // Every file the plugin opens itself goes through fileSystem.ts's
     // openPath, which tells this observer right before the host call
-    // (docs/dev/technical-design-return-to-origin.md §6) - that's what lets
+    // (docs/dev/history/technical-design-return-to-origin.md §6) - that's what lets
     // reorient() below recognize "the open note is the one we sent the user
     // to". Returns recordPluginOpen's undo function so a failed open leaves
     // any earlier record intact.
@@ -313,7 +313,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       try {
         const [loadedSettings, currentPath] = await Promise.all([loadSettings(), getCurrentNotePath()]);
         perfEnable(loadedSettings.perfTracing === true);
-        // Experimental switches + debug-log file (docs/dev/technical-design-about-debug-experimental.md).
+        // Experimental switches + debug-log file (docs/dev/history/technical-design-about-debug-experimental.md).
         setFeatures(featuresOf(loadedSettings));
         setActiveProfileId(loadedSettings.activeProfileId);
         setFileLogging(loadedSettings.debugLogging === true);
@@ -334,7 +334,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         );
 
         // Where to land is one pure decision (domain/returnContext.ts's
-        // decideLanding, docs/dev/technical-design-return-to-origin.md), in this
+        // decideLanding, docs/dev/history/technical-design-return-to-origin.md), in this
         // priority: focus mode > resume > the note's Project/Area > Daily.
         const returnRecord = getReturnRecord();
         const landing = decideLanding({
@@ -354,8 +354,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           'recorded=' + String(returnRecord?.path ?? null),
         );
 
-        // Focus mode overrides the normal reorient entirely (docs/technical-
-        // design-now-focus-mode.md §4): while it's on, reopening the plugin
+        // Focus mode overrides the normal reorient entirely (
+        // docs/dev/history/technical-design-now-focus-mode.md §4): while it's on, reopening the plugin
         // must always land back on it, never on the current note's
         // Project/Area - "sessions are held lightly", but staying put is the
         // one thing this flag guarantees. The return record is left alone.
@@ -464,7 +464,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     };
   }, []);
 
-  // ---- Keep tabs alive (docs/dev/technical-design-keep-tabs-alive.md) ----
+  // ---- Keep tabs alive (docs/dev/history/technical-design-keep-tabs-alive.md) ----
   const keepTabsAlive = useKeepTabsAlive();
   const features = useFeatures();
   // Stable identities for App callbacks passed to kept screens (they are
@@ -576,7 +576,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     [currentItem, stableOpenItem, stableNav, textColor],
   );
 
-  // "Updated to x.y.z" notice (docs/dev/technical-design-about-debug-experimental.md
+  // "Updated to x.y.z" notice (docs/dev/history/technical-design-about-debug-experimental.md
   // §3.6, P3). Only a tap on "What's new" or ✕ stores lastSeenVersion - not
   // merely showing it - because after an update the first start is often cut
   // short by the stale-build restart (StaleBuildBanner, which also wins the
@@ -600,7 +600,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setMode('tabs');
   };
 
-  // Profile switch (docs/dev/technical-design-profiles-demo-space.md §3.2-3.4):
+  // Profile switch (docs/dev/history/technical-design-profiles-demo-space.md §3.2-3.4):
   // save + load the profile files, drop every in-memory copy of the old data
   // set, then remount the shell (AppRoot's key). Quick Add edits were already
   // saved when the user left their tab for Settings.
@@ -665,7 +665,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // Daily's "Focus mode" button (focusMode=false) calls this to switch into
-  // focus mode (docs/dev/technical-design-now-focus-mode.md §4.1). Entering
+  // focus mode (docs/dev/history/technical-design-now-focus-mode.md §4.1). Entering
   // never itself marks anything #now - if some tasks already carry it from
   // earlier, the filtered view already reflects that the instant it renders;
   // otherwise focus mode's own Picker state is what's shown. Persists the
@@ -681,8 +681,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // Focus mode's own exit mark calls this (§4.2). Always ends the session
-  // outright - it does not itself clear any #now tags (docs/technical-
-  // design-now-focus-mode.md §5 - the flag plus whatever's still #now *is*
+  // outright - it does not itself clear any #now tags (
+  // docs/dev/history/technical-design-now-focus-mode.md §5 - the flag plus whatever's still #now *is*
   // the entire state; nothing else needs resetting). Lands back on normal
   // Daily specifically, not just "whatever tabs mode was" - activeTab was
   // never touched while in 'focus' mode, but setting it explicitly here is
@@ -701,7 +701,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // DailyView's/WeekView's Inbox-sourced rows use this to jump here (their
   // group header/source subtext) instead of onOpenItem, since there's no
-  // Project/Area to open for those (docs/dev/technical-design-inbox-tab.md §3).
+  // Project/Area to open for those (docs/dev/history/technical-design-inbox-tab.md §3).
   const openInbox = () => {
     setActiveTab('inbox');
     setMode('tabs');
@@ -783,7 +783,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       .catch(e => logError('App: refreshSettings failed', errorMessage(e)));
   };
 
-  // Marks processing (docs/dev/technical-design-lasso-0.8.md §3.7, §3.10): the
+  // Marks processing (docs/dev/history/technical-design-lasso-0.8.md §3.7, §3.10): the
   // capture screen with the marks of `scope`; Close goes back to the tabs as
   // they were (Inbox, Current, Review or the close-out wizard).
   const openMarks = (scope: MarkScope, returnTo: CaptureReturnTo) => {
@@ -814,7 +814,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     );
   }
 
-  // Focus mode (docs/dev/technical-design-now-focus-mode.md §4): the exact same
+  // Focus mode (docs/dev/history/technical-design-now-focus-mode.md §4): the exact same
   // DailyView instance 'tabs' mode's Daily tab renders below, just with
   // focusMode on - no separate screen component, no separate data load.
   // Rendered here, before the TabBar-wrapped 'tabs' branch, like 'capture'
@@ -888,7 +888,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         helpOpen={helpPage !== null}
         onHelpPress={toggleHelp}
       />
-      {/* Central status slot (docs/dev/technical-design-status-slot.md): a fixed
+      {/* Central status slot (docs/dev/history/technical-design-status-slot.md): a fixed
           strip right under the TabBar, then the active tab's body. */}
       <StatusFrame>
         <View style={styles.body}>

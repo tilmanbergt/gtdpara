@@ -18,7 +18,7 @@
  *    needing a rebuild.
  *
  * 3. Change notification (subscribeCache/getCacheVersion,
- *    docs/dev/technical-design-cache-subscription-and-shared-add-path.md §A) -
+ *    docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md §A) -
  *    write-through mutates cache items IN PLACE (the very same array and item
  *    objects a screen already holds), so a screen's `setItems(cache.items)`
  *    alone would be a same-reference no-op and React would not re-render.
@@ -63,15 +63,15 @@ export interface CachedItem {
   meetings: Meeting[];
   taskExtraLines: string[];
   meetingExtraLines: string[];
-  /** From the `## Scope` span (docs/dev/technical-design-item-scope.md) - see storage/projectFile.ts's ProjectFileState doc comment. '' until a scope is set, even though the heading itself is scaffolded from item creation. */
+  /** From the `## Scope` span (docs/dev/history/technical-design-item-scope.md) - see storage/projectFile.ts's ProjectFileState doc comment. '' until a scope is set, even though the heading itself is scaffolded from item creation. */
   scope: string;
-  /** From the `## Weekly Goals` span (docs/dev/technical-design-weekly-goals.md) - see storage/projectFile.ts's ProjectFileState doc comment. */
+  /** From the `## Weekly Goals` span (docs/dev/history/technical-design-weekly-goals.md) - see storage/projectFile.ts's ProjectFileState doc comment. */
   weeklyGoals: WeeklyGoal[];
   weeklyGoalsExtraLines: string[];
-  /** From the `## Monthly Goals` span (docs/dev/technical-design-monthly-view.md §2.2). */
+  /** From the `## Monthly Goals` span (docs/dev/history/technical-design-monthly-view.md §2.2). */
   monthlyGoals: MonthlyGoal[];
   monthlyGoalsExtraLines: string[];
-  /** From the `## Marks` span (docs/dev/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines whose note lives in this item's folder. */
+  /** From the `## Marks` span (docs/dev/history/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines whose note lives in this item's folder. */
   marks: Mark[];
   marksExtraLines: string[];
   /** From the frontmatter block - see domain/markdown.ts's parseFrontMatter, storage/focusSlots.ts and storage/statusControl.ts. */
@@ -83,7 +83,7 @@ export interface CachedItem {
   defaultResourceFolder: string | null;
   /** The Area this Project supports, by bare folder name, or null - Projects only, always null for Areas (technical-design-project-area-assignment.md §2). */
   area: string | null;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - filled in for every item by the one-time migration `doRebuildCache` runs below, so in practice this is only null for an item not yet seen by a rebuild, or one whose migration write failed and will retry on the next rebuild. */
+  /** This item's short abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md), or null - filled in for every item by the one-time migration `doRebuildCache` runs below, so in practice this is only null for an item not yet seen by a rebuild, or one whose migration write failed and will retry on the next rebuild. */
   abbrev: string | null;
   frontMatterExtraLines: string[];
   /** Set when this item's own file failed to load during the last rebuild - the item still shows (the folder itself was found fine) but with empty tasks/meetings until a rebuild succeeds. */
@@ -167,7 +167,7 @@ export function clearCachedData(): void {
   notifyCacheChanged();
 }
 
-// ---- The Inbox (docs/dev/technical-design-files-0.6.md §3.3) ----
+// ---- The Inbox (docs/dev/history/technical-design-files-0.6.md §3.3) ----
 // Inbox.txt lives outside `items` (it is no Project/Area), but every screen
 // shares this one copy: a screen's `setInbox(...)` writes here, and every
 // screen showing the Inbox re-renders from it (ui/useCachedInbox.ts). Its own
@@ -449,7 +449,7 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
 }
 
 /**
- * Incremental refresh (docs/dev/technical-design-files-0.6.md §3.2) - what
+ * Incremental refresh (docs/dev/history/technical-design-files-0.6.md §3.2) - what
  * App.tsx runs on every plugin open. Re-reads only the data files that
  * changed on disk since they were read (Obsidian, sync, a file copied in),
  * picks up added and removed Project/Area folders, and the Inbox. Falls back
@@ -679,8 +679,8 @@ export function updateItemMonthlyGoals(
 
 /**
  * Write-through for a save that changed ONLY a section no cached field is
- * parsed from (the close-out plan's `## Close-out` section - docs/technical-
- * design-project-close-out.md §4.2). Every other save builds on
+ * parsed from (the close-out plan's `## Close-out` section -
+ * docs/dev/history/technical-design-project-close-out.md §4.2). Every other save builds on
  * `item.rawContent`, so skipping this would make the next task/meeting save
  * silently write the old section back.
  */
@@ -728,7 +728,7 @@ export type FrontMatterSource = Pick<
 
 /**
  * An item's current frontmatter as one `FrontMatterFields` object
- * (docs/dev/technical-design-monthly-view.md §2.1) - the ONE place that knows
+ * (docs/dev/history/technical-design-monthly-view.md §2.1) - the ONE place that knows
  * which flat item fields make up the frontmatter. Every save builds
  * `{...frontMatterOf(item), <changed field>}`, so a field a call site
  * doesn't touch is always carried through unchanged.

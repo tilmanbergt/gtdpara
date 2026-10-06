@@ -1,6 +1,6 @@
 /**
  * Status-slot confirm before a Todo/Meeting note is created, recreated or
- * linked (docs/dev/technical-design-split-by-tag.md §3.5). Every screen with
+ * linked (docs/dev/history/technical-design-split-by-tag.md §3.5). Every screen with
  * note icons passes the returned callback to
  * `openOrCreateMeetingNote`/`openOrCreateTodoNote` as `confirmCreate`.
  * A thin wrapper over useStatusConfirm (same one-at-a-time and

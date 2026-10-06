@@ -1,6 +1,6 @@
 /**
  * "Mark for later" - the flow behind the lasso toolbar's Mark button
- * (docs/dev/technical-design-lasso-0.8.md §3.6). It runs from index.js
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.6). It runs from index.js
  * without any gtdpara screen (`showType: 0`), so it never relies on the
  * data cache being there.
  *
@@ -195,7 +195,7 @@ export async function retryBookmark(id: string): Promise<boolean> {
   return icon.placed;
 }
 
-// ---- processing marks (docs/dev/technical-design-lasso-0.8.md §3.7, §3.8, §3.10) ----
+// ---- processing marks (docs/dev/history/technical-design-lasso-0.8.md §3.7, §3.8, §3.10) ----
 
 /** Open marks in `scope`, from the cache (empty while there is none). */
 export function listOpenMarks(scope: MarkScope): OpenMark[] {

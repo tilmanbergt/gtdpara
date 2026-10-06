@@ -63,7 +63,7 @@ Matches the mockup exactly (five click-through states, three live micro-interact
 
 `taskOnly` mode renders exactly the Create · Todo column with Meeting permanently greyed in row 1 — there's no separate fifth layout, just the existing Create · Todo styling with the tab locked.
 
-The widget renders at a fixed height regardless of style (short styles like Create · Meeting simply leave more empty space in row 3) — carries forward the row-height-stability principle from `docs/dev/technical-design-pagination-edit-reuse.md` §3, applied to the whole widget instead of per-row.
+The widget renders at a fixed height regardless of style (short styles like Create · Meeting simply leave more empty space in row 3) — carries forward the row-height-stability principle from `docs/dev/history/technical-design-pagination-edit-reuse.md` §3, applied to the whole widget instead of per-row.
 
 **Placement**: the widget lives at the top of the Meetings column/section only, *above* that column's own "Meetings" label (it isn't Meetings-exclusive — the label now describes only the read-only list beneath it). The Tasks column/section keeps its list but loses its own add-slot entirely.
 
@@ -134,7 +134,7 @@ function startEdit(target: EditTarget) {
 
 ## 7. Refile: reserved, not built
 
-Row 4's left cluster in both Edit styles always renders a `Refile` control next to Delete. This pass wires it as visually present but inert — no `onRefile` prop, no picker. `docs/dev/technical-design-filing-unification.md` deliberately removed the app's last destination picker (§7 there) and centralized filing into the Inbox tab / Review's arm-based File action; reopening that is out of scope here and gets its own design pass later, informed by whatever this Refile button turns out needing (likely something close to `ui/DestinationPicker.tsx`, still on disk from before that removal).
+Row 4's left cluster in both Edit styles always renders a `Refile` control next to Delete. This pass wires it as visually present but inert — no `onRefile` prop, no picker. `docs/dev/history/technical-design-filing-unification.md` deliberately removed the app's last destination picker (§7 there) and centralized filing into the Inbox tab / Review's arm-based File action; reopening that is out of scope here and gets its own design pass later, informed by whatever this Refile button turns out needing (likely something close to `ui/DestinationPicker.tsx`, still on disk from before that removal).
 
 ## 8. Per-screen call site changes
 

@@ -1,10 +1,10 @@
 /**
- * Close-out inventory (docs/dev/technical-design-project-close-out.md §5.2):
+ * Close-out inventory (docs/dev/history/technical-design-project-close-out.md §5.2):
  * turns the scan of a project folder (storage/closeOut/scan.ts) plus the
  * project's todos/meetings and the plan into the grouped contents model the
  * Contents step shows and the archive document is built from. Pure.
  *
- * Rules (decisions 5, 10, 11, 13 of docs/dev/spike-project-archive-pdf.md):
+ * Rules (decisions 5, 10, 11, 13 of docs/dev/history/spike-project-archive-pdf.md):
  * - Meetings (date order) and todos with a note are listed by the item, not
  *   by file; a shared note (Daily.note) contributes one entry per keyword
  *   page, plus "<file> - other pages" for pages no item claims.

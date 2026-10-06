@@ -1,5 +1,5 @@
 /**
- * Month view (docs/dev/technical-design-monthly-view.md) - the next planning
+ * Month view (docs/dev/history/technical-design-monthly-view.md) - the next planning
  * horizon after the Week view, built from the same parts:
  *
  * - Header: ‹ "October 2026" ›, plus how many highlights the month has.
@@ -84,7 +84,7 @@ export default function MonthView({
   const [monthOffset, setMonthOffset] = useState(0);
   const [leftTabState, setLeftTab] = useState<LeftTab>('month');
   // Google tabs only while the experimental Google Calendar integration is on
-  // (docs/dev/technical-design-about-debug-experimental.md §3.2).
+  // (docs/dev/history/technical-design-about-debug-experimental.md §3.2).
   const features = useFeatures();
   const left = visibleTabs(LEFT_TABS, leftTabState, 'google', features.googleCalendar);
   const leftTab = left.activeKey;
@@ -99,7 +99,7 @@ export default function MonthView({
 
   const changeMonth = (delta: number) => planning.closeDayPanel(() => setMonthOffset(o => o + delta));
 
-  // Memoized on their real inputs (docs/dev/technical-design-render-perf-ab.md
+  // Memoized on their real inputs (docs/dev/history/technical-design-render-perf-ab.md
   // §3 B4): `period` is a new object every render, so its key/start/end are
   // the deps; `todayDate` keeps "today"-dependent parts fresh over midnight.
   const aggregate = useMemo(
@@ -129,7 +129,7 @@ export default function MonthView({
   const newMeetingDate = selectedDate ?? (isCurrentMonth ? todayDate : period.start);
 
   // Stable props for the React.memo'd QuickAddWidget/PeriodFocusPanel
-  // (docs/dev/technical-design-render-perf-ab.md §3 B2) - all only called from
+  // (docs/dev/history/technical-design-render-perf-ab.md §3 B2) - all only called from
   // their event handlers; presence conditions stay at the call sites.
   const stableIsMeetingDateVisible = useStableCallback((date: string) => date >= period.start && date <= period.end);
   const stableSaveEditMeeting = useStableCallback((fields: MeetingQuickAddFields, nextLinkedFile: string) =>

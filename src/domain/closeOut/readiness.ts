@@ -1,5 +1,5 @@
 /**
- * Close-out readiness checklist (docs/dev/technical-design-project-close-out.md
+ * Close-out readiness checklist (docs/dev/history/technical-design-project-close-out.md
  * §5.3, severities in §11). Pure: every input is plain
  * data, so the same rules run in the wizard, in the Done step's row status
  * and in tests.

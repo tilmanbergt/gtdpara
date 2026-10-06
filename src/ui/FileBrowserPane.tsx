@@ -142,7 +142,7 @@ import {errorMessage} from '../utils/errorMessage';
 const COLUMN_WIDTH_PX = 678;
 
 /**
- * Entry row height (docs/dev/technical-design-pagination-fixed-height.md
+ * Entry row height (docs/dev/history/technical-design-pagination-fixed-height.md
  * §3.8, §2.2): entries are capped with `numberOfLines`, so a long
  * folder/file name can't wrap past what the page budget assumed. Mirrors
  * ui/TaskRow.tsx's/ui/MeetingRow.tsx's `taskRowLines`/`meetingRowLines`
@@ -354,7 +354,7 @@ export default function FileBrowserPane({
   const [openError, setOpenError] = useState<string | null>(null);
   useErrorStatus('FileBrowserPane.openError', openError, () => setOpenError(null));
 
-  // Armed pick -> central status slot (docs/dev/technical-design-status-slot.md
+  // Armed pick -> central status slot (docs/dev/history/technical-design-status-slot.md
   // §7.2). Cleared automatically when disarmed or when this pane unmounts
   // (e.g. on a tab switch, which also drops the arm state itself).
   const armingStatusId = useRef(`files.arming.${++nextPaneInstance}`).current;
@@ -613,7 +613,7 @@ export default function FileBrowserPane({
         </View>
       ) : null}
       {/* Breadcrumb + "‹ Up" + pagination arrows form one PagedSection
-          header (docs/dev/technical-design-pagination-fixed-height.md §3.8).
+          header (docs/dev/history/technical-design-pagination-fixed-height.md §3.8).
           "‹ Up" is a nested pressable <Text>, same pattern ui/TaskRow.tsx's
           tappable tag spans use, since it has to live inside PagedSection's
           own header <Text> (see that component's `header` doc comment on why

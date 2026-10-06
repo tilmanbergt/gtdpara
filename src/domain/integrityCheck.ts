@@ -1,5 +1,5 @@
 /**
- * Integrity Check (docs/dev/technical-design-integrity-check.md) - domain layer
+ * Integrity Check (docs/dev/history/technical-design-integrity-check.md) - domain layer
  * for a Settings > Folders action that scans every Project/Area/Archive/
  * Inbox data file for known problems and reports what it finds. Built as a
  * small registry (INTEGRITY_CHECKS) so adding a check means writing one more

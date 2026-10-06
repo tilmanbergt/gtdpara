@@ -1,5 +1,5 @@
 /**
- * The private part of a mark (docs/dev/technical-design-lasso-0.8.md §3.3):
+ * The private part of a mark (docs/dev/history/technical-design-lasso-0.8.md §3.3):
  * `<private>/data/marks/<id>/picture.png` and `mark.json` (strokes, page,
  * rect, sizes, text-box text). Not user content and not visible in the file
  * manager; the user-visible part is the `## Marks` line

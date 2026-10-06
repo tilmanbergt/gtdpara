@@ -1185,7 +1185,7 @@ function Main {
 
     # Step 1b (gtdpara): stamp version, build number, stage and git commit into
     # src/generated/ BEFORE bundling, so the JS bundle carries them
-    # (docs/dev/technical-design-versioning-release.md 3.5).
+    # (docs/dev/history/technical-design-versioning-release.md 3.5).
     Write-ColorOutput '=== Step 1b: Stamp build info ===' 'Blue'
     & node (Join-Path $projectRoot 'scripts\gen-bundled-content.mjs') --build --stage $Stage
     if ($LASTEXITCODE -ne 0) {
@@ -1209,7 +1209,7 @@ function Main {
         Write-ColorOutput 'Detected root directory PluginConfig.json file already exists, skipping generation step' 'Yellow'
         # gtdpara: versionCode is no longer bumped here. The root file stays
         # unchanged by builds; step 6b writes versionName/versionCode into the
-        # packaged copy only (docs/dev/technical-design-versioning-release.md 3.2).
+        # packaged copy only (docs/dev/history/technical-design-versioning-release.md 3.2).
     } else {
         # Step 4: Generate random string as pluginID
         Write-ColorOutput '=== Step 4: Generate random pluginID ===' 'Blue'

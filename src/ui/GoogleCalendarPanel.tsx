@@ -7,7 +7,7 @@
  * The fetch always covers today..+30 days (storage/googleCalendarCache.ts);
  * this component only narrows that down for *display* via `maxDays` - the
  * shared cache itself is never re-fetched with a different window per
- * caller. `dateRange` (docs/dev/technical-design-weekly-view.md §5) is an
+ * caller. `dateRange` (docs/dev/history/technical-design-weekly-view.md §5) is an
  * optional inclusive `{start, end}` window for screens/WeekView.tsx's Google
  * mini-tab, since `maxDays` can only express "today .. +N days". When given,
  * it wins over `maxDays`; a caller passes exactly one of the two.
@@ -28,7 +28,7 @@
  * out already-copied (checkmarked) events. Defaults to hiding, so the list
  * opens showing just what's left to copy. Local state, reset on every mount.
  *
- * Layout (docs/dev/technical-design-pagination-fixed-height.md §3.3): the
+ * Layout (docs/dev/history/technical-design-pagination-fixed-height.md §3.3): the
  * list is one `ui/PagedSection.tsx` - `header` is the resolved range via
  * `formatDateRangeHeader`, `subHeader` is the Refresh (with "last updated"
  * in its label)/Show-existing row. Callers pass a pixel `viewportHeight`.
@@ -79,7 +79,7 @@ import MarkWrap from './status/StatusMark';
 import {usePerfRender} from '../utils/perf';
 
 /** Single-line event row - the same 37 dp as a 1-line meeting row
- * (docs/dev/technical-design-meeting-lists.md §2.3, step 8): paddingVertical 7 x 2
+ * (docs/dev/history/technical-design-meeting-lists.md §2.3, step 8): paddingVertical 7 x 2
  * + one 22 dp line, the same time column width and wording
  * (domain/meetingDisplay.ts's meetingTimeCell), so the Google tab and the
  * Meetings tab next to it read as the same list. */
@@ -98,14 +98,14 @@ export const GOOGLE_SUBHEADER_ROW_PX = 24;
 export const GOOGLE_COPY_FOOTER_BASELINE_PX = 26;
 
 interface Props {
-  /** When true, a copied event becomes a Month highlight (`#monthly`) right away - the Month view's Google tabs (docs/dev/technical-design-monthly-view.md). */
+  /** When true, a copied event becomes a Month highlight (`#monthly`) right away - the Month view's Google tabs (docs/dev/history/technical-design-monthly-view.md). */
   copyAsHighlight?: boolean;
   /** How many of the shared 30-day cache's events to actually show, counting from today: 2 (Daily), 7 (Review), 30 (Project/Area/Inbox). Ignored when `dateRange` is provided - see this file's module doc comment. */
   maxDays?: number;
-  /** An explicit, inclusive YYYY-MM-DD display window - screens/WeekView.tsx's own Google mini-tab (docs/dev/technical-design-weekly-view.md §5), which needs an arbitrary start point `maxDays` can't express. Wins over `maxDays`; every other caller omits this. */
+  /** An explicit, inclusive YYYY-MM-DD display window - screens/WeekView.tsx's own Google mini-tab (docs/dev/history/technical-design-weekly-view.md §5), which needs an arbitrary start point `maxDays` can't express. Wins over `maxDays`; every other caller omits this. */
   dateRange?: {start: string; end: string};
-  /** Fixed pixel height for the event-list box (docs/technical-
-   * design-pagination-fixed-height.md §3.3). Tunable per caller, since this
+  /** Fixed pixel height for the event-list box (
+   * docs/dev/history/technical-design-pagination-fixed-height.md §3.3). Tunable per caller, since this
    * component is reused across screens whose available space differs.
    *
    * Omit it when this component is the sole occupant of a bounded flex:1 box
@@ -168,8 +168,8 @@ export default function GoogleCalendarPanel({
   const [events, setEvents] = useState<GoogleCalendarEvent[]>(() => getGoogleCalendarCache()?.events ?? []);
   const [error, setError] = useState<string | undefined>(() => getGoogleCalendarCache()?.error);
   // A failed refresh -> central status slot + ⚠ on the Refresh link; the
-  // events from the last successful fetch stay listed (docs/technical-
-  // design-status-slot.md §7.5).
+  // events from the last successful fetch stay listed (
+  // docs/dev/history/technical-design-status-slot.md §7.5).
   useErrorStatus('calendar.refresh', error ? `Google Calendar refresh failed: ${error}` : null, () => setError(undefined));
   // Distinct from `events.length === 0` - that's also true before anything
   // has ever been fetched this session, and the two need different copy
@@ -274,9 +274,9 @@ export default function GoogleCalendarPanel({
   // below) since none of it is a hook and it's cheap even when icsUrl is
   // unset - keeps the `!icsUrl` early return simple.
   const copiedKeys = new Set([...alreadyCopiedKeys(items, inboxMeetings), ...justCopiedKeys]);
-  // Paginated (docs/dev/technical-design-pagination-edit-reuse.md §2/§4) - this
+  // Paginated (docs/dev/history/technical-design-pagination-edit-reuse.md §2/§4) - this
   // panel is shared across Daily, Review's week-ahead, Project/Area/Inbox's
-  // own Calendar tab and Week (docs/dev/technical-design-weekly-view.md §5),
+  // own Calendar tab and Week (docs/dev/history/technical-design-weekly-view.md §5),
   // so without pagination a wide window could scroll indefinitely.
   // Computed/called unconditionally, before the `!icsUrl` early return below,
   // since hooks can't follow a conditional return. `dateRange` wins over

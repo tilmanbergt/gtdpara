@@ -1,7 +1,7 @@
 # Spike: Project close-out review + archive PDF
 
 Status: spike code written 2026-09-28, not yet run on the device.
-Next after the spike: UX mockups, then `technical-design-project-archive-review.md`.
+Next after the spike: UX mockups, then `technical-design-project-close-out.md`.
 
 ## 1. Requirements decided (chat 2026-09-28)
 

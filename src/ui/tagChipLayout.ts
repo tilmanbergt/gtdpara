@@ -90,7 +90,7 @@ type RowWidths = {row: number | null; lead: number; attach: number};
 
 /**
  * Last measured widths per `cacheKey` (e.g. "daily:task"), kept for the
- * whole JS session (docs/dev/technical-design-render-perf-ab.md §3 A2). A widget
+ * whole JS session (docs/dev/history/technical-design-render-perf-ab.md §3 A2). A widget
  * mounted again on the same screen starts from these, so the measurements
  * that follow match and cause no re-render and no extra e-ink refresh.
  */

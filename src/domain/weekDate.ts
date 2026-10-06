@@ -1,5 +1,5 @@
 /**
- * Date/week helpers for the Week view (docs/dev/technical-design-weekly-view.md
+ * Date/week helpers for the Week view (docs/dev/history/technical-design-weekly-view.md
  * §2) - the ISO-8601 (Monday-start, Thursday-of-the-week-decides-the-year)
  * week-numbering rules, plus the plain "Monday..Sunday of this week"
  * range helper WeekView.tsx needs for its meetings/focus queries. Pure, zero
@@ -37,7 +37,7 @@ export function isoWeekOf(now: Date = new Date()): {year: number; week: number} 
   return {year: isoYear, week};
 }
 
-/** "YYYY-Www" key for `now`'s ISO week (e.g. "2026-W37") - the format V2's per-week goal storage keys goals by (docs/dev/technical-design-weekly-view.md §12), and what WeekView.tsx's header displays. Zero-padded to 2 digits, per ISO-8601. */
+/** "YYYY-Www" key for `now`'s ISO week (e.g. "2026-W37") - the format V2's per-week goal storage keys goals by (docs/dev/history/technical-design-weekly-view.md §12), and what WeekView.tsx's header displays. Zero-padded to 2 digits, per ISO-8601. */
 export function isoWeekKey(now: Date = new Date()): string {
   const {year, week} = isoWeekOf(now);
   return `${year}-W${String(week).padStart(2, '0')}`;
@@ -46,7 +46,7 @@ export function isoWeekKey(now: Date = new Date()): string {
 /**
  * Whole ISO weeks between two week keys (`b` minus `a` - positive when `b`
  * is later), for `ItemGoalRow`'s "(Week NN, N weeks ago)" phrasing
- * (docs/dev/technical-design-review-master-detail.md §4.2) -
+ * (docs/dev/history/technical-design-review-master-detail.md §4.2) -
  * finds each key's own week-1 Monday (same jan4DayNum/week1Monday
  * construction `isoWeekOf` above already uses to go the other direction,
  * year+week -> date), then diffs in whole weeks. Pure, no wall-clock read -

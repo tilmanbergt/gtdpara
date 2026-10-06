@@ -1,5 +1,5 @@
 /**
- * Fixed-height progress bar (docs/dev/technical-design-project-close-out.md
+ * Fixed-height progress bar (docs/dev/history/technical-design-project-close-out.md
  * §8.1): a bordered box with a black fill. The caller decides how often to
  * repaint - on e-ink every refresh flashes, so callers throttle updates
  * (the close-out PDF step refreshes at most about once a second).

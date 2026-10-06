@@ -1,7 +1,7 @@
 # Technical design — unified meeting lists
 
 Status: **technical design, 2026-09-29** — steps 1–6 implemented 2026-09-29 (see §9), steps 7–10 open.
-Requirements: `docs/dev/design-meeting-lists.md` (inventory, use cases) plus the decisions below. UI draft: design canvas
+Requirements: `docs/dev/history/design-meeting-lists.md` (inventory, use cases) plus the decisions below. UI draft: design canvas
 "gtdpara Meeting Lists — unified components" (calibrated at 1 dp = 1.41 px).
 
 ---

@@ -1,5 +1,5 @@
 /**
- * In-app help (docs/dev/technical-design-in-app-help.md §3.3): an opaque
+ * In-app help (docs/dev/history/technical-design-in-app-help.md §3.3): an opaque
  * layer over the tab body (App.tsx renders it inside StatusFrame, so the
  * TabBar and the status slot stay visible and the tab screens stay mounted
  * underneath). Left: Overview + the groups/pages of docs/user/index.md;

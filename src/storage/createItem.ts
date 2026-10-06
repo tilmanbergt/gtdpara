@@ -2,7 +2,7 @@
  * Creates a brand-new Project or Area: an empty folder under the configured
  * Projects/Areas root plus its data file, scaffolded like any other fresh
  * project.txt/area.txt (domain/markdown.ts's ensureSkeleton) - `status: active`,
- * empty Scope/Tasks/Meetings sections (docs/dev/technical-design-item-scope.md -
+ * empty Scope/Tasks/Meetings sections (docs/dev/history/technical-design-item-scope.md -
  * Scope is there to type into from Obsidian before the app touches the file),
  * no further fields. Backs the "Create Project"/"Create Area" row on
  * screens/ItemsList.tsx's Projects/Areas tabs.
@@ -11,7 +11,7 @@
  * folder-lifecycle action) - a single function ItemsList.tsx calls, not
  * spread across dataCache.ts/projectFile.ts.
  *
- * Abbreviation (docs/dev/technical-design-project-area-abbreviations.md):
+ * Abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md):
  * a brand-new item gets its default abbrev assigned right here,
  * via dataCache.ts's assignDefaultAbbrevIfMissing - not left for the next
  * full rebuild's migrateMissingAbbrevs pass to fill in, since that could be
@@ -48,14 +48,14 @@ export async function createItem(
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Enter a name.');
   // The shared file name rule (domain/fileName.ts, D2 of
-  // docs/dev/technical-design-cleanup-0.5.md): reject rather than silently
+  // docs/dev/history/technical-design-cleanup-0.5.md): reject rather than silently
   // rename - the folder gets exactly the name the user typed, or none.
   const invalid = invalidFileNameChars(trimmed);
   if (invalid.length > 0) throw new Error(`A name can't contain ${invalid.map(c => `"${c}"`).join(', ')}.`);
 
   const paths = resolvePaths(settings);
   const root = kind === 'project' ? paths.projects : paths.areas;
-  // The Inbox folder sits in Areas but is never an Area (docs/dev/technical-design-inbox-as-area.md §3.2).
+  // The Inbox folder sits in Areas but is never an Area (docs/dev/history/technical-design-inbox-as-area.md §3.2).
   if (kind === 'area' && `${root}/${trimmed}`.toLowerCase() === paths.inboxFolder.toLowerCase()) {
     throw new Error('That name is used by the Inbox folder.');
   }

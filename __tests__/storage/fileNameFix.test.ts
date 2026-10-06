@@ -1,4 +1,4 @@
-/** applyFileNameFixes (docs/dev/technical-design-files-0.6.md §3.5). */
+/** applyFileNameFixes (docs/dev/history/technical-design-files-0.6.md §3.5). */
 const mockFiles = new Map<string, string>();
 const mockMoves: Array<[string, string]> = [];
 const mockFailMoveOf = new Set<string>();

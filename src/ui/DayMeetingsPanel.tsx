@@ -1,5 +1,5 @@
 /**
- * The shared day panel (docs/dev/technical-design-meeting-lists.md §2.6) - one
+ * The shared day panel (docs/dev/history/technical-design-meeting-lists.md §2.6) - one
  * day's meetings as the standard MeetingList, with a Google mini-tab, used by
  * Daily (tabs Today | Tomorrow | Google), and by Week and Month (tabs
  * Meetings (n) | Google plus a Close button). Replaces ui/MonthDayPanel.tsx.

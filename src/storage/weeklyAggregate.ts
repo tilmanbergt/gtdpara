@@ -24,7 +24,7 @@
  *   other meeting count in this codebase), but the meeting count isn't
  *   "open work remaining", just "how busy is this item this week".
  *
- * A third piece, `historicalGoals` (docs/dev/technical-design-weekly-goals.md),
+ * A third piece, `historicalGoals` (docs/dev/history/technical-design-weekly-goals.md),
  * is driven by `weekKey`: unlike `focusCards`, it's goal-driven rather
  * than focus-driven - every item (any kind, regardless of its *current*
  * weeklyFocus flag) that has a `## Weekly Goals` entry matching `weekKey`
@@ -48,7 +48,7 @@ export interface WeeklyMeetingEntry {
   /**
    * Set only for a multi-day meeting (`3d`): which covered day this entry
    * stands for. Such a meeting yields one entry per covered day in range
-   * (docs/dev/technical-design-monthly-view.md), each listed under
+   * (docs/dev/history/technical-design-monthly-view.md), each listed under
    * `span.date` with continuation arrows.
    */
   span?: MeetingSpanDay;
@@ -56,7 +56,7 @@ export interface WeeklyMeetingEntry {
 
 export {entryDate} from '../domain/meetingSpan';
 
-/** Kept as a name for the weekly callers - the card shape is shared with the Month view since docs/dev/technical-design-monthly-view.md §4.3. */
+/** Kept as a name for the weekly callers - the card shape is shared with the Month view since docs/dev/history/technical-design-monthly-view.md §4.3. */
 export type WeeklyFocusCardData = PeriodFocusCardData;
 
 /** One item that had a goal recorded for a specific week - see storage/periodGoals.ts's findGoalsForPeriod. */
@@ -128,7 +128,7 @@ function buildWeeklyAggregateImpl(
   return {meetings, focusCards, historicalGoals: findWeeklyGoalsForWeek(items, weekKey)};
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see buildWeeklyAggregateImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see buildWeeklyAggregateImpl above for the actual logic. */
 export function buildWeeklyAggregate(...args: Parameters<typeof buildWeeklyAggregateImpl>): ReturnType<typeof buildWeeklyAggregateImpl> {
   return perfTime('agg:weekly', () => buildWeeklyAggregateImpl(...args));
 }

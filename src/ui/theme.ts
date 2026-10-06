@@ -20,10 +20,10 @@ export const FONT = {
 
 /**
  * Colors used across two or more screens
- * (docs/dev/technical-design-style-cleanup.md). The light/dark pairs are
+ * (docs/dev/history/technical-design-style-cleanup.md). The light/dark pairs are
  * resolved by `useThemeColors()` below.
  *
- * `accent` is black (docs/dev/technical-design-pagination-grayscale-proposal.md
+ * `accent` is black (docs/dev/history/technical-design-pagination-grayscale-proposal.md
  * §2), not a color - the device is grayscale/e-ink only. It is a FILL/BORDER color
  * ONLY (chip/pill/button backgrounds, active-tab underline, editing-row
  * left border) - never apply it as a plain text `color`, since on this

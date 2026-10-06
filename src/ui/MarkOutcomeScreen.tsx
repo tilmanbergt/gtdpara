@@ -1,6 +1,6 @@
 /**
  * The small screen "Mark for later" opens only when something went wrong
- * (docs/dev/technical-design-lasso-0.8.md §3.6, screen design 1d). Success
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.6, screen design 1d). Success
  * opens nothing. Shown by App.tsx while storage/marks.ts holds an outcome;
  * OK clears it and closes gtdpara again, back to the note.
  */

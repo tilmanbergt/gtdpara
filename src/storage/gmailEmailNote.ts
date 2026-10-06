@@ -1,5 +1,5 @@
 /**
- * "Link email as note" (docs/dev/technical-design-gmail-email-note.md): writes an
+ * "Link email as note" (docs/dev/history/technical-design-gmail-email-note.md): writes an
  * email's Subject/From/Date header plus its full text into a multi-page .note
  * under `<Resources>/Gmail/<date> <subject>.note` and hands back the
  * base-relative `linkedFile` string for the Task/Meeting. A .note rather

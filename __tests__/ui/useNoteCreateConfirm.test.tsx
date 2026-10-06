@@ -1,4 +1,4 @@
-// docs/dev/technical-design-split-by-tag.md §3.5: the status-slot confirm hook.
+// docs/dev/history/technical-design-split-by-tag.md §3.5: the status-slot confirm hook.
 
 jest.mock('../../src/supernote/fileSystem', () => ({
   displayPath: (p: string) => p.replace(/^\/storage\/emulated\/0\//, ''),

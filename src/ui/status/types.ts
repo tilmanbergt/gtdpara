@@ -1,5 +1,5 @@
 /**
- * Central status slot - message model (docs/dev/technical-design-status-slot.md §3).
+ * Central status slot - message model (docs/dev/history/technical-design-status-slot.md §3).
  *
  * One fixed-height strip under the TabBar (and at the top of focus mode)
  * shows every user-facing message: pick ("armed") states, confirms,

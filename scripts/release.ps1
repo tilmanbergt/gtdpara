@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Builds and publishes a gtdpara release.
-  Design: docs/dev/technical-design-versioning-release.md (3.6); checklist: docs/dev/RELEASING.md
+  Design: docs/dev/history/technical-design-versioning-release.md (3.6); checklist: docs/dev/RELEASING.md
 
 .EXAMPLE
   ./scripts/release.ps1                         # releases package.json's nextVersion (e.g. 0.9.0)

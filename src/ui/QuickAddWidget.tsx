@@ -22,10 +22,10 @@
  *                  chips out for a "Waiting on" field in this same row,
  *                  rather than growing a fifth row for it.
  *   R4 Actions   - create styles: "+ Add" right (status texts go to the
- *                  central status slot, docs/dev/technical-design-status-slot.md)
+ *                  central status slot, docs/dev/history/technical-design-status-slot.md)
  *                  (relabels to "+ Add to <Name>" and creates there directly
  *                  when a recognized abbreviation #tag is typed -
- *                  docs/dev/technical-design-abbrev-quick-file.md).
+ *                  docs/dev/history/technical-design-abbrev-quick-file.md).
  *                  edit styles: trash icon (delete) + Refile (Refile only
  *                  when the caller passes onRefile - storage/inboxFiling.ts's
  *                  module doc comment §7) on the left, Cancel + Save on
@@ -54,7 +54,7 @@
  * off that object reference would reseed - and clobber whatever the user
  * just typed - on every unrelated re-render while an edit is open.
  *
- * Direct switches (docs/dev/technical-design-meeting-lists.md §10): tapping
+ * Direct switches (docs/dev/history/technical-design-meeting-lists.md §10): tapping
  * another row while an edit is open switches to it. A screen passes
  * `editTargetKey` (a stable id of the target, e.g. "meeting:/p#3"); when it
  * changes while editing, the fields reload from the new target. Before the
@@ -156,7 +156,7 @@ export interface MeetingQuickAddFields {
   date: string;
   /** Already normalized (HH:mm, zero-padded) or '' - see validateMeetingFields. */
   time: string;
-  /** HH:mm end or '' (docs/dev/technical-design-monthly-view.md §2.3) - parsed from the same time field ("15-16.30"). */
+  /** HH:mm end or '' (docs/dev/history/technical-design-monthly-view.md §2.3) - parsed from the same time field ("15-16.30"). */
   endTime: string;
   /** Whole days of a date-only meeting ("3d"), 1 for a timed one. A blank time field saves as 1 day. */
   days: number;
@@ -186,7 +186,7 @@ interface MeetingDraft {
   date: string;
   /** The time field's raw text - "15", "15-16.30", "3d" or '' (= 1d); parsed on submit by validateMeetingFields. */
   time: string;
-  /** The "M" toggle (docs/dev/technical-design-monthly-view.md §5.1) - composed into the title as `#monthly` on submit, never shown in the title field. */
+  /** The "M" toggle (docs/dev/history/technical-design-monthly-view.md §5.1) - composed into the title as `#monthly` on submit, never shown in the title field. */
   monthly: boolean;
 }
 
@@ -264,7 +264,7 @@ export type QuickFilePayload =
   | {kind: 'task'; text: string; linkedFile: string}
   | {kind: 'meeting'; fields: MeetingQuickAddFields; linkedFile: string};
 
-/** Which Save button of the capture variant was pressed (docs/dev/technical-design-lasso-0.8.md §3.9). */
+/** Which Save button of the capture variant was pressed (docs/dev/history/technical-design-lasso-0.8.md §3.9). */
 export type CaptureSaveMode = 'next' | 'view' | 'close';
 
 /**
@@ -286,7 +286,7 @@ export interface CaptureSeed {
 
 interface Props {
   /**
-   * 'capture' (docs/dev/technical-design-lasso-0.8.md §3.9): the wide panel of
+   * 'capture' (docs/dev/history/technical-design-lasso-0.8.md §3.9): the wide panel of
    * the lasso capture / marks screen - multi-line text or one row per item
    * (Split lines), flow chips without the paged tag row, Save & next / view /
    * close right under the input, then tag and "File to" chips in wrapped rows
@@ -306,11 +306,11 @@ interface Props {
   /**
    * Optional id of the screen slot this widget sits in (e.g. 'daily',
    * 'current') - its tag-row widths are remembered under it, so a revisit
-   * needs no re-measure render (docs/dev/technical-design-render-perf-ab.md §3
+   * needs no re-measure render (docs/dev/history/technical-design-render-perf-ab.md §3
    * A2). Omitted: widths are measured fresh on every mount.
    */
   layoutKey?: string;
-  /** Every add/edit goes to this one destination - no picker is ever shown (docs/dev/technical-design-filing-unification.md §7). */
+  /** Every add/edit goes to this one destination - no picker is ever shown (docs/dev/history/technical-design-filing-unification.md §7). */
   fixedDestination: Destination;
   /** Default false. When true, row 1 still renders both tabs (uniform shape everywhere), but Meeting is permanently greyed and non-interactive. */
   taskOnly?: boolean;
@@ -325,7 +325,7 @@ interface Props {
    * just-added meeting, the status-slot success message says where it went - `Added meeting "Team
    * sync" - next week` / `- tomorrow` / `- 09/28` (domain/dateLabel.ts) - so an
    * Add that legitimately lands off-screen is never mistaken for a lost one
-   * (docs/dev/technical-design-cache-subscription-and-shared-add-path.md §C).
+   * (docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md §C).
    * Omit on screens that list every meeting anyway (Inbox, Project/Area,
    * Review): no suffix, message unchanged.
    */
@@ -348,7 +348,7 @@ interface Props {
    */
   editTargetKey?: string | null;
   /**
-   * Save-then-switch (docs/dev/technical-design-meeting-lists.md §10): the
+   * Save-then-switch (docs/dev/history/technical-design-meeting-lists.md §10): the
    * widget puts a `flush()` here that saves pending edits of the current
    * target (only when something changed) and resolves whether the screen
    * may move on. ui/useEditFlush.ts wraps a screen's "start editing another
@@ -416,7 +416,7 @@ interface Props {
   /**
    * One-shot "put this text into the create draft" request (Gmail inbox
    * review: selected email text -> Todo/Meeting, see
-   * docs/dev/technical-design-gmail-body-select.md). Acts exactly when `nonce`
+   * docs/dev/history/technical-design-gmail-body-select.md). Acts exactly when `nonce`
    * changes (a fresh `{...}` object with the SAME nonce does nothing, so a
    * caller can hold it in state without it re-firing on every re-render):
    * switches to the Todo or Meeting tab and APPENDS `text` to that draft's
@@ -487,7 +487,7 @@ function QuickAddWidget({
     );
   }, [initialDate, initialMonthly]);
   const [noteDraft, setNoteDraft] = useState<NoteDraft>(makeNoteDraft);
-  // ---- capture variant (docs/dev/technical-design-lasso-0.8.md §3.9) ----
+  // ---- capture variant (docs/dev/history/technical-design-lasso-0.8.md §3.9) ----
   const isCapture = variant === 'capture';
   // One row per item while "Split lines" is on; null = one item in taskDraft.text.
   const [splitRows, setSplitRows] = useState<string[] | null>(null);
@@ -546,7 +546,7 @@ function QuickAddWidget({
   const [pending, setPending] = useState(false);
   // Validation/save error, plus which field it's about (drives the in-place
   // ⚠ mark; null = the Add/Save button gets it). The text itself goes to
-  // the central status slot (docs/dev/technical-design-status-slot.md §7.3).
+  // the central status slot (docs/dev/history/technical-design-status-slot.md §7.3).
   const [errorState, setErrorState] = useState<{text: string; field: QuickAddField | null} | null>(null);
   const error = errorState?.text ?? null;
   const setError = (text: string | null, field: QuickAddField | null = null) =>
@@ -935,7 +935,7 @@ function QuickAddWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  // Kept tab hidden (docs/dev/technical-design-keep-tabs-alive.md §4.1, D2):
+  // Kept tab hidden (docs/dev/history/technical-design-keep-tabs-alive.md §4.1, D2):
   // same as leaving the tab - save what changed, then close the
   // edit. If the save fails, the edit stays open and its error shows when
   // the tab is shown again. Drafts of new items are left as they are (D3).
@@ -1223,7 +1223,7 @@ function QuickAddWidget({
         <Text style={[styles.iconButtonText, {color: textColor}]}>📅</Text>
       </Pressable>
     );
-  // ---- Capture: Split lines (docs/dev/technical-design-lasso-0.8.md §3.5, §3.9) ----
+  // ---- Capture: Split lines (docs/dev/history/technical-design-lasso-0.8.md §3.5, §3.9) ----
   // One editable row per item, each removable; more than SPLIT_ROWS_PER_PAGE
   // rows page with ‹ › instead of scrolling. Chips apply to every row.
   function toggleSplit() {
@@ -1720,7 +1720,7 @@ function QuickAddWidget({
     </View>
   );
 
-  // ---- Abbreviation quick-file (docs/dev/technical-design-abbrev-quick-file.md) ----
+  // ---- Abbreviation quick-file (docs/dev/history/technical-design-abbrev-quick-file.md) ----
   // The one Project/Area a recognized #tag in the CURRENT field's text
   // resolves to, or null - see domain/abbrev.ts's resolveAbbrevFileTarget
   // for the match/status-filter/self-exclude rules. Deliberately derived
@@ -1812,7 +1812,7 @@ function QuickAddWidget({
   // ---- Row 4: Actions ----
   // Row 4 has no status text: errors, the "blocked" warning and the success
   // messages go to the central status slot
-  // (docs/dev/technical-design-status-slot.md §7.3); only a ⚠/✓ mark stays in
+  // (docs/dev/history/technical-design-status-slot.md §7.3); only a ⚠/✓ mark stays in
   // place (on the field concerned, or on the Add/Save button), in edit mode
   // as well as create mode.
   const justAdded = displayType === 'task' ? taskJustAdded : displayType === 'meeting' ? meetingJustAdded : noteJustAdded;
@@ -1841,7 +1841,7 @@ function QuickAddWidget({
 
   const buttonMark = errorState && errorState.field === null ? ('warning' as const) : successText ? ('success' as const) : null;
 
-  // ---- Capture: save, buttons, chips (docs/dev/technical-design-lasso-0.8.md §3.9) ----
+  // ---- Capture: save, buttons, chips (docs/dev/history/technical-design-lasso-0.8.md §3.9) ----
   const captureItems = (): string[] =>
     (splitRows ?? [taskDraft.text]).map(t => t.trim()).filter(t => t.length > 0);
   // A typed #ABBR in any item wins over the "File to" choice, as in Quick Add.
@@ -2246,7 +2246,7 @@ const styles = StyleSheet.create({
   /** Meeting Row 3's time field, sized to leave room for TagChips alongside it (see meetingRow3's own comment). */
   timeInputCompact: {
     fontSize: FONT.small,
-    // 110 wide (docs/dev/technical-design-monthly-view.md §5.1): the field
+    // 110 wide (docs/dev/history/technical-design-monthly-view.md §5.1): the field
     // also takes a range/length - "15:00-16:30" must fit.
     width: 110,
     marginRight: 6,
@@ -2370,7 +2370,7 @@ const styles = StyleSheet.create({
 });
 
 /**
- * Memoized (docs/dev/technical-design-render-perf-ab.md §3 B2): re-renders only
+ * Memoized (docs/dev/history/technical-design-render-perf-ab.md §3 B2): re-renders only
  * when its props change. Call sites pass stable callbacks
  * (ui/useStableCallback.ts); an unstable prop somewhere only means the memo
  * doesn't skip there, never a stale render.

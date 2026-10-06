@@ -151,7 +151,7 @@ bothers on device).
 - possibly further literal call sites of `isFocused`/`destinationCandidates`
   found by tsc
 - `docs/dev/design-overview.md` - §2.13 Review (Focus reset, Unfocused next),
-  Daily filter rule; `docs/dev/technical-design-daily-todo-filter.md` note.
+  Daily filter rule; `docs/dev/history/technical-design-daily-todo-filter.md` note.
 
 ## 6. Verification
 Syntax/tsc check in a cloud scratch project with stubs; commit, re-stage and

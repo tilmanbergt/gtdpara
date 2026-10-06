@@ -1,4 +1,4 @@
-// docs/dev/technical-design-lasso-0.8.md §3.7: page links, open-mark collection, recognition order.
+// docs/dev/history/technical-design-lasso-0.8.md §3.7: page links, open-mark collection, recognition order.
 jest.mock('../../src/storage/marks', () => ({recognizeMark: jest.fn()}));
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 

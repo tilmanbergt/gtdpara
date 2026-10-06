@@ -1,6 +1,6 @@
 /**
  * The single shared position/font control for a note-creation definition's
- * pieces (docs/dev/technical-design-note-templates.md §6): shown once below
+ * pieces (docs/dev/history/technical-design-note-templates.md §6): shown once below
  * the preview, acting on whichever piece `selectedPiece` points at
  * (selected on the preview or in the list below) - not repeated per piece row.
  *
@@ -8,7 +8,7 @@
  * rather than baked into screens/Settings.tsx, so other piece kinds (design
  * doc §4) can use the same controls.
  *
- * Max-width ± control (docs/dev/technical-design-textbox-metrics.md): same
+ * Max-width ± control (docs/dev/history/technical-design-textbox-metrics.md): same
  * shape as the Font ± control above it, fixed ±25 step, independent of the
  * x/y STEPS toggle. screens/Settings.tsx resolves `piece.maxWidthPx` via
  * domain/tagRules.ts's `pieceMaxWidthPx` before passing it down here, so
@@ -28,7 +28,7 @@ interface SelectedPiece {
    * number here even though domain/tagRules.ts's NotePiece.maxWidthPx
    * itself is optional (screens/Settings.tsx resolves it via
    * `pieceMaxWidthPx` before handing the piece to this component, same as
-   * every other field here). docs/dev/technical-design-textbox-metrics.md.
+   * every other field here). docs/dev/history/technical-design-textbox-metrics.md.
    */
   maxWidthPx: number;
 }

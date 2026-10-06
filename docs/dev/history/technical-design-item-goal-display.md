@@ -1,6 +1,6 @@
 # Technical design: weekly goal on the Project/Area detail page
 
-2026-09-13. Follows `docs/dev/technical-design-weekly-goals.md` (V2, weekly
+2026-09-13. Follows `docs/dev/history/technical-design-weekly-goals.md` (V2, weekly
 goals on the Week tab, implemented same day). This is a new consumer of
 that same data - no data-model change.
 

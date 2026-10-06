@@ -68,7 +68,7 @@ export async function getRecentTags(limit = MAX_TAGS): Promise<string[]> {
  * first), or null if none has completed yet this session. Lets
  * ui/QuickAddWidget.tsx start with the right chips instead of rendering
  * once empty and again when the async read lands
- * (docs/dev/technical-design-render-perf-ab.md §3 A1).
+ * (docs/dev/history/technical-design-render-perf-ab.md §3 A1).
  */
 export function getRecentTagsSync(limit = MAX_TAGS): string[] | null {
   return lastKnownRecent ? lastKnownRecent.slice(0, limit) : null;
@@ -76,7 +76,7 @@ export function getRecentTagsSync(limit = MAX_TAGS): string[] | null {
 
 let lastKnownRecent: string[] | null = null;
 
-// Recent tags are per profile (docs/dev/technical-design-profiles-demo-space.md §3.3).
+// Recent tags are per profile (docs/dev/history/technical-design-profiles-demo-space.md §3.3).
 onActiveProfileChange(() => {
   lastKnownRecent = null;
 });

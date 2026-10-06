@@ -1,5 +1,5 @@
 /**
- * Opens the marks screen from anywhere (docs/dev/technical-design-lasso-0.8.md
+ * Opens the marks screen from anywhere (docs/dev/history/technical-design-lasso-0.8.md
  * §3.10): App registers its handler once; the Inbox, Current, Review and
  * close-out cards call `openMarks`. A module-level hand-off instead of a
  * prop through every screen, because the cards sit deep inside kept screens

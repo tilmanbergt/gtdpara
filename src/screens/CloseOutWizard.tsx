@@ -1,5 +1,5 @@
 /**
- * The project close-out wizard (docs/dev/technical-design-project-close-out.md
+ * The project close-out wizard (docs/dev/history/technical-design-project-close-out.md
  * §8; mockups: Claude Design canvas "gtdpara Project Close-out Wizard").
  * Full close-out: Checklist → Contents → Outcomes → PDF → Archive. Quick
  * archive: Checklist → Archive (no PDF, no outcome moves).
@@ -101,7 +101,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
   useErrorStatus('CloseOutWizard.actionError', actionError, () => setActionError(null));
   const [pdfRun, setPdfRun] = useState<PdfRunState>(IDLE_PDF);
   const [archiveRun, setArchiveRun] = useState<ArchiveRunState>(IDLE_ARCHIVE);
-  // Run errors -> central status slot (docs/dev/technical-design-status-slot.md §7.4).
+  // Run errors -> central status slot (docs/dev/history/technical-design-status-slot.md §7.4).
   useErrorStatus('closeOut.pdf', pdfRun.error, () => setPdfRun(prev => ({...prev, error: null})));
   useErrorStatus('closeOut.archive', archiveRun.error, () => setArchiveRun(prev => ({...prev, error: null})));
   const settingsRef = useRef<GtdParaSettings | null>(null);
@@ -246,7 +246,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
 
   // ---- step 4: PDF ----
   // Replacing an existing PDF is announced and confirmed first
-  // (docs/dev/technical-design-inkhub-submission.md §3.4/§3.8).
+  // (docs/dev/history/technical-design-inkhub-submission.md §3.4/§3.8).
   const [replaceConfirm, setReplaceConfirm] = useState<string | null>(null);
   useStatus(
     'CloseOutWizard.replacePdf',

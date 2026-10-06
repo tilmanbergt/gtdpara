@@ -1,4 +1,4 @@
-// docs/dev/technical-design-lasso-0.8.md §3.9: QuickAddWidget variant="capture".
+// docs/dev/history/technical-design-lasso-0.8.md §3.9: QuickAddWidget variant="capture".
 jest.mock('react-native-svg', () => {
   const ReactLib = require('react');
   const stub = (props: object) => ReactLib.createElement('Svg', props);

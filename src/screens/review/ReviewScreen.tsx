@@ -1,5 +1,5 @@
 /**
- * Weekly Review (docs/dev/technical-design-review-hub.md): a hub listing
+ * Weekly Review (docs/dev/history/technical-design-review-hub.md): a hub listing
  * every step with how much is waiting in it and when it was last reviewed
  * (ui/ReviewHub.tsx), and the steps themselves (steps/, one component each,
  * listed in domain/reviewSteps.ts). Each step walks through one place where

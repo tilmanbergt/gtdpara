@@ -1,5 +1,5 @@
 /**
- * storage/marks.ts createMarkFromLasso (docs/dev/technical-design-lasso-0.8.md
+ * storage/marks.ts createMarkFromLasso (docs/dev/history/technical-design-lasso-0.8.md
  * §3.6): the `## Marks` line is the commit point; a failure there takes the
  * icon and the data back.
  */

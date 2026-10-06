@@ -28,7 +28,7 @@ export const CONTEXT_TABS: MiniTabDef<NoteContext>[] = [
   {key: 'meeting', label: 'Meeting'},
 ];
 
-/** Todo/Meeting-only (docs/dev/technical-design-shared-note-pages.md §6): whether this rule's notes each get their own file ('own', the default) or land as pages inside one shared file per Project/Area ('shared'). */
+/** Todo/Meeting-only (docs/dev/history/technical-design-shared-note-pages.md §6): whether this rule's notes each get their own file ('own', the default) or land as pages inside one shared file per Project/Area ('shared'). */
 const NOTE_TARGET_TABS: MiniTabDef<NoteTarget>[] = [
   {key: 'own', label: 'Own file'},
   {key: 'shared', label: 'Shared file'},
@@ -54,7 +54,7 @@ const PIECE_ROW_HEIGHT = 40;
 /**
  * The example line under "Shared file name": what the rule's template
  * produces for an item tagged `#<tag>/client` today, in the chosen location
- * (docs/dev/technical-design-split-by-tag.md §3.6) - same rendering and
+ * (docs/dev/history/technical-design-split-by-tag.md §3.6) - same rendering and
  * sanitizing as storage/meetingNoteContent.ts's real file name.
  */
 function sharedFilePreview(definition: TagRule): string {
@@ -116,7 +116,7 @@ export default function TagRuleEditor({
               // renderPieceText has no meeting-only source for it there).
               // A NEW rule whose pieces are still the untouched default
               // stack is re-seeded with the new context's defaults
-              // instead (docs/dev/technical-design-linked-file-piece.md
+              // instead (docs/dev/history/technical-design-linked-file-piece.md
               // §4.1); once the user edited pieces, they're kept.
               const pieces =
                 editingDefIndex === null && hasUntouchedDefaultPieces(draftDef)
@@ -124,7 +124,7 @@ export default function TagRuleEditor({
                   : draftDef.pieces.filter(p => PIECE_CONTEXTS[p.type].includes(context));
               // Prep/review tracking is meeting-only (domain/meetingTracking.ts) -
               // dropped along with the pieces that don't apply.
-              // Note target (docs/dev/technical-design-shared-note-pages.md §6)
+              // Note target (docs/dev/history/technical-design-shared-note-pages.md §6)
               // only applies to Todo/Meeting rules - reset back to 'own'
               // (and its shared-file fields cleared) leaving Project/Area
               // so a hidden 'shared' choice can't resurface confusingly
@@ -167,7 +167,7 @@ export default function TagRuleEditor({
               onPress={() => updateDraftDef({enabled: !draftDef.enabled})}
               textColor={textColor}
             />
-            {/* Meeting rules only (docs/dev/technical-design-meeting-tracking.md) -
+            {/* Meeting rules only (docs/dev/history/technical-design-meeting-tracking.md) -
                 one side-by-side row to keep the left column's piece list as
                 tall as possible. Both default off, so a rule tracks nothing
                 until switched on here. */}
@@ -191,7 +191,7 @@ export default function TagRuleEditor({
             )}
           </View>
 
-          {/* Todo/Meeting-only (docs/dev/technical-design-shared-note-pages.md
+          {/* Todo/Meeting-only (docs/dev/history/technical-design-shared-note-pages.md
               §6) - whether this rule's notes land in their own file
               (the default) or as pages inside one shared file per
               Project/Area. Absent for Project/Area rules, which have no
@@ -221,7 +221,7 @@ export default function TagRuleEditor({
                       handleRef={sharedFileNameInputRef}
                     />
                   </View>
-                  {/* Placeholder chips + example (docs/dev/technical-design-split-by-tag.md §3.6). */}
+                  {/* Placeholder chips + example (docs/dev/history/technical-design-split-by-tag.md §3.6). */}
                   <View style={styles.placeholderChipRow}>
                     {SHARED_FILE_NAME_PLACEHOLDERS.map(placeholder => (
                       <Pressable

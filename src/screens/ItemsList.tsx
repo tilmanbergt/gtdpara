@@ -1,6 +1,6 @@
 /**
  * ItemsList — Projects/Areas top-level tabs (App.tsx). Two-column layout
- * (docs/dev/technical-design-pagination-fixed-height.md §3.5): left column
+ * (docs/dev/history/technical-design-pagination-fixed-height.md §3.5): left column
  * "Active" (its own `PagedSection`), right column split top/bottom into
  * "On Hold" and "Done — awaiting review" (Projects), or just "On Hold"
  * alone filling the whole right column (Areas — matches `groupByStatus`'s
@@ -19,7 +19,7 @@
  *
  * No heading or refresh button of its own. If no cache exists yet when it
  * mounts, it builds one; otherwise "Reload all files" in Settings → Advanced
- * re-reads everything (docs/dev/technical-design-cleanup-0.5.md S8).
+ * re-reads everything (docs/dev/history/technical-design-cleanup-0.5.md S8).
  *
  * Grouped by status (technical-design-status-archive.md §7): Active, then
  * On Hold, then - Projects only - "Done — awaiting review". Within Active,
@@ -44,7 +44,7 @@
  * (docs/dev/design-device-rendering.md §6's method), a starting point to
  * tune on the device. It is used by the Areas tab's lone "On Hold" box; the
  * Projects tab's right column splits On Hold/Done by an equal 1:1 `flex`
- * weight instead (docs/dev/technical-design-flex-weight-stacking.md §3.2) -
+ * weight instead (docs/dev/history/technical-design-flex-weight-stacking.md §3.2) -
  * see `columnRight`'s own render comment.
  */
 import React, {useCallback, useEffect, useRef, useState} from 'react';
@@ -84,12 +84,12 @@ const CREATE_PLACEHOLDER: Record<'project' | 'area', string> = {
 
 // Two-column width (COLUMN_WIDTH_PX) and row-sizing helpers
 // (itemEntryHeight/itemEntryLines) live in ui/itemEntryRow.ts
-// (docs/dev/technical-design-review-master-detail.md) so Review's
+// (docs/dev/history/technical-design-review-master-detail.md) so Review's
 // master-detail left lists can render rows with identical sizing/display
 // logic instead of a second copy.
 
 // The Projects/Areas tabs show each entry's abbreviation and give rows a bit
-// more room than Review's lists (docs/dev/technical-design-waiting-for-0.7.md
+// more room than Review's lists (docs/dev/history/technical-design-waiting-for-0.7.md
 // P1/P2: 8 px padding instead of 6, 38 px instead of 34 per one-line row,
 // against wrong taps). ENTRY_PADDING_PX and styles.entryRow must match.
 const ENTRY_PADDING_PX = 8;
@@ -167,7 +167,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
   const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   const [cache, setCache] = useState<DataCache | null>(() => getCachedData());
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.1):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.1):
   // this screen holds a snapshot of the cache from mount - pick up whatever
   // changed while hidden (rebuild on reopen, status changes, new items),
   // re-rendering only if the cache version moved.

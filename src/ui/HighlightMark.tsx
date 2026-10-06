@@ -1,6 +1,6 @@
 /**
  * The small "M" box that marks a meeting as a Month highlight (`#monthly`,
- * docs/dev/technical-design-monthly-view.md §5.1/§5.2). ONE component so the
+ * docs/dev/history/technical-design-monthly-view.md §5.1/§5.2). ONE component so the
  * places it appears always look alike:
  * - `variant="row"`: a small filled, non-tappable mark in front of a meeting
  *   row's time in every meeting list (ui/MeetingRow.tsx).

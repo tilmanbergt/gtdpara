@@ -1,7 +1,7 @@
 /**
  * The ONE implementation of "create a Task/Meeting and put it somewhere" and
  * "change one existing Task/Meeting wherever it lives" that every screen
- * shares (docs/dev/technical-design-cache-subscription-and-shared-add-path.md
+ * shares (docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md
  * §B), so Daily, Week, Review, Inbox, Project and Capture build the same
  * Task/Meeting objects and take the same "Inbox file or cached Project/Area
  * item?" branch instead of separate copies that drift apart.
@@ -37,7 +37,7 @@ export interface MutationResult {
   nextInbox: ProjectFileState | null;
 }
 
-/** The fields ui/QuickAddWidget.tsx's `MeetingQuickAddFields` carries (declared here structurally so storage/ never imports from ui/). `endTime`/`days` are the meeting's length (docs/dev/technical-design-monthly-view.md §2.3) - optional so a caller building a meeting from just title/date/time gets "no end" / 1 day. */
+/** The fields ui/QuickAddWidget.tsx's `MeetingQuickAddFields` carries (declared here structurally so storage/ never imports from ui/). `endTime`/`days` are the meeting's length (docs/dev/history/technical-design-monthly-view.md §2.3) - optional so a caller building a meeting from just title/date/time gets "no end" / 1 day. */
 export interface MeetingInput {
   title: string;
   date: string;

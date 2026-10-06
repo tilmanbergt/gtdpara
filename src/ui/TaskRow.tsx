@@ -2,9 +2,9 @@
  * One task row - checkbox, tap-to-edit, labels after the title
  * (ui/TaskLabels.tsx, domain/taskLabels.ts), note-link (📓/+📓), a linked-file clip, and an optional "File" action.
  * The single task row shared by Daily's Open-tasks, ProjectDataPanel's Todos,
- * Review's Inbox-to-zero and the Inbox tab (docs/dev/technical-design-inbox-tab.md §1).
+ * Review's Inbox-to-zero and the Inbox tab (docs/dev/history/technical-design-inbox-tab.md §1).
  *
- * Editing (docs/dev/technical-design-pagination-edit-reuse.md §5): this row
+ * Editing (docs/dev/history/technical-design-pagination-edit-reuse.md §5): this row
  * renders no edit form of its own. `isEditing` only highlights the row - the
  * caller renders ui/TaskQuickAdd.tsx in its `editingTask` mode, in its own
  * fixed slot elsewhere on screen, to actually edit the task. This keeps every
@@ -46,7 +46,7 @@
  * carrying its own onPress, same mechanism the `#next`/`#now` label's
  * double-tap (ui/TaskLabels.tsx) relies on.
  *
- * Title and labels are ONE <Text> (docs/dev/technical-design-waiting-for-0.7.md
+ * Title and labels are ONE <Text> (docs/dev/history/technical-design-waiting-for-0.7.md
  * §3.3): what's drawn (title, then labels as nested spans) and the height a
  * caller reserves both come from ui/taskRowLayout.ts's `taskRowLayout`, so a
  * label can't wrap onto a line the row doesn't have.
@@ -67,7 +67,7 @@ import {perfCount} from '../utils/perf';
 export type TaskBadgeContext = TaskLabelContext;
 
 /**
- * Row-height prediction (docs/dev/technical-design-pagination-fixed-height.md
+ * Row-height prediction (docs/dev/history/technical-design-pagination-fixed-height.md
  * §2.2) - a caller building a ui/PagedSection.tsx computes `taskRowHeight`
  * per task to sum toward its viewport, then passes the SAME task/
  * columnWidthPx/context here as this row's `height`/`numberOfLines` props, so
@@ -128,7 +128,7 @@ interface Props {
   onOpenLinkedFile?: (linkedFile: string) => void;
   /** Only passed by callers that support starting a link from this row (Current tab, Inbox) - its absence (Daily, Review) is what makes the clip read-only there. */
   onArmLink?: () => void;
-  /** Double-tapping the `#next`/`#now` label flips #now (ui/TaskLabels.tsx, docs/dev/technical-design-now-focus-mode.md §3). Only passed where that's meaningful (Daily, both normal and focus mode); without it the label doesn't react to touch. */
+  /** Double-tapping the `#next`/`#now` label flips #now (ui/TaskLabels.tsx, docs/dev/history/technical-design-now-focus-mode.md §3). Only passed where that's meaningful (Daily, both normal and focus mode); without it the label doesn't react to touch. */
   onToggleNow?: () => void;
   /** The active Daily context filter tag, if any - a matching tag segment renders filled/selected. Only meaningful together with onToggleContext (see the module doc comment); pass null (not omit) when Daily's context is off but rows should still render tags as tappable-but-unselected. */
   contextTag?: string | null;
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     // Reserves space for up to 2 lines of text + badges regardless of
     // content length, so every row in a paginated page is the same height
-    // (docs/dev/technical-design-pagination-edit-reuse.md §3). Only the floor
+    // (docs/dev/history/technical-design-pagination-edit-reuse.md §3). Only the floor
     // for callers that don't pass an explicit `height` - an explicit
     // `height` prop overrides this via its own paired `minHeight`, see
     // that prop's doc comment.

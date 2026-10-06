@@ -31,7 +31,7 @@ type FocusCountSetting =
   | 'monthlyFocusAreaCount';
 
 /**
- * One row of config per focus level (docs/dev/technical-design-monthly-view.md
+ * One row of config per focus level (docs/dev/history/technical-design-monthly-view.md
  * §4.1) - the frontmatter flag, the two Settings slot counts, and the label
  * used in messages. Adding a level is one more row here, not another
  * branch in every function below.
@@ -95,7 +95,7 @@ export function focusBlockedReason(
  * the module doc comment, or use `toggleItemFocus` below, which does.
  *
  * Every other frontmatter field is carried through unchanged via
- * `frontMatterOf` (docs/dev/technical-design-monthly-view.md §2.1).
+ * `frontMatterOf` (docs/dev/history/technical-design-monthly-view.md §2.1).
  */
 export async function setItemFocus(
   item: Pick<CachedItem, 'kind' | 'path' | 'rawContent'> & FrontMatterSource,

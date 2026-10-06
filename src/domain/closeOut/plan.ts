@@ -1,7 +1,7 @@
 /**
  * The close-out plan - a project's in-progress close-out decisions,
  * persisted as a human-readable `## Close-out` section in its project.txt
- * (docs/dev/technical-design-project-close-out.md §4.2). Pure: parse, serialize
+ * (docs/dev/history/technical-design-project-close-out.md §4.2). Pure: parse, serialize
  * and small immutable edits; storage/closeOut/planStore.ts does the I/O.
  *
  * Only DEVIATIONS from the defaults are stored (a file added after a
@@ -243,7 +243,7 @@ export function archiveStarted(plan: CloseOutPlan): boolean {
 /**
  * An archive run that started but never reached its last op (`stamp`) - the
  * project may be half moved (Integrity Check "closeOutInterrupted",
- * docs/dev/technical-design-files-0.6.md §3.6). Opening its close-out resumes it.
+ * docs/dev/history/technical-design-files-0.6.md §3.6). Opening its close-out resumes it.
  */
 export function closeOutInterrupted(plan: CloseOutPlan): boolean {
   return archiveStarted(plan) && !isJournalDone(plan, 'stamp');

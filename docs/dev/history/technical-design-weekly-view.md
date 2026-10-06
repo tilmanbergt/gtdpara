@@ -222,7 +222,7 @@ function WeeklyFocusCard({item, nextCount, somedayCount, meetingCount, onOpenIte
 Following the file's own established convention (one named, hand-tuned constant per screen/section, never computed from a setting, retuned on-device later):
 
 ```ts
-/** Weekly view's meetings column, per-weekday slot (docs/dev/technical-design-weekly-view.md §4) - a day with more than this many meetings pages internally rather than growing its slot or scrolling the page. Starting point, same on-device-tuning convention as every constant here. */
+/** Weekly view's meetings column, per-weekday slot (docs/dev/history/technical-design-weekly-view.md §4) - a day with more than this many meetings pages internally rather than growing its slot or scrolling the page. Starting point, same on-device-tuning convention as every constant here. */
 weeklyDayMeetings: 3,
 /** Weekly view's Google Calendar mini-tab (§5) - independent of every other googleCalendar* constant, same "one shared component, per-screen density" reasoning as those. */
 googleCalendarWeekly: 14,

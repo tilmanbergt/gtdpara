@@ -4,9 +4,9 @@
 Project/Area from creation, not lazily appended — see "Section placement
 in the file" below). New feature — no existing data model to extend, but follows
 the same span-scoped content pattern `## Weekly Goals`
-(`docs/dev/technical-design-weekly-goals.md`) already established, and sits
+(`docs/dev/history/technical-design-weekly-goals.md`) already established, and sits
 directly above `ui/ItemFocusPanel.tsx`'s existing Focus/goal block
-(`docs/dev/technical-design-item-goal-display.md`, 2026-09-13).
+(`docs/dev/history/technical-design-item-goal-display.md`, 2026-09-13).
 
 ## Requirement (clarified in chat, 2026-09-14)
 

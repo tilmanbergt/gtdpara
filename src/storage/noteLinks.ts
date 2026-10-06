@@ -118,7 +118,7 @@ export async function createLinkedNote(
   tags: string[],
   /** The final file name (with ".note"), when the caller already picked it - storage/meetingNoteContent.ts plans the name first so the confirm text shows the real one (technical-design-split-by-tag.md §3.5). */
   plannedFileName?: string,
-  /** Page-1 keywords (the item's free tags, docs/dev/technical-design-cleanup-0.5.md S7) - see insertNoteKeywords. */
+  /** Page-1 keywords (the item's free tags, docs/dev/history/technical-design-cleanup-0.5.md S7) - see insertNoteKeywords. */
   keywords: readonly string[] = [],
 ): Promise<string> {
   const folderPath = `${itemPath.replace(/\/+$/, '')}/${subfolder}`;
@@ -138,7 +138,7 @@ export async function createLinkedNote(
 
 /**
  * Adds `keywords` to page 1 of a just-created note, so the Supernote's
- * keyword search finds it (docs/dev/technical-design-cleanup-0.5.md S7). A
+ * keyword search finds it (docs/dev/history/technical-design-cleanup-0.5.md S7). A
  * keyword that can't be added is logged and skipped - the note itself
  * exists and works without it, so this never fails the note creation.
  */
@@ -162,7 +162,7 @@ export async function insertNoteKeywords(absolutePath: string, keywords: readonl
  * as an absolute path and used as-is; anything else resolves relative to
  * itemPath.
  *
- * A shared-note anchor (docs/dev/technical-design-shared-note-pages.md §2.2,
+ * A shared-note anchor (docs/dev/history/technical-design-shared-note-pages.md §2.2,
  * `"relativePath#keyword"` via `parseSharedNoteAnchor`) resolves by its
  * `filePath` half only - the keyword only matters for finding the right
  * *page* once the file is open (§4/§6).
@@ -198,7 +198,7 @@ export type NotePathClass =
 
 /**
  * Decides whether a stored notePath is an own note or a shared-note anchor,
- * and whether its file exists (docs/dev/technical-design-split-by-tag.md
+ * and whether its file exists (docs/dev/history/technical-design-split-by-tag.md
  * §3.4) for storage/meetingNoteContent.ts's note planning. Same existence-verified
  * reading as `resolveNotePath`:
  * 1. Anchor-shaped and the anchor's file exists -> shared.

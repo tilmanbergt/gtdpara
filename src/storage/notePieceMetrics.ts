@@ -1,6 +1,6 @@
 /**
  * Turns "how wide can this piece be" + "what text goes in it" into an actual
- * content-fit textbox rect (docs/dev/technical-design-textbox-metrics.md §3.2).
+ * content-fit textbox rect (docs/dev/history/technical-design-textbox-metrics.md §3.2).
  * Not domain/ (domain/meetingNoteBlock.ts must stay RN/SDK-free, see its own
  * module doc comment) - this calls supernote/textboxMetrics.ts's
  * native-backed measureTextHeight, so it lives in storage/ like every other
@@ -70,7 +70,7 @@ export async function measureNotePieceRect(
 /**
  * Extra width a Supernote link element needs beyond its measured text, for
  * the link icon drawn in front of it - scales with the font, since the icon
- * does. A first guess (docs/dev/technical-design-linked-file-piece.md §5),
+ * does. A first guess (docs/dev/history/technical-design-linked-file-piece.md §5),
  * to be calibrated on the device like CONTENT_FIT_PADDING_PX.
  */
 export const LINK_ICON_WIDTH_FACTOR = 1.2;

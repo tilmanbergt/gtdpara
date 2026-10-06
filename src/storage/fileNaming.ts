@@ -1,6 +1,6 @@
 /**
  * Collision-free file names inside an existing folder
- * (docs/dev/technical-design-gmail-email-note.md 3.6) - the one shared loop
+ * (docs/dev/history/technical-design-gmail-email-note.md 3.6) - the one shared loop
  * used by storage/noteLinks.ts's createLinkedNote and
  * storage/gmailAttachments.ts's collisionFreeFileName.
  */

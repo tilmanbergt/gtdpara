@@ -1,5 +1,5 @@
 /**
- * "Mark for later" - the pure part (docs/dev/technical-design-lasso-0.8.md
+ * "Mark for later" - the pure part (docs/dev/history/technical-design-lasso-0.8.md
  * §3.1-§3.2, §3.8, §3.10): the `## Marks` line format, mark ids, which
  * project/area/Inbox owns a mark, icon geometry, the shifted copy of the
  * stored strokes that recognition uses (§2.1), and the

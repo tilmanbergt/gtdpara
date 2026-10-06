@@ -106,4 +106,4 @@ Props: `{error: string; onRetry: () => void; textColor: string}`. Both screens' 
 
 A short before/after summary (duplicate lines removed, files touched) plus an explicit ask for Tilman to smoke-test the Daily and Review tabs on-device before authorizing the same treatment for the rest of the app (`ProjectDataPanel.tsx`, `InboxScreen.tsx`, etc., and the shared `ui/` components carrying their own `ACCENT` copies).
 
-This mirrors how past multi-file passes in this project were sequenced — see `docs/dev/technical-design-pagination-edit-reuse.md` §7 for the precedent (shared primitive first, then one screen at a time, verification at each step, explicit device-test checkpoint before continuing).
+This mirrors how past multi-file passes in this project were sequenced — see `docs/dev/history/technical-design-pagination-edit-reuse.md` §7 for the precedent (shared primitive first, then one screen at a time, verification at each step, explicit device-test checkpoint before continuing).

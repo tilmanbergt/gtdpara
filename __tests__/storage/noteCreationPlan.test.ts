@@ -1,4 +1,4 @@
-// docs/dev/technical-design-split-by-tag.md §3.4 / §3.5: what a note-icon tap
+// docs/dev/history/technical-design-split-by-tag.md §3.4 / §3.5: what a note-icon tap
 // plans, what it asks to confirm, and that ✕ writes nothing. Device APIs are
 // replaced by an in-memory file list.
 

@@ -1,9 +1,9 @@
 /**
- * Inbox tab (docs/dev/technical-design-inbox-tab.md §2) - the fallback
+ * Inbox tab (docs/dev/history/technical-design-inbox-tab.md §2) - the fallback
  * destination for every task/meeting captured with no Project/Area.
  *
  * Layout (technical-design-linked-files.md §1/§8/§10.5;
- * docs/dev/technical-design-filing-unification.md §3): the same two-pane shape
+ * docs/dev/history/technical-design-filing-unification.md §3): the same two-pane shape
  * as screens/ItemDetail.tsx. The left pane is ui/FileBrowserPane.tsx with two
  * roots, `resources` and `browse` (a two-level, always-Active-only
  * Projects/Areas browser; see ui/FileBrowserPane.tsx's `sources` doc comment).
@@ -19,13 +19,13 @@
  * feeds the Files pane's roots and every storage/linkedFiles.ts call below.
  *
  * Every row is the shared ui/TaskRow.tsx/ui/MeetingRow.tsx
- * (docs/dev/technical-design-inbox-tab.md §1), so this screen adds no row
+ * (docs/dev/history/technical-design-inbox-tab.md §1), so this screen adds no row
  * markup of its own, just its handlers. Unlike Daily's Inbox-sourced rows,
  * every row here gets `onArmLink`. Filing (moving a row into a Project/Area)
  * has no row-level affordance: open the row for editing, then tap Refile in
  * QuickAddWidget's edit mode (storage/inboxFiling.ts's module doc comment).
  *
- * Scope is everything, unfiltered (docs/dev/technical-design-inbox-tab.md §2,
+ * Scope is everything, unfiltered (docs/dev/history/technical-design-inbox-tab.md §2,
  * requirement 4): every open task regardless of flow-state or due date.
  * Tasks are grouped by flow-state (domain/flowState.ts's
  * groupTasksByFlowState) with a "Hide done tasks" toggle
@@ -44,7 +44,7 @@
  * quick-file go through storage/entryMove.ts's moveTask/moveMeeting.
  *
  * Linked file / filing / one arm target (technical-design-linked-files.md
- * §8; docs/dev/technical-design-filing-unification.md §3): one `armTarget`
+ * §8; docs/dev/history/technical-design-filing-unification.md §3): one `armTarget`
  * with an `intent` ('link' | 'file') drives either action. This screen owns
  * both sections, so `editTarget`/`armTarget` (only one of each across the
  * whole screen) are plain state here instead of being reported up the way
@@ -62,23 +62,23 @@
  * become identical - the link either resolves under Resources or not at all,
  * and the returned folderPath/fileName are relative to `paths.resources`.
  *
- * Google Calendar tab (docs/dev/technical-design-google-calendar.md §9):
+ * Google Calendar tab (docs/dev/history/technical-design-google-calendar.md §9):
  * inside the Meetings section as a <MiniTabs> (ui/MiniTabs.tsx), "Google"
  * being the shared ui/GoogleCalendarPanel.tsx at `maxDays={30}`,
  * self-measuring its height.
  *
- * Pagination + edit reuse (docs/dev/technical-design-pagination-edit-reuse.md
+ * Pagination + edit reuse (docs/dev/history/technical-design-pagination-edit-reuse.md
  * §2/§4/§5): both sections page (ui/PagedSection.tsx/ui/pagination.ts's
- * `usePagedByHeight`, docs/technical-design-pagination-fixed-height.md §3.4)
+ * `usePagedByHeight`, docs/dev/history/technical-design-pagination-fixed-height.md §3.4)
  * instead of scrolling, flattening their grouping (flow-state for Tasks,
  * Upcoming/Past for Meetings) into one paginated sequence with group headers
  * as in-sequence rows - same pattern as DailyView/ProjectDataPanel.
  *
- * Flex-weight stacking (docs/dev/technical-design-flex-weight-stacking.md
+ * Flex-weight stacking (docs/dev/history/technical-design-flex-weight-stacking.md
  * §3.4): `rightPane`'s Tasks/Meetings stack is an 8:6 `flex`-weighted split
  * of `styles.stackedColumn`, each section self-measuring into its weighted
  * box. Editing switches the shared ui/QuickAddWidget.tsx
- * (docs/dev/technical-design-unified-quickadd.md; one widget above both
+ * (docs/dev/history/technical-design-unified-quickadd.md; one widget above both
  * sections) into its `editingTask`/`editingMeeting` mode instead of an
  * inline row form.
  */
@@ -137,7 +137,7 @@ import {useCachedInbox} from '../ui/useCachedInbox';
 // and its not-yet-verified-on-device caveat, which applies here too.
 const COLUMN_WIDTH_PX = 678;
 
-// Flex weights (docs/dev/technical-design-flex-weight-stacking.md §3.4) - see
+// Flex weights (docs/dev/history/technical-design-flex-weight-stacking.md §3.4) - see
 // screens/ProjectDataPanel.tsx's TODOS_WEIGHT/MEETINGS_WEIGHT comment for the
 // reasoning. 8:6 is the requested ratio here, not the simplified 4:3.
 const TASKS_WEIGHT = 8;
@@ -149,7 +149,7 @@ const MEETINGS_WEIGHT = 6;
 const SUBHEADING_ROW_PX = 30;
 
 interface Props {
-  /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
+  /** Switches to Settings' Calendar sub-tab (docs/dev/history/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** The Files pane's Browse tab - plain-browsing a top-level Project/Area entry there jumps the whole app to it (App.tsx's `openItem`), same as opening one from the Projects/Areas tabs or screens/ReviewScreen.tsx's cards. Optional so this screen still type-checks without it; Browse's navigate behavior is then a no-op, not a crash. */
   onOpenItem?: (kind: 'project' | 'area', entry: FolderEntry) => void;
@@ -166,7 +166,7 @@ const MEETINGS_MAIN_TABS: MiniTabDef<MeetingsMainTab>[] = [
 /** The one edit target for this whole screen (technical-design-linked-files.md §8) - see the module doc comment's "Linked file / filing / one arm target" note. */
 type EditTarget = {type: 'task' | 'meeting'; index: number};
 
-/** The one arm target for this whole screen - extends EditTarget with which action armed it (docs/dev/technical-design-filing-unification.md §3.2). */
+/** The one arm target for this whole screen - extends EditTarget with which action armed it (docs/dev/history/technical-design-filing-unification.md §3.2). */
 type ArmTarget = {type: 'task' | 'meeting'; index: number; intent: 'link' | 'file'};
 
 const inboxSource = (inboxPath: string): EntrySource => ({kind: 'inbox', path: inboxPath});
@@ -198,11 +198,11 @@ export default function InboxScreen({
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
   const [hideDone, setHideDone] = useState(false);
-  // Meetings/Google mini-tab (docs/dev/technical-design-google-calendar.md §9) -
+  // Meetings/Google mini-tab (docs/dev/history/technical-design-google-calendar.md §9) -
   // same pattern as DailyView's calendarMainTab, inside the Meetings section.
   const [mainTabState, setMainTab] = useState<MeetingsMainTab>('meetings');
   // The Google tab only while the experimental Google Calendar integration
-  // is on (docs/dev/technical-design-about-debug-experimental.md §3.2).
+  // is on (docs/dev/history/technical-design-about-debug-experimental.md §3.2).
   const features = useFeatures();
   const mainTabs = visibleTabs(MEETINGS_MAIN_TABS, mainTabState, 'google', features.googleCalendar);
   const mainTab = mainTabs.activeKey;
@@ -226,8 +226,8 @@ export default function InboxScreen({
 
   const tasksAction = useActionError('InboxScreen.tasksActionError', 'InboxScreen: task action failed');
   const meetingsAction = useActionError('InboxScreen.meetingsActionError', 'InboxScreen: meeting action failed');
-  // QuickAddWidget's add/edit/delete error surface (docs/technical-
-  // design-unified-quickadd.md §6/§10 step 2) - one widget covers both types,
+  // QuickAddWidget's add/edit/delete error surface (
+  // docs/dev/history/technical-design-unified-quickadd.md §6/§10 step 2) - one widget covers both types,
   // so its failures get one shared error line. tasksActionError/
   // meetingsActionError cover the per-type row-level actions (toggle done,
   // create/open note, file).
@@ -313,8 +313,8 @@ export default function InboxScreen({
   const armFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
 
   /**
-   * QuickAddWidget's add/edit/delete error surface (docs/technical-
-   * design-unified-quickadd.md §6/§10 step 2) - like runTaskAction/
+   * QuickAddWidget's add/edit/delete error surface (
+   * docs/dev/history/technical-design-unified-quickadd.md §6/§10 step 2) - like runTaskAction/
    * runMeetingAction above, it catches and surfaces the error rather than
    * rethrowing. Shared by commitTaskEdit/commitMeetingEdit/
    * handleDeleteEditForWidget below since one widget serves both types.
@@ -348,7 +348,7 @@ export default function InboxScreen({
   };
 
   /**
-   * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §6/§9):
+   * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md §6/§9):
    * creates or opens the task's note via `openOrCreateTodoNote`.
    * `options.forceOwnTarget: true` - Inbox items have no Project/Area to
    * anchor a shared file to (§9), so this always keeps the own-note
@@ -491,7 +491,7 @@ export default function InboxScreen({
     });
   };
 
-  /** The row's prep/review checkpoint icon (docs/dev/technical-design-meeting-tracking.md) - flips the tag on the current copy via saveInboxMeetings, then an explicit e-ink flush for the direct tap. */
+  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag on the current copy via saveInboxMeetings, then an explicit e-ink flush for the direct tap. */
   const handleToggleMeetingTracking = (meetingIndex: number, kind: MeetingTrackingKind) => {
     runMeetingAction(async () => {
       await saveInboxMeetings(meetings => toggleMeetingTrackingAt(meetings, meetingIndex, kind));
@@ -670,7 +670,7 @@ export default function InboxScreen({
 
   // Active-only, same entryFilter area-assignment uses
   // (technical-design-project-area-assignment.md §4.2) - also used for
-  // filing (docs/dev/technical-design-filing-unification.md §3.1) and for
+  // filing (docs/dev/history/technical-design-filing-unification.md §3.1) and for
   // Browse's per-category listings. Only the top-level Projects/Areas
   // management tabs show everything.
   const activeOnly = (entry: FolderEntry) => findCachedItem(entry.path)?.status === 'active';
@@ -696,8 +696,8 @@ export default function InboxScreen({
       ]
     : [];
 
-  // Flattened into one paginated sequence per section (docs/technical-
-  // design-pagination-edit-reuse.md §2/§4) - group headers count as content
+  // Flattened into one paginated sequence per section (
+  // docs/dev/history/technical-design-pagination-edit-reuse.md §2/§4) - group headers count as content
   // rows, same rule DailyView/ProjectDataPanel follow.
   type TaskFlatRow = {kind: 'header'; rowKey: string; label: string} | {kind: 'entry'; rowKey: string; task: Task; index: number};
   const taskFlatRows: TaskFlatRow[] = taskGroups.flatMap(group => [
@@ -745,7 +745,7 @@ export default function InboxScreen({
 
           <View style={styles.rightPane}>
             {/* Lives above both stacked sections, not nested under either
-                (docs/dev/technical-design-unified-quickadd.md §3/§8) - it isn't
+                (docs/dev/history/technical-design-unified-quickadd.md §3/§8) - it isn't
                 Tasks- or Meetings-exclusive, so it doesn't belong under
                 either section's own heading. */}
             <QuickAddWidget
@@ -787,7 +787,7 @@ export default function InboxScreen({
               )}
 
               {/* "Tasks" heading and page controls live in one PagedSection
-                  (docs/dev/technical-design-pagination-fixed-height.md §3.4,
+                  (docs/dev/history/technical-design-pagination-fixed-height.md §3.4,
                   same as screens/ProjectDataPanel.tsx's TodosSection); the
                   "Inbox is at zero" text is its `emptyHint`. */}
               <PagedSection
@@ -926,7 +926,7 @@ const styles = StyleSheet.create({
   rightPane: {
     flex: 1,
   },
-  // Bounded flex:1 column (docs/dev/technical-design-flex-weight-stacking.md
+  // Bounded flex:1 column (docs/dev/history/technical-design-flex-weight-stacking.md
   // §3.4) - splits its real available height 8:6 between the Tasks/Meetings
   // stackedSections via the weighted `<View style={{flex: TASKS_WEIGHT}}>`/
   // `{flex: MEETINGS_WEIGHT}}` boxes wrapping them in this screen's render,

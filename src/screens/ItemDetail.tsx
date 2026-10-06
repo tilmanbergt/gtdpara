@@ -51,11 +51,11 @@
  * scoped to the project/area root.
  * Left pane, pinned to the very TOP: ui/ItemFocusPanel.tsx - the
  * Daily/Weekly focus checkboxes plus the weekly-goal line
- * (docs/dev/technical-design-item-goal-display.md). It is its own component
+ * (docs/dev/history/technical-design-item-goal-display.md). It is its own component
  * because it sits on the opposite side of Files from Status/Archive.
  *
  * Left pane, pinned to the very bottom: ui/ItemStatusPanel.tsx - Status +
- * Archive + Assign to Area (docs/dev/technical-design-inbox-tab.md §4);
+ * Archive + Assign to Area (docs/dev/history/technical-design-inbox-tab.md §4);
  * `onArchived` is sourced from there. `styles.filesArea` wraps the Files
  * title/error/FileBrowserPane in its own `flex: 1` box so this panel always
  * sits flush at the bottom of the left pane regardless of how few or many
@@ -143,11 +143,11 @@ interface Props {
   path: string;
   /** Called once ui/ItemStatusPanel.tsx's Archive action has actually moved this item's folder - App.tsx navigates away, since `path` then points at nothing under Projects/Areas. */
   onArchived?: (kind: 'project' | 'area') => void;
-  /** Threaded straight through to ProjectDataPanel's MeetingsSection (docs/dev/technical-design-google-calendar.md §9) - switches to Settings' Calendar sub-tab from the Google mini-tab's empty state. */
+  /** Threaded straight through to ProjectDataPanel's MeetingsSection (docs/dev/history/technical-design-google-calendar.md §9) - switches to Settings' Calendar sub-tab from the Google mini-tab's empty state. */
   onOpenCalendarSettings?: () => void;
   /** The Files pane's Browse tab (see the module doc comment's "browse" note) - plain-browsing a top-level Project/Area entry there swaps the "Current" tab to that item, via the same App.tsx `openItem` the Projects/Areas tabs open one with. */
   onOpenItem?: (kind: 'project' | 'area', entry: FolderEntry) => void;
-  /** Projects: opens the close-out wizard from the status panel's "Close out…" (docs/dev/technical-design-project-close-out.md §6.2). */
+  /** Projects: opens the close-out wizard from the status panel's "Close out…" (docs/dev/history/technical-design-project-close-out.md §6.2). */
   onStartCloseOut?: (projectPath: string) => void;
 }
 
@@ -161,7 +161,7 @@ interface ResourceFolderState {
   frontMatterExtraLines: string[];
   defaultResourceFolder: string | null;
   area: string | null;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - carried through unchanged on every write here, same reason `area`/`defaultResourceFolder` already are (see storage/projectFile.ts's saveFrontMatter doc comment), and the value the header's AbbrevPill below reads/edits directly. */
+  /** This item's short abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md), or null - carried through unchanged on every write here, same reason `area`/`defaultResourceFolder` already are (see storage/projectFile.ts's saveFrontMatter doc comment), and the value the header's AbbrevPill below reads/edits directly. */
   abbrev: string | null;
 }
 
@@ -217,7 +217,7 @@ export default function ItemDetail({
     };
   }, [kind, name, path]);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.3):
   // re-derive quietly if this item's file changed while hidden.
   useOnScreenShow(() => {
     const item = findCachedItem(path);
@@ -323,8 +323,8 @@ export default function ItemDetail({
   const assignedArea = kind === 'project' ? resourceFolderState?.area ?? null : null;
 
   // Active-only, same entryFilter every other destination picker in the app
-  // uses (technical-design-project-area-assignment.md §4.2, docs/technical-
-  // design-filing-unification.md §3.1) - shared here by Browse's own
+  // uses (technical-design-project-area-assignment.md §4.2,
+  // docs/dev/history/technical-design-filing-unification.md §3.1) - shared here by Browse's own
   // `sources` below.
   const activeOnly = (entry: FolderEntry) => findCachedItem(entry.path)?.status === 'active';
 
@@ -580,7 +580,7 @@ function AbbrevPill({
   };
 
   // Validation (live) or save error -> central status slot, ⚠ on the field
-  // (docs/dev/technical-design-status-slot.md §7.4).
+  // (docs/dev/history/technical-design-status-slot.md §7.4).
   const shownError = editing ? liveError ?? saveError : null;
   useErrorStatus('ItemDetail.abbrev', shownError, !liveError && saveError ? () => setSaveError(null) : undefined);
 

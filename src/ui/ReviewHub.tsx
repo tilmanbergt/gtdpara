@@ -1,5 +1,5 @@
 /**
- * Weekly Review hub and end page (docs/dev/technical-design-review-hub.md §5) -
+ * Weekly Review hub and end page (docs/dev/history/technical-design-review-hub.md §5) -
  * presentational only: everything comes in as props (the persisted
  * per-step records, the live per-step counts, "now"), nothing is loaded or
  * written here. Kept out of screens/ReviewScreen.tsx so that (already very

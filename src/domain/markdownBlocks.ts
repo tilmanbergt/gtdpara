@@ -1,7 +1,7 @@
 /**
  * Parses the small markdown subset used by CHANGELOG.md and the user docs
  * into blocks the app can render and page (ui/MarkdownBlocks.tsx;
- * docs/dev/technical-design-about-debug-experimental.md §3.5).
+ * docs/dev/history/technical-design-about-debug-experimental.md §3.5).
  *
  * Supported: `#`-`######` headings, `-`/`*`/`1.` list items (one nesting
  * level; wrapped continuation lines join the item), paragraphs,

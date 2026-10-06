@@ -1,6 +1,6 @@
 /**
  * The in-place half of "mark in place, text in the slot"
- * (docs/dev/technical-design-status-slot.md §6, D3/D9).
+ * (docs/dev/history/technical-design-status-slot.md §6, D3/D9).
  *
  * `<MarkWrap mark=...>` wraps one control (a field, a button) and, when
  * `mark` is set, draws a small ⚠ or ✓ badge on its top-right corner. The

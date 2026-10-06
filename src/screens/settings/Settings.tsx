@@ -60,7 +60,7 @@ type Result = {kind: 'success' | 'warning' | 'error'; text: string};
 interface Props {
   /** Which sub-tab to land on when this screen mounts (read once). */
   initialTab?: SettingsTab;
-  /** Switches the active profile (App.tsx resets and remounts the app) - docs/dev/technical-design-profiles-demo-space.md. */
+  /** Switches the active profile (App.tsx resets and remounts the app) - docs/dev/history/technical-design-profiles-demo-space.md. */
   onSwitchProfile?: (id: string) => Promise<void>;
 }
 

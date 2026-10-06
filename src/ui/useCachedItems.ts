@@ -29,7 +29,7 @@ export function useCachedItems(): CachedItem[] {
   const [, setTick] = useState(0);
   const version = getCacheVersion();
   const cache = getCachedData();
-  // Kept tabs (docs/dev/technical-design-keep-tabs-alive.md §5.1): while this
+  // Kept tabs (docs/dev/history/technical-design-keep-tabs-alive.md §5.1): while this
   // component's tab is hidden, cache changes don't re-render it; when it is
   // shown again it re-renders once, and only if the cache changed meanwhile.
   const activity = useScreenActivity();

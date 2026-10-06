@@ -52,7 +52,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
   const [templatesView, setTemplatesView] = useState<'list' | 'edit' | 'edit-template' | 'edit-piece'>('list');
   const [editingDefIndex, setEditingDefIndex] = useState<number | null>(null);
   const [draftDef, setDraftDef] = useState<TagRule | null>(null);
-  /** The "Shared file name" field - its placeholder chips insert at its cursor (docs/dev/technical-design-split-by-tag.md §3.6). */
+  /** The "Shared file name" field - its placeholder chips insert at its cursor (docs/dev/history/technical-design-split-by-tag.md §3.6). */
   const sharedFileNameInputRef = useRef<ClipboardTextInputHandle>(null);
   const [draftTagsText, setDraftTagsText] = useState('');
   const [selectedPieceIndex, setSelectedPieceIndex] = useState<number | null>(null);
@@ -291,7 +291,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     }
   };
 
-  /** Deletes the selected text from the rule. A text that is placed takes its piece with it, so that needs confirming (nothing else on this tab confirms - this is the one delete that also removes something from the page): a confirm in the central status slot, or a second tap on Delete (docs/dev/technical-design-status-slot.md D10). */
+  /** Deletes the selected text from the rule. A text that is placed takes its piece with it, so that needs confirming (nothing else on this tab confirms - this is the one delete that also removes something from the page): a confirm in the central status slot, or a second tap on Delete (docs/dev/history/technical-design-status-slot.md D10). */
   const handleDeleteText = () => {
     if (!draftDef || addSelection?.kind !== 'text') return;
     const id = addSelection.id;

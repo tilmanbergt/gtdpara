@@ -8,7 +8,7 @@ Branch: `feature/lasso-0.8`, created from `main` after the 0.7.0 release.
 Background:
 - Requirements were agreed in chat on 2026-10-05.
 - Screen designs: the artifact "Lasso 0.8 Screens" (v2).
-- Spike: `spike-lasso-marks.md`, run in six device rounds. Its branch `spike/lasso-0.8` is
+- Spike: the spike notes, run in six device rounds. Its branch `spike/lasso-0.8` is
   never merged; its useful parts are ported here (§9).
 
 What 0.8.0 is about: lasso capture becomes reliable and quicker to work with.

@@ -1,6 +1,6 @@
 /**
  * Copies one Google Calendar event into a Project/Area/Inbox as a normal
- * one-off local Meeting (docs/dev/technical-design-google-calendar.md §7) - the
+ * one-off local Meeting (docs/dev/history/technical-design-google-calendar.md §7) - the
  * exact same write-through path every other Meeting mutation in this app
  * uses (saveMeetings then updateItemMeetings, file first - design-
  * overview.md §3), no new write mechanism. From this point on the copy is
@@ -24,7 +24,7 @@ export function buildMeetingFromEvent(event: GoogleCalendarEvent, opts?: {highli
     title,
     date: event.date,
     time: event.time,
-    // Length taken over from Google (docs/dev/technical-design-monthly-view.md step 10).
+    // Length taken over from Google (docs/dev/history/technical-design-monthly-view.md step 10).
     endTime: event.time ? event.endTime ?? '' : '',
     days: event.time ? 1 : Math.max(1, event.days ?? 1),
     ...deriveMeetingFields(title),

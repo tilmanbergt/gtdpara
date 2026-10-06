@@ -1,6 +1,6 @@
 /**
  * The active profile id for storage that switches with a profile
- * (docs/dev/technical-design-profiles-demo-space.md §3.3): the recently-used
+ * (docs/dev/history/technical-design-profiles-demo-space.md §3.3): the recently-used
  * tags and the Google Calendar cache keep one AsyncStorage entry per profile.
  * The default profile keeps the original key, so nothing is migrated.
  * Set by App.tsx after settings load; stores listen to reset their

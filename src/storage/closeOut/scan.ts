@@ -1,5 +1,5 @@
 /**
- * Scans a project for the close-out (docs/dev/technical-design-project-close-out.md
+ * Scans a project for the close-out (docs/dev/history/technical-design-project-close-out.md
  * §5.2): every file in its folder (recursive), note page counts, the keyword
  * pages of the shared notes its todos/meetings point into, and the files
  * its todos/meetings link to OUTSIDE the folder. Device I/O only - all

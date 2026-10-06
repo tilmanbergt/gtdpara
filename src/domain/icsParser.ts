@@ -1,6 +1,6 @@
 /**
  * ICS (RFC 5545) parsing + RRULE expansion for the Google Calendar feature
- * (docs/dev/technical-design-google-calendar.md §4). Ported and trimmed from the
+ * (docs/dev/history/technical-design-google-calendar.md §4). Ported and trimmed from the
  * sibling SNFolio project's src/domain/icsParser.ts rather than adding an
  * external ICS/RRULE library - that implementation is tested and running in
  * production there, with zero dependencies. Trimmed to this feature's

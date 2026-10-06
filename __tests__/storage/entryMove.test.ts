@@ -1,4 +1,4 @@
-/** moveEntryWithNote (docs/dev/technical-design-files-0.6.md §3.4) and the one move every screen uses, moveTask/moveMeeting. */
+/** moveEntryWithNote (docs/dev/history/technical-design-files-0.6.md §3.4) and the one move every screen uses, moveTask/moveMeeting. */
 const mockExisting = new Set<string>();
 const mockMoves: Array<[string, string]> = [];
 let mockMoveFails = false;

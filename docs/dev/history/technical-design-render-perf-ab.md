@@ -1,6 +1,6 @@
 # Technical design: fewer and cheaper renders on tab switches (perf round 1, "A + B")
 
-Status: IMPLEMENTED 2026-09-30 (not yet device-tested). Baseline and measurement method: `docs/dev/technical-design-perf-tracing.md` §12.
+Status: IMPLEMENTED 2026-09-30 (not yet device-tested). Baseline and measurement method: `docs/dev/history/technical-design-perf-tracing.md` §12.
 
 ## 1. Goal and scope
 

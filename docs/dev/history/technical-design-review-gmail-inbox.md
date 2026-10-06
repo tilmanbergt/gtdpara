@@ -1,9 +1,9 @@
 # Gmail inbox — Review step (technical design)
 
 Status: draft, 2026-09-20 — follows the Gmail-inbox-in-Review requirements
-conversation; precedes implementation. Builds directly on docs/technical-
-design-review-hub.md (the step registry/hub this slots into), docs/technical-
-design-review-master-detail.md (the shared list/detail shell this reuses
+conversation; precedes implementation. Builds directly on 
+docs/dev/history/technical-design-review-hub.md (the step registry/hub this slots into), 
+docs/dev/history/technical-design-review-master-detail.md (the shared list/detail shell this reuses
 unchanged) and the Google Calendar feature (storage/googleCalendarCache.ts,
 ui/GoogleCalendarPanel.tsx) as the precedent for "read a low-trust external
 mail source over a plaintext credential, explicit-tap-only."

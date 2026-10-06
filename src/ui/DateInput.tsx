@@ -2,7 +2,7 @@
  * The app's one date text field (YYYY-MM-DD): a plain TextInput plus a small
  * button strip - -1 / Today / +1 / +7 - that appears above it while it has
  * focus, so a date can be moved a day or a week without retyping it
- * (docs/dev/technical-design-meeting-date-nudge-and-new-from-this.md §A). The
+ * (docs/dev/history/technical-design-meeting-date-nudge-and-new-from-this.md §A). The
  * arithmetic (what each button does to an empty, valid or half-typed value)
  * lives in domain/dateNudge.ts; this file is only the field and the strip.
  *
@@ -24,7 +24,7 @@
  *   of the gesture only as long as the view instance itself survives).
  * The two strips' styles are deliberately duplicated rather than shared, so
  * the device-verified clipboard code stays untouched (tracked in
- * docs/dev/technical-design-meeting-date-nudge-and-new-from-this.md's
+ * docs/dev/history/technical-design-meeting-date-nudge-and-new-from-this.md's
  * follow-ups).
  *
  * Layout: `containerStyle` (margins/flex) goes on the wrapper, which is the

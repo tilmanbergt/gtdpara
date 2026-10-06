@@ -70,7 +70,7 @@ export async function measureNoteLinkRect(text, x, fontSizePx, maxWidthPx): Prom
 
 ## 7. Files touched
 
-`domain/noteTemplate.ts`, `storage/meetingNoteContent.ts`, `storage/notePieceMetrics.ts`, `ui/NoteTemplatePreview.tsx`, `domain/meetingNoteBlock.ts` (fallback builder removed), `storage/settingsStorage.ts` untouched, `screens/Settings.tsx` (piece description + default seeding on new rule), `docs/dev/technical-design-note-templates.md` (§4 out-of-scope note + §7 Phase 5 #2 marked done, pointing here).
+`domain/noteTemplate.ts`, `storage/meetingNoteContent.ts`, `storage/notePieceMetrics.ts`, `ui/NoteTemplatePreview.tsx`, `domain/meetingNoteBlock.ts` (fallback builder removed), `storage/settingsStorage.ts` untouched, `screens/Settings.tsx` (piece description + default seeding on new rule), `docs/dev/history/technical-design-note-templates.md` (§4 out-of-scope note + §7 Phase 5 #2 marked done, pointing here).
 
 ## 8. Verification
 

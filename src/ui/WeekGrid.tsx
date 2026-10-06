@@ -1,5 +1,5 @@
 /**
- * The Week overview (docs/dev/technical-design-meeting-lists.md §2.7): seven day blocks, each a two-column grid of
+ * The Week overview (docs/dev/history/technical-design-meeting-lists.md §2.7): seven day blocks, each a two-column grid of
  * ui/MeetingChip.tsx, filled down the left column first so reading order is
  * time order. Fixed capacity per page: weekdays 4 rows
  * x 2 = 8, weekend 2 x 2 = 4 - no measuring, no flex weights; an overfull day

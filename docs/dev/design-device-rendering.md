@@ -14,7 +14,7 @@
 - **Device: Supernote A5X.** 10.3" e-ink panel, **1404 × 1872 px, 226 PPI**,
   portrait. Confirmed by Tilman 2026-09-14.
 - **1 React Native dp = 1.41 device px on this screen (226 PPI ÷ 160).**
-  *Corrected 2026-09-29* (docs/dev/technical-design-meeting-lists.md §1): this
+  *Corrected 2026-09-29* (docs/dev/history/technical-design-meeting-lists.md §1): this
   section used to say 1 dp ≈ 1 px, because the screenshots came in 1404 px
   wide - but that is the panel's pixel width, not its dp width. Measured on
   Tilman's Week and Month screenshots, every style value renders 1.41× in
@@ -29,7 +29,7 @@
 - **Grayscale/monochrome e-ink only.** No color channel exists on the
   hardware. A dev preview or a screenshot rendering something in blue does
   not mean the device shows blue — see §6.
-- **No scrolling, anywhere, by design** (`docs/dev/technical-design-pagination-edit-reuse.md`).
+- **No scrolling, anywhere, by design** (`docs/dev/history/technical-design-pagination-edit-reuse.md`).
   Every list is a fixed-height box paged via ‹Prev/Next›, specifically
   because redrawing an arbitrary/growing scroll region is expensive on
   e-ink; a fixed-size box is cheap and predictable to refresh. This is why
@@ -80,12 +80,12 @@ which share the same unset-`includeFontPadding` default and the same
 Rows are deliberately fixed-height rather than intrinsic-to-content, so a
 page never reflows when one row's content is shorter or longer than its
 neighbor's, and every row on a paginated page is the same height
-(`docs/dev/technical-design-pagination-edit-reuse.md` §3):
+(`docs/dev/history/technical-design-pagination-edit-reuse.md` §3):
 
 | Row | File | minHeight | paddingVertical | Notes |
 |---|---|---|---|---|
 | Task row | `ui/TaskRow.tsx` | 64 | 7 | Reserves space for up to 2 lines of text + badges, regardless of actual content length. |
-| Meeting row, 1-line | `ui/MeetingRow.tsx` | **37 (fixed)** | 7 | Since 2026-09-29 (docs/dev/technical-design-meeting-lists.md §2.3): one 22 dp line - time column (58 dp for a time, 104 dp for "29.9. 10:00"), title, source `#abbrev`, icons. `MEETING_ROW_HEIGHT.oneLine`. |
+| Meeting row, 1-line | `ui/MeetingRow.tsx` | **37 (fixed)** | 7 | Since 2026-09-29 (docs/dev/history/technical-design-meeting-lists.md §2.3): one 22 dp line - time column (58 dp for a time, 104 dp for "29.9. 10:00"), title, source `#abbrev`, icons. `MEETING_ROW_HEIGHT.oneLine`. |
 | Meeting row, 2-line | `ui/MeetingRow.tsx` | **57 (fixed)** | 7 | 22 dp title line + 18 dp source line (or the title wrapping onto line 2 at 2 × 21 dp when there is no source). `MEETING_ROW_HEIGHT.twoLine`. Every meeting list has a 1-line/2-line switch (session-only memory per list). |
 | Week chip | `ui/MeetingChip.tsx` | **34 (fixed)** | – | Week overview grid, 4 × 2 chips per weekday, 2 × 2 per weekend day, + 30 dp day header. |
 | Group header (Upcoming/Past) | `ui/MeetingList.tsx` | **30 (fixed)** | – | |
@@ -158,7 +158,7 @@ no fixed `minHeight` (most single-line rows), the height shown is
 | Element | File | Height (px) | Composition |
 |---|---|---|---|
 | Top tab bar | `ui/TabBar.tsx` | **~44** | `paddingTop 8 + tab paddingVertical 4×2 + text line ~21 + border 2 + container paddingBottom 4 + border 1` (was ~80 with `paddingTop 40`/`paddingBottom 8` until 2026-09-29) |
-| Status slot | `ui/status/StatusFrame.tsx` | **36** | `STATUS_SLOT_HEIGHT` — always reserved under the tab bar (and at the top of focus mode and the capture screen), empty or not (`docs/dev/technical-design-status-slot.md`) |
+| Status slot | `ui/status/StatusFrame.tsx` | **36** | `STATUS_SLOT_HEIGHT` — always reserved under the tab bar (and at the top of focus mode and the capture screen), empty or not (`docs/dev/history/technical-design-status-slot.md`) |
 | Screen content top padding | most screens' own `container` style | **16** | `paddingTop: 16` — consistent across screens (matches `commonStyles.common.container`'s `SPACING.base`) |
 | Screen content side padding | same | **16 each side** | Usable content width = `1404 − 16×2 = 1372px` |
 | Screen content bottom padding | varies by screen | **0–40** | Settings' inner `content` sets 40; most others rely on natural end-of-content with no explicit bottom pad |

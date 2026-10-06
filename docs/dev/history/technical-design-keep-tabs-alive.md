@@ -1,6 +1,6 @@
 # Technical design: keep tabs alive ("E")
 
-Status: IMPLEMENTED 2026-09-30 (E1-E3 in one delivery, not yet device-tested) - see §11 for as-built deviations. Requirements and risk inventory: `docs/dev/requirements-keep-tabs-alive.md`. Measurements: `technical-design-perf-tracing.md` §12-13, `technical-design-render-perf-ab.md` §7.
+Status: IMPLEMENTED 2026-09-30 (E1-E3 in one delivery, not yet device-tested) - see §11 for as-built deviations. Requirements and risk inventory: `docs/dev/history/requirements-keep-tabs-alive.md`. Measurements: `technical-design-perf-tracing.md` §12-13, `technical-design-render-perf-ab.md` §7.
 
 ## 1. Why (latest data, perf-3, tracer v2)
 

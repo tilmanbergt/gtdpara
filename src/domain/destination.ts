@@ -66,7 +66,7 @@ interface FocusFlags {
  * `status`) so a plain CachedItem/DailyItemRef satisfies it structurally.
  *
  * A Project/Area in ANY focus level (daily, weekly, monthly) counts as
- * focused (docs/dev/technical-design-review-monthly-focus.md §1), so its
+ * focused (docs/dev/history/technical-design-review-monthly-focus.md §1), so its
  * #next tasks show on Daily (storage/dailyAggregate.ts) and it doesn't count
  * as "unfocused" in Review (storage/reviewAggregate.ts).
  */

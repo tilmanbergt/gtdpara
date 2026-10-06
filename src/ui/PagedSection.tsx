@@ -1,6 +1,6 @@
 /**
  * Merged header+pagination chrome for every fixed-height paginated list in
- * the app (docs/dev/technical-design-pagination-fixed-height.md). One line:
+ * the app (docs/dev/history/technical-design-pagination-fixed-height.md). One line:
  * header left, `‹`/`›` arrows right (no "page N of M") - above a box of
  * fixed `viewportHeight` that fits as many rows as `usePagedByHeight`'s
  * greedy fill allows.
@@ -23,7 +23,7 @@
  * (screens/ProjectDataPanel.tsx's Todos/Meetings, screens/InboxScreen.tsx's
  * Tasks/Meetings, screens/DailyView.tsx's Open-tasks) flatten a grouped list
  * into one paginated `rows` sequence with `{kind: 'header'}` rows standing
- * in for each group's own label (docs/dev/technical-design-pagination-edit-reuse.md
+ * in for each group's own label (docs/dev/history/technical-design-pagination-edit-reuse.md
  * §2/§4) - those rows consume height (so `rowHeight`/pagination still
  * account for them), but they aren't entries a person is looking for, so
  * they don't count. Callers with no such split (ui/FileBrowserPane.tsx,

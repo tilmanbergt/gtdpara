@@ -1,6 +1,6 @@
 /**
  * The Gmail inbox review step's email-text pane
- * (docs/dev/technical-design-gmail-body-select.md): a fixed action bar - All /
+ * (docs/dev/history/technical-design-gmail-body-select.md): a fixed action bar - All /
  * Copy / -> Todo / -> Meeting - over the email text, which fills all the
  * remaining height of the detail panel and scrolls inside it. This is the ONE
  * deliberate exception to the app-wide no-scroll policy: an email has no

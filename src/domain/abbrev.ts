@@ -144,7 +144,7 @@ export function resolveAbbrevPath<T extends {abbrev: string | null; path: string
   return match ? match.path : null;
 }
 
-/** The Project/Area a resolved abbreviation quick-file match points at - just enough to build a Destination/InboxFilingTarget from (docs/dev/technical-design-abbrev-quick-file.md). `tag` is the exact matched tag text (lowercased, no leading `#`, as `extractContextTags` returns it) - callers use it with `domain/markdown.ts`'s `removeTagFromText` to strip it from the saved text once it's done its job. */
+/** The Project/Area a resolved abbreviation quick-file match points at - just enough to build a Destination/InboxFilingTarget from (docs/dev/history/technical-design-abbrev-quick-file.md). `tag` is the exact matched tag text (lowercased, no leading `#`, as `extractContextTags` returns it) - callers use it with `domain/markdown.ts`'s `removeTagFromText` to strip it from the saved text once it's done its job. */
 export interface AbbrevFileMatch {
   kind: 'project' | 'area';
   name: string;

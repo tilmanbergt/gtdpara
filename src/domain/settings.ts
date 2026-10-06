@@ -16,7 +16,7 @@ export interface GtdParaSettings {
   archiveFolder: string;
   /**
    * Name of the Inbox's own folder inside the Areas folder
-   * (docs/dev/technical-design-inbox-as-area.md). Holds Inbox.txt and the
+   * (docs/dev/history/technical-design-inbox-as-area.md). Holds Inbox.txt and the
    * Inbox's Todos/Meetings note folders. Never treated as an Area.
    */
   inboxFolder: string;
@@ -31,7 +31,7 @@ export interface GtdParaSettings {
   dailyFocusAreaCount: number;
   weeklyFocusProjectCount: number;
   weeklyFocusAreaCount: number;
-  /** Monthly focus slots (docs/dev/technical-design-monthly-view.md) - default 2 projects + 3 areas. */
+  /** Monthly focus slots (docs/dev/history/technical-design-monthly-view.md) - default 2 projects + 3 areas. */
   monthlyFocusProjectCount: number;
   monthlyFocusAreaCount: number;
   /**
@@ -80,8 +80,8 @@ export interface GtdParaSettings {
    */
   focusModeActive: boolean;
   /**
-   * The user-editable catalog of note creation definitions (docs/technical-
-   * design-note-templates.md) - context + optional tag match + background +
+   * The user-editable catalog of note creation definitions (
+   * docs/dev/history/technical-design-note-templates.md) - context + optional tag match + background +
    * an ordered set of content pieces, resolved by domain/tagRules.ts's
    * resolveNoteTemplate. Plugin config, not PARA content, same reasoning as
    * every other field here. Meeting- and Todo-note creation resolve against
@@ -98,7 +98,7 @@ export interface GtdParaSettings {
    */
   nextTagRuleId: number;
   /**
-   * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md
+   * Gmail inbox review step (docs/dev/history/technical-design-review-gmail-inbox.md
    * §2) - the account this plugin reads via IMAP. '' means "not configured",
    * same convention as googleCalendarIcsUrl above: the Gmail step then shows
    * a "set up in Settings" hint instead of trying to fetch. Plugin meta, not
@@ -134,21 +134,21 @@ export interface GtdParaSettings {
    */
   gmailHideHandled: boolean;
   /**
-   * Performance tracing on/off (docs/dev/technical-design-perf-tracing.md §6) -
+   * Performance tracing on/off (docs/dev/history/technical-design-perf-tracing.md §6) -
    * when on, utils/perf.ts writes one small JSONL file per tab switch / cold
    * start / reopen to the debug log folder's perf/ subfolder. Default off;
    * a diagnostic switch, not a user feature.
    */
   perfTracing: boolean;
   /**
-   * "Keep tabs in memory" (docs/dev/technical-design-keep-tabs-alive.md §3.1):
+   * "Keep tabs in memory" (docs/dev/history/technical-design-keep-tabs-alive.md §3.1):
    * Daily, Week, Month, Current, Projects and Areas stay mounted (hidden)
    * after their first visit, so switching back needs no rebuild. Default
    * on; the switch is a safety net during the test phase.
    */
   keepTabsAlive: boolean;
   /**
-   * Experimental switches (docs/dev/technical-design-about-debug-experimental.md
+   * Experimental switches (docs/dev/history/technical-design-about-debug-experimental.md
    * §3.1): the Google Calendar and Gmail integrations are only shown when on.
    * Off hides their entry points; their configuration above stays stored.
    * Read them through domain/features.ts's featuresOf.
@@ -163,7 +163,7 @@ export interface GtdParaSettings {
    */
   lastSeenVersion: string;
   /**
-   * Which profile is active (docs/dev/technical-design-profiles-demo-space.md) -
+   * Which profile is active (docs/dev/history/technical-design-profiles-demo-space.md) -
    * the file name of its JSON in EXPORT/gtdpara/profiles, without ".json".
    * Device-wide; 'production' is the default profile.
    */

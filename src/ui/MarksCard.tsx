@@ -1,5 +1,5 @@
 /**
- * "n marks to process" (docs/dev/technical-design-lasso-0.8.md §3.10): one
+ * "n marks to process" (docs/dev/history/technical-design-lasso-0.8.md §3.10): one
  * fixed-height row under Quick Add on the Inbox, Current and Review's Inbox
  * to zero, shown only while there are open marks. "Process ›" opens the
  * marks screen for the same scope; Close there comes back here.

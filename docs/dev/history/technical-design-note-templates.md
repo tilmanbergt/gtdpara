@@ -167,7 +167,7 @@ Rename `storage/meetingNoteContent.ts` → `storage/noteTemplateContent.ts` (its
 
 ## 6. Settings UI
 
-(2026-09-20: the tab's label is now **"Tag Rules"** - a rule is "per tag, for a context, do X automatically", and meeting rules also carry the prep/review tracking toggles, see docs/dev/technical-design-meeting-tracking.md. UI label only; type/storage names are unchanged.)
+(2026-09-20: the tab's label is now **"Tag Rules"** - a rule is "per tag, for a context, do X automatically", and meeting rules also carry the prep/review tracking toggles, see docs/dev/history/technical-design-meeting-tracking.md. UI label only; type/storage names are unchanged.)
 
 New "Templates" tab in `screens/Settings.tsx` (5th `MiniTabs` entry, alongside Folders/Focus/Calendar/Meeting Note).
 
@@ -264,7 +264,7 @@ Per design-overview.md §3's standing convention: a standalone-Node round-trip s
 
 **Rule-owned static texts + once-only placement (2026-09-20):** see §6.1 — texts belong to one rule, a placed text piece references its text (`textId`) so editing keeps its position, every piece is placed at most once ("+ Add" ↔ "Remove"), the Add-piece page stays open after each add/remove, and there is no separate management screen.
 
-**Meeting tracking (2026-09-20):** `NoteCreationDefinition` gained optional `trackPrep`/`trackReview` (meeting context only). One resolved rule per meeting supplies both the note layout and the tracking flags - no union of rules and no separate "create note" switch. See docs/dev/technical-design-meeting-tracking.md.
+**Meeting tracking (2026-09-20):** `NoteCreationDefinition` gained optional `trackPrep`/`trackReview` (meeting context only). One resolved rule per meeting supplies both the note layout and the tracking flags - no union of rules and no separate "create note" switch. See docs/dev/history/technical-design-meeting-tracking.md.
 
 The three open questions this doc originally carried into implementation are resolved (Tilman, 2026-09-18) and folded into the sections above: new-piece/definition seed position is `x:100, y:100` (§2, §7); `NoteCreationDefinition.id` is a simple incrementing counter (`nextNoteDefinitionId` in settings, §2–§3), with definition export/import noted as a plausible future idea but explicitly out of scope now; piece width is implicit, always extending from a piece's `x` to the page's right edge via `NOTE_PAGE_WIDTH_PX`/`pieceWidthPx` (§2), with no stored per-piece width field.
 

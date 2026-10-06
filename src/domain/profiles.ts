@@ -1,6 +1,6 @@
 /**
  * Profiles: named configurations stored as JSON files
- * (docs/dev/technical-design-profiles-demo-space.md). Pure logic - which
+ * (docs/dev/history/technical-design-profiles-demo-space.md). Pure logic - which
  * settings belong to a profile, which stay device-wide, which are secrets
  * that never go into a file, and reading/writing the file format.
  */

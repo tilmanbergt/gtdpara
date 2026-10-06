@@ -48,9 +48,9 @@ export async function setItemStatus(
   item: StatusItem,
   nextStatus: SettableStatus,
 ): Promise<{rawContent: string; status: SettableStatus; dailyFocus: boolean; weeklyFocus: boolean; monthlyFocus: boolean; frontMatterExtraLines: string[]}> {
-  // All three focus levels clear together (docs/dev/technical-design-monthly-view.md §2.1).
+  // All three focus levels clear together (docs/dev/history/technical-design-monthly-view.md §2.1).
   const clearsFocus = nextStatus !== 'active';
-  // doneAt (docs/dev/technical-design-project-close-out.md §4.1): stamped the
+  // doneAt (docs/dev/history/technical-design-project-close-out.md §4.1): stamped the
   // first time a Project becomes Done (an existing date is kept - e.g. Done
   // -> On Hold -> Done keeps the original), cleared on reactivation. It
   // decides the archive year.
@@ -81,7 +81,7 @@ export async function setItemStatus(
 
 /**
  * Sets a Done Project's `doneAt` date by hand (close-out checklist "Done on
- * · Edit" - docs/dev/technical-design-project-close-out.md §4.1): it decides the
+ * · Edit" - docs/dev/history/technical-design-project-close-out.md §4.1): it decides the
  * archive year, and projects marked Done before doneAt existed have none.
  */
 export async function setDoneDate(path: string, date: string): Promise<void> {

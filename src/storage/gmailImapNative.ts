@@ -1,6 +1,6 @@
 /**
- * Thin JS-side bridge to the native `GmailImapModule.kt` (docs/technical-
- * design-review-gmail-inbox.md §4). A first-party native module like
+ * Thin JS-side bridge to the native `GmailImapModule.kt` (
+ * docs/dev/history/technical-design-review-gmail-inbox.md §4). A first-party native module like
  * `supernote/GtdParaFileModule.kt` (docs/dev/design-overview.md
  * §2.12/§2.17): a plain Kotlin `ReactContextBaseJavaModule` registered in
  * this plugin's own `ReactPackage` - NOT a Supernote-SDK module, so it does
@@ -131,8 +131,8 @@ export async function listInboxMessages(creds: GmailCredentials, limit: number):
  * The message's body as plain text - HTML is already converted to text
  * natively (Jsoup) whenever the message has no plain-text part. Resolves to
  * the literal string 'unsupported' (not a thrown error) when neither a
- * plain-text nor an HTML part could be found or parsed - docs/technical-
- * design-review-gmail-inbox.md §6's fallback, kept as a normal return value
+ * plain-text nor an HTML part could be found or parsed -
+ * docs/dev/history/technical-design-review-gmail-inbox.md §6's fallback, kept as a normal return value
  * rather than an exception so callers don't need a special catch just for
  * this expected case.
  */
@@ -146,7 +146,7 @@ export async function fetchAttachment(creds: GmailCredentials, uid: string, part
   return callNative(native => native.fetchAttachment(creds.email, creds.appPassword, creds.imapHost, uid, partId));
 }
 
-/** Removes the message from the Gmail inbox (native X-GM-LABELS -\Inbox) - Gmail's own definition of "Archive", not deletion (docs/dev/technical-design-review-gmail-inbox.md §7). */
+/** Removes the message from the Gmail inbox (native X-GM-LABELS -\Inbox) - Gmail's own definition of "Archive", not deletion (docs/dev/history/technical-design-review-gmail-inbox.md §7). */
 export async function archiveMessage(creds: GmailCredentials, uid: string): Promise<void> {
   await callNative(native => native.archiveMessage(creds.email, creds.appPassword, creds.imapHost, uid));
 }

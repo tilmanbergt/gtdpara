@@ -1,6 +1,6 @@
 /**
  * Style objects shared by two or more screens
- * (docs/dev/technical-design-style-cleanup.md), e.g. DailyView.tsx and
+ * (docs/dev/history/technical-design-style-cleanup.md), e.g. DailyView.tsx and
  * ReviewScreen.tsx. Keeping them here means retuning one of them retunes
  * every screen that uses it, and a screen's own StyleSheet only holds what's
  * actually specific to that screen.

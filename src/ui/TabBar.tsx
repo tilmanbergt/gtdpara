@@ -5,11 +5,11 @@
  * of which tab is active. Switching tabs is the only navigation; there is no
  * back stack.
  *
- * Week (docs/dev/technical-design-weekly-view.md §9) sits right after
+ * Week (docs/dev/history/technical-design-weekly-view.md §9) sits right after
  * Daily - both are calendar-scoped "what's coming up" tabs (Daily for today,
  * Week for the current Monday..Sunday).
  *
- * Inbox (docs/dev/technical-design-inbox-tab.md §2) follows - a "flow" tab
+ * Inbox (docs/dev/history/technical-design-inbox-tab.md §2) follows - a "flow" tab
  * (where captured/triaged work lands and gets acted on day-to-day), grouped
  * ahead of the more structural Current/Review/Settings tabs.
  *
@@ -24,9 +24,9 @@
  * Reloading: there is no refresh icon here. Settings → Advanced → "Reload
  * all files" rebuilds the cache and drops the kept tabs (ui/keepAliveStore.ts),
  * so every tab loads again on its next visit
- * (docs/dev/technical-design-cleanup-0.5.md S8).
+ * (docs/dev/history/technical-design-cleanup-0.5.md S8).
  *
- * "?" (docs/dev/technical-design-in-app-help.md): opens the
+ * "?" (docs/dev/history/technical-design-in-app-help.md): opens the
  * in-app help as an overlay over the body; while it's open the "?" carries
  * the active underline instead of the current tab.
 
@@ -58,13 +58,13 @@ interface Props {
   reviewOverdue?: boolean;
   /**
    * Set while a profile other than the default is active
-   * (docs/dev/technical-design-profiles-demo-space.md §3.6): shown as a small
+   * (docs/dev/history/technical-design-profiles-demo-space.md §3.6): shown as a small
    * bordered label left of ✕, so demo data is never mistaken for real data.
    * Tapping it opens Settings → Advanced.
    */
   profileLabel?: string | null;
   onProfilePress?: () => void;
-  /** In-app help (docs/dev/technical-design-in-app-help.md §3.3): "?" toggles it; drawn active while open. */
+  /** In-app help (docs/dev/history/technical-design-in-app-help.md §3.3): "?" toggles it; drawn active while open. */
   helpOpen?: boolean;
   onHelpPress?: () => void;
 }
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     // Small top padding: the device has no system status bar, so the space
     // goes to the central status slot right below
-    // (docs/dev/technical-design-status-slot.md D7).
+    // (docs/dev/history/technical-design-status-slot.md D7).
     paddingTop: 8,
     paddingHorizontal: 16,
     paddingBottom: 4,

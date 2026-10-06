@@ -1,5 +1,5 @@
 /**
- * Multi-day meetings (docs/dev/technical-design-monthly-view.md §2.3). A
+ * Multi-day meetings (docs/dev/history/technical-design-monthly-view.md §2.3). A
  * date-only meeting with `days > 1` covers `date` .. `date + days - 1`;
  * every calendar view (Daily, Week, Month) lists it on each covered day,
  * marked with small arrows for where in the run that day sits. One module

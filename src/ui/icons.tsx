@@ -57,7 +57,7 @@ export function TrashIcon({size = 18, color = '#000000'}: IconProps): React.JSX.
 }
 
 /**
- * Meeting prep/review checkpoint box (docs/dev/technical-design-meeting-tracking.md):
+ * Meeting prep/review checkpoint box (docs/dev/history/technical-design-meeting-tracking.md):
  * an outlined rounded square holding a "P" (prep still open), an "R" (review
  * still open), or a check (whatever is currently tracked is done). Stroke-
  * only in every state, so it reads the same on any background/theme - the
@@ -116,7 +116,7 @@ export function WarningIcon({size = 14, color = '#000000'}: IconProps): React.JS
 
 /**
  * Four corner arrows pointing inward - focus mode's exit mark
- * (docs/dev/technical-design-now-focus-mode.md §4.2, design-philosophy.md §8).
+ * (docs/dev/history/technical-design-now-focus-mode.md §4.2, design-philosophy.md §8).
  * Path taken from the approved "GtdPara Focus Batch" design canvas
  * (DailyFocusHidden.dc.html). Stroke-only, solid (not low-opacity) - a
  * low-contrast mark doesn't read reliably on e-ink, so quietness here comes

@@ -15,7 +15,7 @@ export interface InboxFilingTarget {
 /**
  * Turns a FileBrowserPane pick (root key + relativePath, from an arming
  * LinkTarget with pickKind:'folder' over the Projects/Areas roots -
- * docs/dev/technical-design-filing-unification.md §2/§3.4) into an
+ * docs/dev/history/technical-design-filing-unification.md §2/§3.4) into an
  * InboxFilingTarget. Picks only fire at depth 0, so relativePath is a bare
  * folder name.
  */

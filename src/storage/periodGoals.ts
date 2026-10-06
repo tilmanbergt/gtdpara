@@ -1,5 +1,5 @@
 /**
- * Weekly + monthly goals behind one API (docs/dev/technical-design-monthly-view.md
+ * Weekly + monthly goals behind one API (docs/dev/history/technical-design-monthly-view.md
  * §4.2). Before this, "save a weekly goal" existed in three copies
  * (screens/WeekView.tsx, ui/ItemFocusPanel.tsx, ui/ItemContextBlock.tsx);
  * every goal read/write for either period now goes through here. The stored
@@ -70,7 +70,7 @@ export interface GoalHistoryEntry {
 
 /**
  * Every item that has a goal for period `key` - goal-driven, not
- * focus-driven (docs/dev/technical-design-weekly-goals.md §1: a past period
+ * focus-driven (docs/dev/history/technical-design-weekly-goals.md §1: a past period
  * shows only goals that were actually set, regardless of the item's current
  * focus flags). Reads only the passed-in cache array, no file scan.
  */

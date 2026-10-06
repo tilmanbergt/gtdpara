@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
 });
 
 /**
- * Memoized (docs/dev/technical-design-render-perf-ab.md §3 B2): re-renders only
+ * Memoized (docs/dev/history/technical-design-render-perf-ab.md §3 B2): re-renders only
  * when its props change. Call sites pass stable callbacks
  * (ui/useStableCallback.ts); an unstable prop somewhere only means the memo
  * doesn't skip there, never a stale render.

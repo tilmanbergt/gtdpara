@@ -28,7 +28,7 @@ import {noopAddMeeting, reviewCurrentItem, statusLabel} from '../shared';
 /**
  * Stalled-project/neglected-area detail panel (Steps: Stalled projects,
  * Neglected areas) - `ui/ItemContextBlock.tsx` (Area/Scope/Last goal) up
- * top, then (docs/dev/technical-design-review-master-detail.md §5.2): a
+ * top, then (docs/dev/history/technical-design-review-master-detail.md §5.2): a
  * quick-add task fixed to this item, its open tasks, up to 2 upcoming
  * meetings, shelved Someday/Maybe tasks with a one-tap "→ Next" promotion,
  * and status/archive pills. `statusOptions` is the 3-way Active/On
@@ -136,7 +136,7 @@ export function ReviewItemDetail({
       )}
       {entry.upcomingMeetings.length > 0 && (
         <View style={styles.cardMeetings}>
-          {/* Read-only standard rows (docs/dev/technical-design-meeting-lists.md
+          {/* Read-only standard rows (docs/dev/history/technical-design-meeting-lists.md
               §4.6): 1-line, date+time, no source - the card is the item. */}
           {entry.upcomingMeetings.map(m => (
             <MeetingRow
@@ -228,7 +228,7 @@ export function DoneOnHoldDetail({
 }: {
   itemRef: ReviewItemRef;
   showMarkDone: boolean;
-  /** Done step only (docs/dev/technical-design-project-close-out.md §6.1): replaces Archive with "Close out…" / "Quick archive…" and shows the close-out status. */
+  /** Done step only (docs/dev/history/technical-design-project-close-out.md §6.1): replaces Archive with "Close out…" / "Quick archive…" and shows the close-out status. */
   closeOut?: {onFull: () => void; onQuick: () => void};
   items: CachedItem[];
   currentWeekKey: string;

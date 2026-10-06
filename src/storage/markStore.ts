@@ -1,5 +1,5 @@
 /**
- * Adds and removes `## Marks` lines (docs/dev/technical-design-lasso-0.8.md
+ * Adds and removes `## Marks` lines (docs/dev/history/technical-design-lasso-0.8.md
  * §3.6). Every change:
  *
  * - runs on one serial queue, so two quick marks (or a save and a discard)
@@ -131,7 +131,7 @@ export function marksForMovedFolder(marks: Mark[], fromFolder: string, targetFol
 }
 
 /**
- * Archive (docs/dev/technical-design-lasso-0.8.md §3.10): moves the open
+ * Archive (docs/dev/history/technical-design-lasso-0.8.md §3.10): moves the open
  * marks of the item in `itemFolder` into Inbox.txt - Inbox first, then the
  * item's `## Marks` lines are cleared - before its folder moves to
  * `targetFolder`. An archived item leaves the lists, so its marks would

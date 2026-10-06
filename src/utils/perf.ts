@@ -1,5 +1,5 @@
 /**
- * Lightweight performance tracing (docs/dev/technical-design-perf-tracing.md).
+ * Lightweight performance tracing (docs/dev/history/technical-design-perf-tracing.md).
  *
  * Measurement only - records how long a tab switch / cold start / reopen
  * takes and where the time goes, then writes ONE small JSONL file per trace
@@ -133,7 +133,7 @@ export function perfBegin(kind: PerfTraceKind, label: string, meta?: Meta): void
 }
 
 /**
- * Frame probe (docs/dev/technical-design-perf-tracing.md §13): while a trace is
+ * Frame probe (docs/dev/history/technical-design-perf-tracing.md §13): while a trace is
  * open, one requestAnimationFrame callback per frame. A gap between two
  * frames longer than FRAME_GAP_MS means frames were not being produced -
  * the JS thread was busy, or (when no JS event falls inside the gap) the

@@ -1,6 +1,6 @@
 /**
  * Recognizes open marks while the capture screen is open
- * (docs/dev/technical-design-lasso-0.8.md §3.7): the selected mark first,
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.7): the selected mark first,
  * then the next PREFETCH marks in list order, one at a time (the host
  * recognizer is never asked twice at once). Each result is kept in the
  * mark's private data (storage/marks.ts recognizeMark), so a mark is

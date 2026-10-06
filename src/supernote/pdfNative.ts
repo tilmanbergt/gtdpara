@@ -1,7 +1,7 @@
 /**
  * JS surface of gtdpara's own PDF writer (android/.../PdfModule.kt, native
  * name "GtdParaPdf") plus thin wrappers around the sn-plugin-lib calls that
- * feed it note-page images - docs/dev/technical-design-project-close-out.md
+ * feed it note-page images - docs/dev/history/technical-design-project-close-out.md
  * §2.1/§3. Generic on purpose: nothing here knows about projects, archives
  * or close-out (storage/pdfExport.ts is the one client that turns a document
  * model into a finished PDF; see there). Builds have job ids, progress

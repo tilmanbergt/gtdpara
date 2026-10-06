@@ -3,7 +3,7 @@
  * (with the waiting-on name), due tag, and the abbreviation tag that picked
  * the destination removed again. Shared by Quick Add's create and edit and
  * by the lasso capture panel, which saves several items with the same chips
- * (docs/dev/technical-design-lasso-0.8.md §3.9). Pure.
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.9). Pure.
  */
 import {setFlowStateTag, slugifyWaitingOn} from './flowState';
 import {removeTagFromText, setDueTag} from './markdown';

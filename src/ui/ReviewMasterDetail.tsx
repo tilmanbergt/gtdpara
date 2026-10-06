@@ -2,9 +2,9 @@
  * ReviewMasterDetail — the shared left-list/right-detail shell used by the
  * screens/ReviewScreen.tsx steps (Stalled projects, Done awaiting review, On
  * Hold reconsideration, Neglected areas, Unfocused next items;
- * docs/dev/technical-design-review-master-detail.md §3). The left list is a
+ * docs/dev/history/technical-design-review-master-detail.md §3). The left list is a
  * single `PagedSection`, so a step never holds several unbounded lists at
- * once (docs/dev/technical-design-pagination-fixed-height.md).
+ * once (docs/dev/history/technical-design-pagination-fixed-height.md).
  *
  * Owns exactly two pieces of UI-only state, neither of which is review data:
  * - `selectedKey` - which left-list row's detail is showing on the right.

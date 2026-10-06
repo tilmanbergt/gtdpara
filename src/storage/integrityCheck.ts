@@ -1,5 +1,5 @@
 /**
- * Integrity Check (docs/dev/technical-design-integrity-check.md) - orchestration
+ * Integrity Check (docs/dev/history/technical-design-integrity-check.md) - orchestration
  * for Settings > Folders' "Run Integrity Check" action: walks every
  * Project/Area/Archive folder plus the single root Inbox file, reuses
  * loadProjectFile (storage/projectFile.ts) for the same parsing the app
@@ -51,7 +51,7 @@ export interface IntegrityCheckSummary {
   itemsScanned: number;
   findings: IntegrityFinding[];
   reportFileName: string;
-  /** Note files with names unsafe for Obsidian that "Fix file names" can rename (docs/dev/technical-design-files-0.6.md §3.5). */
+  /** Note files with names unsafe for Obsidian that "Fix file names" can rename (docs/dev/history/technical-design-files-0.6.md §3.5). */
   fileNameFixes: FileFix[];
 }
 
@@ -242,7 +242,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
     paths.base,
     paths.inboxFolder,
   );
-  // Unsafe file names (docs/dev/technical-design-files-0.6.md §3.5).
+  // Unsafe file names (docs/dev/history/technical-design-files-0.6.md §3.5).
   const loaded = perTargetResults.map(result => result.loaded).filter((l): l is LoadedEntries => l !== null);
   const {fixes, reportOnly} = planFileNameFixes(await collectUnsafeNoteRefs(loaded));
   const folders = unsafeFolderNames(

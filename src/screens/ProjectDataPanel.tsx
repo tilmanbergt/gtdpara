@@ -23,13 +23,13 @@
  * uses).
  *
  * Status, Archive and Focus live in ui/ItemStatusPanel.tsx
- * (docs/dev/technical-design-inbox-tab.md §4), which ItemDetail.tsx renders
+ * (docs/dev/history/technical-design-inbox-tab.md §4), which ItemDetail.tsx renders
  * in the *left* pane below Files - secondary controls stay docked out of the
  * way of the widget, so QuickAddWidget is the very first thing in this pane
  * and this component doesn't load `status`/`dailyFocus`/`weeklyFocus`.
  *
  * Add/edit for both Todos and Meetings is one shared ui/QuickAddWidget.tsx
- * (docs/dev/technical-design-unified-quickadd.md), rendered once above both
+ * (docs/dev/history/technical-design-unified-quickadd.md), rendered once above both
  * sections rather than inside either one - it isn't Todos- or Meetings-exclusive, so it doesn't
  * belong under either section's own heading (see the render below). Its
  * `fixedDestination` is fixed to this item's own path (no picker shown -
@@ -42,7 +42,7 @@
  * MeetingsSection, since one widget serves both - each section keeps only
  * its own list/pagination/row-level actions (toggle done, create/open note).
  *
- * Google Calendar tab (docs/dev/technical-design-google-calendar.md §9):
+ * Google Calendar tab (docs/dev/history/technical-design-google-calendar.md §9):
  * MeetingsSection's content sits behind a shared <MiniTabs>
  * (ui/MiniTabs.tsx) - "Meetings" is this item's own meetings, "Google" is the shared ui/GoogleCalendarPanel.tsx at `maxDays={30}` (the
  * full fetch window - unlike Daily's today/tomorrow cap, there's no shorter
@@ -51,7 +51,7 @@
  * technical-design-pagination-edit-reuse.md §4), so no wrapper is needed
  * here for it.
  *
- * Pagination + edit reuse (docs/dev/technical-design-pagination-edit-reuse.md
+ * Pagination + edit reuse (docs/dev/history/technical-design-pagination-edit-reuse.md
  * §2/§4/§5): no ScrollView - Todos and Meetings are two independently-paginated
  * boxes (ui/PagedSection.tsx/ui/pagination.ts's `usePagedByHeight`, docs/dev/
  * technical-design-pagination-fixed-height.md §3.4), each flattening its own grouping (flow-state for Todos, Upcoming/Past for
@@ -124,7 +124,7 @@ import {errorMessage} from '../utils/errorMessage';
 // estimators' own calibration.
 const COLUMN_WIDTH_PX = 678;
 
-// Flex weights (docs/dev/technical-design-flex-weight-stacking.md §3.3) -
+// Flex weights (docs/dev/history/technical-design-flex-weight-stacking.md §3.3) -
 // TodosSection and MeetingsSection are each the sole occupant of their own
 // weighted `<View style={{flex: weight}}>` box inside `styles.stackedColumn`
 // below, and self-measure into it (no `viewportHeight` props). 4:3 is the
@@ -143,7 +143,7 @@ const SUBHEADING_ROW_PX = 30;
 /** Which row (task or meeting, by index into ProjectDataPanel's own `state.tasks`/`state.meetings`) is being edited or armed - technical-design-linked-files.md §8's cross-cutting "one edit target" lift. Owned here rather than independently by TodosSection/MeetingsSection, so starting an edit/arm on either row type always cancels whichever of the other three states (the other type's edit, either type's arm) was active - there is exactly one edit *or* arm going on at a time, screen-wide. */
 type EditTarget = {type: 'task' | 'meeting'; index: number};
 
-/** The one arm target for this whole screen - extends EditTarget with which action armed it, mirroring screens/InboxScreen.tsx's own ArmTarget (docs/dev/technical-design-filing-unification.md §3.2). 'link' picks an existing file to attach; 'refile' (storage/inboxFiling.ts's module doc comment) picks a different Project/Area to move the item into - the Current tab's own entry point for filing. */
+/** The one arm target for this whole screen - extends EditTarget with which action armed it, mirroring screens/InboxScreen.tsx's own ArmTarget (docs/dev/history/technical-design-filing-unification.md §3.2). 'link' picks an existing file to attach; 'refile' (storage/inboxFiling.ts's module doc comment) picks a different Project/Area to move the item into - the Current tab's own entry point for filing. */
 type ArmTarget = {type: 'task' | 'meeting'; index: number; intent: 'link' | 'refile'};
 
 type MeetingsMainTab = 'meetings' | 'google';
@@ -156,7 +156,7 @@ interface Props {
   kind: 'project' | 'area';
   name: string;
   path: string;
-  /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by MeetingsSection's Google mini-tab empty state when no ICS URL is configured yet. */
+  /** Switches to Settings' Calendar sub-tab (docs/dev/history/technical-design-google-calendar.md §9) - used by MeetingsSection's Google mini-tab empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** Reports this panel's current LinkTarget (technical-design-linked-files.md §8) up to ItemDetail.tsx, which passes it straight into ui/FileBrowserPane.tsx's `linkTarget` prop - null whenever nothing is being edited/armed, `{mode: 'locating', ...}` while editing a row with a linkedFile set, `{mode: 'arming', onPick}` while a row's clip has been tapped to start a new link, or `{mode: 'arming', onPick, pickKind: 'folder', ...}` while QuickAddWidget's "Refile" button has armed a Project/Area destination pick - see the ArmTarget doc comment below. ItemDetail.tsx tells the two arming shapes apart by `pickKind` to decide which Files-pane roots to offer (its own fileBrowserRoots doc comment). The `onPick` closure (when present) is fully owned/constructed here - see the module doc comment on EditTarget. */
   onLinkTargetChange?: (target: LinkTarget | null) => void;
@@ -233,8 +233,8 @@ export default function ProjectDataPanel({
     cancelArm: cancelArming,
     flushEditRef,
   } = useEditTarget<EditTarget, ArmTarget>();
-  // QuickAddWidget's own add/edit/delete error surface (docs/technical-
-  // design-unified-quickadd.md §6/§10 step 2) - mirrors the
+  // QuickAddWidget's own add/edit/delete error surface (
+  // docs/dev/history/technical-design-unified-quickadd.md §6/§10 step 2) - mirrors the
   // per-section `actionError`/`runAction` pattern TodosSection/
   // MeetingsSection keep for their own row-level actions (toggle done,
   // create/open note), lifted here since the widget itself is lifted too.
@@ -310,7 +310,7 @@ export default function ProjectDataPanel({
   // displayTaskText, so an edit starts from the badge-stripped display text,
   // not the raw stored line.
   // Memoized so the React.memo'd QuickAddWidget isn't handed a new object
-  // on every render (docs/dev/technical-design-render-perf-ab.md §3 B2).
+  // on every render (docs/dev/history/technical-design-render-perf-ab.md §3 B2).
   const editingTaskSource = editTarget?.type === 'task' ? state?.tasks[editTarget.index] : undefined;
   const editingTaskForWidget: Task | undefined = useMemo(
     () => (editingTaskSource ? {...editingTaskSource, text: displayTaskText(editingTaskSource, 'grouped')} : undefined),
@@ -642,8 +642,8 @@ export default function ProjectDataPanel({
     // reuse.md §2/§4) - Todos/Meetings below are each their own paginated,
     // fixed-height box rather than this whole panel scrolling as one unit.
     <View style={styles.root}>
-      {/* Lives above both sections, not nested under either (docs/technical-
-          design-unified-quickadd.md §3/§8) - it isn't Todos- or Meetings-
+      {/* Lives above both sections, not nested under either (
+          docs/dev/history/technical-design-unified-quickadd.md §3/§8) - it isn't Todos- or Meetings-
           exclusive, so it doesn't belong under either section's own
           heading. First thing in this pane - see the module doc
           comment's placement note. */}
@@ -745,7 +745,7 @@ function TodosSection({
   itemPath: string;
   tasks: Task[];
   onSave: (next: Task[]) => Promise<void>;
-  /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/technical-design-unified-quickadd.md §8) - this section only needs `editingIndex` to keep highlighting the row currently being edited. */
+  /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/history/technical-design-unified-quickadd.md §8) - this section only needs `editingIndex` to keep highlighting the row currently being edited. */
   editingIndex: number | null;
   armingIndex: number | null;
   onStartEdit: (index: number) => void;
@@ -837,7 +837,7 @@ function TodosSection({
   };
 
   /**
-   * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §6): one
+   * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md §6): one
    * call into `openOrCreateTodoNote` - it decides create-vs-open (and
    * own-vs-shared-target) internally and ends by opening the resolved page
    * itself, so this handler only has to persist the (possibly unchanged) `tasks` array through this section's
@@ -866,7 +866,7 @@ function TodosSection({
         </Pressable>
       )}
       {/* "Todos" heading and pagination in one PagedSection
-          (docs/dev/technical-design-pagination-fixed-height.md §3.4). An
+          (docs/dev/history/technical-design-pagination-fixed-height.md §3.4). An
           empty list shows `emptyHint` and still reserves the box's full
           height - these boxes are fixed and always there. */}
       <PagedSection
@@ -930,7 +930,7 @@ function MeetingsSection({
   meetings: Meeting[];
   onSave: (next: Meeting[]) => Promise<void>;
   onOpenCalendarSettings?: () => void;
-  /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment and TodosSection's identical props. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/technical-design-unified-quickadd.md §8) - see TodosSection's identical note. */
+  /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment and TodosSection's identical props. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/history/technical-design-unified-quickadd.md §8) - see TodosSection's identical note. */
   editingIndex: number | null;
   armingIndex: number | null;
   onStartEdit: (index: number) => void;
@@ -941,14 +941,14 @@ function MeetingsSection({
   useErrorStatus('ProjectDataPanel.actionError', actionError, () => setActionError(null));
   const confirmNoteCreate = useNoteCreateConfirm('ProjectDataPanel.meetingNoteCreateConfirm');
 
-  // Meetings/Google mini-tab (docs/dev/technical-design-google-calendar.md §9) -
+  // Meetings/Google mini-tab (docs/dev/history/technical-design-google-calendar.md §9) -
   // "Meetings" is this section's own list below, "Google" swaps in the shared GoogleCalendarPanel. icsUrl is loaded
   // directly here (not threaded down as a prop) - same self-contained
   // "load your own settings" pattern TodosSection's hideDone already uses
   // above.
   const [mainTabState, setMainTab] = useState<MeetingsMainTab>('meetings');
   // The Google tab only while the experimental Google Calendar integration
-  // is on (docs/dev/technical-design-about-debug-experimental.md §3.2).
+  // is on (docs/dev/history/technical-design-about-debug-experimental.md §3.2).
   const features = useFeatures();
   const mainTabs = visibleTabs(MEETINGS_MAIN_TABS, mainTabState, 'google', features.googleCalendar);
   const mainTab = mainTabs.activeKey;
@@ -1002,7 +1002,7 @@ function MeetingsSection({
     });
   };
 
-  /** The row's prep/review checkpoint icon (docs/dev/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
+  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
   const handleToggleTracking = (index: number, trackingKind: MeetingTrackingKind) => {
     runAction(async () => {
       await onSave(toggleMeetingTrackingAt(meetings, index, trackingKind));
@@ -1093,7 +1093,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  // Bounded flex:1 column (docs/dev/technical-design-flex-weight-stacking.md
+  // Bounded flex:1 column (docs/dev/history/technical-design-flex-weight-stacking.md
   // §3.3) - splits its real available height between TodosSection/
   // MeetingsSection via the weighted `<View style={{flex: TODOS_WEIGHT}}>`/
   // `{flex: MEETINGS_WEIGHT}}` boxes wrapping them in this component's

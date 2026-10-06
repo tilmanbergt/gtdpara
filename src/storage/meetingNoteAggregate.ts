@@ -1,6 +1,6 @@
 /**
- * Which open todos are "relevant" to a note being created (docs/technical-
- * design-meeting-notes.md §4, docs/dev/technical-design-note-
+ * Which open todos are "relevant" to a note being created (
+ * docs/dev/history/technical-design-meeting-notes.md §4, docs/dev/technical-design-note-
  * templates.md §4) - deliberately simpler than
  * storage/dailyAggregate.ts's own rule: **tag match only**, no Project/Area
  * membership check, no `resolveAbbrevPath` union, and NOT excluded by
@@ -66,7 +66,7 @@ export interface MeetingNoteInboxInput {
  * same note is skipped, so a Todo note's "related items" piece never lists
  * the very task the note belongs to.
  *
- * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §9): the
+ * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md §9): the
  * comparison is keyword-based via `excludeIdentity` below. For an own-target
  * notePath `parseSharedNoteAnchor` returns `null` and the raw strings are
  * compared. For a shared-target notePath (`file#keyword`), identity is the

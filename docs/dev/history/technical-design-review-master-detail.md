@@ -345,5 +345,5 @@ are intentionally left as "figure out on-device," not guessed here:
 
 See `feature_review_master_detail_redesign.md` (project memory) for the
 full requirements history and mockup links this design implements, and
-`docs/dev/technical-design-pagination-fixed-height.md` for the pagination
+`docs/dev/history/technical-design-pagination-fixed-height.md` for the pagination
 architecture/cleanup context in §7.

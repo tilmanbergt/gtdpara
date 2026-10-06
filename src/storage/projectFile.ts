@@ -45,7 +45,7 @@ import {readTextFile, writeTextFile} from '../supernote/fileSystem';
 import {log} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
 
-/** For 'inbox', callers pass the Inbox folder as itemPath - the cache's `paths.inboxFolder` (docs/dev/technical-design-inbox-as-area.md), which is the base root only while an old Inbox hasn't been moved yet. */
+/** For 'inbox', callers pass the Inbox folder as itemPath - the cache's `paths.inboxFolder` (docs/dev/history/technical-design-inbox-as-area.md), which is the base root only while an old Inbox hasn't been moved yet. */
 export function dataFileName(kind: GtdParaKind): string {
   if (kind === 'area') return AREA_FILE_NAME;
   if (kind === 'inbox') return INBOX_FILE_NAME;
@@ -63,15 +63,15 @@ export interface ProjectFileState {
   meetings: Meeting[];
   taskExtraLines: string[];
   meetingExtraLines: string[];
-  /** From the `## Scope` span (docs/dev/technical-design-item-scope.md) - a single free-text value, '' if never set. Scaffolded (empty) into every new Project/Area's file by `ensureSkeleton`, so it's usually present even before a scope is ever typed in. */
+  /** From the `## Scope` span (docs/dev/history/technical-design-item-scope.md) - a single free-text value, '' if never set. Scaffolded (empty) into every new Project/Area's file by `ensureSkeleton`, so it's usually present even before a scope is ever typed in. */
   scope: string;
-  /** From the `## Weekly Goals` span (docs/dev/technical-design-weekly-goals.md) - one entry per ISO week that ever had a goal set, empty for most items most of the time. */
+  /** From the `## Weekly Goals` span (docs/dev/history/technical-design-weekly-goals.md) - one entry per ISO week that ever had a goal set, empty for most items most of the time. */
   weeklyGoals: WeeklyGoal[];
   weeklyGoalsExtraLines: string[];
-  /** From the `## Monthly Goals` span (docs/dev/technical-design-monthly-view.md §2.2) - one entry per month that ever had a goal set. */
+  /** From the `## Monthly Goals` span (docs/dev/history/technical-design-monthly-view.md §2.2) - one entry per month that ever had a goal set. */
   monthlyGoals: MonthlyGoal[];
   monthlyGoalsExtraLines: string[];
-  /** From the `## Marks` span (docs/dev/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines; empty for most files. Written only through storage/markStore.ts. */
+  /** From the `## Marks` span (docs/dev/history/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines; empty for most files. Written only through storage/markStore.ts. */
   marks: Mark[];
   marksExtraLines: string[];
   /** From the frontmatter block's status/dailyFocus/weeklyFocus/monthlyFocus/defaultResourceFolder/area fields - see domain/markdown.ts's parseFrontMatter. */
@@ -82,7 +82,7 @@ export interface ProjectFileState {
   defaultResourceFolder: string | null;
   /** The Area this Project supports, by bare folder name (technical-design-project-area-assignment.md §2), or null - Projects only, always null for Areas/Inbox. */
   area: string | null;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null if never set - Projects/Areas only. */
+  /** This item's short abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md), or null if never set - Projects/Areas only. */
   abbrev: string | null;
   frontMatterExtraLines: string[];
 }
@@ -99,7 +99,7 @@ export async function loadProjectFile(
   const rawContent = content ?? '';
   const perfParse = perfStart();
   const state = parseProjectFileContent(rawContent);
-  // Perf trace (docs/dev/technical-design-perf-tracing.md): parse vs. whole load
+  // Perf trace (docs/dev/history/technical-design-perf-tracing.md): parse vs. whole load
   // (whole = permission check + native read + parse).
   const perfMeta = {kind, path, chars: rawContent.length, tasks: state.tasks.length, meetings: state.meetings.length};
   perfEnd('parse:projectFile', perfParse, perfMeta);
@@ -214,7 +214,7 @@ export async function saveWeeklyGoals(
   return next;
 }
 
-/** Saves the Monthly Goals span (docs/dev/technical-design-monthly-view.md §2.2) - see saveTasks for the shared rawContent/scaffolding behavior. */
+/** Saves the Monthly Goals span (docs/dev/history/technical-design-monthly-view.md §2.2) - see saveTasks for the shared rawContent/scaffolding behavior. */
 export async function saveMonthlyGoals(
   kind: GtdParaKind,
   itemPath: string,
@@ -230,7 +230,7 @@ export async function saveMonthlyGoals(
 
 /**
  * Saves the whole frontmatter block from one `FrontMatterFields` object
- * (docs/dev/technical-design-monthly-view.md §2.1) - see saveTasks for the shared
+ * (docs/dev/history/technical-design-monthly-view.md §2.1) - see saveTasks for the shared
  * rawContent/scaffolding behavior. Callers build `fm` as
  * `{...frontMatterOf(item), <the field they change>}` (storage/dataCache.ts),
  * so every field they don't touch is carried through unchanged by

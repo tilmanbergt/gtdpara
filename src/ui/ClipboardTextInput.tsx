@@ -22,13 +22,13 @@
  * matching QuickAddWidget's own fields, which sit at the very top of their
  * screen, like ItemsList's Create row above the Projects/Areas list.
  *
- * `multiline` (docs/dev/technical-design-item-scope.md): an optional taller,
+ * `multiline` (docs/dev/history/technical-design-item-scope.md): an optional taller,
  * top-aligned, wrapping mode for a field like Scope's 1-3 sentence text,
  * which reads and edits poorly as one long horizontally-scrolling line.
  * The overlay's positioning (`bottom: '100%'`) works either way, since it's
  * anchored to the field's top regardless of height.
  *
- * `handleRef` (docs/dev/technical-design-split-by-tag.md §3.6): an optional
+ * `handleRef` (docs/dev/history/technical-design-split-by-tag.md §3.6): an optional
  * handle with `insertAtCursor(word)`, so buttons outside the field (the Tag
  * Rules placeholder chips) can insert at the last cursor position - through
  * the same tracked selection Paste uses.

@@ -1,6 +1,6 @@
 /**
- * The Google Calendar feature's fetch + cache (docs/technical-
- * design-google-calendar.md §5) - deliberately kept entirely separate from
+ * The Google Calendar feature's fetch + cache (
+ * docs/dev/history/technical-design-google-calendar.md §5) - deliberately kept entirely separate from
  * storage/dataCache.ts's DataCache/CachedItem, never merged into it. This is
  * the app's first network-touching module; everything else in storage/ is
  * local-file I/O only (design-overview.md §3's "files are the single
@@ -52,7 +52,7 @@ interface PersistedGoogleCalendarCache {
 }
 
 export interface GoogleCalendarCacheState {
-  /** When `events` were last fetched SUCCESSFULLY - a failed refresh keeps the previous value (null = never fetched), so "Refresh (last …)" never claims a failed attempt as an update (docs/dev/technical-design-status-slot.md §7.5). */
+  /** When `events` were last fetched SUCCESSFULLY - a failed refresh keeps the previous value (null = never fetched), so "Refresh (last …)" never claims a failed attempt as an update (docs/dev/history/technical-design-status-slot.md §7.5). */
   fetchedAt: number | null;
   /** Today .. +30 days, sorted ascending - see refreshGoogleCalendar. Callers narrow this down to their own display window (2/7/30 days) themselves; the fetch itself always covers the full 30 days regardless of who's asking (decided). */
   events: GoogleCalendarEvent[];
@@ -115,7 +115,7 @@ async function hydrateFromDisk(): Promise<void> {
 
 let hydrationPromise: Promise<void> = hydrateFromDisk();
 
-// One cache per profile (docs/dev/technical-design-profiles-demo-space.md §3.3):
+// One cache per profile (docs/dev/history/technical-design-profiles-demo-space.md §3.3):
 // on a switch, forget the in-memory events and load the new profile's copy.
 onActiveProfileChange(() => {
   cached = null;
@@ -271,7 +271,7 @@ async function doRefresh(icsUrl: string): Promise<GoogleCalendarCacheState> {
   }
 }
 
-// --- Dedup (docs/dev/technical-design-google-calendar.md §6) ---
+// --- Dedup (docs/dev/history/technical-design-google-calendar.md §6) ---
 
 function localMeetingKey(m: Pick<Meeting, 'title' | 'date' | 'time'>): string {
   return `${m.title.trim().toLowerCase()}|${m.date}|${m.time}`;

@@ -1,6 +1,6 @@
 /**
  * Moving a todo or meeting to another Project, Area or the Inbox, together
- * with its note (docs/dev/technical-design-files-0.6.md §3.4). Every move in
+ * with its note (docs/dev/history/technical-design-files-0.6.md §3.4). Every move in
  * the app (Inbox filing, quick-file on edit, Current's Refile, Daily/Week
  * refile, close-out's checklist) calls `moveTask`/`moveMeeting`, which run
  * the write inside `moveEntryWithNote`. That first takes care of the note:

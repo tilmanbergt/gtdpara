@@ -4,7 +4,7 @@
 //   npm run check            gen, tsc, eslint, jest, script tests, code health
 //   npm run check -- --quick same without jest
 //
-// Stops at the first failing check. Design: docs/dev/technical-design-quality-0.9.md §3.1;
+// Stops at the first failing check. Design: docs/dev/history/technical-design-quality-0.9.md §3.1;
 // rules: docs/dev/DEVELOPMENT-POLICY.md §7.
 
 import {spawnSync} from 'node:child_process';

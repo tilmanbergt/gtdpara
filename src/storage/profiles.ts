@@ -1,5 +1,5 @@
 /**
- * Profile files on the device (docs/dev/technical-design-profiles-demo-space.md
+ * Profile files on the device (docs/dev/history/technical-design-profiles-demo-space.md
  * §3.1-3.2): EXPORT/gtdpara/profiles/<id>.json. The active settings stay in
  * AsyncStorage as before; the files are snapshots that a switch writes (the
  * profile being left) and reads (the profile being entered). Secrets are

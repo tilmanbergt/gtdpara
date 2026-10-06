@@ -1,12 +1,12 @@
 /**
- * Month-view highlights (docs/dev/technical-design-monthly-view.md §2.4): a
+ * Month-view highlights (docs/dev/history/technical-design-monthly-view.md §2.4): a
  * meeting is a highlight when its line carries the bare tag `#monthly`, and
  * its optional short form is the trailing bracket of its title - e.g.
  * "Art of Transformation Session (AoT)". The short form is plain title text,
  * filled in by hand, so it shows everywhere the title does and is edited as
  * part of the title in Quick Add.
  *
- * ANY trailing bracket counts (docs/dev/technical-design-meeting-lists.md
+ * ANY trailing bracket counts (docs/dev/history/technical-design-meeting-lists.md
  * §2.2) - spaces, umlauts and punctuation included ("(Geburtstag Jörg)",
  * "(AoT-2)"), up to 40 characters.
  * Pure, zero RN/SDK imports (domain/ convention).

@@ -1,6 +1,6 @@
 /**
  * In-memory Gmail inbox cache for the Weekly Review "Gmail inbox" step
- * (docs/dev/technical-design-review-gmail-inbox.md §5) - mirrors storage/
+ * (docs/dev/history/technical-design-review-gmail-inbox.md §5) - mirrors storage/
  * folderIndex.ts's pattern (a module-level variable, explicit refresh only,
  * no background polling): a plugin on an e-ink device has no business
  * quietly polling an IMAP server on a timer. The cache is populated only when
@@ -40,7 +40,7 @@ export interface GmailCacheMessage extends GmailMessageSummary {
   /**
    * `'unfetched'` until the message's detail panel is opened (fetchGmailBody
    * below); `'unsupported'` when the native side found neither a usable
-   * plain-text nor HTML part (docs/dev/technical-design-review-gmail-inbox.md
+   * plain-text nor HTML part (docs/dev/history/technical-design-review-gmail-inbox.md
    * §6) - both are plain data states, not error conditions, so callers don't
    * need to special-case a rejected promise just to notice them.
    */
@@ -145,8 +145,8 @@ export function restoreCachedGmailMessage(removed: RemovedGmailMessage): void {
 }
 
 /**
- * Archives still running in the background (docs/technical-
- * design-review-monthly-focus.md §4.3). A manual refresh while one of these
+ * Archives still running in the background (
+ * docs/dev/history/technical-design-review-monthly-focus.md §4.3). A manual refresh while one of these
  * is queued/in flight would otherwise re-list a message the server hasn't
  * archived yet - refreshGmailInbox filters them out.
  */

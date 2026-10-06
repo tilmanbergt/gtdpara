@@ -1,5 +1,5 @@
 /**
- * Settings → Advanced (docs/dev/technical-design-about-debug-experimental.md §3.6):
+ * Settings → Advanced (docs/dev/history/technical-design-about-debug-experimental.md §3.6):
  * the Experimental switches, and the tools (Reload all files, Integrity
  * Check, Keep tabs in memory, Performance tracing). Presentational: Settings.tsx owns the values and the handlers,
  * every switch saves immediately.

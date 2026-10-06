@@ -1,5 +1,5 @@
 /**
- * Settings → About (docs/dev/technical-design-about-debug-experimental.md §3.5):
+ * Settings → About (docs/dev/history/technical-design-about-debug-experimental.md §3.5):
  * left - version/build/device, Debug logging switch, Export debug bundle;
  * right - "What's new" from the bundled CHANGELOG, paged, no scrolling.
  */

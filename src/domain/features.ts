@@ -1,5 +1,5 @@
 /**
- * Experimental feature switches (docs/dev/technical-design-about-debug-experimental.md
+ * Experimental feature switches (docs/dev/history/technical-design-about-debug-experimental.md
  * §3.1-3.2). Google Calendar and Gmail depend on external services and are
  * shown only when switched on in Settings → Advanced. Switching one off
  * hides its entry points; its configuration stays stored.

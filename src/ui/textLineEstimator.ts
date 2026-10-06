@@ -3,7 +3,7 @@
  * used by row-height helpers (ui/TaskRow.tsx's `taskRowHeight`) so a
  * fixed-height paginated section (ui/PagedSection.tsx) can reserve a row's
  * real rendered height up front, without a measure-then-reflow render pass
- * (docs/technical-design-pagination-fixed-height.md §2).
+ * (docs/dev/history/technical-design-pagination-fixed-height.md §2).
  *
  * Failure modes are self-contained by design: over-predicting leaves a
  * harmless blank gap at the bottom of that one row; under-predicting lets

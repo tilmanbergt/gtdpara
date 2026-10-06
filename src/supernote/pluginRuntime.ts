@@ -1,6 +1,6 @@
 /**
  * JS side of the native `GtdParaRuntime` module (GtdParaRuntimeModule.kt /
- * PluginRuntimeGuard.kt) - docs/dev/technical-design-host-update-crash.md.
+ * PluginRuntimeGuard.kt) - docs/dev/history/technical-design-host-update-crash.md.
  *
  * The Supernote host installs a new gtdpara build into the already running
  * host process, next to the old one; that process then tends to crash a minute

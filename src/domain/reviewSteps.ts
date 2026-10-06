@@ -1,6 +1,6 @@
 /**
  * Weekly Review step registry and per-step review tracking
- * (docs/dev/technical-design-review-hub.md). Pure logic - no RN imports, no I/O
+ * (docs/dev/history/technical-design-review-hub.md). Pure logic - no RN imports, no I/O
  * (design-overview.md §3). Persistence lives in storage/settingsStorage.ts
  * (`updateReviewSteps`); the screen that drives all of this is
  * screens/ReviewScreen.tsx, the hub UI is ui/ReviewHub.tsx.
@@ -41,16 +41,16 @@ export interface ReviewSummaryCounts {
   onHold: number;
   markedDone: number;
   archived: number;
-  /** "Add to Weekly focus" (docs/dev/technical-design-daily-todo-filter.md) - kept separate from dailyFocusAdded below so the recap's line text stays accurate about which focus scope was touched. A saved blob that lacks this key reads it as undefined, which every consumer here treats as 0 (this recap is deliberately coarse/non-audited). */
+  /** "Add to Weekly focus" (docs/dev/history/technical-design-daily-todo-filter.md) - kept separate from dailyFocusAdded below so the recap's line text stays accurate about which focus scope was touched. A saved blob that lacks this key reads it as undefined, which every consumer here treats as 0 (this recap is deliberately coarse/non-audited). */
   weeklyFocusAdded: number;
-  /** "Add to Daily focus" from the Unfocused-next-items review step (docs/dev/technical-design-daily-todo-filter.md) - kept separate from weeklyFocusAdded above so the recap's line text stays accurate about which focus scope was touched. */
+  /** "Add to Daily focus" from the Unfocused-next-items review step (docs/dev/history/technical-design-daily-todo-filter.md) - kept separate from weeklyFocusAdded above so the recap's line text stays accurate about which focus scope was touched. */
   dailyFocusAdded: number;
-  /** "Add to Monthly focus" (Unfocused next items) and monthly slots filled in Focus reset (docs/dev/technical-design-review-monthly-focus.md §3). May be absent in saved stats - every reader uses `?? 0`. */
+  /** "Add to Monthly focus" (Unfocused next items) and monthly slots filled in Focus reset (docs/dev/history/technical-design-review-monthly-focus.md §3). May be absent in saved stats - every reader uses `?? 0`. */
   monthlyFocusAdded: number;
-  /** "Meetings to close out" step (docs/dev/technical-design-meeting-tracking.md): meetings ticked `#reviewed` during the visit. */
+  /** "Meetings to close out" step (docs/dev/history/technical-design-meeting-tracking.md): meetings ticked `#reviewed` during the visit. */
   meetingsClosedOut: number;
   /**
-   * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md
+   * Gmail inbox review step (docs/dev/history/technical-design-review-gmail-inbox.md
    * §3): Todos/Meetings created from an email during the visit. Kept
    * distinct from `tasksAdded` (which every other step's task creation also
    * bumps) so this step's own recap line reads "N items created from
@@ -139,7 +139,7 @@ export const REVIEW_STEPS: ReviewStepDef[] = [
 ];
 
 /**
- * The steps actually shown (docs/dev/technical-design-about-debug-experimental.md
+ * The steps actually shown (docs/dev/history/technical-design-about-debug-experimental.md
  * §3.2): 'gmailInbox' only while the experimental Gmail integration is on.
  * Everything that walks, counts or dates steps takes this list, so a hidden
  * step is never listed, never next/previous and never makes the review overdue.
@@ -203,7 +203,7 @@ export function hasAnyCount(counts: Partial<ReviewSummaryCounts>): boolean {
 }
 
 /**
- * The persisted result of leaving a step (docs/dev/technical-design-review-hub.md
+ * The persisted result of leaving a step (docs/dev/history/technical-design-review-hub.md
  * §3.3). One rule: the step's stats are the last visit that either was
  * Reviewed or actually did something.
  * - reviewed: date = now, counts replaced by this visit's tally (even zeros).
@@ -228,8 +228,8 @@ export function applyStepVisit(
 }
 
 /**
- * Keeps `emptyAt` in step with what the hub currently sees (docs/technical-
- * design-review-hub.md §7). `emptyIds` are the steps whose live count is 0;
+ * Keeps `emptyAt` in step with what the hub currently sees (
+ * docs/dev/history/technical-design-review-hub.md §7). `emptyIds` are the steps whose live count is 0;
  * only backlog steps are ever stamped. An empty step gets `emptyAt = now`,
  * refreshed at most once per calendar day (so it is not rewritten on every
  * render); a step that is non-empty again loses it. Separate from

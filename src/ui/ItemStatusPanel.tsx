@@ -1,6 +1,6 @@
 /**
  * Status (Active/On Hold/Done) + Archive + Assign to Area - the Current
- * tab's left pane, below Files (docs/dev/technical-design-inbox-tab.md §4).
+ * tab's left pane, below Files (docs/dev/history/technical-design-inbox-tab.md §4).
  *
  * Focus is shown by ui/ItemFocusPanel.tsx at the TOP of the same column -
  * see that file's module doc comment (independent load, the weekly goal
@@ -81,7 +81,7 @@ interface StatusPanelState {
   defaultResourceFolder: string | null;
   /** The Area this Project supports, by bare folder name, or null - always null for Areas. */
   area: string | null;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - carried through unchanged on every write here, same reason `area`/`defaultResourceFolder` already are (see storage/projectFile.ts's saveFrontMatter doc comment). */
+  /** This item's short abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md), or null - carried through unchanged on every write here, same reason `area`/`defaultResourceFolder` already are (see storage/projectFile.ts's saveFrontMatter doc comment). */
   abbrev: string | null;
 }
 
@@ -90,7 +90,7 @@ interface StatusPanelState {
  * shared cache when present (another panel on this screen - ItemFocusPanel,
  * ItemDetail's own resource-folder/abbrev saves - may have written the
  * file since this panel loaded), falling back to this panel's own snapshot.
- * Every write spreads the whole thing (docs/dev/technical-design-monthly-view.md
+ * Every write spreads the whole thing (docs/dev/history/technical-design-monthly-view.md
  * §2.1), so no field - focus flags included - can be clobbered by a stale copy.
  */
 function currentItem(kind: 'project' | 'area', name: string, path: string, snapshot: StatusPanelState) {
@@ -181,7 +181,7 @@ export default function ItemStatusPanel({
     load();
   }, [load]);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.3):
   // reload from the shared cache only if this item's file changed while
   // hidden (e.g. its status or focus changed from Daily/Week/Projects).
   useOnScreenShow(() => {
@@ -254,13 +254,13 @@ export default function ItemStatusPanel({
                 .join(', ')}.`
             : '';
         const plural = cascaded.length > 0;
-        // Exact year/area target (docs/dev/technical-design-project-close-out.md §5.1), shown relative to the base root.
+        // Exact year/area target (docs/dev/history/technical-design-project-close-out.md §5.1), shown relative to the base root.
         const base = resolvePaths(settings).base;
         const target = archiveTargetsFor(currentItem(kind, name, path, state), settings);
         const targetLabel = target.folder.startsWith(`${base}/`) ? target.folder.slice(base.length + 1) : target.folder;
         // A merge into an existing folder leaves this folder empty: name it
         // here, so the confirmation is also the explicit OK for deleting it
-        // (docs/dev/technical-design-inkhub-submission.md §3.4).
+        // (docs/dev/history/technical-design-inkhub-submission.md §3.4).
         const leavesEmpty = await archiveLeavesEmptyFolder(currentItem(kind, name, path, state), settings);
         const mergeNote = leavesEmpty ? emptyFolderConfirmNote(displayPath(path), displayPath(target.folder)) : '';
         // Confirm in the central status slot (D10) - short question in the

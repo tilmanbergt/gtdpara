@@ -1,6 +1,6 @@
 /**
  * Pure decision logic for "which page does the plugin land on when it is
- * (re)opened" - docs/dev/technical-design-return-to-origin.md. No RN/SDK imports
+ * (re)opened" - docs/dev/history/technical-design-return-to-origin.md. No RN/SDK imports
  * (domain/ convention, design-overview.md §3); the mutable "last note the
  * plugin opened" slot itself lives in storage/returnRecord.ts, and App.tsx's
  * reorient() is the only caller of decideLanding().

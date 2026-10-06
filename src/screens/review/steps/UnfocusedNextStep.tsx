@@ -44,7 +44,7 @@ type UnfocusedNextRow =
  * cache - "membership frozen, task list live", like every other step's
  * detail lookup) - the same flattening `ProjectDataPanel.tsx`'s
  * `TodosSection`/`MeetingsSection` use for a grouped `PagedSection`
- * (docs/dev/technical-design-review-master-detail.md §5.4). A "note" row fills
+ * (docs/dev/history/technical-design-review-master-detail.md §5.4). A "note" row fills
  * in for an item whose #next tasks were all resolved OR given a due date
  * during this review visit (`nextTasksFor` excludes both, see
  * reviewAggregate.ts) - still frozen into the step, but with nothing left to
@@ -486,7 +486,7 @@ export default function UnfocusedNextStep({
     frozen.markActed(itemRef.path);
   };
 
-  /** "+ Add to Monthly focus" (docs/dev/technical-design-review-monthly-focus.md §2) - same shape as handleAddToWeeklyFocus above. */
+  /** "+ Add to Monthly focus" (docs/dev/history/technical-design-review-monthly-focus.md §2) - same shape as handleAddToWeeklyFocus above. */
   const handleAddToMonthlyFocus = async (itemRef: ReviewItemRef): Promise<void> => {
     const cachedItem = findCachedItem(itemRef.path);
     if (!cachedItem) throw new Error(`"${itemRef.name}" changed on disk - Settings → Advanced → Reload all files.`);

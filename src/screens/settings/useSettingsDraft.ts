@@ -41,7 +41,7 @@ export const FIELDS: Array<{
     pathKey: 'areas',
   },
   {
-    // The Inbox's own folder inside Areas (docs/dev/technical-design-inbox-as-area.md §3.5).
+    // The Inbox's own folder inside Areas (docs/dev/history/technical-design-inbox-as-area.md §3.5).
     key: 'inboxFolder',
     label: 'Inbox folder',
     placeholder: DEFAULT_SETTINGS.inboxFolder,

@@ -1,6 +1,6 @@
 /**
  * Loose types and small helpers for the element-level SDK calls the lasso
- * features use (docs/dev/technical-design-lasso-0.8.md §3.4, §3.8): reading
+ * features use (docs/dev/history/technical-design-lasso-0.8.md §3.4, §3.8): reading
  * a lasso's strokes, building stroke copies for recognition, and the mark
  * icons. The SDK hands out plain objects (sn-plugin-lib model/Element.ts);
  * only the fields read or written here are typed.

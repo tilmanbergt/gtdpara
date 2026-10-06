@@ -1,6 +1,6 @@
 /**
  * Recognized lasso text -> what the capture panel shows
- * (docs/dev/technical-design-lasso-0.8.md §3.5). Pure.
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.5). Pure.
  *
  * - A todo whose text has at least two bullet lines becomes a list of items
  *   (split): bullets stripped, a line without a bullet continues the item
@@ -97,7 +97,7 @@ export function joinItems(items: string[]): string {
 }
 
 /**
- * "✂ Split at cursor" (docs/dev/technical-design-lasso-0.8.md, checkpoint B):
+ * "✂ Split at cursor" (docs/dev/history/technical-design-lasso-0.8.md, checkpoint B):
  * - a plain cursor (start === end) cuts the text there into two items;
  * - a selection is cut out and becomes the next item, the rest stays.
  * A bullet at the start of the new item is removed. Returns null when one

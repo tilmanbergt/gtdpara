@@ -2,7 +2,7 @@
  * FocusedItemRow — one "name (tap to open) + ✕ (tap to remove)" row, shared
  * by `ui/DailyFocusPanel.tsx`'s `FixedSlotSection` and Review's
  * Unfocused-next-items "Current focus" panel
- * (docs/dev/technical-design-review-master-detail.md §5.4/§6.4), so both show
+ * (docs/dev/history/technical-design-review-master-detail.md §5.4/§6.4), so both show
  * the exact same remove-affordance.
  *
  * Deliberately NOT used by `ui/WeeklyFocusPanel.tsx`'s own

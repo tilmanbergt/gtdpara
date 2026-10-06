@@ -1,6 +1,6 @@
 /**
  * itemEntryRow — shared "one row = one Project/Area" sizing/display helpers
- * (docs/technical-design-review-master-detail.md §Component inventory), used
+ * (docs/dev/history/technical-design-review-master-detail.md §Component inventory), used
  * by screens/ItemsList.tsx and the Review screen's master-detail left lists
  * (Stalled projects, Neglected areas, Done awaiting review, On Hold
  * reconsideration) so both use the same sizing/display logic.

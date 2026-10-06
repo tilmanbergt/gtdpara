@@ -1,5 +1,5 @@
 /**
- * Close-out step 2 - Contents (docs/dev/technical-design-project-close-out.md
+ * Close-out step 2 - Contents (docs/dev/history/technical-design-project-close-out.md
  * §8.2, mockup "2 · Contents"): every file of the project grouped the way
  * the PDF will be, each with a tick box (only where it can be included),
  * its size, and whether it ends up "in PDF" or "listed only". One flattened

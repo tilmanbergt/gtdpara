@@ -7,7 +7,7 @@
  * "?" here too (see charWidth).
  *
  * Data: Adobe's standard AFM metrics for these fonts (generated from
- * reportlab's copy of them). docs/dev/technical-design-project-close-out.md
+ * reportlab's copy of them). docs/dev/history/technical-design-project-close-out.md
  * §3.2. Pure data, no imports - part of the reusable PDF pipeline.
  */
 

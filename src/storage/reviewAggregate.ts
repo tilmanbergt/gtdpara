@@ -22,8 +22,8 @@
  *   Only its length is used, as the hub's count; the step itself is
  *   screens/ReviewWeekAhead.tsx.
  * - stalledProjects: Active projects with zero *actionable* open tasks -
- *   not done, not cancelled, and NOT tagged Someday or Maybe (technical-
- *   design-tags.md: a project whose only open tasks are all shelved to
+ *   not done, not cancelled, and NOT tagged Someday or Maybe (
+ *   technical-design-tags.md: a project whose only open tasks are all shelved to
  *   Someday/Maybe has no real next action either; Waiting For tasks still
  *   count, since they represent real, if blocked, follow-up). Each stalled
  *   entry carries its own next-2-upcoming-meetings (not bounded to the
@@ -39,8 +39,8 @@
  *   together.
  * - neglectedAreas: the Areas counterpart of stalledProjects, same
  *   Someday/Maybe-excluded/shelvedTasks treatment.
- * - unfocusedNextItems (docs/dev/technical-design-daily-todo-filter.md,
- *   docs/dev/technical-design-review-monthly-focus.md §1): Active Projects
+ * - unfocusedNextItems (docs/dev/history/technical-design-daily-todo-filter.md,
+ *   docs/dev/history/technical-design-review-monthly-focus.md §1): Active Projects
  *   AND Areas, not currently focused *at all* (`domain/destination.ts`'s
  *   `isFocused` - neither daily, weekly NOR monthly), that have at least one
  *   open #next task WITHOUT a due date - the items whose #next work is
@@ -58,7 +58,7 @@
  *   overlap with stalledProjects/neglectedAreas: those require *zero*
  *   actionable open tasks, and a #next task always counts as actionable
  *   (isActionableOpenTask only excludes Someday/Maybe).
- * - meetingsToClose (docs/dev/technical-design-meeting-tracking.md): meetings whose
+ * - meetingsToClose (docs/dev/history/technical-design-meeting-tracking.md): meetings whose
  *   Tag Rule tracks "review after", that are over, not yet `#reviewed`, and
  *   within the last REVIEW_LOOKBACK_DAYS. The predicate is domain/
  *   meetingTracking.ts's `isReviewOutstanding` - the same resolution the Daily
@@ -272,7 +272,7 @@ export interface ReviewStepCount {
 }
 
 /**
- * The Review hub's per-step numbers (docs/dev/technical-design-review-hub.md
+ * The Review hub's per-step numbers (docs/dev/history/technical-design-review-hub.md
  * §5.2) - "how much is waiting in there", live from the same aggregate the
  * steps themselves read, so the hub and a step can never disagree about
  * membership (the steps' own frozen snapshots only affect what stays visible

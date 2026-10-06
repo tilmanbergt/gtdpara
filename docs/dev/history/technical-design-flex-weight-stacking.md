@@ -1,6 +1,6 @@
 # Technical Design: Weighted Flex Stacking for Self-Measuring Lists
 
-Follow-on to `docs/dev/technical-design-pagination-fixed-height.md` and its
+Follow-on to `docs/dev/history/technical-design-pagination-fixed-height.md` and its
 self-measured-viewport-height extension (2026-09-17+, tracked in memory as
 `[[feature_pagination_fixed_height]]`, not yet folded back into that repo
 doc). That work let a `PagedSection` (or a component wrapping one -

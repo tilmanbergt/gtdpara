@@ -36,7 +36,7 @@ PluginManager.registerButton(2, ['NOTE', 'DOC'], {
   showType: 1,
 });
 
-// "Mark for later" (docs/dev/technical-design-lasso-0.8.md §3.6): one tap in
+// "Mark for later" (docs/dev/history/technical-design-lasso-0.8.md §3.6): one tap in
 // the lasso toolbar, no gtdpara screen (showType 0). The listener lives here,
 // not in App.tsx, because App may not be mounted at all.
 PluginManager.registerButton(2, ['NOTE', 'DOC'], {

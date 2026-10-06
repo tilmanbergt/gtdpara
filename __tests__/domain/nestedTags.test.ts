@@ -15,7 +15,7 @@ import {
   tagMatchesRuleTag,
 } from '../../src/domain/tagRules';
 
-// docs/dev/technical-design-split-by-tag.md §3.1 / §3.2
+// docs/dev/history/technical-design-split-by-tag.md §3.1 / §3.2
 
 describe('nested tags - parsing', () => {
   it('reads #parent/child as one tag', () => {

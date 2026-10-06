@@ -1,6 +1,6 @@
 /**
  * Data-volume statistics written into every performance trace's header
- * (docs/dev/technical-design-perf-tracing.md §4.1), so timings can be read
+ * (docs/dev/history/technical-design-perf-tracing.md §4.1), so timings can be read
  * against how much data there is. Called by utils/perf.ts only when a trace
  * has ENDED (injected via perfConfigure in App.tsx) - never during a measured
  * tab switch. Pure read of the in-memory cache: no file I/O.

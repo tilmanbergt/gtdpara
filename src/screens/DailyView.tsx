@@ -5,7 +5,7 @@
  * belonging to a daily-focus Project/Area) on the right. The Focus panel
  * (Projects | Areas, storage/focusSlots.ts) sits below Calendar in the left
  * column. Both list columns page by height rather than scroll
- * (docs/dev/technical-design-pagination-fixed-height.md, ui/PagedSection.tsx).
+ * (docs/dev/history/technical-design-pagination-fixed-height.md, ui/PagedSection.tsx).
  * The Focus panel is unpaginated - it stays short by nature (the configured
  * slot counts).
  *
@@ -15,14 +15,14 @@
  * building one (rebuildCache).
  *
  * Rows are the shared ui/TaskRow.tsx/ui/MeetingRow.tsx
- * (docs/dev/technical-design-inbox-tab.md §1): tap the row text to edit, 📓/+📓
+ * (docs/dev/history/technical-design-inbox-tab.md §1): tap the row text to edit, 📓/+📓
  * to open or create a linked note; the source subtext / group header jumps
  * to that Project/Area. A row here can belong to a *different* Project/Area
  * than the one next to it, so every save (saveEntryTasks/saveEntryMeetings
  * below) re-fetches that entry's own source item from the cache by path
  * before mutating it. Meeting rows also carry the prep/review checkpoint icon
  * when the meeting's Tag Rule tracks it
- * (docs/dev/technical-design-meeting-tracking.md - `trackingFor` /
+ * (docs/dev/history/technical-design-meeting-tracking.md - `trackingFor` /
  * `handleToggleMeetingTracking` below; row sizing goes through
  * `meetingHeightFor` so the icon's width is always accounted for).
  *
@@ -31,12 +31,12 @@
  * Open-tasks column on the right - outside the Calendar column, so it stays
  * visible whichever Calendar tab is showing. Always
  * `fixedDestination: {type: 'inbox'}`
- * (docs/dev/technical-design-filing-unification.md §6): filing happens on the
+ * (docs/dev/history/technical-design-filing-unification.md §6): filing happens on the
  * Inbox tab or Weekly Review's Inbox-to-zero step, this screen only captures
  * to Inbox. A meeting added for a date other than today/tomorrow saves fine,
  * it just won't appear here until then.
  *
- * Inbox (docs/dev/technical-design-inbox-tab.md §3): Inbox.txt's tasks/meetings
+ * Inbox (docs/dev/history/technical-design-inbox-tab.md §3): Inbox.txt's tasks/meetings
  * go through the same aggregate/filter rule as everything else
  * (storage/dailyAggregate.ts's buildDailyAggregate takes the loaded Inbox
  * alongside `items`), via a synthetic "Inbox" DailyItemRef that flows through
@@ -53,8 +53,8 @@
  * the "jump to that item" affordance. The quick-add sits above the content
  * it adds to, so the on-screen keyboard doesn't cover it.
  *
- * Calendar tabs (docs/dev/technical-design-google-calendar.md §9,
- * docs/dev/technical-design-pagination-fixed-height.md §3.2): one flat
+ * Calendar tabs (docs/dev/history/technical-design-google-calendar.md §9,
+ * docs/dev/history/technical-design-pagination-fixed-height.md §3.2): one flat
  * <MiniTabs> strip - "Today"/"Tomorrow" (each a height-paginated list of that
  * day's meetings) and "Google", the shared ui/GoogleCalendarPanel.tsx capped
  * to `maxDays={2}` with a default copy destination of Inbox. All three tabs
@@ -63,7 +63,7 @@
  * is threaded down from App.tsx for the panel's empty-state "Open Calendar
  * Settings" link when no ICS URL is set yet.
  *
- * `#now` and focus mode (docs/dev/technical-design-now-focus-mode.md,
+ * `#now` and focus mode (docs/dev/history/technical-design-now-focus-mode.md,
  * companion docs/dev/design-philosophy.md §4/§8): the `focusMode` prop switches
  * this same component into a one-column, no-TabBar layout - no separate
  * screen, no separate data load, same `load`/handleAddTask/handleAddMeeting/
@@ -149,9 +149,9 @@ import {useCachedInbox} from '../ui/useCachedInbox';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
-  /** Switches to the Inbox tab - used when an Inbox-sourced row's group header/source subtext is tapped (docs/dev/technical-design-inbox-tab.md §3), since there's no Project/Area to open for those. */
+  /** Switches to the Inbox tab - used when an Inbox-sourced row's group header/source subtext is tapped (docs/dev/history/technical-design-inbox-tab.md §3), since there's no Project/Area to open for those. */
   onOpenInbox?: () => void;
-  /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
+  /** Switches to Settings' Calendar sub-tab (docs/dev/history/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** Docs/technical-design-now-focus-mode.md §4: when true, this screen renders as focus mode's one-column, no-TabBar view instead of normal two-column Daily. App.tsx's `Mode: 'focus'` branch renders this same component with this prop on - see this file's own module doc comment. Absent/false is normal Daily, unchanged. */
   focusMode?: boolean;
@@ -165,7 +165,7 @@ const taskKey = (entry: DailyTaskEntry) => `${entry.item.path}#${entry.taskIndex
 const meetingKey = (entry: DailyMeetingEntry) => `${entry.item.path}#${entry.meetingIndex}`;
 
 // Both of this screen's own quick-adds (Open tasks, Calendar) always go to
-// Inbox (docs/dev/technical-design-filing-unification.md §6) - "file it
+// Inbox (docs/dev/history/technical-design-filing-unification.md §6) - "file it
 // properly" happens on the Inbox tab / Weekly Review's Inbox-to-zero step
 // instead. Same local-constant convention screens/InboxScreen.tsx's own
 // FIXED_INBOX_DESTINATION uses.
@@ -183,8 +183,8 @@ const COLUMN_WIDTH_PX = 678;
 // ([[feature_pagination_fixed_height]]).
 const GROUP_HEADER_ROW_PX = 57;
 
-/** Flattens grouped task entries into one paginated sequence (docs/technical-
- * design-pagination-edit-reuse.md §2/§4) - a group's header row is counted
+/** Flattens grouped task entries into one paginated sequence (
+ * docs/dev/history/technical-design-pagination-edit-reuse.md §2/§4) - a group's header row is counted
  * as content within that sequence, same as any other row. */
 type FlatTaskRow = {kind: 'header'; item: DailyItemRef} | {kind: 'entry'; entry: DailyTaskEntry};
 
@@ -251,7 +251,7 @@ export default function DailyView({
   // needs a single `resetKey` to page against per tab.
   const [calendarTab, setCalendarTab] = useState<CalendarTab>('today');
   // The Google tab only while the experimental Google Calendar integration
-  // is on (docs/dev/technical-design-about-debug-experimental.md §3.2);
+  // is on (docs/dev/history/technical-design-about-debug-experimental.md §3.2);
   // DayMeetingsPanel drops the tab when googlePanel is null.
   const features = useFeatures();
 
@@ -275,7 +275,7 @@ export default function DailyView({
   const tasksAction = useActionError('DailyView.tasksActionError', 'DailyView: task action failed');
   const meetingsAction = useActionError('DailyView.meetingsActionError', 'DailyView: meeting action failed');
 
-  // Focus-mode-only local state (docs/dev/technical-design-now-focus-mode.md §5/
+  // Focus-mode-only local state (docs/dev/history/technical-design-now-focus-mode.md §5/
   // §6) - see this file's module doc comment for why plain unpersisted
   // useState is enough here ("sessions held lightly").
 
@@ -314,7 +314,7 @@ export default function DailyView({
     setLoading(true);
     setError(null);
     // Settings are applied together with Inbox/paths below (one render
-      // round instead of two - docs/dev/technical-design-render-perf-ab.md §3 B3),
+      // round instead of two - docs/dev/history/technical-design-render-perf-ab.md §3 B3),
       // and also on a later failure.
     let loadedSettings: GtdParaSettings | null = null;
     try {
@@ -347,7 +347,7 @@ export default function DailyView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.2):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.2):
   // settings are this screen's own copy, so re-read them quietly - no
   // spinner, and state only changes (= re-render) if they actually differ.
   // The Inbox is the shared cache copy (refreshed when gtdpara is reopened).
@@ -382,7 +382,7 @@ export default function DailyView({
     setPickerMode(cohort.length === 0);
   }, [focusMode, loading, items, inbox, inboxPath]);
 
-  /** Jumps to that Project/Area's Current tab, or (docs/dev/technical-design-inbox-tab.md §3) to the Inbox tab when `item` is the synthetic Inbox entry - there's no Project/Area to open for that one. */
+  /** Jumps to that Project/Area's Current tab, or (docs/dev/history/technical-design-inbox-tab.md §3) to the Inbox tab when `item` is the synthetic Inbox entry - there's no Project/Area to open for that one. */
   const openItem = (item: DailyItemRef) => {
     if (item.kind === 'inbox') {
       onOpenInbox?.();
@@ -461,7 +461,7 @@ export default function DailyView({
    * same setNowTag-then-deriveTaskFields round-trip every other tag mutator
    * on this screen uses (see commitTaskEdit above). Wired both from normal
    * Daily's Open-tasks rows (renderTaskEntry below - marking #now doesn't
-   * require being in focus mode, docs/dev/technical-design-now-focus-mode.md §3)
+   * require being in focus mode, docs/dev/history/technical-design-now-focus-mode.md §3)
    * and from focus mode's own Picker (§6 state C, renderFocusTaskEntry
    * below) - the Picker's double-tap-to-select IS this same call, nothing
    * Picker-specific about it. A task turning done while carrying #now is
@@ -595,7 +595,7 @@ export default function DailyView({
   };
 
   /**
-   * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §6): one
+   * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md §6): one
    * call into `storage/meetingNoteContent.ts`'s `openOrCreateTodoNote`, which
    * decides create-vs-open (and own-vs-shared-target) internally and ends by
    * opening the resolved page itself - this handler only persists `notePath`
@@ -713,7 +713,7 @@ export default function DailyView({
 
   /**
    * The meeting row's prep/review checkpoint icon (ui/MeetingRow.tsx's
-   * `tracking`, docs/dev/technical-design-meeting-tracking.md) - flips
+   * `tracking`, docs/dev/history/technical-design-meeting-tracking.md) - flips
    * `#prepped`/`#reviewed` on the meeting's CURRENT copy inside the usual
    * saveEntryMeetings mutator (not on the render-time `entry.meeting`, which
    * may be a render behind), same write path as every other meeting edit
@@ -797,7 +797,7 @@ export default function DailyView({
   // (storage/dailyAggregate.ts's own module doc comment), so recomputing is
   // cheap, and it can never be stale relative to the cache. `null` until
   // load() has produced a inboxPath.
-  // Memoized on its real inputs (docs/dev/technical-design-render-perf-ab.md
+  // Memoized on its real inputs (docs/dev/history/technical-design-render-perf-ab.md
   // §3 B4) - `todayDate` is in the deps so a screen left open over midnight
   // still recomputes.
   const aggregate: DailyAggregate | null = useMemo(
@@ -839,7 +839,7 @@ export default function DailyView({
   // same as ProjectDataPanel/ReviewScreen/InboxScreen do. No `onFile` here -
   // Daily is not a filing surface (see the module doc comment).
   //
-  // `heightPx` (docs/dev/technical-design-pagination-fixed-height.md §3.1):
+  // `heightPx` (docs/dev/history/technical-design-pagination-fixed-height.md §3.1):
   // passed by renderFlatTaskRow below, computed via taskRowHeight() the same
   // way it's summed for PagedSection's own viewport math, so the rendered
   // row matches exactly what pagination assumed - same height/numberOfLines
@@ -943,7 +943,7 @@ export default function DailyView({
   // can in practice never be non-null during a focus-mode mount anyway (see
   // that state's own doc comment), but this keeps the scope explicit rather
   // than relying on that being true.
-  // `heightPx` (docs/dev/technical-design-pagination-fixed-height.md
+  // `heightPx` (docs/dev/history/technical-design-pagination-fixed-height.md
   // §3.2): passed by the Calendar column's Today/Tomorrow PagedSection
   // below, computed via meetingEntryHeight() the same way it's summed for
   // that PagedSection's own rowHeight - same "pass both together" contract
@@ -960,7 +960,7 @@ export default function DailyView({
 
   const renderMeetingEntry = (entry: DailyMeetingEntry, layout: MeetingRowLayout) => {
     const key = meetingKey(entry);
-    // The standard row (docs/dev/technical-design-meeting-lists.md §3): source,
+    // The standard row (docs/dev/history/technical-design-meeting-lists.md §3): source,
     // read-only M (2-line only), tracking, note, open linked file (no
     // linking from Daily), Daily's context-tag filter.
     return (
@@ -998,7 +998,7 @@ export default function DailyView({
   // inline in the render below).
 
   // The task/meeting currently mid-edit, looked up fresh from the aggregate
-  // each render (docs/dev/technical-design-pagination-edit-reuse.md §5) - passed
+  // each render (docs/dev/history/technical-design-pagination-edit-reuse.md §5) - passed
   // into the shared QuickAddWidget's `editingTask`/`editingMeeting` props,
   // which render in its fixed slot instead of inline in the row.
   const editingTaskEntry =
@@ -1045,7 +1045,7 @@ export default function DailyView({
     );
   };
 
-  // Focus-mode-only derived values (docs/dev/technical-design-now-focus-mode.md
+  // Focus-mode-only derived values (docs/dev/history/technical-design-now-focus-mode.md
   // §6) - all pure reads over data this screen already loaded, no new
   // storage query (see storage/dailyAggregate.ts's own doc comments on
   // buildNowEntries/buildFocusCandidateEntries). Left empty when `focusMode`
@@ -1123,7 +1123,7 @@ export default function DailyView({
                 add-only mode - focus mode's task rows never start an edit
                 (renderFocusTaskEntry's onStartEdit is a no-op), so
                 editingTask/editingMeeting are simply never set on this
-                instance (docs/dev/technical-design-now-focus-mode.md §7). Kept
+                instance (docs/dev/history/technical-design-now-focus-mode.md §7). Kept
                 first, same as normal Daily - design-philosophy.md §8's "the
                 one thing you might reach for at any point". */}
             <QuickAddWidget
@@ -1264,7 +1264,7 @@ export default function DailyView({
                  pagination-fixed-height.md §3.2) - one `calendarTab` value
                  the PagedSection/GoogleCalendarPanel key their own paging
                  off of. */}
-              {/* The shared day panel (docs/dev/technical-design-meeting-lists.md
+              {/* The shared day panel (docs/dev/history/technical-design-meeting-lists.md
                  §4.1) - same component as the Week/Month day panels, with
                  Daily's Today | Tomorrow | Google tabs and no Close. It
                  self-measures inside `columnScroll`. */}
@@ -1332,8 +1332,8 @@ export default function DailyView({
                    edits, and is not gated behind any Calendar tab. Date
                    defaults to whichever day is currently selected in the
                    Calendar column. Swaps into "editing" mode for
-                   editingTaskEntry/editingMeetingEntry (docs/technical-
-                   design-pagination-edit-reuse.md §5) instead of ui/
+                   editingTaskEntry/editingMeetingEntry (
+                   docs/dev/history/technical-design-pagination-edit-reuse.md §5) instead of ui/
                    TaskRow.tsx/ui/MeetingRow.tsx rendering their own inline
                    form. */}
                 <QuickAddWidget
@@ -1366,7 +1366,7 @@ export default function DailyView({
                 <View style={[common.divider, {backgroundColor: borderColor}]} />
 
                 {/* "Next todos" heading + arrows in one line
-                   (docs/dev/technical-design-pagination-fixed-height.md §3.1).
+                   (docs/dev/history/technical-design-pagination-fixed-height.md §3.1).
                    Group-header rows (FlatTaskRow's `{kind: 'header'}`) count
                    as content for pagination/rowHeight purposes, but
                    isCountableRow below excludes them from the "+N"
@@ -1431,7 +1431,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  // Focus mode (docs/dev/technical-design-now-focus-mode.md §6, design-
+  // Focus mode (docs/dev/history/technical-design-now-focus-mode.md §6, design-
   // philosophy.md §8) - one centered column, no TabBar, an exit mark
   // anchored to the whole screen's bottom-right corner. No marginTop here:
   // focusContent sits directly under `container` (paddingTop 16,
@@ -1502,7 +1502,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   // Display-mode row - context pill left, Focus mode button
-  // right (docs/dev/technical-design-pagination-fixed-height.md §3.1).
+  // right (docs/dev/history/technical-design-pagination-fixed-height.md §3.1).
   contextIndicatorRow: {
     flexDirection: 'row',
     alignItems: 'center',

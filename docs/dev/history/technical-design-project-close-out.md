@@ -3,7 +3,7 @@
 Status: approved 2026-09-28 (open points resolved, §11). Implementation: slices 1–5 done (§12); first device check after slice 5.
 
 Inputs:
-- requirements and spike: `docs/dev/spike-project-archive-pdf.md` (§1 decisions, §4 results)
+- requirements and spike: `docs/dev/history/spike-project-archive-pdf.md` (§1 decisions, §4 results)
 - UX mockups: Claude Design canvas "gtdpara Project Close-out Wizard" (9 artboards)
 - change after the mockups (Tilman, 2026-09-28): there are no meeting series. A future meeting is treated like an open todo: **Cancel / → Area / → Inbox**. There is no "End series" and no "Delete".
 

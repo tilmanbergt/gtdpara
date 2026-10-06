@@ -1,5 +1,5 @@
 /**
- * Capture and marks processing - one screen (docs/dev/technical-design-lasso-0.8.md
+ * Capture and marks processing - one screen (docs/dev/history/technical-design-lasso-0.8.md
  * §3.7, screen designs A-C).
  *
  * Opened two ways (App.tsx, `mode === 'capture'`):

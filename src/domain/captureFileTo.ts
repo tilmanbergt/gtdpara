@@ -1,6 +1,6 @@
 /**
  * The "File to" choices of the capture panel (checkpoint B of
- * docs/dev/technical-design-lasso-0.8.md §3.9): a short list instead of
+ * docs/dev/history/technical-design-lasso-0.8.md §3.9): a short list instead of
  * every Project and Area - Inbox, the mark's or lasso's own place, the
  * one chosen right now, the focused items (daily, weekly, monthly) and the
  * places capture saved to lately - and the full alphabetical list behind

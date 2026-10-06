@@ -1,6 +1,6 @@
 /**
  * "Export debug bundle" (Settings → About;
- * docs/dev/technical-design-about-debug-experimental.md §3.4): one .txt in
+ * docs/dev/history/technical-design-about-debug-experimental.md §3.4): one .txt in
  * the debug folder with what a bug report needs - version and build,
  * device, a settings summary made of yes/no facts and counts (never names),
  * data counts, recent errors and the recent log - run through

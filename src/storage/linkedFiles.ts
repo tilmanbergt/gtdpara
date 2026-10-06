@@ -25,7 +25,7 @@ import {listFolderEntries, openPath} from '../supernote/fileSystem';
 
 /**
  * Turns a stored linkedFile value into an absolute path (without any page).
- * Lasso capture (docs/dev/technical-design-lasso-0.8.md) links the source
+ * Lasso capture (docs/dev/history/technical-design-lasso-0.8.md) links the source
  * page as `<file>#page=<n>`, and a source outside the base folder (a PDF
  * in Document/) is stored absolute (starting with '/').
  */

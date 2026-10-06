@@ -1,6 +1,6 @@
 /**
  * What tapping a Todo/Meeting's note icon is about to do, decided before
- * anything is written (docs/dev/technical-design-split-by-tag.md §3.5).
+ * anything is written (docs/dev/history/technical-design-split-by-tag.md §3.5).
  *
  * `storage/meetingNoteContent.ts` plans first (reads only), then - for every
  * kind except an ordinary open - asks the screen to confirm in the status

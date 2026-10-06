@@ -1,6 +1,6 @@
 /**
  * "What gets inserted" preview for a note-creation definition's pieces
- * (docs/dev/technical-design-note-templates.md §6). Shows each piece's position
+ * (docs/dev/history/technical-design-note-templates.md §6). Shows each piece's position
  * and rough relative size as a scaled label inside a page-shaped box; tapping
  * a piece selects it, same as tapping its row in the piece list below -
  * either one drives the single shared ui/NudgePad.tsx, so the selected
@@ -9,13 +9,13 @@
  * Renders the selected MyStyle background behind the piece labels so the
  * user can fit the pieces to it - the same `<Image source={{uri:
  * 'file://'+path}}}>` load as screens/Settings.tsx's "Choose background"
- * page (docs/dev/technical-design-note-templates.md §7 Phase 5 item #1).
+ * page (docs/dev/history/technical-design-note-templates.md §7 Phase 5 item #1).
  * Each piece label gets its own translucent white backing
  * (`styles.pieceLabel`'s `backgroundColor`) so its text stays legible over
  * an arbitrary PNG. There is no background-name caption: the edit form's
  * left column already shows "Background: <name>  Change…".
  *
- * Max-width cap made visible (docs/dev/technical-design-textbox-metrics.md):
+ * Max-width cap made visible (docs/dev/history/technical-design-textbox-metrics.md):
  * each piece's label gets a scaled `width`
  * equal to `min(pieceMaxWidthPx(piece), pieceWidthPx(piece.x))` instead of
  * auto-sizing to its (truncated) text, so the box shown here is literally the

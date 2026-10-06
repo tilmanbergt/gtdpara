@@ -1,5 +1,5 @@
 /**
- * storage/markStore.ts (docs/dev/technical-design-lasso-0.8.md §3.6): mark
+ * storage/markStore.ts (docs/dev/history/technical-design-lasso-0.8.md §3.6): mark
  * lines are written from the file on disk, one change at a time, and the
  * cache is updated so a later task save keeps them.
  */

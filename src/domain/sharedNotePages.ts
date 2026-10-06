@@ -1,5 +1,5 @@
 /**
- * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md).
+ * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md).
  *
  * Pure domain layer for the "file this Todo/Meeting's note as a PAGE in one
  * shared `.note` per Project/Area, located by keyword" Tag Rule option
@@ -32,7 +32,7 @@ export interface SharedNoteAnchor {
 }
 
 /**
- * Page link (docs/dev/technical-design-lasso-0.8.md §3.7): `<note>#page=<n>`,
+ * Page link (docs/dev/history/technical-design-lasso-0.8.md §3.7): `<note>#page=<n>`,
  * n 1-based - a todo/meeting captured with "Link to this page" opens its
  * source note at that page. Told apart from a shared-note keyword anchor by
  * its exact `page=<digits>` form; parseSharedNoteAnchor never reads it as
@@ -220,7 +220,7 @@ export function recreatedPageNoticeText(isoDate: string): string {
   return `Recreated ${isoDate}: page keyword not found`;
 }
 
-// ---- Shared file-name placeholders (docs/dev/technical-design-split-by-tag.md §3.3) ----
+// ---- Shared file-name placeholders (docs/dev/history/technical-design-split-by-tag.md §3.3) ----
 
 /** The placeholders a Tag Rule's "Shared file name" understands, in the order the Settings chips show them. */
 export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{subtag}', '{year}', '{quarter}', '{month}'];

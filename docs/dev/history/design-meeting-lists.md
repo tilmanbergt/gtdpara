@@ -8,7 +8,7 @@ to the full title). Plus: 1-line / 2-line switch per list, and a denser Week ove
 
 > **2026-09-29:** later decisions (Daily uses the day panel, M only in 2-line rows, `29.9. 10:00`, session-only layout
 > memory, Review week ahead = the Week screen) and the 1 dp = 1.41 px calibration are in
-> `docs/dev/technical-design-meeting-lists.md` §0–1, which supersedes this document where they differ.
+> `docs/dev/history/technical-design-meeting-lists.md` §0–1, which supersedes this document where they differ.
 
 ## 0. Decisions (Tilman, 2026-09-27)
 
