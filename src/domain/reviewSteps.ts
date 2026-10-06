@@ -19,6 +19,8 @@
  * recap) is derived on demand, never stored.
  */
 import {Features} from './features';
+import {formatWeekdayDate} from './dateFormat';
+import {todayIso} from './meetingTime';
 
 /**
  * Deliberately coarse counters for the recap - kept simple on purpose
@@ -371,9 +373,7 @@ export function migrateReviewSteps<T extends {reviewSteps: ReviewStepsMap}>(merg
 
 // ---- Text helpers shared by the hub and the end page (moved from screens/ReviewScreen.tsx) ----
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/** "today"/"yesterday"/"N days ago"/short date - hand-rolled (no Intl), same convention as domain/meetingTime.ts's own date math. */
+/** "today", "yesterday", "N days ago", then a weekday and date ("Mon 28.9."). */
 export function formatReviewedAt(iso: string, now: Date): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return 'unknown';
@@ -382,7 +382,7 @@ export function formatReviewedAt(iso: string, now: Date): string {
   if (dayDiff === 0) return 'today';
   if (dayDiff === 1) return 'yesterday';
   if (dayDiff > 1 && dayDiff < 14) return `${dayDiff} days ago`;
-  return `${WEEKDAY_LABELS[then.getDay()]} ${then.getMonth() + 1}/${then.getDate()}`;
+  return formatWeekdayDate(then, todayIso(now));
 }
 
 export function pluralize(n: number, noun: string): string {

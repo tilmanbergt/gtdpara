@@ -87,7 +87,8 @@
 import React, {useEffect, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 import {Destination} from '../domain/destination';
-import {formatDateRangeHeader, isoDateOffset} from '../domain/meetingTime';
+import {formatDateRange} from '../domain/dateFormat';
+import {isoDateOffset, todayIso} from '../domain/meetingTime';
 import {meetingTimeCell, MeetingTimeMode} from '../domain/meetingDisplay';
 import {Meeting} from '../domain/types';
 import {GoogleCalendarEvent} from '../domain/googleCalendarEvent';
@@ -180,28 +181,13 @@ interface Props {
 }
 
 function withinWindow(event: GoogleCalendarEvent, maxDays: number, today: string): boolean {
-  // Cheap string comparison works because both are YYYY-MM-DD and the cache
-  // is already filtered to >= today - just need an upper bound here.
-  const limit = new Date();
-  limit.setDate(limit.getDate() + maxDays - 1);
-  const y = limit.getFullYear();
-  const m = String(limit.getMonth() + 1).padStart(2, '0');
-  const d = String(limit.getDate()).padStart(2, '0');
-  const limitStr = `${y}-${m}-${d}`;
-  return event.date >= today && event.date <= limitStr;
+  // Both are YYYY-MM-DD, so plain string comparison orders them.
+  return event.date >= today && event.date <= isoDateOffset(maxDays - 1);
 }
 
 /** `dateRange`'s own window check (see this file's module doc comment) - a plain inclusive-range comparison, no "today" involved at all, unlike withinWindow above which always counts from today. */
 function withinDateRange(event: GoogleCalendarEvent, range: {start: string; end: string}): boolean {
   return event.date >= range.start && event.date <= range.end;
-}
-
-function todayStr(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 /** Compact "how long ago" for the persisted-cache hint (2026-09-11) - lets
@@ -354,17 +340,14 @@ export default function GoogleCalendarPanel({
   // `maxDays` when provided - see this file's module doc comment.
   const windowed = dateRange
     ? events.filter(e => withinDateRange(e, dateRange))
-    : events.filter(e => withinWindow(e, maxDays ?? 30, todayStr()));
+    : events.filter(e => withinWindow(e, maxDays ?? 30, todayIso()));
   // "Hide existing" (2026-09-07 feedback) filters out events that already
   // have a checkmark - i.e. already copied to a local Meeting - leaving
   // just what's left to copy. Filtered before pagination so page counts
   // reflect what's actually shown.
   const visible = hideExisting ? windowed.filter(e => !copiedKeys.has(googleEventKey(e))) : windowed;
-  // The resolved display range, for the header (formatDateRangeHeader) -
-  // the same values the old right-aligned hint text already computed (see
-  // withinWindow's identical `limit` calc above), just reformatted and
-  // promoted into PagedSection's own header instead of a trailing hint.
-  const rangeStart = dateRange?.start ?? todayStr();
+  // The shown range, for the header.
+  const rangeStart = dateRange?.start ?? todayIso();
   const rangeEnd = dateRange?.end ?? isoDateOffset((maxDays ?? 30) - 1);
   // Searched from the full `events` list, not `visible` - so the copy
   // footer stays showing the selected event even if `hideExisting` toggles
@@ -439,7 +422,7 @@ export default function GoogleCalendarPanel({
   return (
     <View style={selfMeasuring ? styles.selfMeasuringRoot : undefined}>
       <PagedSection
-        header={formatDateRangeHeader(rangeStart, rangeEnd)}
+        header={formatDateRange(rangeStart, rangeEnd, todayIso())}
         subHeader={
           <View style={styles.headerLeft}>
             <MarkWrap mark={error && !loading ? 'warning' : null} textColor={textColor}>

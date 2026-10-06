@@ -11,6 +11,8 @@ import {groupMarks, OpenMark} from '../../domain/marks';
 import PagedSection from '../PagedSection';
 import {COLORS, FONT} from '../theme';
 import {MarkRecognition} from './useRecognitionQueue';
+import {formatStamp} from '../../domain/dateFormat';
+import {todayIso} from '../../domain/meetingTime';
 
 export const LASSO_KEY = 'lasso';
 
@@ -40,12 +42,9 @@ export function markStatus(r: MarkRecognition | undefined): string {
   }
 }
 
-/** 'p3 · 5.10. 10:42 · recognized' - date always, without leading zeros. */
-export function markMeta(open: OpenMark, r: MarkRecognition | undefined): string {
-  const [date, time] = open.mark.createdAt.split(' ');
-  const day = Number(date.slice(8, 10));
-  const month = Number(date.slice(5, 7));
-  return `p${open.mark.page + 1} · ${day}.${month}. ${time ?? ''}`.trimEnd() + ` · ${markStatus(r)}`;
+/** 'p3 · 5.10. 10:42 · recognized' - the date always shown, also for today. */
+export function markMeta(open: OpenMark, r: MarkRecognition | undefined, today: string = todayIso()): string {
+  return `p${open.mark.page + 1} · ${formatStamp(open.mark.createdAt, today)} · ${markStatus(r)}`;
 }
 
 interface Props {

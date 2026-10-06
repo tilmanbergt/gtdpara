@@ -169,7 +169,7 @@ import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination, destinationLabel, isFocused} from '../domain/destination';
 import {isContextTag, setFlowStateTag} from '../domain/flowState';
 import {deriveTaskFields, setDueTag} from '../domain/markdown';
-import {isTodayOrFuture} from '../domain/meetingTime';
+import {isTodayOrFuture, todayIso} from '../domain/meetingTime';
 import {
   meetingDisplayTitle,
   MeetingTrackingKind,
@@ -278,6 +278,7 @@ import MarksCard from '../ui/MarksCard';
 import {useOpenMarks} from '../ui/useOpenMarks';
 import {MarkScope} from '../domain/marks';
 import {errorMessage} from '../utils/errorMessage';
+import {formatClock, formatDateTime} from '../domain/dateFormat';
 
 const ALL_MARKS: MarkScope = {type: 'all'};
 
@@ -3398,8 +3399,7 @@ function MeetingCloseOutDetail({
       <Text style={[styles.cardTitle, {color: textColor}]}>{meetingDisplayTitle(meeting)}</Text>
       <Pressable onPress={() => onOpenItem(entry.item)} hitSlop={8}>
         <Text style={[common.rowSource, {color: textColor}]}>
-          {meeting.date}
-          {meeting.time ? `, ${meeting.time}` : ''} — {entry.item.name}
+          {formatDateTime(meeting.date, meeting.time, todayIso())} — {entry.item.name}
           {entry.item.kind === 'area' ? ' (Area)' : ''}
         </Text>
       </Pressable>
@@ -3460,10 +3460,6 @@ const GMAIL_BODY_MIN_PX = 150;
 const ARCHIVE_FLASH_MS = 350;
 
 /** "HH:MM" of a fetch time - same short form the Google Calendar panel's "Refresh (last …)" label uses for today. */
-function formatGmailFetchedAt(ms: number): string {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 /**
  * The Gmail step's Load/Refresh button label, mirroring
@@ -3496,7 +3492,7 @@ function GmailRefreshLabel({
   const label = loading
     ? `Refreshing… ${elapsed}s`
     : fetchedAt !== null
-    ? `🔄 Refresh (last ${formatGmailFetchedAt(fetchedAt)})`
+    ? `🔄 Refresh (last ${formatClock(new Date(fetchedAt))})`
     : 'Load Gmail inbox';
   return <Text style={[styles.pillText, {color: textColor}]}>{label}</Text>;
 }

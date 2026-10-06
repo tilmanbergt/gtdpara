@@ -19,6 +19,7 @@ import {isoDateOffset, todayIso} from '../domain/meetingTime';
 import {WeeklyMeetingEntry} from '../storage/weeklyAggregate';
 import MeetingChip, {MEETING_CHIP_HEIGHT} from './MeetingChip';
 import {FONT} from './theme';
+import {formatDate} from '../domain/dateFormat';
 
 const DAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const WEEKDAY_ROWS = 4;
@@ -28,10 +29,6 @@ export const WEEK_DAY_HEADER_HEIGHT = 30;
 function dayDate(weekStart: string, dayIndex: number): string {
   const [y, m, d] = weekStart.split('-').map(Number);
   return isoDateOffset(dayIndex, new Date(y, m - 1, d));
-}
-
-function shortDate(iso: string): string {
-  return `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
 }
 
 interface Props {
@@ -57,7 +54,7 @@ export default function WeekGrid(props: Props): React.JSX.Element {
         return (
           <WeekDayBlock
             key={date}
-            label={`${label} ${shortDate(date)}${date === today ? ' · Today' : ''}`}
+            label={`${label} ${formatDate(date, today)}${date === today ? ' · Today' : ''}`}
             date={date}
             rows={dayIndex >= 5 ? WEEKEND_ROWS : WEEKDAY_ROWS}
             weekend={dayIndex >= 5}

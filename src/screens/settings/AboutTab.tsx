@@ -25,6 +25,7 @@ function unreleasedHeader(): string {
 }
 import {logError} from '../../utils/log';
 import {errorMessage} from '../../utils/errorMessage';
+import {formatDate} from '../../domain/dateFormat';
 
 const PROJECT_URL = 'github.com/tilmanbergt/gtdpara';
 
@@ -151,7 +152,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
             )}
             <MarkdownPager
               markdown={selected.markdown}
-              header={selected.version === 'Unreleased' ? unreleasedHeader() : `${selected.version}${selected.date ? ` · ${selected.date}` : ''}`}
+              header={selected.version === 'Unreleased' ? unreleasedHeader() : `${selected.version}${selected.date ? ` · ${formatDate(selected.date)}` : ''}`}
               resetKey={selected.version}
               emptyHint="No notes for this version."
               textColor={textColor}

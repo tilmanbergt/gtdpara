@@ -23,6 +23,7 @@ import PillButton from '../PillButton';
 import StatusMarkRow from '../StatusMarkRow';
 import {co, ROW_H} from './closeOutStyles';
 import {openMarks} from '../marksNav';
+import {formatDate} from '../../domain/dateFormat';
 
 export interface ChecklistActions {
   closeTodo: (index: number, how: 'done' | 'cancelled') => void;
@@ -135,7 +136,7 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
           ) : (
             <>
               <Text style={[co.kvValue, {color: textColor}]}>
-                {ctx.doneAt ?? 'not set'}
+                {ctx.doneAt ? formatDate(ctx.doneAt) : 'not set'}
                 <Text style={[co.small, co.muted]}>  — decides the archive year</Text>
               </Text>
               <PillButton

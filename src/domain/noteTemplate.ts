@@ -62,7 +62,7 @@
  * same "inert until a later slice" posture Phase 1 of this file's own
  * feature used.
  */
-import {formatFullDate} from './meetingTime';
+import {formatDayHeader, formatTime} from './dateFormat';
 // Type-only import (erased at compile time, so this doesn't create a real
 // runtime circular dependency even though domain/settings.ts imports
 // NoteCreationDefinition back from this file) - migrateNoteTemplateDefaults
@@ -540,7 +540,7 @@ export function ruleSubtag(itemTags: string[], ruleTags: string[]): string {
 export interface PieceRenderContext {
   /** The note's own title - a Meeting's title, a Task's text, or a Project/Area's name, depending on context. */
   title: string;
-  /** Meeting only - ISO date (Meeting.date), formatted here via formatFullDate, not pre-formatted by the caller ("domain does the formatting" convention). */
+  /** Meeting only - ISO date (Meeting.date), formatted here (domain/dateFormat.ts), not by the caller. */
   date?: string;
   /** Meeting only - HH:mm 24h, or unset/empty for a date-only meeting. Rendered verbatim (already the display format Meeting.time is stored in), unlike `date`. */
   time?: string;
@@ -570,9 +570,9 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
     case 'title':
       return ctx.title;
     case 'date':
-      return ctx.date ? formatFullDate(ctx.date) : '';
+      return ctx.date ? formatDayHeader(ctx.date) : '';
     case 'time':
-      return ctx.time ?? '';
+      return ctx.time ? formatTime(ctx.time) : '';
     case 'text':
       return piece.text ?? '';
     case 'related': {

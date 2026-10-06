@@ -239,7 +239,8 @@ import {
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {stripSpaceAfterHash} from '../domain/markdown';
-import {formatFullDate, todayIso} from '../domain/meetingTime';
+import {formatDayHeader} from '../domain/dateFormat';
+import {todayIso} from '../domain/meetingTime';
 import {trackingSummary} from '../domain/meetingTracking';
 import {
   addPieceToDefinition,
@@ -369,7 +370,7 @@ const PREDEFINED_PIECE_TYPES: PieceType[] = ['title', 'date', 'time', 'related',
 /**
  * Explanation + example for a predefined piece's right-hand panel. The
  * examples mirror what domain/noteTemplate.ts's `renderPieceText` really
- * produces (the date example even runs the real `formatFullDate`), so this
+ * produces (the date example even runs the real `formatDayHeader`), so this
  * can't drift into promising a format the note won't have. Options (e.g. a
  * date format) would slot in below the example later - they would belong to
  * the one placement of the piece, since each piece is placed once.
@@ -389,7 +390,7 @@ function predefinedPieceInfo(type: PieceType, context: NoteContext): {descriptio
             : 'Health',
       };
     case 'date':
-      return {description: 'Inserts the meeting’s date.', example: formatFullDate('2026-09-21')};
+      return {description: 'Inserts the meeting’s date.', example: formatDayHeader('2026-09-21')};
     case 'time':
       return {
         description: 'Inserts the meeting’s time. Left out for a meeting without a time.',

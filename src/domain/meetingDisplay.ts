@@ -6,6 +6,7 @@
  * day", Review's ISO dates, the Week-ahead text list). Pure, zero RN/SDK
  * imports (domain/ convention).
  */
+import {formatTime} from './dateFormat';
 import {meetingDatePrefix} from './meetingTime';
 import {MeetingSpanDay, withSpanArrows} from './meetingSpan';
 import {meetingDisplayTitle} from './meetingTracking';
@@ -39,19 +40,20 @@ export function meetingTimeCell(
   now: Date = new Date(),
 ): MeetingTimeCell {
   const multiDay = span != null && span.dayCount > 1 ? `day ${span.dayNumber}/${span.dayCount}` : '';
-  const end = meeting.time && meeting.endTime ? meeting.endTime : '';
+  const time = formatTime(meeting.time);
+  const end = meeting.time && meeting.endTime ? formatTime(meeting.endTime) : '';
 
   if (mode === 'time') {
-    if (meeting.time) return {oneLine: meeting.time, line1: meeting.time, line2: end ? `–${end}` : ''};
+    if (meeting.time) return {oneLine: time, line1: time, line2: end ? `–${end}` : ''};
     return {oneLine: ALL_DAY_LABEL, line1: ALL_DAY_LABEL, line2: multiDay};
   }
 
   const prefix = meetingDatePrefix(span?.date ?? meeting.date, now);
   if (meeting.time) {
     return {
-      oneLine: prefix ? `${prefix} ${meeting.time}` : meeting.time,
+      oneLine: prefix ? `${prefix} ${time}` : time,
       line1: prefix || TODAY_LABEL,
-      line2: end ? `${meeting.time}–${end}` : meeting.time,
+      line2: end ? `${time}–${end}` : time,
     };
   }
   return {

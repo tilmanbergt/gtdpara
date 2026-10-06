@@ -11,7 +11,8 @@
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {formatFullDate} from '../domain/meetingTime';
+import {formatDayHeader} from '../domain/dateFormat';
+import {todayIso} from '../domain/meetingTime';
 import MeetingList from './MeetingList';
 import {MeetingRowLayout} from './MeetingRow';
 import MiniTabs, {MiniTabDef} from './MiniTabs';
@@ -82,7 +83,7 @@ export default function DayMeetingsPanel<T, K extends string>({
           <MeetingList
             listId="dayPanel"
             defaultLayout="twoLine"
-            header={`${formatFullDate(date)} · ${count} meeting${count === 1 ? '' : 's'}`}
+            header={`${formatDayHeader(date, todayIso())} · ${count} meeting${count === 1 ? '' : 's'}`}
             rows={entries}
             renderRow={renderRow}
             resetKey={`${date}|${listResetKey ?? ''}`}

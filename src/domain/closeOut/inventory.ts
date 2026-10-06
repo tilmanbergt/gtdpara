@@ -20,6 +20,7 @@ import {Meeting, Task} from '../types';
 import {meetingDisplayTitle} from '../meetingTracking';
 import {PageKeyword, meetingPageKeyword, parseSharedNoteAnchor, todoPageKeyword} from '../sharedNotePages';
 import {CloseOutPlan, OutcomeDest} from './plan';
+import {formatDate} from '../dateFormat';
 
 export type FileType = 'note' | 'pdf' | 'image' | 'other';
 
@@ -235,7 +236,7 @@ export function buildContents(input: InventoryInput): ContentsModel {
     .map((m, i) => ({m, i}))
     .sort((a, b) => (a.m.date + a.m.time).localeCompare(b.m.date + b.m.time) || a.i - b.i)
     .forEach(({m, i}) => {
-      const title = `${m.date} · ${meetingDisplayTitle(m)}`;
+      const title = `${formatDate(m.date)} · ${meetingDisplayTitle(m)}`;
       const e = itemEntries('meetings', m.notePath, title, meetingPageKeyword(m), {kind: 'meeting', index: i}, m.date);
       if (e) meetingEntries.push(e);
     });

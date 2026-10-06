@@ -14,6 +14,8 @@ import PillButton from '../PillButton';
 import ProgressBar from '../ProgressBar';
 import {COLORS} from '../theme';
 import {co} from './closeOutStyles';
+import {formatStamp} from '../../domain/dateFormat';
+import {todayIso} from '../../domain/meetingTime';
 
 export interface PdfRunState {
   running: boolean;
@@ -77,7 +79,7 @@ export default function PdfStep({ctx, busy, run, onCreate, onCancel, onOpen, onT
       ) : (
         <View style={[co.box, {borderColor: textColor}]}>
           <Text style={[co.strong, {color: textColor}]}>
-            ✓ PDF created · {pdf.pages} pages · {pdf.createdAt.replace('T', ' ')}
+            ✓ PDF created · {pdf.pages} pages · {formatStamp(pdf.createdAt, todayIso())}
             {run.lastRunMs ? ` · ${Math.round(run.lastRunMs / 1000)} s` : ''}
           </Text>
           <Text style={[co.path, {color: textColor}]}>{ctx.display(ctx.workingPdfPath)}</Text>

@@ -59,6 +59,7 @@ Turn the back garden into a vegetable garden before winter.
 
 - `- [ ]` is an open todo, `- [x]` a done one, `- [-]` a cancelled one.
 - A meeting line is date, then time (`10:00`, `10:00-11:00`) or length (`1d`, `2d`), then the title.
+- On screen, dates are shown as day and month (`4.10.`, with the year when it isn't this year) and times in 24 hours (`9:30`); in the files they stay `2026-10-04` and `09:30`.
 - A linked note appears at the end of a line as `→ [[Meetings/…]]`, a linked file as `+[[…]]`. A link to a page, from a lasso capture, ends in `#page=3`.
 - A `## Marks` section lists open lasso marks, one per line, see [Lasso](lasso.md).
 - Lines gtdpara doesn't understand are kept as they are.

@@ -10,6 +10,11 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- One date format everywhere: day and month without leading zeros (`6.10.`, `6.10.2027` for another
+  year) and 24-hour times without a leading zero (`9:05`). Day headings read `Tue 6.10.`. This also
+  applies to the date and time pieces written into new meeting notes; files keep `2026-10-06`.
+
 ### Fixed
 - Integrity Check now also checks archived projects and areas in the Archive's year folders
   (where close-out puts them), including a close-out that was interrupted after the folder move.

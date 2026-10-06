@@ -1,23 +1,10 @@
-import {displayTaskText, isFlowStateConveyed, shortDate, taskLabels} from '../../src/domain/taskLabels';
+import {displayTaskText, isFlowStateConveyed, taskLabels} from '../../src/domain/taskLabels';
 import {isWaitingForShownOnDaily} from '../../src/domain/flowState';
 import {task} from '../../test-helpers/fixtures';
 
 const TODAY = '2026-10-04';
 const texts = (t: string, context: 'flat' | 'grouped' = 'flat', contextActive = false) =>
   taskLabels(task(t), context, TODAY, contextActive).map(l => l.text);
-
-describe('shortDate', () => {
-  it('writes day.month. without leading zeros', () => {
-    expect(shortDate('2026-10-05', TODAY)).toBe('5.10.');
-    expect(shortDate('2026-01-09', TODAY)).toBe('9.1.');
-  });
-  it('adds the year for another year', () => {
-    expect(shortDate('2027-01-05', TODAY)).toBe('5.1.2027');
-  });
-  it('leaves anything else unchanged', () => {
-    expect(shortDate('soon', TODAY)).toBe('soon');
-  });
-});
 
 describe('taskLabels - flat', () => {
   it('#next and #now', () => {
