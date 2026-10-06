@@ -16,6 +16,7 @@ import {
   ensureSkeleton,
   FrontMatterFields,
   parseFrontMatter,
+  parseMarksSpan,
   parseMeetingsSpan,
   parseMonthlyGoalsSpan,
   parseScopeSpan,
@@ -33,6 +34,7 @@ import {
   GtdParaKind,
   INBOX_FILE_NAME,
   ItemStatus,
+  Mark,
   Meeting,
   MonthlyGoal,
   PROJECT_FILE_NAME,
@@ -69,6 +71,9 @@ export interface ProjectFileState {
   /** From the `## Monthly Goals` span (docs/dev/technical-design-monthly-view.md §2.2) - one entry per month that ever had a goal set. */
   monthlyGoals: MonthlyGoal[];
   monthlyGoalsExtraLines: string[];
+  /** From the `## Marks` span (docs/dev/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines; empty for most files. Written only through storage/markStore.ts. */
+  marks: Mark[];
+  marksExtraLines: string[];
   /** From the frontmatter block's status/dailyFocus/weeklyFocus/monthlyFocus/defaultResourceFolder/area fields - see domain/markdown.ts's parseFrontMatter. */
   status: ItemStatus;
   dailyFocus: boolean;
@@ -93,11 +98,28 @@ export async function loadProjectFile(
   const content = await readTextFile(path);
   const rawContent = content ?? '';
   const perfParse = perfStart();
+  const state = parseProjectFileContent(rawContent);
+  // Perf trace (docs/dev/technical-design-perf-tracing.md): parse vs. whole load
+  // (whole = permission check + native read + parse).
+  const perfMeta = {kind, path, chars: rawContent.length, tasks: state.tasks.length, meetings: state.meetings.length};
+  perfEnd('parse:projectFile', perfParse, perfMeta);
+  perfEnd('load:projectFile', perfTotal, perfMeta);
+  log('loadProjectFile: done', path, `${state.tasks.length} tasks`, `${state.meetings.length} meetings`);
+  return state;
+}
+
+/**
+ * Parses a data file's full text into its state - the pure half of
+ * loadProjectFile, also used when a file was written outside the cache's
+ * own save paths (storage/markStore.ts re-parses after adding a mark line).
+ */
+export function parseProjectFileContent(rawContent: string): ProjectFileState {
   const {tasks, extraLines: taskExtraLines} = parseTasksSpan(rawContent);
   const {meetings, extraLines: meetingExtraLines} = parseMeetingsSpan(rawContent);
   const scope = parseScopeSpan(rawContent);
   const {goals: weeklyGoals, extraLines: weeklyGoalsExtraLines} = parseWeeklyGoalsSpan(rawContent);
   const {goals: monthlyGoals, extraLines: monthlyGoalsExtraLines} = parseMonthlyGoalsSpan(rawContent);
+  const {marks, extraLines: marksExtraLines} = parseMarksSpan(rawContent);
   const {
     status,
     dailyFocus,
@@ -108,12 +130,6 @@ export async function loadProjectFile(
     abbrev,
     extraLines: frontMatterExtraLines,
   } = parseFrontMatter(rawContent);
-  // Perf trace (docs/dev/technical-design-perf-tracing.md): parse vs. whole load
-  // (whole = permission check + native read + parse).
-  const perfMeta = {kind, path, chars: rawContent.length, tasks: tasks.length, meetings: meetings.length};
-  perfEnd('parse:projectFile', perfParse, perfMeta);
-  perfEnd('load:projectFile', perfTotal, perfMeta);
-  log('loadProjectFile: done', path, `${tasks.length} tasks`, `${meetings.length} meetings`);
   return {
     rawContent,
     tasks,
@@ -125,6 +141,8 @@ export async function loadProjectFile(
     weeklyGoalsExtraLines,
     monthlyGoals,
     monthlyGoalsExtraLines,
+    marks,
+    marksExtraLines,
     status,
     dailyFocus,
     weeklyFocus,

@@ -46,6 +46,13 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
 
         /** gtdpara's temp folder inside [privateDir] - rendered PDF pages, PDF .part files. */
         fun privateTmpDir(context: Context): File = File(privateDir(context), "tmp")
+
+        /**
+         * gtdpara's own data inside [privateDir] that must outlive a plugin
+         * start (unlike tmp) - the pictures and stroke data of open "Mark for
+         * later" marks (docs/dev/technical-design-lasso-0.8.md §3.3).
+         */
+        fun privateDataDir(context: Context): File = File(privateDir(context), "data")
     }
 
     init {
@@ -416,6 +423,52 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
             promise.resolve(ok)
         } catch (error: Throwable) {
             Log.e(TAG, "deleteTempTree: failed path=$path", error)
+            promise.reject("E_DELETE", error.message, error)
+        }
+    }
+
+    /** Resolves the absolute path of gtdpara's private data folder (created if missing). */
+    @ReactMethod
+    fun getPrivateDataDir(promise: Promise) {
+        PluginRuntimeGuard.trace("GtdParaFile.getPrivateDataDir")
+        try {
+            val dir = privateDataDir(reactApplicationContext)
+            if (!dir.exists()) dir.mkdirs()
+            Log.d(TAG, "getPrivateDataDir: path=${dir.absolutePath} exists=${dir.isDirectory}")
+            promise.resolve(dir.absolutePath)
+        } catch (error: Throwable) {
+            Log.e(TAG, "getPrivateDataDir: failed", error)
+            promise.reject("E_PRIVATE_DIR", error.message, error)
+        }
+    }
+
+    /** True only for something strictly INSIDE the private data folder (never the folder itself). */
+    private fun isInsidePrivateData(path: String): Boolean {
+        val data = privateDataDir(reactApplicationContext).canonicalPath
+        val target = File(path).canonicalPath
+        return target.startsWith("$data/")
+    }
+
+    /**
+     * Recursively deletes [path] - but ONLY inside gtdpara's private data
+     * folder ([privateDataDir]): a processed or discarded mark's picture and
+     * stroke data. Like [deleteTempTree] it needs no permission, is never
+     * shared storage and rejects anything else without touching the disk.
+     */
+    @ReactMethod
+    fun deletePrivateDataTree(path: String?, promise: Promise) {
+        PluginRuntimeGuard.trace("GtdParaFile.deletePrivateDataTree")
+        if (path.isNullOrEmpty() || !isInsidePrivateData(path)) {
+            promise.reject("E_NOT_PRIVATE_DATA", "Refusing to delete outside the private data folder: $path")
+            return
+        }
+        try {
+            val target = File(path)
+            val ok = !target.exists() || target.deleteRecursively()
+            Log.d(TAG, "deletePrivateDataTree: ok=$ok path=$path")
+            promise.resolve(ok)
+        } catch (error: Throwable) {
+            Log.e(TAG, "deletePrivateDataTree: failed path=$path", error)
             promise.reject("E_DELETE", error.message, error)
         }
     }

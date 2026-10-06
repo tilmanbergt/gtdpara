@@ -199,6 +199,10 @@ interface GtdParaFileNativeModule {
   deleteTempTree(path: string): Promise<boolean>;
   /** Added 2026-10-01 (InkHub compliance); missing on older native builds. */
   getPrivateTempDir?(): Promise<string>;
+  /** Added in 0.8.0 (technical-design-lasso-0.8.md §3.3); missing on older native builds. */
+  getPrivateDataDir?(): Promise<string>;
+  /** Added in 0.8.0: recursive delete strictly inside the private data folder. */
+  deletePrivateDataTree?(path: string): Promise<boolean>;
   /** Added 2026-10-01: deletes an EMPTY folder only. */
   deleteEmptyFolder?(path: string): Promise<boolean>;
   writeBinaryFile(path: string, base64Content: string): Promise<boolean>;
@@ -639,6 +643,38 @@ export async function deleteTempTree(path: string): Promise<void> {
     await GtdParaFile.deleteTempTree(path);
   } catch (e) {
     logError('deleteTempTree: failed', path, e instanceof Error ? e.message : String(e));
+  }
+}
+
+let privateDataDir: string | null = null;
+
+/**
+ * gtdpara's own data folder inside the plugin's PRIVATE folder
+ * (`.../files/plugins/<pluginID>/data`) - unlike the temp folder it is not
+ * cleared on start. Holds the picture and stroke data of open "Mark for
+ * later" marks (docs/dev/technical-design-lasso-0.8.md §3.3). Like the temp
+ * folder it needs no permission and isn't visible in the file manager.
+ */
+export async function getPrivateDataDir(): Promise<string> {
+  if (privateDataDir) return privateDataDir;
+  if (!GtdParaFile?.getPrivateDataDir) throw new Error('getPrivateDataDir is not available on this build.');
+  privateDataDir = await GtdParaFile.getPrivateDataDir();
+  log('getPrivateDataDir:', privateDataDir);
+  return privateDataDir;
+}
+
+/**
+ * Recursively deletes a folder inside gtdpara's PRIVATE data folder (a
+ * processed mark's data). The native side refuses any path outside it.
+ * Never throws: leftover data is harmless and is cleaned up later.
+ */
+export async function deletePrivateDataTree(path: string): Promise<boolean> {
+  if (!GtdParaFile?.deletePrivateDataTree) return false;
+  try {
+    return await GtdParaFile.deletePrivateDataTree(path);
+  } catch (e) {
+    logError('deletePrivateDataTree: failed', path, e instanceof Error ? e.message : String(e));
+    return false;
   }
 }
 

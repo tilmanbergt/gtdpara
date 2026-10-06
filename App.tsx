@@ -4,7 +4,7 @@
  * @format
  */
 
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import TabBar, {AppTab} from './src/ui/TabBar';
@@ -19,8 +19,12 @@ import MonthView from './src/screens/MonthView';
 import InboxScreen from './src/screens/InboxScreen';
 import ReviewScreen from './src/screens/ReviewScreen';
 import CloseOutWizard from './src/screens/CloseOutWizard';
-import CaptureScreen from './src/screens/CaptureScreen';
+import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
+import {setOpenMarksHandler} from './src/ui/marksNav';
+import {MarkScope} from './src/domain/marks';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
+import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
+import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import HelpOverlay from './src/ui/HelpOverlay';
 import {helpStartPage, LastHelpPage} from './src/domain/helpTopics';
 import {USER_DOCS} from './src/generated/userDocs';
@@ -126,9 +130,24 @@ export default function App(): React.JSX.Element {
 // remounts the whole shell via this key, so no kept-alive tab, draft or
 // screen state from the previous data set survives; the normal start path
 // (reorient) then runs against the new profile's settings.
+//
+// "Mark for later" (docs/dev/technical-design-lasso-0.8.md §3.6) runs from
+// index.js without this view; when it needs to say something it stores an
+// outcome and opens the view - drawn here on top of whatever the shell shows,
+// so the shell (and its kept tabs) stays as it was.
 function AppRoot(): React.JSX.Element {
   const [epoch, setEpoch] = useState(0);
-  return <AppShell key={epoch} onProfileSwitched={() => setEpoch(e => e + 1)} />;
+  const markOutcome = useSyncExternalStore(subscribeMarkOutcome, getMarkOutcome);
+  return (
+    <>
+      <AppShell key={epoch} onProfileSwitched={() => setEpoch(e => e + 1)} />
+      {markOutcome && outcomeNeedsScreen(markOutcome) ? (
+        <View style={StyleSheet.absoluteFill}>
+          <MarkOutcomeScreen outcome={markOutcome} />
+        </View>
+      ) : null}
+    </>
+  );
 }
 
 function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.JSX.Element {
@@ -284,6 +303,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // does, so the remount no longer depends on `setMode`'s own bailout
   // behavior.
   const [captureNonce, setCaptureNonce] = useState(0);
+  // What the capture screen shows (docs/dev/technical-design-lasso-0.8.md §3.7):
+  // the lasso (lasso button) or open marks (a "marks to process" card).
+  const [captureRequest, setCaptureRequest] = useState<CaptureRequest>({source: 'lasso'});
 
   // Mirror of `activeTab` for reorient() below, which is created once in the
   // mount effect and would otherwise only ever see the first render's value
@@ -447,6 +469,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         } else if (event?.id === LASSO_BUTTON_ID) {
           log('App: lasso button pressed - opening capture screen');
           routedByLassoButtonRef.current = true;
+          setCaptureRequest({source: 'lasso'});
           setCaptureNonce(n => n + 1);
           hasLandedRef.current = true;
           setMode('capture');
@@ -473,6 +496,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     onEnterFocusMode: () => void;
     handleArchived: (kind: 'project' | 'area') => void;
     openCloseOut: (path: string, closeOutMode: 'full' | 'quick') => void;
+    openMarks: (scope: MarkScope, returnTo: CaptureReturnTo) => void;
   } | null>(null);
   const stableNav = useMemo(
     () => ({
@@ -481,9 +505,16 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       onEnterFocusMode: () => navRef.current?.onEnterFocusMode(),
       handleArchived: (kind: 'project' | 'area') => navRef.current?.handleArchived(kind),
       startCloseOutFull: (path: string) => navRef.current?.openCloseOut(path, 'full'),
+      openMarks: (scope: MarkScope, returnTo: CaptureReturnTo) => navRef.current?.openMarks(scope, returnTo),
     }),
     [],
   );
+  // The "marks to process" cards (ui/MarksCard.tsx) open the marks screen
+  // through ui/marksNav.ts - registered once, always runs the latest openMarks.
+  useEffect(() => {
+    setOpenMarksHandler((scope, returnTo) => navRef.current?.openMarks(scope, returnTo));
+    return () => setOpenMarksHandler(null);
+  }, []);
   // Which kept tabs have been visited (mounted) - a kept screen is mounted on
   // its first visit and then stays. Reset when the switch is turned off, and
   // when Settings → Advanced → "Reload all files" drops the kept tabs
@@ -787,12 +818,32 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       .catch(e => logError('App: refreshSettings failed', e instanceof Error ? e.message : String(e)));
   };
 
+  // Marks processing (docs/dev/technical-design-lasso-0.8.md §3.7, §3.10): the
+  // capture screen with the marks of `scope`; Close goes back to the tabs as
+  // they were (Inbox, Current, Review or the close-out wizard).
+  const openMarks = (scope: MarkScope, returnTo: CaptureReturnTo) => {
+    log('App: opening marks', scope.type, returnTo);
+    setCaptureRequest({source: 'marks', scope, returnTo});
+    setCaptureNonce(n => n + 1);
+    setMode('capture');
+  };
+  const exitCapture = () => {
+    setMode('tabs');
+    requestEinkRefresh();
+  };
+
   if (mode === 'capture') {
     // The lasso-capture overlay gets the status slot at its top too (D11).
     return (
       <View style={styles.root}>
         <StatusFrame>
-          <CaptureScreen key={captureNonce} onOpenItem={stableOpenItem} onOpenDaily={openDaily} />
+          <CaptureScreen
+            key={captureNonce}
+            request={captureRequest}
+            onOpenItem={stableOpenItem}
+            onOpenDaily={openDaily}
+            onExit={exitCapture}
+          />
         </StatusFrame>
       </View>
     );
@@ -823,7 +874,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   }
 
   const handleClose = () => PluginManager.closePluginView();
-  navRef.current = {openInbox, openSettingsCalendar, onEnterFocusMode, handleArchived, openCloseOut};
+  navRef.current = {openInbox, openSettingsCalendar, onEnterFocusMode, handleArchived, openCloseOut, openMarks};
 
   // Tabs that are never kept alive - rendered while visible, in both modes.
   const nonKeptBody = (

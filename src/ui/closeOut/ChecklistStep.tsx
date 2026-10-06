@@ -4,7 +4,7 @@
  * archive targets, then every readiness finding (domain/closeOut/
  * readiness.ts) with inline actions for the two blockers: open todos
  * (Done / Cancel / → Area / → Inbox) and future meetings (Cancel / → Area /
- * → Inbox). Findings and their items are one flattened paged list, so a
+ * → Inbox), and "Process ›" for open marks (lasso 0.8, a warning). Findings and their items are one flattened paged list, so a
  * project with many open todos never overflows the screen.
  *
  * "Change area" swaps the finding list for a paged list of active Areas
@@ -22,6 +22,7 @@ import PagedSection from '../PagedSection';
 import PillButton from '../PillButton';
 import StatusMarkRow from '../StatusMarkRow';
 import {co, ROW_H} from './closeOutStyles';
+import {openMarks} from '../marksNav';
 
 export interface ChecklistActions {
   closeTodo: (index: number, how: 'done' | 'cancelled') => void;
@@ -72,6 +73,14 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
   );
 
   const renderItemActions = (f: Finding, item: FindingItem) => {
+    if (f.id === 'openMarks') {
+      // Lasso 0.8 §3.10: process this project's marks; Close comes back here.
+      return (
+        <View style={co.row}>
+          <PillButton label="Process ›" disabled={busy} onPress={() => openMarks({type: 'item', path: ctx.item.path}, 'closeOut')} textColor={textColor} borderColor={borderColor} />
+        </View>
+      );
+    }
     if (item.index === undefined) return null;
     const index = item.index;
     if (f.id === 'openTodos') {

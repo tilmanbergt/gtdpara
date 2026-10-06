@@ -133,13 +133,16 @@ import {AbbrevFileMatch, resolveAbbrevFileTarget} from '../domain/abbrev';
 import {copyCutRange, Selection, spliceAtSelection} from '../domain/clipboardText';
 import {describeAddedDate} from '../domain/dateLabel';
 import {Destination, destinationLabel} from '../domain/destination';
-import {setFlowStateTag, slugifyWaitingOn} from '../domain/flowState';
-import {extractContextTags, insertTagAtPosition, removeTagFromText, setDueTag, stripSpaceAfterHash} from '../domain/markdown';
+import {joinItems, splitAtSelection, splitByHand} from '../domain/captureText';
+import {composeTaskText} from '../domain/quickAddCompose';
+import {extractContextTags, insertTagAtPosition, removeTagFromText, stripSpaceAfterHash} from '../domain/markdown';
 import {formatMeetingWhen, MeetingField, todayIso, validateMeetingFields} from '../domain/meetingTime';
 import {isHighlight, setHighlight} from '../domain/monthHighlight';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {FlowState, Meeting, Task} from '../domain/types';
 import {getRecentTags, getRecentTagsSync, recordTagsUsed} from '../storage/tagUsage';
+import {getRecentDestinations, getRecentDestinationsSync, recordDestinationUsed} from '../storage/destinationUsage';
+import {FILE_TO_SHORT, fileToEligible, fileToLabel, fileToShortList} from '../domain/captureFileTo';
 import ClipboardTextInput from './ClipboardTextInput';
 import DateInput, {DateInputHandle} from './DateInput';
 import FlowStateChips from './FlowStateChips';
@@ -147,6 +150,7 @@ import {ClipIcon, TrashIcon, WarningIcon} from './icons';
 import {COLORS, FONT} from './theme';
 import HighlightMark from './HighlightMark';
 import TagChips from './TagChips';
+import TagChipGrid, {GridChip} from './TagChipGrid';
 import {useTagRowBudget} from './tagChipLayout';
 import {useStatus} from './status/StatusProvider';
 import MarkWrap from './status/StatusMark';
@@ -276,7 +280,45 @@ export type QuickFilePayload =
   | {kind: 'task'; text: string; linkedFile: string}
   | {kind: 'meeting'; fields: MeetingQuickAddFields; linkedFile: string};
 
+/** Which Save button of the capture variant was pressed (docs/dev/technical-design-lasso-0.8.md §3.9). */
+export type CaptureSaveMode = 'next' | 'view' | 'close';
+
+/**
+ * Text the capture screen puts into the draft (recognized lasso or mark).
+ * A new `key` (another lasso/mark) replaces the whole draft; the same key
+ * again (recognition finished) only fills the text, and only while the
+ * user hasn't typed.
+ */
+export interface CaptureSeed {
+  key: string;
+  /** One entry per item; several only with `split`. */
+  items: string[];
+  split: boolean;
+  /** Meeting date default (the mark's day). */
+  date?: string;
+  /** Meeting title when the user switches to Meeting (one line); defaults to the items joined. */
+  meetingTitle?: string;
+}
+
 interface Props {
+  /**
+   * 'capture' (docs/dev/technical-design-lasso-0.8.md §3.9): the wide panel of
+   * the lasso capture / marks screen - multi-line text or one row per item
+   * (Split lines), flow chips without the paged tag row, Save & next / view /
+   * close right under the input, then tag and "File to" chips in wrapped rows
+   * and the screen's own extras. `fixedDestination` is the destination
+   * picked there; a typed #ABBR still wins, as in Quick Add.
+   */
+  variant?: 'default' | 'capture';
+  captureSeed?: CaptureSeed | null;
+  /** After a successful capture save (all split items saved). */
+  onCaptureSaved?: (mode: CaptureSaveMode) => void;
+  /** "File to" chip pressed. */
+  onCaptureDestinationChange?: (destination: Destination) => void;
+  /** The mark's or lasso's own Project/Area - always in the short "File to" list. */
+  captureOwnDestination?: Destination | null;
+  /** Rendered below the chips (link checkbox, Mark for later / Cancel, ...). */
+  captureExtras?: React.ReactNode;
   /**
    * Optional id of the screen slot this widget sits in (e.g. 'daily',
    * 'current') - its tag-row widths are remembered under it, so a revisit
@@ -419,6 +461,12 @@ interface Props {
 }
 
 function QuickAddWidget({
+  variant = 'default',
+  captureSeed,
+  onCaptureSaved,
+  onCaptureDestinationChange,
+  captureOwnDestination = null,
+  captureExtras,
   layoutKey,
   fixedDestination,
   taskOnly = false,
@@ -463,6 +511,52 @@ function QuickAddWidget({
     );
   }, [initialDate, initialMonthly]);
   const [noteDraft, setNoteDraft] = useState<NoteDraft>(makeNoteDraft);
+  // ---- capture variant (docs/dev/technical-design-lasso-0.8.md §3.9) ----
+  const isCapture = variant === 'capture';
+  // One row per item while "Split lines" is on; null = one item in taskDraft.text.
+  const [splitRows, setSplitRows] = useState<string[] | null>(null);
+  const [splitPage, setSplitPage] = useState(0);
+  // "File to": short list, or the full alphabetical list (paged) behind More….
+  const [recentDestinations, setRecentDestinations] = useState<string[]>(() => getRecentDestinationsSync() ?? []);
+  const [fileToAll, setFileToAll] = useState(false);
+  const [fileToPage, setFileToPage] = useState(0);
+  useEffect(() => {
+    if (!isCapture) return;
+    let alive = true;
+    getRecentDestinations().then(paths => {
+      if (alive) setRecentDestinations(paths);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isCapture]);
+  const seedKeyRef = useRef<string | null>(null);
+  // The user typed since the last seed - recognition then never overwrites.
+  const captureTouchedRef = useRef(false);
+  const seedSignature = captureSeed
+    ? `${captureSeed.key}\u0000${captureSeed.split}\u0000${captureSeed.items.join('\n')}\u0000${captureSeed.meetingTitle ?? ''}`
+    : null;
+  useEffect(() => {
+    if (!isCapture || !captureSeed) return;
+    const newKey = captureSeed.key !== seedKeyRef.current;
+    if (!newKey && captureTouchedRef.current) return;
+    seedKeyRef.current = captureSeed.key;
+    captureTouchedRef.current = false;
+    const items = captureSeed.items.length > 0 ? captureSeed.items : [''];
+    const split = captureSeed.split && items.length > 1;
+    if (newKey) {
+      setTaskDraft({...makeTaskDraft(), text: split ? '' : items[0]});
+      setMeetingDraft({...makeMeetingDraft(captureSeed.date ?? initialDate), title: captureSeed.meetingTitle ?? joinItems(items)});
+    } else {
+      setTaskDraft(d => ({...d, text: split ? '' : items[0]}));
+      setMeetingDraft(d => ({...d, title: captureSeed.meetingTitle ?? joinItems(items)}));
+    }
+    setSplitRows(split ? items : null);
+    setSplitPage(0);
+    taskLastSelectionRef.current = null;
+    meetingLastSelectionRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCapture, seedSignature]);
   const [taskJustAdded, setTaskJustAdded] = useState<string | null>(null);
   const [meetingJustAdded, setMeetingJustAdded] = useState<string | null>(null);
   // Set together with meetingJustAdded when the added meeting's date is not in the screen's visible list (isMeetingDateVisible); null otherwise.
@@ -729,17 +823,10 @@ function QuickAddWidget({
     Keyboard.dismiss();
     const trimmed = taskDraft.text.trim();
     if (!trimmed) return;
-    let finalText = setFlowStateTag(
-      trimmed,
-      taskDraft.flowState,
-      taskDraft.flowState === 'waiting-for' ? slugifyWaitingOn(taskDraft.waitingOnText) : undefined,
-    );
-    finalText = setDueTag(finalText, taskDraft.dueDate.trim() || null);
-    // Abbreviation quick-file (feature_abbrev_quick_file, 2026-09-18 bugfix):
-    // the matched #tag did its job (picking the destination) and is stripped
-    // from the saved text, same as every other one-shot tag this widget
-    // composes in (flow-state, due).
-    if (taskAbbrevTarget) finalText = removeTagFromText(finalText, taskAbbrevTarget.tag);
+    // Flow-state, due and - for abbreviation quick-file (feature_abbrev_quick_file,
+    // 2026-09-18 bugfix) - removing the matched #tag, which did its job picking the
+    // destination: domain/quickAddCompose.ts, shared with the lasso capture panel.
+    const finalText = composeTaskText(taskDraft, taskAbbrevTarget ? taskAbbrevTarget.tag : null);
     setError(null);
     setPending(true);
     onAddTask(finalText, taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination)
@@ -766,12 +853,7 @@ function QuickAddWidget({
       setError('A todo needs some text.', 'text');
       return Promise.resolve(false);
     }
-    let finalText = setFlowStateTag(
-      trimmed,
-      editFields.fields.flowState,
-      editFields.fields.flowState === 'waiting-for' ? slugifyWaitingOn(editFields.fields.waitingOnText) : undefined,
-    );
-    finalText = setDueTag(finalText, editFields.fields.dueDate.trim() || null);
+    const finalText = composeTaskText(editFields.fields);
     setError(null);
     setPending(true);
     return (onSaveEditTask ?? (() => Promise.resolve()))(finalText, editFields.fields.linkedFile)
@@ -1065,6 +1147,7 @@ function QuickAddWidget({
   // ---- Row 2 + Row 3: Task style ----
   const taskFields = editFields?.kind === 'task' ? editFields.fields : taskDraft;
   const setTaskText = (t: string) => {
+    captureTouchedRef.current = true;
     const stripped = stripSpaceAfterHash(t);
     if (editFields?.kind === 'task') updateTaskEditField({text: stripped});
     else setTaskDraft(d => ({...d, text: stripped}));
@@ -1143,6 +1226,168 @@ function QuickAddWidget({
     setTaskSelectionOverride(selection);
   };
 
+  // The due-date control: in R2 next to the field; in the capture variant
+  // in the options row under it (checkpoint B).
+  const taskDueControl =
+    taskFields.dueDateOpen ? (
+      <View style={styles.dateInline}>
+        <DateInput
+          ref={dueInputRef}
+          value={taskFields.dueDate}
+          onChangeText={setTaskDueDate}
+          placeholder="Due YYYY-MM-DD"
+          placeholderColor={placeholderColor}
+          textColor={textColor}
+          borderColor={borderColor}
+        />
+        {taskFields.dueDate.length > 0 && (
+          <Pressable onPress={() => setTaskDueDate('')} hitSlop={8}>
+            <Text style={[styles.clearX, {color: textColor}]}>✕</Text>
+          </Pressable>
+        )}
+      </View>
+    ) : (
+      <Pressable style={[styles.iconButton, {borderColor}]} onPress={openTaskDueDate} hitSlop={8}>
+        <Text style={[styles.iconButtonText, {color: textColor}]}>📅</Text>
+      </Pressable>
+    );
+  // ---- Capture: Split lines (docs/dev/technical-design-lasso-0.8.md §3.5, §3.9) ----
+  // One editable row per item, each removable; more than SPLIT_ROWS_PER_PAGE
+  // rows page with ‹ › instead of scrolling. Chips apply to every row.
+  function toggleSplit() {
+    captureTouchedRef.current = true;
+    splitCursorRef.current = null;
+    if (splitRows) {
+      setTaskDraft(d => ({...d, text: joinItems(splitRows)}));
+      setSplitRows(null);
+    } else {
+      setSplitRows(splitByHand(taskDraft.text));
+      setTaskDraft(d => ({...d, text: ''}));
+    }
+    setSplitPage(0);
+    clearTaskJustAdded();
+  }
+  const updateSplitRow = (index: number, value: string) => {
+    captureTouchedRef.current = true;
+    setSplitRows(rows => (rows ? rows.map((r, i) => (i === index ? stripSpaceAfterHash(value) : r)) : rows));
+    clearTaskJustAdded();
+  };
+  const removeSplitRow = (index: number) => {
+    captureTouchedRef.current = true;
+    splitCursorRef.current = null;
+    setSplitRows(rows => {
+      if (!rows) return rows;
+      const next = rows.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [''];
+    });
+    clearTaskJustAdded();
+  };
+  // ✂ Split at cursor (checkpoint B: the recognizer gives no reliable line
+  // breaks). A plain cursor splits there; a selection is cut out and becomes
+  // the next item. The single field turns into rows; in rows the focused row
+  // is split and the new item goes right below it. Where the cursor was is
+  // kept in refs (onSelectionChange), as for Cut/Paste above - pressing the
+  // button blurs the field first.
+  const splitCursorRef = useRef<{index: number; selection: Selection} | null>(null);
+  const splitAtCursor = () => {
+    captureTouchedRef.current = true;
+    clearTaskJustAdded();
+    if (splitRows) {
+      const at = splitCursorRef.current;
+      const parts =
+        at && at.selection && at.index < splitRows.length
+          ? splitAtSelection(splitRows[at.index], at.selection.start, at.selection.end)
+          : null;
+      if (!at || !parts) {
+        setError('Tap into the text where it should be split.', 'text');
+        return;
+      }
+      const next = [...splitRows.slice(0, at.index), parts[0], parts[1], ...splitRows.slice(at.index + 1)];
+      setSplitRows(next);
+      setSplitPage(Math.floor((at.index + 1) / SPLIT_ROWS_PER_PAGE));
+      splitCursorRef.current = null;
+      setError(null);
+      return;
+    }
+    const selection = taskLastSelectionRef.current;
+    const parts = selection ? splitAtSelection(taskDraft.text, selection.start, selection.end) : null;
+    if (!parts) {
+      setError('Tap into the text where it should be split.', 'text');
+      return;
+    }
+    setSplitRows(parts);
+    setTaskDraft(d => ({...d, text: ''}));
+    setSplitPage(0);
+    taskLastSelectionRef.current = null;
+    splitCursorRef.current = null;
+    setError(null);
+  };
+  const captureOptionsRow =
+    isCapture && displayType === 'task' && !isEditing ? (
+      <View style={styles.captureOptions}>
+        <Pressable onPress={toggleSplit} hitSlop={8} accessibilityRole="checkbox">
+          <Text style={[styles.splitToggleText, {color: textColor}]}>{splitRows ? '☑' : '☐'} Split lines</Text>
+        </Pressable>
+        <Pressable style={[styles.ghostButton, {borderColor}]} onPress={splitAtCursor} hitSlop={6}>
+          <Text style={[styles.ghostButtonText, {color: textColor}]}>✂ Split at cursor</Text>
+        </Pressable>
+        <View style={styles.centerSpacer} />
+        {taskDueControl}
+      </View>
+    ) : null;
+  const splitPageCount = splitRows ? Math.max(1, Math.ceil(splitRows.length / SPLIT_ROWS_PER_PAGE)) : 1;
+  const safeSplitPage = Math.min(splitPage, splitPageCount - 1);
+  const splitRowsBlock = splitRows ? (
+    <View>
+      <View style={styles.splitHeader}>
+        <Text style={[styles.splitHeaderText, {color: textColor}]}>
+          {splitRows.filter(r => r.trim()).length} items
+        </Text>
+        {splitPageCount > 1 ? (
+          <View style={styles.splitPager}>
+            <Pressable onPress={() => setSplitPage(Math.max(0, safeSplitPage - 1))} disabled={safeSplitPage === 0} hitSlop={8}>
+              <Text style={[styles.splitPagerText, {color: textColor}, safeSplitPage === 0 && styles.tabTextDisabled]}>‹</Text>
+            </Pressable>
+            <Text style={[styles.splitHeaderText, {color: textColor}]}>
+              {safeSplitPage + 1}/{splitPageCount}
+            </Text>
+            <Pressable
+              onPress={() => setSplitPage(Math.min(splitPageCount - 1, safeSplitPage + 1))}
+              disabled={safeSplitPage >= splitPageCount - 1}
+              hitSlop={8}>
+              <Text style={[styles.splitPagerText, {color: textColor}, safeSplitPage >= splitPageCount - 1 && styles.tabTextDisabled]}>›</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+      {splitRows.slice(safeSplitPage * SPLIT_ROWS_PER_PAGE, (safeSplitPage + 1) * SPLIT_ROWS_PER_PAGE).map((row, i) => {
+        const index = safeSplitPage * SPLIT_ROWS_PER_PAGE + i;
+        return (
+          <View key={index} style={styles.splitRow}>
+            <Text style={[styles.splitIndex, {color: textColor}]}>{index + 1}</Text>
+            <TextInput
+              style={[styles.input, styles.inputFlex, {color: textColor, borderColor}]}
+              value={row}
+              onChangeText={t => updateSplitRow(index, t)}
+              onFocus={() => {
+                if (splitCursorRef.current?.index !== index) splitCursorRef.current = {index, selection: null};
+              }}
+              onSelectionChange={e => {
+                splitCursorRef.current = {index, selection: e.nativeEvent.selection};
+              }}
+              placeholder="Todo"
+              placeholderTextColor={placeholderColor}
+              autoCapitalize="none"
+            />
+            <Pressable onPress={() => removeSplitRow(index)} hitSlop={8} accessibilityLabel={`Remove item ${index + 1}`}>
+              <Text style={[styles.splitRemove, {color: textColor}]}>✕</Text>
+            </Pressable>
+          </View>
+        );
+      })}
+    </View>
+  ) : null;
+
   // Row 2 and row 3 for both Task and Meeting stay mounted at all times -
   // only their `display` toggles with the active tab (styles.hidden below)
   // - rather than the two variants being swapped in and out of the JSX
@@ -1156,11 +1401,14 @@ function QuickAddWidget({
   // avoid-reflow design (design doc §3).
   const taskRow2 = (
     <View style={[styles.row2, displayType !== 'task' && styles.hidden]}>
-      <View style={styles.row2Wrap}>
+      {isCapture && splitRows ? splitRowsBlock : null}
+      <View style={[styles.row2Wrap, isCapture && splitRows !== null && styles.hidden]}>
         <MarkWrap mark={fieldMark('text')} textColor={textColor} flex>
         <TextInput
           ref={taskInputRef}
-          style={[styles.input, styles.inputFlex, {color: textColor, borderColor}]}
+          style={[styles.input, styles.inputFlex, isCapture && styles.inputMultiline, {color: textColor, borderColor}]}
+          multiline={isCapture}
+          textAlignVertical={isCapture ? 'top' : undefined}
           value={taskFields.text}
           onChangeText={setTaskText}
           onSubmitEditing={editFields?.kind === 'task' ? submitTaskEdit : submitTaskCreate}
@@ -1173,28 +1421,7 @@ function QuickAddWidget({
           autoCapitalize="none"
         />
         </MarkWrap>
-        {taskFields.dueDateOpen ? (
-          <View style={styles.dateInline}>
-            <DateInput
-              ref={dueInputRef}
-              value={taskFields.dueDate}
-              onChangeText={setTaskDueDate}
-              placeholder="Due YYYY-MM-DD"
-              placeholderColor={placeholderColor}
-              textColor={textColor}
-              borderColor={borderColor}
-            />
-            {taskFields.dueDate.length > 0 && (
-              <Pressable onPress={() => setTaskDueDate('')} hitSlop={8}>
-                <Text style={[styles.clearX, {color: textColor}]}>✕</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : (
-          <Pressable style={[styles.iconButton, {borderColor}]} onPress={openTaskDueDate} hitSlop={8}>
-            <Text style={[styles.iconButtonText, {color: textColor}]}>📅</Text>
-          </Pressable>
-        )}
+        {isCapture ? null : taskDueControl}
       </View>
       {/* Custom Select All/Copy/Cut/Paste overlay (Tilman, 2026-09-11) -
           hovers above the field, right-aligned so it clears row 1's Todo/
@@ -1305,7 +1532,7 @@ function QuickAddWidget({
           <View style={styles.row3Lead} onLayout={taskTagBudget.onLeadLayout}>
             <FlowStateChips value={taskFields.flowState} onChange={setTaskFlowState} textColor={textColor} borderColor={borderColor} />
           </View>
-          <TagChips
+          {!isCapture && <TagChips
             text={taskFields.text}
             recentTags={recentTags}
             recognizedTags={recognizedAbbrevTags}
@@ -1317,7 +1544,7 @@ function QuickAddWidget({
             onRemoveTag={removeTaskTag}
             textColor={textColor}
             borderColor={borderColor}
-          />
+          />}
         </View>
         {editFields?.kind === 'task' && attachmentCluster(editFields.fields.linkedFile, clearTaskLinkedFile, taskTagBudget.onAttachLayout)}
       </View>
@@ -1326,6 +1553,7 @@ function QuickAddWidget({
   // ---- Row 2 + Row 3: Meeting style ----
   const meetingFields = editFields?.kind === 'meeting' ? editFields.fields : meetingDraft;
   const setMeetingTitle = (t: string) => {
+    captureTouchedRef.current = true;
     const stripped = stripSpaceAfterHash(t);
     if (editFields?.kind === 'meeting') updateMeetingEditField({title: stripped});
     else setMeetingDraft(d => ({...d, title: stripped}));
@@ -1463,7 +1691,7 @@ function QuickAddWidget({
           />
         </MarkWrap>
         </View>
-        <TagChips
+        {!isCapture && <TagChips
           text={meetingFields.title}
           recentTags={recentTags}
           recognizedTags={recognizedAbbrevTags}
@@ -1475,7 +1703,7 @@ function QuickAddWidget({
           onRemoveTag={removeMeetingTag}
           textColor={textColor}
           borderColor={borderColor}
-        />
+        />}
       </View>
       {editFields?.kind === 'meeting' && attachmentCluster(editFields.fields.linkedFile, clearMeetingLinkedFile, meetingTagBudget.onAttachLayout)}
     </View>
@@ -1583,13 +1811,7 @@ function QuickAddWidget({
     if (editFields.kind === 'task') {
       const trimmed = editFields.fields.text.trim();
       if (!trimmed) return;
-      let finalText = setFlowStateTag(
-        trimmed,
-        editFields.fields.flowState,
-        editFields.fields.flowState === 'waiting-for' ? slugifyWaitingOn(editFields.fields.waitingOnText) : undefined,
-      );
-      finalText = setDueTag(finalText, editFields.fields.dueDate.trim() || null);
-      finalText = removeTagFromText(finalText, abbrevTarget.tag);
+      const finalText = composeTaskText(editFields.fields, abbrevTarget.tag);
       setError(null);
       setPending(true);
       onQuickFile(abbrevTarget, {kind: 'task', text: finalText, linkedFile: editFields.fields.linkedFile})
@@ -1652,7 +1874,223 @@ function QuickAddWidget({
 
   const buttonMark = errorState && errorState.field === null ? ('warning' as const) : successText ? ('success' as const) : null;
 
-  const row4 = isEditing ? (
+  // ---- Capture: save, buttons, chips (docs/dev/technical-design-lasso-0.8.md §3.9) ----
+  const captureItems = (): string[] =>
+    (splitRows ?? [taskDraft.text]).map(t => t.trim()).filter(t => t.length > 0);
+  // A typed #ABBR in any item wins over the "File to" choice, as in Quick Add.
+  const captureAbbrevTarget = isCapture
+    ? displayType === 'meeting'
+      ? meetingAbbrevTarget
+      : resolveAbbrevFileTarget(splitRows ? splitRows.join(' ') : taskDraft.text, cachedAbbrevItems, fixedExcludePath)
+    : null;
+  const captureDestination: Destination = captureAbbrevTarget ? abbrevDestination(captureAbbrevTarget) : fixedDestination;
+  const captureCount = displayType === 'task' ? captureItems().length : 1;
+
+  const rememberCaptureDestination = (dest: Destination) => {
+    if (dest.type !== 'item') return;
+    setRecentDestinations(prev => [dest.path, ...prev.filter(p => p !== dest.path)]);
+    recordDestinationUsed(dest.path);
+  };
+
+  const submitCapture = async (mode: CaptureSaveMode) => {
+    Keyboard.dismiss();
+    if (pending) return;
+    if (displayType === 'meeting') {
+      const result = validateMeetingFields(meetingDraft.title, meetingDraft.date, meetingDraft.time);
+      if (!result.ok) {
+        setError(result.error, result.field);
+        return;
+      }
+      const title = setHighlight(
+        meetingAbbrevTarget ? removeTagFromText(meetingDraft.title.trim(), meetingAbbrevTarget.tag) : meetingDraft.title.trim(),
+        meetingDraft.monthly,
+      );
+      setError(null);
+      setPending(true);
+      try {
+        await onAddMeeting(
+          {title, date: meetingDraft.date, time: result.time, endTime: result.endTime, days: result.days},
+          captureDestination,
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        setPending(false);
+        return;
+      }
+      setPending(false);
+      setMeetingDraft(d => ({...makeMeetingDraft(d.date, false)}));
+      setMeetingJustAdded(`Added meeting "${truncateItemName(meetingDisplayTitle({title}), 40)}" to ${destinationLabel(captureDestination)}`);
+      recordTagsUsed(extractContextTags(title)).then(refreshRecentTags);
+      rememberCaptureDestination(captureDestination);
+      captureTouchedRef.current = false;
+      onCaptureSaved?.(mode);
+      return;
+    }
+    const items = captureItems();
+    if (items.length === 0) {
+      setError('Nothing to save - write a todo first.', 'text');
+      return;
+    }
+    const tag = captureAbbrevTarget ? captureAbbrevTarget.tag : null;
+    const texts = items.map(item => composeTaskText({...taskDraft, text: item}, tag));
+    setError(null);
+    setPending(true);
+    let saved = 0;
+    try {
+      for (const text of texts) {
+        await onAddTask(text, captureDestination);
+        saved += 1;
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      // Saved ones are gone from the list; the rest stays for another try.
+      if (splitRows && saved > 0) setSplitRows(splitRows.filter(r => r.trim()).slice(saved));
+      setError(saved > 0 ? `Saved ${saved} of ${texts.length}. ${message}` : message);
+      setPending(false);
+      return;
+    }
+    setPending(false);
+    setTaskDraft(d => ({...d, text: '', flowState: null, waitingOnText: '', dueDate: ''}));
+    setSplitRows(null);
+    taskLastSelectionRef.current = null;
+    captureTouchedRef.current = false;
+    setTaskJustAdded(
+      texts.length === 1
+        ? `Added todo "${truncateItemName(items[0], 40)}" to ${destinationLabel(captureDestination)}`
+        : `Added ${texts.length} todos to ${destinationLabel(captureDestination)}`,
+    );
+    recordTagsUsed(texts.flatMap(t => extractContextTags(t))).then(refreshRecentTags);
+    rememberCaptureDestination(captureDestination);
+    onCaptureSaved?.(mode);
+  };
+
+  // Tags: toggled in the single text, or in every row while split.
+  // Tags already in the text come first (like Quick Add's pinned chips), then the recent ones.
+  const captureTagSource = isCapture
+    ? Array.from(
+        new Set([
+          ...extractContextTags(
+            displayType === 'meeting' ? meetingFields.title : splitRows ? splitRows.join(' ') : taskFields.text,
+          ),
+          ...recentTags,
+        ]),
+      )
+    : [];
+  const captureTagChips: GridChip[] = isCapture
+    ? captureTagSource.map(tag => {
+        const lower = tag.toLowerCase();
+        const has = (text: string) => extractContextTags(text).some(t => t.toLowerCase() === lower);
+        const on =
+          displayType === 'meeting'
+            ? has(meetingFields.title)
+            : splitRows
+              ? splitRows.length > 0 && splitRows.every(has)
+              : has(taskFields.text);
+        const onPress = () => {
+          if (displayType === 'meeting') {
+            if (on) removeMeetingTag(tag);
+            else insertMeetingTag(tag);
+          } else if (splitRows) {
+            captureTouchedRef.current = true;
+            setSplitRows(rows =>
+              rows ? rows.map(r => (on ? removeTagFromText(r, tag) : has(r) ? r : insertTagAtPosition(r, tag, null).text)) : rows,
+            );
+          } else if (on) removeTaskTag(tag);
+          else insertTaskTag(tag);
+        };
+        return {key: tag, label: `#${recognizedAbbrevTags.has(lower) ? tag.toUpperCase() : tag}`, on, onPress};
+      })
+    : [];
+  // Short list: Inbox, own place, current choice, focused, recent (checkpoint B);
+  // More… shows every Active Project/Area alphabetically, FILE_TO_PAGE per page.
+  const fileToChip = (item: {kind: 'project' | 'area'; name: string; path: string; abbrev: string | null}): GridChip => ({
+    key: item.path,
+    label: fileToLabel(item),
+    on: captureDestination.type === 'item' && captureDestination.path === item.path,
+    onPress: () => onCaptureDestinationChange?.({type: 'item', kind: item.kind, name: item.name, path: item.path}),
+  });
+  const inboxChip: GridChip = {
+    key: 'inbox',
+    label: 'Inbox',
+    on: captureDestination.type === 'inbox',
+    onPress: () => onCaptureDestinationChange?.({type: 'inbox'}),
+  };
+  let fileToChips: GridChip[] = [];
+  if (isCapture && !fileToAll) {
+    const short = fileToShortList(cachedAbbrevItems, captureOwnDestination, captureDestination, recentDestinations);
+    const total = fileToEligible(cachedAbbrevItems).length;
+    fileToChips = [inboxChip, ...short.map(fileToChip)];
+    if (total > short.length) {
+      fileToChips.push({key: 'more', label: 'More…', on: false, onPress: () => setFileToAll(true)});
+    }
+  } else if (isCapture) {
+    const all = fileToEligible(cachedAbbrevItems);
+    const pages = Math.max(1, Math.ceil(all.length / FILE_TO_PAGE));
+    const page = Math.min(fileToPage, pages - 1);
+    fileToChips = [
+      {key: 'less', label: '‹ Short list', on: false, onPress: () => setFileToAll(false)},
+      // A pick goes back to the short list, which always shows the current choice.
+      ...all.slice(page * FILE_TO_PAGE, (page + 1) * FILE_TO_PAGE).map(item => {
+        const chip = fileToChip(item);
+        return {
+          ...chip,
+          onPress: () => {
+            chip.onPress();
+            setFileToAll(false);
+          },
+        };
+      }),
+    ];
+    if (pages > 1) {
+      fileToChips.push({
+        key: 'page',
+        label: `${page + 1}/${pages} ›`,
+        on: false,
+        onPress: () => setFileToPage((page + 1) % pages),
+      });
+    }
+  }
+  const countLabel = captureCount > 1 ? ` ${captureCount}` : '';
+  const captureRow4 = (
+    <View style={styles.row4}>
+      <Text style={[styles.captureDest, {color: textColor}]} numberOfLines={1}>
+        → {truncateItemName(destinationLabel(captureDestination), 24)}
+      </Text>
+      <Pressable style={[styles.ghostButton, {borderColor}]} onPress={() => submitCapture('next')} disabled={pending} hitSlop={6}>
+        <Text style={[styles.ghostButtonText, {color: textColor}]}>Save{countLabel} & next</Text>
+      </Pressable>
+      <Pressable style={[styles.ghostButton, {borderColor}]} onPress={() => submitCapture('view')} disabled={pending} hitSlop={6}>
+        <Text style={[styles.ghostButtonText, {color: textColor}]}>Save{countLabel} & view</Text>
+      </Pressable>
+      <MarkWrap mark={errorState && errorState.field === null ? 'warning' : null} textColor={textColor}>
+        <Pressable style={styles.primaryButton} onPress={() => submitCapture('close')} disabled={pending} hitSlop={6}>
+          <Text style={styles.primaryButtonText}>Save{countLabel} & close</Text>
+        </Pressable>
+      </MarkWrap>
+      {monthlyToggle}
+    </View>
+  );
+  const captureBelow = isCapture ? (
+    <View style={styles.captureBelow}>
+      {captureTagChips.length > 0 ? (
+        <>
+          <Text style={[styles.captureLabel, {color: textColor}]}>Tags</Text>
+          <TagChipGrid chips={captureTagChips} maxChips={18} textColor={textColor} borderColor={borderColor} />
+        </>
+      ) : null}
+      <Text style={[styles.captureLabel, {color: textColor}]}>File to</Text>
+      <TagChipGrid
+        chips={fileToChips}
+        maxChips={fileToAll ? FILE_TO_PAGE + 2 : FILE_TO_SHORT + 1}
+        maxLabelChars={22}
+        textColor={textColor}
+        borderColor={borderColor}
+      />
+      {captureExtras}
+    </View>
+  ) : null;
+
+  const row4 = isCapture && !isEditing ? captureRow4 : isEditing ? (
     <View style={styles.row4}>
       <View style={styles.actionsLeft}>
         {/* Icon instead of the word "Delete" (2026-09-21) - frees ~40px in
@@ -1730,15 +2168,22 @@ function QuickAddWidget({
     <View style={[styles.card, {borderColor}]}>
       {row1}
       {taskRow2}
+      {captureOptionsRow}
       {meetingRow2}
       {noteRow2}
       {taskRow3}
       {meetingRow3}
       {noteRow3}
       {row4}
+      {captureBelow}
     </View>
   );
 }
+
+/** Capture's Split lines: rows shown per page before ‹ › paging. */
+const SPLIT_ROWS_PER_PAGE = 6;
+/** Capture's "File to" full list: items per page behind More…. */
+const FILE_TO_PAGE = 15;
 
 // Row 3 tag paging is width-based since the 2026-09-29 overflow bugfix -
 // the old fixed TASK/MEETING/NOTE_TAG_CAPACITY chip counts are gone; see
@@ -1815,6 +2260,23 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 6,
   },
+  /** Capture: recognized text can be several lines (3 visible, up to ~6). */
+  inputMultiline: {
+    minHeight: 96,
+    maxHeight: 170,
+  },
+  captureOptions: {flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6, minHeight: 36},
+  splitToggleText: {fontSize: FONT.small, fontWeight: '600'},
+  splitHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: 6, minHeight: 32},
+  splitHeaderText: {fontSize: FONT.small, fontWeight: '600', marginRight: 10},
+  splitPager: {flexDirection: 'row', alignItems: 'center'},
+  splitPagerText: {fontSize: FONT.large, fontWeight: '600', paddingHorizontal: 8},
+  splitRow: {flexDirection: 'row', alignItems: 'center', marginBottom: 6},
+  splitIndex: {width: 24, fontSize: FONT.small, fontWeight: '600'},
+  splitRemove: {fontSize: FONT.medium, paddingHorizontal: 8},
+  captureDest: {flex: 1, fontSize: FONT.small, fontWeight: '600', marginRight: 8},
+  captureBelow: {borderTopWidth: 1, borderTopColor: COLORS.borderLight, marginTop: 10, paddingTop: 8},
+  captureLabel: {fontSize: FONT.small, fontWeight: '700', marginBottom: 6, marginTop: 4},
   /** Meeting Row 3's time field, sized to leave room for TagChips alongside it (see meetingRow3's own comment) - roughly half the old fixed-width field's size, still wide enough for "HH:mm". */
   timeInputCompact: {
     fontSize: FONT.small,

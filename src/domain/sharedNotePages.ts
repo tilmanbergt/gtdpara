@@ -35,6 +35,32 @@ export interface SharedNoteAnchor {
 }
 
 /**
+ * Page link (docs/dev/technical-design-lasso-0.8.md §3.7): `<note>#page=<n>`,
+ * n 1-based - a todo/meeting captured with "Link to this page" opens its
+ * source note at that page. Told apart from a shared-note keyword anchor by
+ * its exact `page=<digits>` form; parseSharedNoteAnchor never reads it as
+ * a keyword.
+ */
+const PAGE_ANCHOR_RE = /^(.+)#page=(\d+)$/;
+
+export function buildPageAnchor(filePath: string, pageIndex: number): string {
+  return `${filePath}#page=${pageIndex + 1}`;
+}
+
+/** `{filePath, page}` (page 0-based) for a page link, else null. */
+export function parsePageAnchor(notePath: string): {filePath: string; page: number} | null {
+  const m = PAGE_ANCHOR_RE.exec(notePath);
+  if (!m) return null;
+  const page = Number(m[2]) - 1;
+  return page >= 0 ? {filePath: m[1], page} : null;
+}
+
+/** The note path without a page link's `#page=<n>` (unchanged otherwise). */
+export function stripPageAnchor(notePath: string): string {
+  return parsePageAnchor(notePath)?.filePath ?? notePath;
+}
+
+/**
  * Encodes an anchor into the string stored on `Task.notePath`/
  * `Meeting.notePath` - `"relativePath#keyword"` (design doc §2.2 example:
  * `"Meetings/Daily.note#2026-09-21 Daily"`). No escaping of `#` inside
@@ -87,6 +113,7 @@ export function buildSharedNoteAnchor(filePath: string, keyword: string): string
  *    of them. `keyword` remains deliberately untouched either way.
  */
 export function parseSharedNoteAnchor(notePath: string): SharedNoteAnchor | null {
+  if (parsePageAnchor(notePath)) return null;
   const separatorIndex = notePath.indexOf('#');
   if (separatorIndex < 0) return null;
   const filePath = notePath.slice(0, separatorIndex);

@@ -9,6 +9,10 @@ gtdpara is a local plugin. There is no account, no server and no telemetry.
   folders, so you can read and edit them without gtdpara.
 - **Notes it creates for you** (linked notes, meeting notes, standalone notes), in the same folders.
 - **Plugin settings**, stored in the plugin's own storage on the device (Android AsyncStorage).
+- **Lasso marks** ("Mark for later"): a picture and the handwriting strokes of each marked
+  selection, plus the text once it is recognized, in the plugin's own private folder on the device -
+  not in your folders. They are deleted when the mark is processed or discarded. Recognition runs
+  on the device.
 - **Temporary files** while a close-out PDF is made (page images and the unfinished PDF), in the
   plugin's own private folder on the device - not in your folders. They are removed when the PDF
   is done, and on the next start if gtdpara was interrupted.
@@ -29,6 +33,10 @@ gtdpara tells you whenever it changes files: your own edits are saved where you 
 notes, PDFs and exports are named with their folder when they are created; moves, overwrites and
 deletes are shown before they happen and confirmed afterwards. The one automatic change is the
 one-time Inbox move in 0.2.0 (for users of earlier builds), which is announced when it happens.
+
+**Mark for later** adds a small bookmark icon to the note it marks; processing the mark turns it
+into a check mark, discarding it removes the icon. gtdpara changes only its own icons, never your
+handwriting. In a PDF, or where an icon can't be identified safely, it is left as it is.
 
 ## Network access
 

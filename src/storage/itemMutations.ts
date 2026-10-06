@@ -51,20 +51,20 @@ export interface MeetingInput {
   days?: number;
 }
 
-/** A new open Task from raw text. `notePath` only for Capture's "link to source note". */
-export function buildTask(text: string, opts?: {notePath?: string}): Task {
+/** A new open Task from raw text. `linkedFile`: lasso capture's link to its source page (0.8). */
+export function buildTask(text: string, opts?: {notePath?: string; linkedFile?: string}): Task {
   return {
     text,
     done: false,
     cancelled: false,
     ...deriveTaskFields(text),
     notePath: opts?.notePath ?? '',
-    linkedFile: '',
+    linkedFile: opts?.linkedFile ?? '',
   };
 }
 
-/** A new, non-recurring, not-cancelled Meeting. `notePath` only for Capture's "link to source note". */
-export function buildMeeting(fields: MeetingInput, opts?: {notePath?: string}): Meeting {
+/** A new, non-recurring, not-cancelled Meeting. `linkedFile`: lasso capture's link to its source page (0.8). */
+export function buildMeeting(fields: MeetingInput, opts?: {notePath?: string; linkedFile?: string}): Meeting {
   return {
     title: fields.title,
     date: fields.date,
@@ -74,7 +74,7 @@ export function buildMeeting(fields: MeetingInput, opts?: {notePath?: string}): 
     ...deriveMeetingFields(fields.title),
     cancelled: false,
     notePath: opts?.notePath ?? '',
-    linkedFile: '',
+    linkedFile: opts?.linkedFile ?? '',
   };
 }
 

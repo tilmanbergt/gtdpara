@@ -13,6 +13,7 @@ import {buildContents, ContentsModel, ProjectScan} from '../../domain/closeOut/i
 import {CloseOutMode, CloseOutPlan, OutcomeDest, parsePlan} from '../../domain/closeOut/plan';
 import {evaluateReadiness, Finding, OtherItemLinks} from '../../domain/closeOut/readiness';
 import {outcomeFolder} from '../../domain/closeOut/archiveOps';
+import {fileNameOf, resolveMarkPath} from '../../domain/marks';
 import {isoDate, readLifecycleDate} from '../../domain/lifecycleDates';
 import {monthKeyOf} from '../../domain/period';
 import {GtdParaSettings, ResolvedParaPaths} from '../../domain/settings';
@@ -129,6 +130,7 @@ export async function refreshCloseOutContext(args: {
     targetPdfLabel: targets.pdf ? display(targets.pdf) : null,
     unreadableNoteNames: contents.unreadable.map(e => e.title),
     launchPath: getRememberedLaunchNotePath()?.path ?? null,
+    openMarks: item.marks.map(m => `${fileNameOf(resolveMarkPath(item.path, m.notePath))} · p${m.page + 1} · ${m.createdAt.slice(0, 10)}`),
   });
 
   return {

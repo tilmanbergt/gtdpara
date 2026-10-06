@@ -180,12 +180,12 @@ import {appendMeetingToTarget, appendTaskToTarget} from '../storage/inboxFiling'
 import {moveEntryWithNote} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
-import {linkedFileStatus, resolveLinkedFilePath} from '../storage/linkedFiles';
+import {linkedFileStatus, openLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {loadProjectFile, ProjectFileState} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
-import {FolderEntry, openPath} from '../supernote/fileSystem';
+import {FolderEntry} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import DailyFocusPanel from '../ui/DailyFocusPanel';
@@ -1342,7 +1342,7 @@ export default function DailyView({
 
   const onOpenLinkedFile = (linkedFile: string) => {
     if (!paths) return;
-    openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
+    openLinkedFile(paths, linkedFile).catch(e =>
       logError('DailyView: open linked file failed', errorMessage(e)),
     );
   };

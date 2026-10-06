@@ -73,7 +73,10 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
 - **Deletes** in shared storage only after a confirmation that names what is deleted, then
   `ensureFileDeletePermission(<text naming it>)`, then `deleteEmptyFolder` (the native side only
   deletes empty folders). "No" leaves things as they are and says so. Temporary files live only
-  in the plugin's private folder (`getPrivateTempDir`, `deleteTempTree`). No other native delete.
+  in the plugin's private folder (`getPrivateTempDir`, `deleteTempTree`). gtdpara's own data that
+  must survive a restart (the pictures and strokes of open marks) lives in the private data folder
+  (`getPrivateDataDir`, `deletePrivateDataTree`); both deletes are refused natively outside their
+  folder. No other native delete.
 - **Permissions**: every file or network call checks its permission right before use
   (`supernote/pluginPermissions.ts`); a new permission needs a line in PRIVACY.md and in
   `docs/dev/inkhub-listing.md`.

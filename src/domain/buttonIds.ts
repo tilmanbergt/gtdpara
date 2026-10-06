@@ -6,3 +6,5 @@
  */
 export const SIDEBAR_BUTTON_ID = 100;
 export const LASSO_BUTTON_ID = 200;
+/** "Mark for later" in the lasso toolbar (docs/dev/technical-design-lasso-0.8.md §3.6) - runs without opening gtdpara (showType 0); handled in index.js. */
+export const MARK_BUTTON_ID = 300;

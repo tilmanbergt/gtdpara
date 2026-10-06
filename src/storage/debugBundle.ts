@@ -7,6 +7,8 @@
  * domain/redact.ts so passwords, calendar links and e-mail addresses never
  * leave the device.
  */
+import {listOpenMarks} from './marks';
+import {listMarkDataIds, readPendingIconChanges} from './markData';
 import {DEFAULT_SETTINGS, GtdParaSettings, resolvePaths} from '../domain/settings';
 import {featuresOf} from '../domain/features';
 import {redactText} from '../domain/redact';
@@ -94,11 +96,25 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
   const cachedPaths = getCachedData()?.paths;
   const inboxLocation = !cachedPaths ? 'unknown' : cachedPaths.inboxFolder === cachedPaths.base ? 'legacy' : 'new';
   lines.push(`inbox location: ${inboxLocation} · migration: ${describeInboxMigrationOutcome(getInboxMigrationOutcome(resolvePaths(settings).base))}`);
+  lines.push(await marksLine());
   lines.push(`log file: ${isFileLoggingOn() ? `ON (${LOG_FILE_NAME})` : 'OFF'}`);
   const errors = getRecentErrors(10);
   lines.push(`recent errors (${errors.length}):`);
   errors.forEach(e => lines.push(`  ${e}`));
   return lines;
+}
+
+/** "marks: open 3 (inbox 1 · items 2) · data 3 · pending icons 0" (lasso 0.8 §3.10) - counts only. */
+async function marksLine(): Promise<string> {
+  try {
+    const open = listOpenMarks({type: 'all'});
+    const inbox = open.filter(m => m.owner.type === 'inbox').length;
+    const data = (await listMarkDataIds()).length;
+    const pending = (await readPendingIconChanges()).length;
+    return `marks: open ${open.length} (inbox ${inbox} · items ${open.length - inbox}) · data ${data} · pending icons ${pending}`;
+  } catch (e) {
+    return `marks: not available (${e instanceof Error ? e.message : String(e)})`;
+  }
 }
 
 /** Writes the bundle and returns its full path. Throws on failure. */

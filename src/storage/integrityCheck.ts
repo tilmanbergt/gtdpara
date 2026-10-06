@@ -47,6 +47,7 @@ import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {resolveLivePaths} from './dataCache';
 import {hiddenAreaFolderFor} from './inboxMigration';
+import {stripPageAnchor} from '../domain/sharedNotePages';
 import {classifyNotePath} from './noteLinks';
 import {loadProjectFile} from './projectFile';
 
@@ -81,7 +82,7 @@ async function collectUnsafeNoteRefs(loaded: LoadedEntries[]): Promise<NoteRef[]
       ...meetings.map(m => ({entityKind: 'meeting' as const, notePath: m.notePath, label: `${m.date} ${m.title}`})),
     ];
     for (const entry of entries) {
-      if (!entry.notePath || invalidFileNameChars(lastSegment(entry.notePath)).length === 0) continue;
+      if (!entry.notePath || invalidFileNameChars(lastSegment(stripPageAnchor(entry.notePath))).length === 0) continue;
       const note = await classifyNotePath(target.path, entry.notePath);
       if (note.kind === 'none' || !note.exists) continue;
       refs.push({

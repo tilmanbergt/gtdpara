@@ -36,9 +36,11 @@
  * domain/storage boundary in this codebase.
  */
 import {closeOutInterrupted, parsePlan} from './closeOut/plan';
-import {joinNotePath, parseSharedNoteAnchor} from './sharedNotePages';
+import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, stripPageAnchor} from './sharedNotePages';
 import {legacyInboxLeftovers, ListedEntry} from './inboxMigration';
 import {GtdParaKind, Meeting, Task} from './types';
+import {parseMarksSpan} from './markdown';
+import {resolveMarkPath} from './marks';
 
 export interface IntegrityFinding {
   checkId: string;
@@ -104,6 +106,22 @@ export async function checkHashNotePath(input: IntegrityCheckInput, io: Integrit
 
   const inspect = async (entityKind: 'task' | 'meeting', notePath: string, entityLabel: string) => {
     if (!notePath.includes('#')) return;
+    // A page link (lasso 0.8): only its file part has to exist.
+    const pageAnchor = parsePageAnchor(notePath);
+    if (pageAnchor) {
+      const target = joinNotePath(input.itemPath, pageAnchor.filePath);
+      if (await io.fileExists(target)) return;
+      findings.push({
+        checkId: 'hashNotePath',
+        itemKind: input.itemKind,
+        itemPath: input.itemPath,
+        entityKind,
+        entityLabel,
+        notePath,
+        message: `The linked note "${target}" was not found - it may have been deleted or moved. Re-link or clear this note reference by hand.`,
+      });
+      return;
+    }
 
     const anchor = parseSharedNoteAnchor(notePath);
     const anchorCandidate = anchor ? joinNotePath(input.itemPath, anchor.filePath) : null;
@@ -139,7 +157,7 @@ export async function checkHashNotePath(input: IntegrityCheckInput, io: Integrit
  * importing markdown.ts's own private heading constants, since this list is
  * about what to LOOK FOR in a suspect file, not about writing one.
  */
-const RECOGNIZED_HEADINGS = ['## Scope', '## Tasks', '## Meetings', '## Weekly Goals', '## Monthly Goals'];
+const RECOGNIZED_HEADINGS = ['## Scope', '## Tasks', '## Meetings', '## Weekly Goals', '## Monthly Goals', '## Marks'];
 
 /**
  * File-structure soundness (2026-09-23, from Tilman finding a real area.txt
@@ -263,7 +281,9 @@ export async function checkLinkedFileMissing(input: IntegrityCheckInput, io: Int
     // branch must never fire here. Deliberately NOT reusing joinNotePath's
     // leading-slash convention; a forced leading slash would make it return
     // the target as-is and silently drop basePath entirely.
-    const absolutePath = `${input.basePath.replace(/\/+$/, '')}/${linkedFile}`;
+    // A lasso source link (0.8) can be absolute and carry `#page=<n>`.
+    const file = stripPageAnchor(linkedFile);
+    const absolutePath = file.startsWith('/') ? file : `${input.basePath.replace(/\/+$/, '')}/${file}`;
     if (await io.fileExists(absolutePath)) return;
     findings.push({
       checkId: 'linkedFileMissing',
@@ -339,12 +359,39 @@ export async function checkCloseOutInterrupted(input: IntegrityCheckInput): Prom
   ];
 }
 
+/**
+ * A "Mark for later" line (lasso 0.8, `## Marks`) whose note or PDF no
+ * longer exists - the mark can't be opened or processed against its page.
+ * Relative paths resolve against the item folder (the Inbox's are absolute).
+ */
+export async function checkMarkNoteMissing(input: IntegrityCheckInput, io: IntegrityCheckIO): Promise<IntegrityFinding[]> {
+  const findings: IntegrityFinding[] = [];
+  for (const mark of parseMarksSpan(input.rawContent).marks) {
+    const absolutePath = resolveMarkPath(input.itemPath, mark.notePath);
+    if (await io.fileExists(absolutePath)) continue;
+    findings.push({
+      checkId: 'markNoteMissing',
+      itemKind: input.itemKind,
+      itemPath: input.itemPath,
+      entityKind: 'item',
+      entityLabel: `mark ${mark.id}`,
+      notePath: mark.notePath,
+      message:
+        `The note of mark ${mark.id} (p${mark.page + 1}) doesn't exist (checked "${absolutePath}") - it may have been ` +
+        `moved, renamed or deleted outside the app. Process or discard the mark in the marks screen, or delete its ` +
+        `line under "## Marks" by hand.`,
+    });
+  }
+  return findings;
+}
+
 export const INTEGRITY_CHECKS: Record<string, IntegrityCheck> = {
   hashNotePath: checkHashNotePath,
   duplicateHeadings: checkDuplicateHeadingsAsync,
   linkedFileMissing: checkLinkedFileMissing,
   defaultResourceFolderMissing: checkDefaultResourceFolderMissing,
   closeOutInterrupted: checkCloseOutInterrupted,
+  markNoteMissing: checkMarkNoteMissing,
 };
 
 /** Runs every registered per-item check against one item's already-parsed state. */

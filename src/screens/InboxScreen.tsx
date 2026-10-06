@@ -148,13 +148,13 @@ import {
 } from '../storage/inboxFiling';
 import {moveEntryWithNote} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
+import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {loadProjectFile, saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings, saveSettings} from '../storage/settingsStorage';
-import {FolderEntry, openPath} from '../supernote/fileSystem';
+import {FolderEntry} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPane';
@@ -166,6 +166,10 @@ import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import MarksCard from '../ui/MarksCard';
+import {MarkScope} from '../domain/marks';
+
+const ALL_MARKS: MarkScope = {type: 'all'};
 import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
@@ -761,7 +765,7 @@ export default function InboxScreen({
   const onOpenLinkedFile = useCallback(
     (linkedFile: string) => {
       if (!paths) return;
-      openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
+      openLinkedFile(paths, linkedFile).catch(e =>
         logError('InboxScreen: open linked file failed', errorMessage(e)),
       );
     },
@@ -892,6 +896,8 @@ export default function InboxScreen({
               borderColor={borderColor}
               placeholderColor={placeholderColor}
             />
+            {/* Open marks of every project, area and the Inbox (lasso 0.8 §3.10). */}
+            <MarksCard scope={ALL_MARKS} returnTo="inbox" textColor={textColor} borderColor={borderColor} />
             <View style={[common.divider, {backgroundColor: borderColor}]} />
             {/* Flex-weight stacking (2026-09-17, docs/dev/technical-design-
                 flex-weight-stacking.md §3.4) - stackedColumn (flex:1)

@@ -208,7 +208,7 @@ import {
 } from '../storage/inboxFiling';
 import {moveEntryWithNote} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {linkedFileStatus, locateLinkedFile, resolveLinkedFilePath, toLinkedFile} from '../storage/linkedFiles';
+import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {MeetingRelevantTodo, relatedItemsFor} from '../storage/meetingNoteAggregate';
 import {openOrCreateMeetingNote, openOrCreateTodoNote, refreshMeetingNoteBlock} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
@@ -274,6 +274,11 @@ import {useFeatures} from '../ui/featureStore';
 import {useErrorStatus, useStatusApi} from '../ui/status/StatusProvider';
 import MarkWrap from '../ui/status/StatusMark';
 import {useCachedInbox} from '../ui/useCachedInbox';
+import MarksCard from '../ui/MarksCard';
+import {useOpenMarks} from '../ui/useOpenMarks';
+import {MarkScope} from '../domain/marks';
+
+const ALL_MARKS: MarkScope = {type: 'all'};
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
@@ -416,6 +421,8 @@ function reviewFallbackItem(ref: ReviewItemRef): CachedItem {
     weeklyGoalsExtraLines: [],
     monthlyGoals: [],
     monthlyGoalsExtraLines: [],
+    marks: [],
+    marksExtraLines: [],
     status: 'active',
     dailyFocus: false,
     weeklyFocus: false,
@@ -546,6 +553,8 @@ export default function ReviewScreen({
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
   // The shared Inbox (storage/dataCache.ts, technical-design-files-0.6.md §3.3) - setCachedInbox writes it for every screen.
   const inbox = useCachedInbox();
+  // Open marks count toward Inbox to zero (lasso 0.8 §3.10).
+  const openMarkCount = useOpenMarks(ALL_MARKS).length;
   const [loading, setLoading] = useState(true);
   // Explicit e-ink refresh once the initial load or a manual refresh
   // actually lands - see src/utils/screenRefresh.ts.
@@ -2087,7 +2096,7 @@ export default function ReviewScreen({
     aggregate && settings
       ? buildReviewStepCounts(
           aggregate,
-          inboxOpenTasks.length + inboxOpenMeetings.length,
+          inboxOpenTasks.length + inboxOpenMeetings.length + openMarkCount,
           items,
           settings,
           gmailMessages?.length ?? 0,
@@ -2162,7 +2171,7 @@ export default function ReviewScreen({
 
   const onOpenInboxLinkedFile = (linkedFile: string) => {
     if (!paths) return;
-    openPath(resolveLinkedFilePath(paths, linkedFile)).catch(e =>
+    openLinkedFile(paths, linkedFile).catch(e =>
       logError('ReviewScreen: open linked file failed', e instanceof Error ? e.message : String(e)),
     );
   };
@@ -2485,6 +2494,7 @@ export default function ReviewScreen({
           borderColor={borderColor}
           placeholderColor={placeholderColor}
         />
+        <MarksCard scope={ALL_MARKS} returnTo="review" textColor={textColor} borderColor={borderColor} />
 
         <View style={[common.divider, {backgroundColor: borderColor}]} />
 

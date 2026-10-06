@@ -25,7 +25,7 @@ Every project and area has a short abbreviation, for example `GR` for "Garden re
 
 ## The Inbox
 
-Whatever you add without a project or area lands in the Inbox: from Daily, Week and Month, and from a lasso capture you don't file right away. The **Inbox** tab shows all of it, grouped into Next, Waiting For, Someday, Maybe and Other; **Hide done tasks** keeps it short. The Files pane on the left lets you look into your projects, areas and resources while you sort.
+Whatever you add without a project or area lands in the Inbox: from Daily, Week and Month, from a lasso capture you don't file right away, and marks from notes outside your projects and areas. The **Inbox** tab shows all of it, grouped into Next, Waiting For, Someday, Maybe and Other; **Hide done tasks** keeps it short. The Files pane on the left lets you look into your projects, areas and resources while you sort.
 
 To empty the Inbox, open each item and either finish it, cancel it, or move it with **Refile** (or an abbreviation tag, see above). The Weekly Review has a step **Inbox to zero** for exactly this.
 
@@ -46,9 +46,4 @@ Every todo and meeting can have its own handwritten note - one of gtdpara's most
 
 ## Capturing handwriting with the lasso
 
-1. In any note, select handwriting with the lasso.
-2. Tap **Capture Todo/Meeting** in the lasso toolbar.
-3. Check the recognized text (correct it, or tap **Retry recognition**) and choose **Todo** or **Meeting**.
-4. For a meeting, also enter date and time. **Link to source note** makes the new item open the note you captured from.
-5. The item goes into the project or area the note belongs to, otherwise into the Inbox. File it elsewhere later with **Refile**.
-6. **Save & View** saves and shows it; **Save & Close** saves and closes gtdpara.
+Select handwriting in any note and tap **Capture Todo/Meeting** in the lasso toolbar: gtdpara recognizes it and opens the same form, with **Save & next**, **Save & view** and **Save & close**. **Mark for later** saves a selection for later without opening gtdpara. Open marks show as a card **n marks to process** on the Inbox tab. Both are explained in [Lasso: capture and mark for later](lasso.md).

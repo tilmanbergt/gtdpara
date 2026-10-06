@@ -516,6 +516,12 @@ interface ItemNoteAnchorResolution {
   isInitialPopulation: boolean;
   absolutePath: string;
   page: number;
+  /**
+   * A note gtdpara didn't create (lasso capture's link to its source note):
+   * opened as it is, never filled from a Tag Rule - that would put
+   * gtdpara's pieces onto the user's own handwritten page.
+   */
+  foreign?: boolean;
 }
 
 interface ItemNoteParams {
@@ -611,7 +617,8 @@ async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
           changed: false,
           isInitialPopulation: false,
           absolutePath: existing.absolutePath,
-          page: 0,
+          page: existing.page ?? 0,
+          foreign: existing.isAbsoluteLink,
         }),
       };
     }
@@ -845,7 +852,7 @@ export async function openOrCreateMeetingNote(
   if (!anchor) return {meeting, changed: false, cancelled: true, outcome: null};
 
   const updatedMeeting = anchor.changed ? {...meeting, notePath: anchor.notePath} : meeting;
-  await refreshMeetingNoteBlock(updatedMeeting, itemPath, settings, inbox, {
+  if (!anchor.foreign) await refreshMeetingNoteBlock(updatedMeeting, itemPath, settings, inbox, {
     isInitialPopulation: anchor.isInitialPopulation,
     page: anchor.page,
   });
@@ -893,7 +900,7 @@ export async function openOrCreateTodoNote(
   if (!anchor) return {task, changed: false, cancelled: true, outcome: null};
 
   const updatedTask = anchor.changed ? {...task, notePath: anchor.notePath} : task;
-  await refreshTodoNoteBlock(updatedTask, itemPath, settings, inbox, {
+  if (!anchor.foreign) await refreshTodoNoteBlock(updatedTask, itemPath, settings, inbox, {
     isInitialPopulation: anchor.isInitialPopulation,
     page: anchor.page,
   });
