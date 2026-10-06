@@ -5,7 +5,6 @@ import {
   isUnderInboxFolder,
   resolvePaths,
   validateInboxFolderName,
-  withInboxFolder,
 } from '../../src/domain/settings';
 import {PROFILE_KEYS} from '../../src/domain/profiles';
 
@@ -16,7 +15,6 @@ describe('Inbox paths', () => {
     const p = resolvePaths(DEFAULT_SETTINGS);
     expect(p.inboxFolder).toBe(`${BASE}/2 Areas/0 Inbox`);
     expect(p.inbox).toBe(`${BASE}/2 Areas/0 Inbox/Inbox.txt`);
-    expect(p.legacyInboxFolder).toBe(BASE);
   });
 
   it('follows custom names and ignores stray slashes and spaces', () => {
@@ -25,15 +23,13 @@ describe('Inbox paths', () => {
     expect(resolvePaths({...DEFAULT_SETTINGS, inboxFolder: ''}).inboxFolder).toBe(`${BASE}/2 Areas/0 Inbox`);
   });
 
-  it('recognizes the Inbox folder, and nothing at the legacy location', () => {
+  it('recognizes the Inbox folder and what is under it', () => {
     const p = resolvePaths(DEFAULT_SETTINGS);
     expect(isInboxFolder(p, `${BASE}/2 Areas/0 Inbox`)).toBe(true);
     expect(isInboxFolder(p, `${BASE}/2 Areas/0 Inbox/`)).toBe(true);
     expect(isInboxFolder(p, `${BASE}/2 Areas/0 Inbox 2`)).toBe(false);
-    const legacy = withInboxFolder(p, BASE);
-    expect(legacy.inbox).toBe(`${BASE}/Inbox.txt`);
-    expect(isInboxFolder(legacy, `${BASE}/2 Areas/Home`)).toBe(false);
-    expect(isUnderInboxFolder(legacy, `${BASE}/2 Areas/Home/Todos/x.note`)).toBe(false);
+    expect(isUnderInboxFolder(p, `${BASE}/2 Areas/0 Inbox/Todos/x.note`)).toBe(true);
+    expect(isUnderInboxFolder(p, `${BASE}/2 Areas/Home/Todos/x.note`)).toBe(false);
   });
 
   it('never treats a note in the Inbox folder as an Area note', () => {

@@ -50,7 +50,7 @@
  * not an oversight of this change).
  */
 import {ExistingAbbrev, generateDefaultAbbrev} from '../domain/abbrev';
-import {GtdParaSettings, ResolvedParaPaths, resolvePaths, withInboxFolder} from '../domain/settings';
+import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {FrontMatterFields} from '../domain/markdown';
 import {ItemStatus, Mark, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
 import {FileStat, listFolderEntries, statFiles} from '../supernote/fileSystem';
@@ -58,7 +58,6 @@ import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {perfEnd, perfMark, perfStart} from '../utils/perf';
 import {dataFilePath, loadProjectFile, parseProjectFileContent, ProjectFileState, saveFrontMatter} from './projectFile';
-import {effectiveInboxFolderFor, hiddenAreaFolderFor, migrateInboxIfNeeded} from './inboxMigration';
 import {errorMessage} from '../utils/errorMessage';
 
 export interface CachedItem {
@@ -227,8 +226,6 @@ export function findCachedItem(path: string): CachedItem | undefined {
 }
 
 const SCAN_TIMEOUT_MS = 20000;
-/** The one-time Inbox move (technical-design-inbox-as-area.md §3.3) moves folders and rewrites links in every Project/Area file - more than one listing. */
-const INBOX_MIGRATION_TIMEOUT_MS = 60000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -407,21 +404,6 @@ export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   return rebuildInFlight;
 }
 
-/**
- * `resolvePaths(settings)` with the Inbox at its EFFECTIVE location
- * (docs/dev/technical-design-inbox-as-area.md §3.3) - for storage code that
- * starts from settings rather than from the cache. Reuses the cache's answer
- * when it was built for the same folders, otherwise checks the disk.
- */
-export async function resolveLivePaths(settings: GtdParaSettings): Promise<ResolvedParaPaths> {
-  const configured = resolvePaths(settings);
-  const fromCache = cached?.paths;
-  if (fromCache && fromCache.base === configured.base && fromCache.areas === configured.areas) {
-    return withInboxFolder(configured, fromCache.inboxFolder === fromCache.base ? configured.base : configured.inboxFolder);
-  }
-  return withInboxFolder(configured, await effectiveInboxFolderFor(configured));
-}
-
 interface FolderItem {
   kind: 'project' | 'area';
   name: string;
@@ -429,7 +411,7 @@ interface FolderItem {
 }
 
 /** Lists the Projects and Areas folders (2 calls) - the item folders the cache holds. */
-async function scanItemFolders(paths: ResolvedParaPaths, hiddenAreaFolder: string | null): Promise<FolderItem[]> {
+async function scanItemFolders(paths: ResolvedParaPaths): Promise<FolderItem[]> {
   const [projectEntries, areaEntries] = await Promise.all([
     withTimeout(listFolderEntries(paths.projects), SCAN_TIMEOUT_MS, `scanning projects (${paths.projects})`),
     withTimeout(listFolderEntries(paths.areas), SCAN_TIMEOUT_MS, `scanning areas (${paths.areas})`),
@@ -437,8 +419,8 @@ async function scanItemFolders(paths: ResolvedParaPaths, hiddenAreaFolder: strin
   return [
     ...projectEntries.filter(e => e.isFolder).map(e => ({kind: 'project' as const, name: e.name, path: e.path})),
     ...areaEntries
-      // The Inbox folder lives under Areas but is never an Area (§3.2).
-      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== hiddenAreaFolder)
+      // The Inbox folder lives under Areas but is never an Area.
+      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== paths.inboxFolder)
       .map(e => ({kind: 'area' as const, name: e.name, path: e.path})),
   ];
 }
@@ -451,21 +433,8 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
     throw new Error('File read permission was not granted.');
   }
 
-  // Inbox as a folder under Areas (docs/dev/technical-design-inbox-as-area.md
-  // §3.3): run the one-time move first, then publish where the Inbox really
-  // is - every screen addresses the Inbox through these cached paths.
-  const configuredPaths = resolvePaths(settings);
-  // Timed out like the scans below, so a stuck listing can't hang the
-  // rebuild; a move still running then simply finishes in the background.
-  await withTimeout(migrateInboxIfNeeded(configuredPaths), INBOX_MIGRATION_TIMEOUT_MS, 'moving the Inbox').catch(e =>
-    logError('rebuildCache: Inbox move did not finish', errorMessage(e)),
-  );
-  const inboxFolder = await withTimeout(effectiveInboxFolderFor(configuredPaths), SCAN_TIMEOUT_MS, 'locating the Inbox').catch(e => {
-    logError('rebuildCache: locating the Inbox failed', errorMessage(e));
-    return configuredPaths.inboxFolder;
-  });
-  const paths = withInboxFolder(configuredPaths, inboxFolder);
-  const folderItems = await scanItemFolders(paths, hiddenAreaFolderFor(configuredPaths));
+  const paths = resolvePaths(settings);
+  const folderItems = await scanItemFolders(paths);
 
   // Stamps first, then the reads: a file changed in between just gets read
   // again on the next refresh (technical-design-files-0.6.md §3.2).
@@ -526,7 +495,6 @@ function samePaths(cachedPaths: ResolvedParaPaths, configured: ResolvedParaPaths
     cachedPaths.base === configured.base &&
     cachedPaths.projects === configured.projects &&
     cachedPaths.areas === configured.areas &&
-    // Differs while an old root Inbox hasn't moved yet: the full rebuild retries the move.
     cachedPaths.inboxFolder === configured.inboxFolder
   );
 }
@@ -542,7 +510,7 @@ async function doRefreshCache(settings: GtdParaSettings): Promise<DataCache> {
     throw new Error('File read permission was not granted.');
   }
   const paths = current.paths;
-  const folderItems = await scanItemFolders(paths, hiddenAreaFolderFor(configuredPaths));
+  const folderItems = await scanItemFolders(paths);
   const dataFiles = folderItems.map(f => dataFilePath(f.kind, f.path));
   const stamps = await statStamps([...dataFiles, paths.inbox]);
   if (!stamps) {

@@ -16,11 +16,11 @@ import {outcomeFolder} from '../../domain/closeOut/archiveOps';
 import {fileNameOf, resolveMarkPath} from '../../domain/marks';
 import {isoDate, readLifecycleDate} from '../../domain/lifecycleDates';
 import {monthKeyOf} from '../../domain/period';
-import {GtdParaSettings, ResolvedParaPaths} from '../../domain/settings';
+import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../../domain/settings';
 import {isoWeekKey} from '../../domain/weekDate';
 import {fileExists, folderExists, getRememberedLaunchNotePath} from '../../supernote/fileSystem';
 import {archiveTargetsFor} from '../archive';
-import {CachedItem, findCachedItem, getCachedData, resolveLivePaths} from '../dataCache';
+import {CachedItem, findCachedItem, getCachedData} from '../dataCache';
 import {toLinkedFile} from '../linkedFiles';
 import {loadProjectFile} from '../projectFile';
 import {scanProject} from './scan';
@@ -60,7 +60,7 @@ export async function loadCloseOutContext(
   onProgress?: (label: string) => void,
 ): Promise<CloseOutContext> {
   const item = requireItem(projectPath);
-  const paths = await resolveLivePaths(settings);
+  const paths = resolvePaths(settings);
   const scan = await scanProject(item, paths, onProgress);
   return refreshCloseOutContext({scan, settings, mode, projectPath});
 }
@@ -73,7 +73,7 @@ export async function refreshCloseOutContext(args: {
 }): Promise<CloseOutContext> {
   const {scan, settings, projectPath} = args;
   const item = requireItem(projectPath);
-  const paths = await resolveLivePaths(settings);
+  const paths = resolvePaths(settings);
   const {plan, found} = parsePlan(item.rawContent);
   const mode = found ? plan.mode : args.mode;
   const now = new Date();

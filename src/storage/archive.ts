@@ -18,7 +18,7 @@
  */
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
 import {assignedProjects} from './areaAssignment';
-import {CachedItem, FrontMatterSource, frontMatterOf, removeCachedItem, resolveLivePaths} from './dataCache';
+import {CachedItem, FrontMatterSource, frontMatterOf, removeCachedItem} from './dataCache';
 import {moveMarksToInbox} from './markStore';
 import {saveFrontMatter} from './projectFile';
 import {deleteEmptyFolder, displayPath, folderExists, moveFolder, moveFolderMerge} from '../supernote/fileSystem';
@@ -153,7 +153,7 @@ export async function archiveItem(
   // Marks lines cleared) is what the status stamp below builds on.
   let rawContent = item.rawContent;
   try {
-    const {inboxFolder} = await resolveLivePaths(settings);
+    const {inboxFolder} = resolvePaths(settings);
     const {itemContent} = await moveMarksToInbox({kind: item.kind, folder: item.path}, toPath, inboxFolder);
     if (itemContent !== null) rawContent = itemContent;
   } catch (e) {

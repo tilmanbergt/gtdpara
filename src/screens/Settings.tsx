@@ -284,7 +284,7 @@ import {clearCachedGmailInbox} from '../storage/gmailInboxCache';
 import {runIntegrityCheck} from '../storage/integrityCheck';
 import {applyFileNameFixes} from '../storage/fileNameFix';
 import {FileFix, fileNameFixConfirmText, fileNameFixDoneText} from '../domain/fileNameFix';
-import {renameInboxFolderForSave} from '../storage/inboxMigration';
+import {renameInboxFolderForSave} from '../storage/inboxFolder';
 import {loadSettings, patchSettings, saveSettings} from '../storage/settingsStorage';
 import {perfEnable} from '../utils/perf';
 import {dropKeptTabs, setKeepTabsAlive} from '../ui/keepAliveStore';

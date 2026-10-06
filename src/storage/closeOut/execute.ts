@@ -13,7 +13,7 @@ import {isoDate, writeLifecycleDate} from '../../domain/lifecycleDates';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../../domain/settings';
 import {fileExists, folderExists, moveFile, moveFolder, writeTextFile} from '../../supernote/fileSystem';
 import {archiveTargetsFor} from '../archive';
-import {findCachedItem, frontMatterOf, getCachedData, reloadCachedInbox, removeCachedItem, resolveLivePaths, updateItemMeetings, updateItemTasks} from '../dataCache';
+import {findCachedItem, frontMatterOf, getCachedData, reloadCachedInbox, removeCachedItem, updateItemMeetings, updateItemTasks} from '../dataCache';
 import {stripPageAnchor} from '../../domain/sharedNotePages';
 import {toLinkedFile} from '../linkedFiles';
 import {dataFilePath, loadProjectFile, saveMeetings, saveTasks} from '../projectFile';
@@ -135,7 +135,7 @@ export async function runCloseOutArchive(
 ): Promise<ArchiveRunResult> {
   const item = findCachedItem(projectPath);
   if (!item) throw new Error('This project is no longer in the lists - Settings → Advanced → Reload all files.');
-  const paths = await resolveLivePaths(settings);
+  const paths = resolvePaths(settings);
   const ops = archiveOpsFor(projectPath, settings);
   const folderOp = ops.find((o): o is Extract<ArchiveOp, {kind: 'moveFolder'}> => o.kind === 'moveFolder');
   if (!folderOp) throw new Error('Internal error: no folder move planned.');

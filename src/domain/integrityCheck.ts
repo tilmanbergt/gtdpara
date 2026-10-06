@@ -37,8 +37,7 @@
  */
 import {closeOutInterrupted, parsePlan} from './closeOut/plan';
 import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, stripPageAnchor} from './sharedNotePages';
-import {legacyInboxLeftovers, ListedEntry} from './inboxMigration';
-import {GtdParaKind, Meeting, Task} from './types';
+import {GtdParaKind, INBOX_FILE_NAME, Meeting, Task} from './types';
 import {parseMarksSpan} from './markdown';
 import {resolveMarkPath} from './marks';
 
@@ -505,11 +504,31 @@ export function runWholeRunChecks(items: ScannedItemSummary[]): IntegrityFinding
   return Object.values(WHOLE_RUN_CHECKS).flatMap(check => check(items));
 }
 
+/** Just what the leftovers check needs from a folder listing - domain stays free of supernote/ types. */
+export interface ListedEntry {
+  name: string;
+  isFolder: boolean;
+}
+
+/** The Inbox's note folders. */
+const INBOX_NOTE_FOLDERS = ['Todos', 'Meetings'] as const;
+
+/** Names left at the base root from where the Inbox lived up to 0.1.0. */
+export function legacyInboxLeftovers(rootEntries: ListedEntry[]): string[] {
+  const has = (name: string, isFolder: boolean) => rootEntries.some(e => e.name === name && e.isFolder === isFolder);
+  const found: string[] = [];
+  if (has(INBOX_FILE_NAME, false)) found.push(INBOX_FILE_NAME);
+  for (const folder of INBOX_NOTE_FOLDERS) {
+    if (has(folder, true)) found.push(`${folder}/`);
+  }
+  return found;
+}
+
 /**
- * Whole-scan finding for anything still at the base root from where the
- * Inbox lived up to 0.1.0 (docs/dev/technical-design-inbox-as-area.md §3.6):
- * Inbox.txt, Todos/ or Meetings/. Means the automatic move didn't finish or
- * was blocked - or, for Todos/Meetings, a folder created there by hand.
+ * Whole-scan finding for anything at the base root from where the Inbox lived
+ * up to 0.1.0: Inbox.txt, Todos/ or Meetings/. gtdpara no longer moves these
+ * itself (direct upgrades from 0.1.0 are not supported); the finding tells the
+ * user to move them by hand.
  */
 export function checkLegacyInboxLeftovers(rootEntries: ListedEntry[], base: string, inboxFolder: string): IntegrityFinding[] {
   const leftovers = legacyInboxLeftovers(rootEntries);
@@ -523,11 +542,9 @@ export function checkLegacyInboxLeftovers(rootEntries: ListedEntry[], base: stri
       entityLabel: leftovers.join(', '),
       notePath: '',
       message:
-        `Left in the base folder from the old Inbox location: ${leftovers.join(', ')}. Either the move to ` +
-        `"${inboxFolder}" did not finish or was blocked (an Area with the same name, or the same file ` +
-        'name in both places) - then move these by hand, or choose another Inbox folder name in Settings → ' +
-        'Folders and restart gtdpara. Or the move finished and only an empty folder was left behind ' +
-        '(gtdpara never deletes folders on its own) - then you can delete it in the file manager.',
+        `Left in the base folder from where the Inbox lived up to gtdpara 0.1.0: ${leftovers.join(', ')}. ` +
+        `Move Inbox.txt and the Todos and Meetings folders into "${inboxFolder}" by hand (merge with what is ` +
+        'already there), or delete them in the file manager if they are empty.',
     },
   ];
 }

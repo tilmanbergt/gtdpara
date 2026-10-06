@@ -34,11 +34,6 @@ jest.mock('../../src/supernote/fileSystem', () => ({
         })
       : null,
 }));
-jest.mock('../../src/storage/inboxMigration', () => ({
-  migrateInboxIfNeeded: async () => ({kind: 'none'}),
-  effectiveInboxFolderFor: async (paths: {inboxFolder: string}) => paths.inboxFolder,
-  hiddenAreaFolderFor: (paths: {inboxFolder: string}) => paths.inboxFolder,
-}));
 
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';
 import {

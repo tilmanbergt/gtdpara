@@ -36,10 +36,7 @@ export interface GtdParaSettings {
   monthlyFocusAreaCount: number;
   /**
    * Per-step review tracking for the Weekly Review (docs/dev/technical-design-
-   * review-hub.md, 2026-09-20; replaces the old single `lastReviewCompleted-
-   * At` + `lastReviewSummary` pair that "Finish review" wrote - see
-   * domain/reviewSteps.ts's migrateReviewSteps for the one-time move). One
-   * record per step id: when "Reviewed" was last tapped on it, the recap
+   * review-hub.md). One record per step id: when "Reviewed" was last tapped on it, the recap
    * counts of its last recorded visit, and (backlog steps only) when the hub
    * last saw it empty. Plugin meta, not PARA content (same reasoning as the
    * focus counts above) - a passive marker only (domain/reviewSteps.ts's
@@ -220,15 +217,11 @@ export interface ResolvedParaPaths {
   archive: string;
   /**
    * The Inbox's own folder (`<areas>/<inboxFolder>`) - the Inbox's item path:
-   * Inbox.txt and its Todos/Meetings note folders live here. Address the
-   * Inbox through the CACHE's paths (storage/dataCache.ts), which hold the
-   * effective location - see technical-design-inbox-as-area.md §3.3.
+   * Inbox.txt and its Todos/Meetings note folders live here.
    */
   inboxFolder: string;
   /** The untriaged-capture file, `<inboxFolder>/Inbox.txt`. */
   inbox: string;
-  /** Where the Inbox lived up to 0.1.0 (the base root). Only the migration and the Integrity Check read this. */
-  legacyInboxFolder: string;
 }
 
 function joinPath(base: string, segment: string): string {
@@ -255,14 +248,7 @@ export function resolvePaths(settings: GtdParaSettings): ResolvedParaPaths {
     archive: joinPath(base, settings.archiveFolder || DEFAULT_SETTINGS.archiveFolder),
     inboxFolder,
     inbox: joinPath(inboxFolder, INBOX_FILE_NAME),
-    legacyInboxFolder: base,
   };
-}
-
-/** The same paths with the Inbox at `inboxFolder` - how the cache publishes the effective Inbox location (technical-design-inbox-as-area.md §3.3). */
-export function withInboxFolder(paths: ResolvedParaPaths, inboxFolder: string): ResolvedParaPaths {
-  const folder = inboxFolder.replace(/\/+$/, '');
-  return {...paths, inboxFolder: folder, inbox: joinPath(folder, INBOX_FILE_NAME)};
 }
 
 /** Whether `folderPath` is the configured Inbox folder (exact match, trailing slashes ignored). Used to keep it out of every Area listing. */

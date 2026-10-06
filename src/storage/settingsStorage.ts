@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../domain/settings';
 import {migrateNoteTemplateDefaults} from '../domain/noteTemplate';
-import {migrateReviewSteps, ReviewStepsMap} from '../domain/reviewSteps';
+import {ReviewStepsMap} from '../domain/reviewSteps';
 import {perfEnd, perfStart} from '../utils/perf';
 import {migrateExperimentalFlags} from '../domain/features';
 import {BUILD_INFO} from '../generated/buildInfo';
@@ -15,46 +15,28 @@ const SETTINGS_KEY = 'gtdpara:settings:v1';
  * uses this one directly so a failed read can never turn into "write the
  * defaults over the user's real settings".
  *
- * Phase 2 addition (2026-09-18, docs/dev/technical-design-note-templates.md
- * §7): runs `migrateNoteTemplateDefaults` on the merged result before
- * returning it - the one-time seed of a "Meeting (default)" note-creation
- * definition, for both a genuinely fresh install (no saved blob at all) and
- * an existing one that predates this feature (saved blob has
- * `noteCreationDefinitions: []`, same shape DEFAULT_SETTINGS already
- * produces for either case, so one code path covers both rather than
- * branching on `raw` being present). When migration actually seeds
- * something (`migrated !== merged`, a plain reference check -
- * migrateNoteTemplateDefaults returns the SAME object back when it's a
- * no-op), the result is written back via `saveSettings` immediately, so the
- * seed is a true one-time migration - not re-derived (with a fresh
- * `nextNoteDefinitionId`-based id each time) on every subsequent load. A
- * write failure here is swallowed - migration is best-effort, never
- * something that should turn "open the plugin" into a hard error.
- *
- * 2026-09-20 addition (docs/dev/technical-design-review-hub.md §3.5): then runs
- * `migrateReviewSteps` the same way - the one-time move from the old
- * `lastReviewCompletedAt`/`lastReviewSummary` pair to per-step review
- * records. It needs the RAW parsed blob (those legacy keys are no longer part
- * of the typed settings), and follows the same same-reference-means-no-op,
- * write-back-once, swallow-write-failure contract.
+ * The loaded settings then pass through the load-time migrations, each of
+ * which returns the SAME object when it has nothing to do:
+ * - `migrateNoteTemplateDefaults` seeds the "Meeting (default)" Tag Rule
+ *   when there are no rules yet (fresh install).
+ * - `migrateExperimentalFlags` sets the experimental switches and the
+ *   What's-new marker for an install that predates them; it needs the raw
+ *   stored blob to tell a fresh install from an update.
+ * When anything changed, the result is saved right away so the migration
+ * runs once; a failed save is ignored (the values still apply this session,
+ * and every migration is idempotent).
  */
 async function readSettings(): Promise<GtdParaSettings> {
   const raw = await AsyncStorage.getItem(SETTINGS_KEY);
   const parsed = raw ? JSON.parse(raw) : {};
   const merged: GtdParaSettings = {...DEFAULT_SETTINGS, ...parsed};
   const noteMigrated = migrateNoteTemplateDefaults(merged);
-  const stepsMigrated = migrateReviewSteps(noteMigrated, parsed);
-  // 2026-09-30 (docs/dev/technical-design-about-debug-experimental.md §3.1):
-  // experimental switches + What's-new marker, same contract as above.
-  const migrated = migrateExperimentalFlags(stepsMigrated, parsed, BUILD_INFO.version);
+  const migrated = migrateExperimentalFlags(noteMigrated, parsed, BUILD_INFO.version);
   if (migrated !== merged) {
     try {
       await saveSettings(migrated);
     } catch {
-      // Best-effort - the migrated values still apply for the rest of this
-      // session (they're returned below either way); they just aren't
-      // persisted yet, so the next load re-derives them (both migrations are
-      // idempotent - see their own doc comments).
+      // Best-effort: the migrated values still apply this session.
     }
   }
   return migrated;

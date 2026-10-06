@@ -31,8 +31,8 @@ Each permission is requested right before the first action that needs it:
 
 gtdpara tells you whenever it changes files: your own edits are saved where you made them; new
 notes, PDFs and exports are named with their folder when they are created; moves, overwrites and
-deletes are shown before they happen and confirmed afterwards. The one automatic change is the
-one-time Inbox move in 0.2.0 (for users of earlier builds), which is announced when it happens.
+deletes are shown before they happen and confirmed afterwards. gtdpara makes no automatic
+changes to your files.
 
 **Mark for later** adds a small bookmark icon to the note it marks; processing the mark turns it
 into a check mark, discarding it removes the icon. gtdpara changes only its own icons, never your

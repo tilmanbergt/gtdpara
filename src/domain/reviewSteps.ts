@@ -334,43 +334,6 @@ export function isReviewOverdue(steps: ReviewStepsMap, now: Date = new Date(), d
   return false;
 }
 
-/**
- * One-time move from the old single `lastReviewCompletedAt`/
- * `lastReviewSummary` pair (written by "Finish review") to per-step records.
- * Called from storage/settingsStorage.ts's loading path with the merged
- * settings AND the raw parsed blob (the legacy keys are gone from the typed
- * settings, but still present at runtime in what was stored).
- * - Nothing stored under either the new or the legacy keys (fresh install):
- *   no-op, same reference back.
- * - Legacy timestamp present: EVERY step currently in REVIEW_STEPS is seeded
- *   `{reviewedAt: legacy, counts: ZERO}` so an update doesn't alarm on every
- *   row. The legacy summary is dropped (it can't be attributed to steps).
- * - Legacy keys are stripped either way. Idempotent: once `reviewSteps` is
- *   stored and the legacy keys are gone, this is a no-op.
- */
-export function migrateReviewSteps<T extends {reviewSteps: ReviewStepsMap}>(merged: T, rawStored: unknown): T {
-  const raw = rawStored && typeof rawStored === 'object' ? (rawStored as Record<string, unknown>) : {};
-  const hasNew = raw.reviewSteps !== undefined;
-  const hasLegacy = 'lastReviewCompletedAt' in raw || 'lastReviewSummary' in raw;
-  // Without legacy keys there is nothing to migrate: a fresh install (nothing stored) and an already-migrated blob look the same here.
-  if (!hasLegacy) return merged;
-
-  const next: Record<string, unknown> = {...(merged as unknown as Record<string, unknown>)};
-  delete next.lastReviewCompletedAt;
-  delete next.lastReviewSummary;
-  if (!hasNew) {
-    const legacy = raw.lastReviewCompletedAt;
-    const seeded: ReviewStepsMap = {};
-    if (typeof legacy === 'string' && parseMs(legacy) !== null) {
-      for (const def of REVIEW_STEPS) {
-        seeded[def.id] = {reviewedAt: legacy, counts: {...ZERO_REVIEW_SUMMARY}};
-      }
-    }
-    next.reviewSteps = seeded;
-  }
-  return next as unknown as T;
-}
-
 // ---- Text helpers shared by the hub and the end page (moved from screens/ReviewScreen.tsx) ----
 
 /** "today", "yesterday", "N days ago", then a weekday and date ("Mon 28.9."). */

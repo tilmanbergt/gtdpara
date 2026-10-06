@@ -69,7 +69,6 @@ jest.mock('../../src/storage/settingsStorage', () => ({
 jest.mock('../../src/storage/dataCache', () => ({
   getCachedData: () => null,
   findCachedItem: () => undefined,
-  resolveLivePaths: async (s: unknown) => jest.requireActual('../../src/domain/settings').resolvePaths(s),
 }));
 
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';

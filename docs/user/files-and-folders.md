@@ -22,7 +22,7 @@ The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in
 
 The Inbox has its own folder inside the Areas folder, so the `Note` folder holds only your PARA folders. gtdpara doesn't treat it as an area: it isn't listed on the Areas tab or in focus and refile. You can change its name in Settings, see [Settings](settings.md).
 
-Up to version 0.1.0 the Inbox lived directly in `Note` (`Inbox.txt` plus `Todos` and `Meetings` folders). The first start of a newer version moves these into the Inbox folder once and says so. If an area with the same name already exists, nothing is moved, the Inbox keeps working from `Note`, and you're asked to choose another name for the Inbox folder.
+Up to version 0.1.0 the Inbox lived directly in `Note` (`Inbox.txt` plus `Todos` and `Meetings` folders). Versions 0.2 to 0.8 moved these into the Inbox folder on their first start; from 0.9.0 on gtdpara no longer does. If you still have them in `Note`, move them into the Inbox folder by hand; **Run Integrity Check** in Settings → Advanced points them out.
 
 ## Inside project.txt
 

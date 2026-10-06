@@ -45,8 +45,6 @@ import {collectArchivedItems} from '../domain/closeOut/archiveScan';
 import {fileExists, folderExists, listFolderEntries, writeIntegrityCheckReport} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
-import {resolveLivePaths} from './dataCache';
-import {hiddenAreaFolderFor} from './inboxMigration';
 import {stripPageAnchor} from '../domain/sharedNotePages';
 import {classifyNotePath} from './noteLinks';
 import {loadProjectFile} from './projectFile';
@@ -158,11 +156,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
     throw new Error('File read permission was not granted.');
   }
 
-  // Live paths: the Inbox target is wherever the Inbox really is right now
-  // (docs/dev/technical-design-inbox-as-area.md §3.6).
-  const configuredPaths = resolvePaths(settings);
-  const paths = await resolveLivePaths(settings);
-  const hiddenAreaFolder = hiddenAreaFolderFor(configuredPaths);
+  const paths = resolvePaths(settings);
   log('runIntegrityCheck: start');
 
   // The device capabilities the domain-layer checks need (see
@@ -181,14 +175,13 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
     ...projectEntries.filter(e => e.isFolder).map(e => ({kind: 'project' as const, path: e.path, name: e.name, inArchive: false})),
     ...areaEntries
       // The Inbox folder lives under Areas but is never an Area (scanned below as the Inbox).
-      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== hiddenAreaFolder)
+      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== paths.inboxFolder)
       .map(e => ({kind: 'area' as const, path: e.path, name: e.name, inArchive: false})),
   ];
 
   const archived = await collectArchivedItems(listFolderEntries, paths.archive);
   for (const item of archived) targets.push({kind: item.kind, path: item.path, name: item.name, inArchive: true});
 
-  // The Inbox at its effective location: its folder under Areas, or the base root while an old Inbox hasn't moved.
   targets.push({kind: 'inbox', path: paths.inboxFolder, name: 'Inbox', inArchive: false});
 
   const perTargetResults = await Promise.all(
@@ -250,7 +243,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
   const leftoverFindings = checkLegacyInboxLeftovers(
     rootEntries.map(e => ({name: e.name, isFolder: e.isFolder})),
     paths.base,
-    configuredPaths.inboxFolder,
+    paths.inboxFolder,
   );
   // Unsafe file names (docs/dev/technical-design-files-0.6.md §3.5).
   const loaded = perTargetResults.map(result => result.loaded).filter((l): l is LoadedEntries => l !== null);

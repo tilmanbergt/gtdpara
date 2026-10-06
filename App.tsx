@@ -38,8 +38,7 @@ import {useStatus} from './src/ui/status/StatusProvider';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
 import {decideLanding} from './src/domain/returnContext';
-import {clearCachedData, refreshCache, subscribeCache} from './src/storage/dataCache';
-import {InboxMigrationNotice, takeInboxMigrationNotice} from './src/storage/inboxMigration';
+import {clearCachedData, refreshCache} from './src/storage/dataCache';
 import {clearCachedGmailInbox} from './src/storage/gmailInboxCache';
 import {setActiveProfileId} from './src/storage/profileKeys';
 import {switchProfile} from './src/storage/profiles';
@@ -635,21 +634,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     log('App: switched to profile', next.activeProfileId);
     onProfileSwitched();
   };
-  // One-time Inbox move (docs/dev/technical-design-inbox-as-area.md §3.3):
-  // the cache rebuild runs it, and its outcome is shown here once.
-  const [inboxNotice, setInboxNotice] = useState<InboxMigrationNotice | null>(null);
-  useEffect(() => {
-    const check = () => {
-      const notice = takeInboxMigrationNotice();
-      if (notice) setInboxNotice(notice);
-    };
-    check(); // a rebuild may have finished before this subscribed
-    return subscribeCache(check);
-  }, []);
-  useStatus(
-    'app.inboxMigration',
-    inboxNotice ? {kind: inboxNotice.kind, scope: 'global', text: inboxNotice.text, onDismiss: () => setInboxNotice(null)} : null,
-  );
   const showWhatsNew =
     settings !== null && !whatsNewAcknowledged && shouldShowWhatsNew(settings.lastSeenVersion, BUILD_INFO);
   useStatus(

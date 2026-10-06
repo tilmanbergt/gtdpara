@@ -9,15 +9,13 @@
  */
 import {listOpenMarks} from './marks';
 import {listMarkDataIds, readPendingIconChanges} from './markData';
-import {DEFAULT_SETTINGS, GtdParaSettings, resolvePaths} from '../domain/settings';
+import {DEFAULT_SETTINGS, GtdParaSettings} from '../domain/settings';
 import {featuresOf} from '../domain/features';
 import {redactText} from '../domain/redact';
 import {BUILD_INFO} from '../generated/buildInfo';
 import {getRememberedLaunchNotePath, writeDebugBundleFile} from '../supernote/fileSystem';
 import {getRuntimeDiagnostics} from '../supernote/pluginRuntime';
 import {getRecentErrors, getRecentLogLines, isFileLoggingOn, LOG_FILE_NAME} from '../utils/logSink';
-import {getCachedData} from './dataCache';
-import {describeInboxMigrationOutcome, getInboxMigrationOutcome} from './inboxMigration';
 import {collectPerfStats} from './perfStats';
 import {errorMessage} from '../utils/errorMessage';
 
@@ -93,10 +91,6 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
     // keep 'not available'
   }
   lines.push(`data: ${data}`);
-  // Inbox as a folder under Areas (docs/dev/technical-design-inbox-as-area.md §3.3).
-  const cachedPaths = getCachedData()?.paths;
-  const inboxLocation = !cachedPaths ? 'unknown' : cachedPaths.inboxFolder === cachedPaths.base ? 'legacy' : 'new';
-  lines.push(`inbox location: ${inboxLocation} · migration: ${describeInboxMigrationOutcome(getInboxMigrationOutcome(resolvePaths(settings).base))}`);
   lines.push(await marksLine());
   lines.push(`log file: ${isFileLoggingOn() ? `ON (${LOG_FILE_NAME})` : 'OFF'}`);
   const errors = getRecentErrors(10);

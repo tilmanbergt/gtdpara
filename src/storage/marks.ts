@@ -15,7 +15,7 @@
  * The outcome is silent when everything worked. Otherwise it is kept in
  * `markOutcome` for App's small result screen (opened via showPluginView).
  */
-import {findEnclosingItem} from '../domain/settings';
+import {findEnclosingItem, resolvePaths} from '../domain/settings';
 import {isEmptyLasso, readLasso, saveLassoPreview} from '../supernote/lassoRead';
 import {setLassoBoxState} from '../supernote/lasso';
 import {changeMarkIcon, insertBookmark} from '../supernote/markIcons';
@@ -24,7 +24,7 @@ import {collectOpenMarks, MARK_DATA_VERSION, markCreatedAt, markOwner, MarkScope
 import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import {Mark} from '../domain/types';
 import {log, logError, logWarn} from '../utils/log';
-import {findCachedItem, getCachedData, getCachedInbox, resolveLivePaths} from './dataCache';
+import {findCachedItem, getCachedData, getCachedInbox} from './dataCache';
 import {
   addPendingIconChange,
   cleanOrphanedMarkData,
@@ -82,7 +82,7 @@ let running = false;
 
 async function ownerFor(absNotePath: string) {
   const settings = await loadSettings();
-  const paths = await resolveLivePaths(settings);
+  const paths = resolvePaths(settings);
   const enclosing = findEnclosingItem(paths, absNotePath);
   let exists = false;
   if (enclosing) {
@@ -246,7 +246,7 @@ export interface FinishResult {
  */
 export async function finishMark(open: OpenMark, change: 'done' | 'remove', currentPath: string | null): Promise<FinishResult> {
   const cache = getCachedData();
-  const inboxFolder = cache?.paths.inboxFolder ?? (await resolveLivePaths(await loadSettings())).inboxFolder;
+  const inboxFolder = cache?.paths.inboxFolder ?? resolvePaths(await loadSettings()).inboxFolder;
   const removed = await removeMarkLine(markFileRef(open.owner, {inboxFolder}), open.mark.id);
   const icon = await changeMarkIcon({id: open.mark.id, path: open.absPath, page: open.mark.page}, change, currentPath);
   if (!icon.ok && icon.retry) {

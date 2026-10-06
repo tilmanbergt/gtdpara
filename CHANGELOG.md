@@ -15,9 +15,17 @@ or your project/area files are stored.
   year) and 24-hour times without a leading zero (`9:05`). Day headings read `Tue 6.10.`. This also
   applies to the date and time pieces written into new meeting notes; files keep `2026-10-06`.
 
+### Removed
+- The one-time move of the Inbox out of `Note` (from 0.1.0 to the Inbox folder under Areas).
+
 ### Fixed
 - Integrity Check now also checks archived projects and areas in the Archive's year folders
   (where close-out puts them), including a close-out that was interrupted after the folder move.
+
+### Upgrade notes
+- **Upgrading straight from 0.1.0 is no longer supported.** Install any version from 0.2 to 0.8
+  first (it moves the Inbox), or move `Inbox.txt` and its `Todos` and `Meetings` folders from
+  `Note` into `Note/2 Areas/0 Inbox` yourself. **Run Integrity Check** points out anything left.
 
 ## [0.8.0] — 2026-10-06
 
