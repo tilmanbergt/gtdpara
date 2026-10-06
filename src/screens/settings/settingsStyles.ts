@@ -44,15 +44,6 @@ export const styles = StyleSheet.create({
   backText: {
     fontSize: FONT.medium,
   },
-  closeButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  closeText: {
-    fontSize: FONT.medium,
-    fontWeight: '600',
-  },
   sectionHeading: {
     fontSize: FONT.medium,
     fontWeight: '700',
@@ -103,14 +94,6 @@ export const styles = StyleSheet.create({
     fontSize: FONT.medium,
     fontWeight: '600',
   },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  savedText: {
-    textAlign: 'center',
-    marginTop: 8,
-    fontSize: FONT.small,
-  },
   resetButton: {
     marginTop: 20,
     alignItems: 'center',
@@ -119,9 +102,6 @@ export const styles = StyleSheet.create({
     fontSize: FONT.small,
     textDecorationLine: 'underline',
     opacity: 0.7,
-  },
-  fieldSpacer: {
-    marginTop: SPACING.md,
   },
   // Tighter than `fieldSpacer` above - the 'edit' form's own top section
   // (Name/Context/Tags/Default+Enabled) only, per Tilman's 2026-09-18
@@ -210,24 +190,6 @@ export const styles = StyleSheet.create({
     fontSize: FONT.small,
     fontWeight: '600',
     textDecorationLine: 'underline',
-  },
-  // `alignItems: 'flex-start'` (2026-09-18 bugfix - Tilman, looking at the
-  // real device: "on the left there is lots of space between name and
-  // context of the template. that can go.") - without it, RN's default
-  // `alignItems: 'stretch'` on a row stretches BOTH columns to match
-  // whichever is taller (here, the right column's preview+piece list, much
-  // taller than the left column's fields), which in turn gives
-  // `ui/ClipboardTextInput.tsx`'s own `flex: 1` wrap a genuine leftover
-  // height to grow into inside the now-stretched left column - so the Name
-  // field silently grew taller than one line, reading as "empty space"
-  // above the Context label. `flex-start` lets each column size to its own
-  // content instead, which is what a form column next to a taller preview
-  // column should do anyway. As of the 'edit' page's later rearrangement
-  // (see `templatesEditRow` below), only the 'edit-piece' page still uses
-  // this style directly.
-  twoColumn: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   // The 'edit' form's own row (2026-09-18 rearrangement) - deliberately its
   // own style rather than reusing `twoColumn` above, and the opposite
@@ -490,11 +452,6 @@ export const styles = StyleSheet.create({
   addPanelHint: {
     fontSize: FONT.small,
     opacity: 0.6,
-    marginTop: SPACING.sm,
-  },
-  // One-line result of the last add/remove/save under both columns.
-  addNotice: {
-    fontSize: FONT.small,
     marginTop: SPACING.sm,
   },
 });
