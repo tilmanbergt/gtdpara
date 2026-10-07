@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-07
+
 ### Changed
 - Review's Focus reset step shows a Week | Month switch with the same focus panel as the Week and Month tabs, instead of its own list.
 - One date format everywhere: day and month without leading zeros (`6.10.`, `6.10.2027` for another
