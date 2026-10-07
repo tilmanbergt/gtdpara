@@ -649,3 +649,56 @@ code-health baseline and must not grow: the provenance line and seed logic go in
 - Obsidian-side Markdown view of the `.txt` files (outside gtdpara; see §3.1.5).
 - Rhythm/cadence per counterpart (later; the `## Threads` line format leaves room).
 - Tag renames once history accumulates (later).
+
+## 8. As built (0.10.0)
+
+0.10.0 "Plain syntax" is §3.1.1–3.1.4 and §3.1.7, on `feature/plain-files`; every commit ends
+with `npm run check` green. 0.11.0 and 0.12.0 are not started.
+
+- `685b12f` Read and write task fields, `#wf` and `[due::]`: `domain/taskLine.ts` (parse and
+  write the trailing fields), `TaskFields` on `Task`, `domain/taskEdit.ts`, `#wf` in
+  `domain/flowState.ts`, `setDueInLine`, `composeTaskText` writing `[due:: …]`, `WF` refused as
+  an abbreviation; tests for the line, the helpers and `#wf`.
+- `28521ca` Change todos only through the task helpers: every screen edit, done toggle and cancel
+  (Daily, Inbox, Current, Review's Inbox, item list and unfocused-next steps, `itemMove`) goes
+  through `applyTaskEdit` and `domain/taskEdit.ts`; `buildTask` records `created`; the
+  code-health rule `task-edit` reports `deriveTaskFields` outside `src/domain/`.
+- `cbecc2f` Write the demo space in the task field syntax: the check against this design found
+  `domain/demoSpace.ts` still writing `#due:` and `#waiting-for:` into new demo files.
+- `51009ea` Comments in `domain/types.ts` and `ui/QuickAddWidget.tsx` that still described
+  `setDueTag` and spreading `deriveTaskFields`.
+- `784a7f2`, `b3b4d01` design-overview §2.2 (line grammar, fields, `#wf`, example file), §2.4
+  (`applyTaskEdit`), §3 ("One tag mechanism, one field mechanism", "One task change path"), §4;
+  DEVELOPMENT-POLICY §3 (file format, one way to change a todo).
+- `7bd927b` Help pages Tags, Your files and folders (with an Obsidian section), Quick Add,
+  Note templates. `c0f3c29` CHANGELOG Changed and Upgrade notes.
+
+Deviations from §3.1:
+
+- **Due date in a Quick Add edit.** `applyTaskEdit(stored, composedText, linkedFile)` is
+  `domain/taskEdit.ts`'s pure `applyTaskInput` plus the linked file. It takes the text and the
+  due date from Quick Add's composed line, not "fields present replace, others kept": Quick Add
+  always composes the due date, so a line without `[due:: …]` means the user removed it, and
+  removing the due date in Quick Add clears it. `created`, `meeting` and `completion` are kept
+  unless the line carries them; unknown fields in the line replace the stored ones, otherwise the
+  stored ones are kept.
+- `domain/taskEdit.ts` also has `newTask` (used by `buildTask`); `deriveTaskFields(text,
+  fieldDue)` takes the due field as a second argument and uses it only when it is a
+  `YYYY-MM-DD` date, else the legacy tag.
+- A repeated known key, or a known key without a value, is kept verbatim in `fields.extra`, so a
+  second parse of a written line gives the same result.
+- Known fields are written in a canonical form (`[key:: value]`, the fixed order). A hand-written
+  `[due::2026-10-09]` or a different order of known fields reads correctly but is rewritten in
+  that form the next time the file's Tasks span is saved. Unknown fields stay verbatim. Keys are
+  `[a-z][\w-]*` as designed, so `[Priority:: high]` stays part of the text.
+- `wf` is reserved through `isWaitingForTag`/`isContextTag` (which `validateAbbrev` uses), not a
+  separate list. `withTaskDone(task, true, today)` keeps a completion date the task already has.
+- Legacy lines are not converted: a `#due:` tag is removed by a Quick Add edit or `withTaskDue`,
+  `#waiting-for:` is rewritten by `setFlowStateTag` (every Quick Add edit); a done toggle leaves
+  the text as it is.
+
+The `.md` data files, the conversion pass and the raw view/edit were built on this branch and
+removed before the release (D5, D6 withdrawn); what was learned is in §3.1.5.
+
+Off-device: `npm run check` (tsc, ESLint, 440 Jest tests, script, help-page and code-health
+tests, code health). T0 passed (§7). The device checklist of §6 "0.10.0" is still open.
