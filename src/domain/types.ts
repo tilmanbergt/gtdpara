@@ -71,11 +71,14 @@ export interface FrontMatter {
  * so a task's `#tags` still live inline in it exactly as typed, same as
  * typing them by hand; `tags` is just a derived read of that same text.
  *
- * `dueDate` is likewise derived, not a separate piece of state: it's set
- * from a `#due:YYYY-MM-DD` tag (the "one tag mechanism" extended to due
- * dates rather than inventing a second syntax) when one of the extracted
- * tags matches that shape, or `null` otherwise. If more than one `#due:`
- * tag is present, the first one found wins.
+ * `dueDate` is likewise derived, never set on its own: it is `fields.due`
+ * (the trailing `[due:: YYYY-MM-DD]` field) when that is a date, else a
+ * `#due:YYYY-MM-DD` tag in `text` (the older form, still read), else `null`.
+ * If more than one `#due:` tag is present, the first one found wins.
+ *
+ * `fields` are the trailing Dataview inline fields gtdpara records about the
+ * todo (docs/dev/history/technical-design-tending-threads.md §3.1.1); they
+ * are never part of `text`. Change a Task only through domain/taskEdit.ts.
  *
  * `cancelled` (- [-] in the file, Obsidian's own "cancelled" checkbox
  * state) is a soft-delete: cancelled tasks stay in the file and are just
@@ -91,21 +94,21 @@ export interface FrontMatter {
  *
  * `flowState`/`waitingOn` (technical-design-tags.md §1) are derived the same
  * way `tags`/`dueDate` are - never a separate source of truth. `flowState`
- * reads `#next`/`#waiting-for`/`#someday`/`#maybe` out of `tags`;
- * `waitingOn` reads the slug out of a `#waiting-for:<slug>` tag when
- * `flowState === 'waiting-for'` (the same `:value` mechanism `#due:`
- * already uses), or `null` otherwise. See domain/flowState.ts.
+ * reads `#next`/`#wf`/`#someday`/`#maybe` out of `tags`;
+ * `waitingOn` reads the counterpart out of a `#wf/<slug>` tag (or the older
+ * `#waiting-for:<slug>`) when `flowState === 'waiting-for'`, or `null`
+ * otherwise. See domain/flowState.ts.
  */
 export interface Task {
   text: string;
   done: boolean;
   cancelled: boolean;
   tags: string[];
-  /** YYYY-MM-DD from a `#due:YYYY-MM-DD` tag, or null - see the tags doc above. */
+  /** YYYY-MM-DD from `fields.due` or a legacy `#due:` tag, or null - see the doc above. */
   dueDate: string | null;
   /** GTD flow-state derived from tags, or null - see the tags doc above. */
   flowState: FlowState;
-  /** Slug from a `#waiting-for:<slug>` tag, or null - only meaningful when flowState === 'waiting-for'. */
+  /** Slug from a `#wf/<slug>` (or `#waiting-for:<slug>`) tag, or null - only meaningful when flowState === 'waiting-for'. */
   waitingOn: string | null;
   /**
    * Whether this task carries `#now` (docs/dev/history/technical-design-now-focus-mode.md
@@ -122,8 +125,30 @@ export interface Task {
    */
   now: boolean;
   notePath: string;
-  /** Base-root-relative path to a linked existing file (technical-design-linked-files.md §3), or '' if none - see domain/markdown.ts's extractLinkedFile/appendLinkedFile. This field was already read/written throughout markdown.ts/dataCache.ts/the linked-files UI but missing from this interface itself - added here while touching this file for the area-assignment feature, since it would otherwise fail a strict tsc pass on every one of those call sites. */
+  /** Base-root-relative path to a linked existing file (technical-design-linked-files.md §3), or '' if none - see domain/markdown.ts's extractLinkedFile/appendLinkedFile. */
   linkedFile: string;
+  /** The trailing `[key:: value]` fields - see TaskFields. */
+  fields: TaskFields;
+}
+
+/**
+ * The trailing Dataview inline fields of a task line
+ * (`... → [[note]] +[[file]] [meeting:: …] [created:: …] [due:: …] [completion:: …]`,
+ * docs/dev/history/technical-design-tending-threads.md §3.1.1). Written in
+ * that order, then `extra`. Known keys hold their value as found (a
+ * YYYY-MM-DD date when gtdpara wrote it).
+ */
+export interface TaskFields {
+  /** YYYY-MM-DD the todo is due (for Waiting For: the follow-up date). */
+  due: string | null;
+  /** YYYY-MM-DD the todo was created; never invented for older todos. */
+  created: string | null;
+  /** YYYY-MM-DD the todo was checked done; cleared when it is reopened. */
+  completion: string | null;
+  /** The meeting the todo was agreed in (`<date> <title>`), read and kept as found. */
+  meeting: string | null;
+  /** Unknown `[key:: value]` tokens, verbatim, in file order (fields added in Obsidian survive). */
+  extra: string[];
 }
 
 /**

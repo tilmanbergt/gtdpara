@@ -1,12 +1,15 @@
 /**
- * Builds a todo's saved text from Quick Add's fields - flow-state tag
- * (with the waiting-on name), due tag, and the abbreviation tag that picked
- * the destination removed again. Shared by Quick Add's create and edit and
- * by the lasso capture panel, which saves several items with the same chips
- * (docs/dev/history/technical-design-lasso-0.8.md §3.9). Pure.
+ * Builds a todo's saved line from Quick Add's fields - flow-state tag
+ * (with the waiting-on name), a trailing `[due:: …]` field, and the
+ * abbreviation tag that picked the destination removed again. Shared by
+ * Quick Add's create and edit and by the lasso capture panel, which saves
+ * several items with the same chips (docs/dev/history/technical-design-lasso-0.8.md
+ * §3.9). The result is one string: text plus trailing fields, which
+ * storage/itemMutations.ts's `buildTask`/`applyTaskEdit` split again
+ * (domain/taskEdit.ts's `parseTaskInput`). Pure.
  */
 import {setFlowStateTag, slugifyWaitingOn} from './flowState';
-import {removeTagFromText, setDueTag} from './markdown';
+import {removeTagFromText, setDueInLine} from './markdown';
 import {FlowState} from './types';
 
 export interface TaskComposeFields {
@@ -28,7 +31,6 @@ export function composeTaskText(fields: TaskComposeFields, abbrevTag: string | n
     fields.flowState,
     fields.flowState === 'waiting-for' ? slugifyWaitingOn(fields.waitingOnText) : undefined,
   );
-  finalText = setDueTag(finalText, fields.dueDate.trim() || null);
   if (abbrevTag) {finalText = removeTagFromText(finalText, abbrevTag);}
-  return finalText;
+  return setDueInLine(finalText, fields.dueDate.trim() || null);
 }

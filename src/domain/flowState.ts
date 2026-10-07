@@ -17,20 +17,40 @@ import {FlowState, Task} from './types';
 
 const FLOW_STATE_WORDS: Exclude<FlowState, null>[] = ['next', 'waiting-for', 'someday', 'maybe'];
 
+/**
+ * The tag type of Waiting For (docs/dev/history/technical-design-tending-threads.md
+ * §3.1.3): bare `#wf`, or `#wf/<counterpart>`. The older `#waiting-for` and
+ * `#waiting-for:<slug>` are read as the same thing forever.
+ */
+export const WAITING_FOR_TYPE = 'wf';
+
+/** Whether an extracted tag is Waiting For: `wf`, `wf/…`, `waiting-for` or `waiting-for:…`. */
+export function isWaitingForTag(tag: string): boolean {
+  return (
+    tag === WAITING_FOR_TYPE ||
+    tag.startsWith(`${WAITING_FOR_TYPE}/`) ||
+    tag === 'waiting-for' ||
+    tag.startsWith('waiting-for:')
+  );
+}
+
 /** First match wins, in FLOW_STATE_WORDS' priority order - see the module doc comment. */
 export function deriveFlowState(tags: string[]): FlowState {
   for (const word of FLOW_STATE_WORDS) {
-    if (tags.some(tag => tag === word || tag.startsWith(`${word}:`))) return word;
+    const matches = word === 'waiting-for' ? isWaitingForTag : (tag: string) => tag === word || tag.startsWith(`${word}:`);
+    if (tags.some(matches)) return word;
   }
   return null;
 }
 
+// `wf/<slug>` (deeper segments are ignored for the name) or the legacy `waiting-for:<slug>`.
+const WF_VALUE_RE = /^wf\/([\w-]+)/;
 const WAITING_FOR_VALUE_RE = /^waiting-for:([\w-]+)$/;
 
-/** The slug out of a `#waiting-for:<slug>` tag, or null. First match wins if more than one is present (same convention as domain/markdown.ts's deriveDueDate). */
+/** The counterpart out of a `#wf/<slug>` (or legacy `#waiting-for:<slug>`) tag, or null. First match wins if more than one is present (same convention as domain/markdown.ts's deriveDueDate). */
 export function deriveWaitingOn(tags: string[]): string | null {
   for (const tag of tags) {
-    const match = WAITING_FOR_VALUE_RE.exec(tag);
+    const match = WF_VALUE_RE.exec(tag) ?? WAITING_FOR_VALUE_RE.exec(tag);
     if (match) return match[1];
   }
   return null;
@@ -65,19 +85,27 @@ export function titleCaseSlug(slug: string): string {
 // `:value` suffix, so a single strip below covers both `#waiting-for` and
 // `#waiting-for:meier-sohn` in one pass.
 const FLOW_STATE_TAG_RE = /#(next|waiting-for(?::[\w-]+)?|someday|maybe)\b/gi;
+// `#wf` or `#wf/<slug>[/…]` as a whole tag - `#wfh` or `#wf-x` are other tags.
+const WF_TAG_RE = /#wf(?:\/[\w-]+)*(?![\w-]|[/:][\w-])/gi;
 
 /**
- * Removes any existing flow-state tag (bare, or `waiting-for:<slug>`) from
- * `text` and appends the new one, if any. The one place UI code edits `text`
- * for flow-state - callers re-derive tags/dueDate/flowState immediately
- * after via domain/markdown.ts's `deriveTaskFields`, same as every other
- * text edit in this codebase (text is hand-typed truth, tags are a derived
- * read of it, never a parallel source of state).
+ * Removes any existing flow-state tag (bare, `#wf/<slug>`, or the legacy
+ * `#waiting-for:<slug>`) from `text` and appends the new one, if any: Waiting
+ * For is written as `#wf/<slug>`, or bare `#wf` without a name. The one place
+ * UI code edits `text` for flow-state; the Task is then rebuilt through
+ * domain/taskEdit.ts's `withTaskText`, same as every other text edit (text
+ * is hand-typed truth, tags are a derived read of it, never a parallel
+ * source of state).
  */
 export function setFlowStateTag(text: string, next: FlowState, waitingOnSlug?: string): string {
-  const stripped = text.replace(FLOW_STATE_TAG_RE, '').replace(/\s{2,}/g, ' ').trim();
+  const stripped = text.replace(FLOW_STATE_TAG_RE, '').replace(WF_TAG_RE, '').replace(/\s{2,}/g, ' ').trim();
   if (!next) return stripped;
-  const tag = next === 'waiting-for' && waitingOnSlug ? `#waiting-for:${waitingOnSlug}` : `#${next}`;
+  const tag =
+    next === 'waiting-for'
+      ? waitingOnSlug
+        ? `#${WAITING_FOR_TYPE}/${waitingOnSlug}`
+        : `#${WAITING_FOR_TYPE}`
+      : `#${next}`;
   return stripped ? `${stripped} ${tag}` : tag;
 }
 
@@ -156,19 +184,18 @@ export function setNowTag(text: string, value: boolean): string {
  * Whether a (lowercased, already-extracted) tag is a free/context tag rather
  * than one of the reserved flow-vocabulary words this module owns -
  * technical-design-context-tags.md §4. Excludes every RESERVED_BARE_TAGS word
- * (the flow-state words, `now`, `prepped`, `reviewed`), and both
- * `:value`-suffixed forms (`waiting-for:<slug>`, `due:<date>` - the latter
- * owned by domain/markdown.ts's setDueTag, not this file, but the
- * reserved-word list is one contract) via prefix match,
- * same convention FLOW_STATE_TAG_RE/DUE_TAG_ANY_RE use for the `:value`
- * suffix. Anything else - including tags that merely look reserved, like a
- * hand-typed `#nextsteps` - is a context tag: this only excludes exact
- * reserved words and their `:value` forms, never prefix-matches a longer
- * word.
+ * (the flow-state words, `now`, `prepped`, `reviewed`), Waiting For in
+ * every form (`wf`, `wf/<slug>`, `waiting-for`, `waiting-for:<slug>`) and
+ * the legacy `due:<date>` (read by domain/markdown.ts, but the reserved-word
+ * list is one contract). Anything else - including tags that merely look
+ * reserved, like a hand-typed `#nextsteps` or `#wfh` - is a context tag:
+ * this only excludes exact reserved words and their value forms, never
+ * prefix-matches a longer word. Because domain/abbrev.ts validates through
+ * this, `WF` can't be an abbreviation.
  */
 export function isContextTag(tag: string): boolean {
   if (RESERVED_BARE_TAGS.includes(tag)) return false;
-  if (tag === 'waiting-for' || tag.startsWith('waiting-for:')) return false;
+  if (isWaitingForTag(tag)) return false;
   if (tag === 'due' || tag.startsWith('due:')) return false;
   return true;
 }

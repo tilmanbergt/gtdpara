@@ -15,7 +15,7 @@
  */
 import {setFlowStateTag} from './flowState';
 import {RESERVED_BARE_TAGS, stripBareTags} from './flowState';
-import {setDueTag} from './markdown';
+import {setDueInLine} from './markdown';
 import {meetingDisplayTitle} from './meetingTracking';
 import {Meeting, Task} from './types';
 
@@ -136,8 +136,8 @@ export function meetingPageKeyword(meeting: Pick<Meeting, 'date' | 'title'>): st
  * page (design doc §3: "probably they are related anyway").
  */
 export function todoPageKeyword(task: Pick<Task, 'text'>): string {
-  const withoutDue = setDueTag(task.text, null);
-  const withoutFlowState = setFlowStateTag(withoutDue, null); // also covers #waiting-for:<slug>
+  const withoutDue = setDueInLine(task.text, null);
+  const withoutFlowState = setFlowStateTag(withoutDue, null); // also covers #wf/<slug> and #waiting-for:<slug>
   return stripBareTags(withoutFlowState, RESERVED_BARE_TAGS);
 }
 

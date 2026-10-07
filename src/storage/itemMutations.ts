@@ -21,7 +21,9 @@
  * "refresh" step to forget.
  */
 import {Destination} from '../domain/destination';
-import {deriveMeetingFields, deriveTaskFields} from '../domain/markdown';
+import {deriveMeetingFields} from '../domain/markdown';
+import {todayIso} from '../domain/meetingTime';
+import {applyTaskInput, newTask, parseTaskInput} from '../domain/taskEdit';
 import {Meeting, Task} from '../domain/types';
 import {ensureItemCached, findCachedItem, updateItemMeetings, updateItemTasks} from './dataCache';
 import {ProjectFileState, saveMeetings, saveTasks} from './projectFile';
@@ -46,16 +48,32 @@ export interface MeetingInput {
   days?: number;
 }
 
-/** A new open Task from raw text. `linkedFile`: lasso capture's link to its source page (0.8). */
-export function buildTask(text: string, opts?: {notePath?: string; linkedFile?: string}): Task {
-  return {
+/**
+ * A new open Task from a composed line (text plus trailing fields, as
+ * domain/quickAddCompose.ts's `composeTaskText` returns it). Every new todo
+ * records `[created:: today]` unless the line carries one
+ * (docs/dev/history/technical-design-tending-threads.md §3.1.2); Quick Add,
+ * capture's split items and every other add come through here.
+ * `linkedFile`: lasso capture's link to its source page.
+ */
+export function buildTask(lineText: string, opts?: {notePath?: string; linkedFile?: string; today?: string}): Task {
+  const {text, fields} = parseTaskInput(lineText);
+  return newTask({
     text,
-    done: false,
-    cancelled: false,
-    ...deriveTaskFields(text),
-    notePath: opts?.notePath ?? '',
-    linkedFile: opts?.linkedFile ?? '',
-  };
+    fields: {...fields, created: fields.created ?? opts?.today ?? todayIso()},
+    notePath: opts?.notePath,
+    linkedFile: opts?.linkedFile,
+  });
+}
+
+/**
+ * `stored` with a Quick Add edit applied - the task twin of
+ * `applyMeetingEdit`: text and due date from the composed line, `created`,
+ * `meeting`, `completion` and unknown fields kept (domain/taskEdit.ts's
+ * `applyTaskInput`), and the edited linked file.
+ */
+export function applyTaskEdit(stored: Task, composedText: string, linkedFile: string): Task {
+  return {...applyTaskInput(stored, composedText), linkedFile};
 }
 
 /** A new, non-recurring, not-cancelled Meeting. `linkedFile`: lasso capture's link to its source page (0.8). */

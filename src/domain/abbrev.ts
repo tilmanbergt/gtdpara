@@ -42,7 +42,7 @@ export interface AbbrevValidation {
  * Whether `candidate` is safe to save as an abbreviation. Two rules:
  * - Must not collide (case-insensitive) with a reserved flow-state word -
  *   reuses domain/flowState.ts's `isContextTag` exclusion list as-is
- *   (next/someday/maybe/now/waiting-for(:*)/due(:*)) rather than maintaining
+ *   (next/someday/maybe/now/wf(/*)/waiting-for(:*)/due(:*)) rather than maintaining
  *   a second reserved-word list that could drift from it.
  * - Must not collide (case-insensitive) with any other Project/Area's
  *   abbreviation - global scope across both kinds together, not scoped

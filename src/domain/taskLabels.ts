@@ -18,7 +18,7 @@
  */
 import {formatDate} from './dateFormat';
 import {setFlowStateTag, setNowTag, titleCaseSlug} from './flowState';
-import {setDueTag} from './markdown';
+import {setDueInLine} from './markdown';
 import {Task} from './types';
 
 export type TaskLabelContext = 'flat' | 'grouped';
@@ -86,7 +86,7 @@ export function isFlowStateConveyed(task: Task, context: TaskLabelContext, conte
  * `#now` when the `#next`/`#now` label shows (flat context, Next).
  */
 export function displayTaskText(task: Task, context: TaskLabelContext, contextActive = false): string {
-  const withoutDue = task.dueDate ? setDueTag(task.text, null) : task.text;
+  const withoutDue = task.dueDate ? setDueInLine(task.text, null) : task.text;
   const withoutFlowState = isFlowStateConveyed(task, context, contextActive)
     ? setFlowStateTag(withoutDue, null)
     : withoutDue;
