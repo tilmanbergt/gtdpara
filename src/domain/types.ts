@@ -119,9 +119,8 @@ export interface Task {
    * FlowState value. Derived from a bare `#now` tag the same way
    * dueDate/flowState/waitingOn are derived from other tags - see
    * domain/flowState.ts's deriveNow/setNowTag. Never a second source of
-   * truth: every Task-constructing call site already spreads
-   * `...deriveTaskFields(text)`, so this field falls out of that for free,
-   * with no call-site changes needed.
+   * truth: domain/markdown.ts's parser and domain/taskEdit.ts (the only
+   * code that builds or changes a Task) derive it with the other fields.
    */
   now: boolean;
   notePath: string;
