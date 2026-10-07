@@ -3,6 +3,8 @@
  * checklist's Done/Cancel actions (docs/dev/technical-design-project-close-
  * out.md §6.3). Moves go through storage/entryMove.ts.
  */
+import {todayIso} from '../domain/meetingTime';
+import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
 import {findCachedItem} from './dataCache';
 import {mutateEntryMeetings, mutateEntryTasks} from './itemMutations';
 
@@ -21,7 +23,10 @@ export async function closeTask(itemPath: string, taskIndex: number, how: 'done'
   if (!task) throw new Error('That todo changed on disk - Settings → Advanced → Reload all files.');
   await mutateEntryTasks(
     {item: {kind: item.kind, path: item.path}, taskIndex, task},
-    tasks => tasks.map((t, i) => (i === taskIndex ? {...t, done: how === 'done', cancelled: how === 'cancelled'} : t)),
+    tasks =>
+      tasks.map((t, i) =>
+        i === taskIndex ? withTaskCancelled(withTaskDone(t, how === 'done', todayIso()), how === 'cancelled') : t,
+      ),
     NO_INBOX,
   );
 }

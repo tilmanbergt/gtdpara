@@ -74,8 +74,8 @@ import {Meeting, Task} from '../domain/types';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination} from '../domain/destination';
 import {groupTasksByFlowState} from '../domain/flowState';
-import {deriveTaskFields} from '../domain/markdown';
-import {splitAndSortMeetings} from '../domain/meetingTime';
+import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
+import {splitAndSortMeetings, todayIso} from '../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {TagRule} from '../domain/tagRules';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
@@ -83,7 +83,7 @@ import {CachedItem, ensureItemCached, findCachedItem, getCachedData, updateItemM
 import {resolveFilingPick} from '../storage/inboxFiling';
 import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
+import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
@@ -435,7 +435,7 @@ export default function ProjectDataPanel({
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = state.tasks[index];
       if (!stored) throw new Error('That task changed on disk - Settings → Advanced → Reload all files.');
-      const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
+      const updated: Task = applyTaskEdit(stored, payload.text, payload.linkedFile);
       const moved = await moveTask({kind, path}, index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
@@ -524,7 +524,7 @@ export default function ProjectDataPanel({
     return runWidgetSave(async () => {
       if (!state) return;
       const next = state.tasks.slice();
-      next[index] = {...next[index], text: nextText, ...deriveTaskFields(nextText), linkedFile: nextLinkedFile};
+      next[index] = applyTaskEdit(next[index], nextText, nextLinkedFile);
       await withTasks(next);
       cancelEditTarget();
     });
@@ -551,7 +551,7 @@ export default function ProjectDataPanel({
       if (!state) return;
       if (target.type === 'task') {
         const next = state.tasks.slice();
-        next[target.index] = {...next[target.index], cancelled: true};
+        next[target.index] = withTaskCancelled(next[target.index], true);
         await withTasks(next);
       } else {
         const next = state.meetings.slice();
@@ -831,7 +831,7 @@ function TodosSection({
     Keyboard.dismiss();
     runAction(async () => {
       const next = tasks.slice();
-      next[index] = {...next[index], done: !next[index].done};
+      next[index] = withTaskDone(next[index], !next[index].done, todayIso());
       await onSave(next);
     });
   };
