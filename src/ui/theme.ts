@@ -11,11 +11,6 @@ import {useColorScheme} from 'react-native';
  *               section titles, inputs.
  * FONT.small  - secondary/caption text: hints, breadcrumbs, path
  *               previews, tag-like labels.
- *
- * Before this, the app used eight distinct sizes (13-22px) scattered across
- * Home/ItemDetail/ProjectDataPanel/Settings. This collapses them to three,
- * nudging most of them up by roughly a pixel for readability, while leaving
- * the single largest size (headings) unchanged.
  */
 export const FONT = {
   large: 22,
@@ -24,20 +19,16 @@ export const FONT = {
 } as const;
 
 /**
- * Colors used across two or more screens (2026-09-14 style cleanup pass -
- * docs/dev/technical-design-style-cleanup.md). `accent` collects what used to
- * be a handful of separately-declared `const ACCENT = '#2f6feb'`s
- * (DailyView.tsx, TaskRow.tsx, and others); the light/dark pairs collect
- * the `isDarkMode ? a : b` triad every screen using `useColorScheme()`
- * repeated inline - see `useThemeColors()` below for the actual pairing.
+ * Colors used across two or more screens
+ * (docs/dev/history/technical-design-style-cleanup.md). The light/dark pairs are
+ * resolved by `useThemeColors()` below.
  *
- * `accent` is black (2026-09-14 grayscale pass -
- * docs/dev/technical-design-pagination-grayscale-proposal.md §2), not a
- * color - the device is grayscale/e-ink only. It is a FILL/BORDER color
+ * `accent` is black (docs/dev/history/technical-design-pagination-grayscale-proposal.md
+ * §2), not a color - the device is grayscale/e-ink only. It is a FILL/BORDER color
  * ONLY (chip/pill/button backgrounds, active-tab underline, editing-row
  * left border) - never apply it as a plain text `color`, since on this
- * device it now reads identically to ordinary black body text. Where a
- * color-era screen would have reached for colored text, use
+ * device it reads identically to ordinary black body text. Instead of
+ * colored text, use
  * `fontWeight: '700'` and/or `textDecorationLine: 'underline'` instead
  * (see `ui/TaskLabels.tsx`'s doc comment for the same "grayscale-safe by
  * construction" principle applied to todo labels).
@@ -55,9 +46,7 @@ export const COLORS = {
 } as const;
 
 /**
- * Spacing scale. Values are exactly what was already in use throughout the
- * app (margins/paddings/gaps of 4-24px) - this names them rather than
- * introducing new numbers.
+ * Spacing scale for margins, paddings and gaps (4-24px).
  */
 export const SPACING = {
   xs: 4,
@@ -71,8 +60,7 @@ export const SPACING = {
 /**
  * Border radii. Three different pill radii (12/14/16) are kept as distinct
  * named constants rather than collapsed to one - they're used for
- * differently-sized pills/buttons today, and forcing one value would be a
- * visual change, not a dedup.
+ * differently-sized pills/buttons, and one value would change how they look.
  */
 export const RADII = {
   sm: 4,
@@ -83,11 +71,8 @@ export const RADII = {
 } as const;
 
 /**
- * Replaces the `isDarkMode`/`textColor`/`borderColor`/`placeholderColor`
- * 4-line block that DailyView.tsx and ReviewScreen.tsx both declared
- * identically at the top of their component. Screens destructure the same
- * names from this hook's return value, so call sites elsewhere in a screen
- * don't need to change.
+ * The current color scheme's `isDarkMode`/`textColor`/`borderColor`/
+ * `placeholderColor`, for screens to destructure at the top of their component.
  */
 export function useThemeColors() {
   const isDarkMode = useColorScheme() === 'dark';

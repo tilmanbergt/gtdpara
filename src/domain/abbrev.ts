@@ -34,13 +34,12 @@ export type AbbrevInvalidReason =
 
 export interface AbbrevValidation {
   valid: boolean;
-  /** Set only when `valid` is false - the ONE thing wrong, for the UI's single inline error line. Tilman, 2026-09-14: "we don't need the reserved line for flow states in addition to the already used" - so this is deliberately one reason, never a list, and reserved-word wins over duplicate-checking if a candidate could somehow be both (in practice it can't: a reserved word is never allowed to become another item's saved abbrev in the first place, so the two reasons are mutually exclusive by construction). */
+  /** Set only when `valid` is false - the ONE thing wrong, for the UI's single inline error line. Deliberately one reason, never a list; reserved-word wins over duplicate-checking (in practice the two are mutually exclusive: a reserved word can never become another item's saved abbrev). */
   reason?: AbbrevInvalidReason;
 }
 
 /**
- * Whether `candidate` is safe to save as an abbreviation. Two rules (chat-
- * decided 2026-09-14):
+ * Whether `candidate` is safe to save as an abbreviation. Two rules:
  * - Must not collide (case-insensitive) with a reserved flow-state word -
  *   reuses domain/flowState.ts's `isContextTag` exclusion list as-is
  *   (next/someday/maybe/now/waiting-for(:*)/due(:*)) rather than maintaining
@@ -64,8 +63,8 @@ function splitWords(name: string): string[] {
 }
 
 /**
- * A rough default abbreviation from `name` (Tilman, 2026-09-14 - "does not
- * have to be perfect", always user-editable after generation):
+ * A rough default abbreviation from `name` (it does not have to be perfect;
+ * it is always user-editable after generation):
  * - 3+ words: initials of the first three words, uppercased.
  * - exactly 2 words: initials of both words (2 chars), uppercased.
  * - 1 word: the first three letters of that word, uppercased (shorter than
@@ -74,15 +73,12 @@ function splitWords(name: string): string[] {
  * On a collision (with an existing abbreviation, or a reserved word -
  * checked via validateAbbrev, so this can never drift from that rule):
  * first tries appending one more letter, drawn from whatever's left of the
- * last word this heuristic read from (so "Atruvia" widening from "ATR"
- * onward isn't attempted here since name is 1 word len 7 -> base is
- * already 3 letters "ATR", extra letters "UVIA" available to extend with);
- * if that's exhausted or still collides, falls back to a trailing number
- * (2, 3, ...) until unique. No attempt at elegant capitalization (an
- * "AoT"-style default is a manual edit, not this function's job) and no
- * word-splitting cleverness beyond whitespace (punctuation, digits, non-
- * Latin scripts all just flow through as "a word" - good enough per "does
- * not have to be perfect", not a design constraint to solve here).
+ * last word this heuristic read from (e.g. "Atruvia" -> base "ATR", with
+ * "UVIA" available to extend with); if that's exhausted or still collides,
+ * falls back to a trailing number (2, 3, ...) until unique. No attempt at
+ * elegant capitalization (an "AoT"-style default is a manual edit) and no
+ * word-splitting beyond whitespace (punctuation, digits, non-Latin scripts
+ * all just flow through as "a word").
  */
 export function generateDefaultAbbrev(name: string, existingAbbrevs: ExistingAbbrev[]): string {
   const words = splitWords(name);
@@ -148,7 +144,7 @@ export function resolveAbbrevPath<T extends {abbrev: string | null; path: string
   return match ? match.path : null;
 }
 
-/** The Project/Area a resolved abbreviation quick-file match points at - just enough to build a Destination/InboxFilingTarget from (feature_abbrev_quick_file, 2026-09-17, docs/dev/technical-design-abbrev-quick-file.md). `tag` is the exact matched tag text (lowercased, no leading `#`, as `extractContextTags` returns it) - callers use it with `domain/markdown.ts`'s `removeTagFromText` to strip it from the saved text once it's done its job (2026-09-18 bugfix: the original implementation resolved a target but never actually stripped the tag). */
+/** The Project/Area a resolved abbreviation quick-file match points at - just enough to build a Destination/InboxFilingTarget from (docs/dev/history/technical-design-abbrev-quick-file.md). `tag` is the exact matched tag text (lowercased, no leading `#`, as `extractContextTags` returns it) - callers use it with `domain/markdown.ts`'s `removeTagFromText` to strip it from the saved text once it's done its job. */
 export interface AbbrevFileMatch {
   kind: 'project' | 'area';
   name: string;
@@ -160,7 +156,7 @@ export interface AbbrevFileMatch {
  * The first #tag in `text` (in appearance order) that names a registered,
  * Active or On Hold Project/Area's abbreviation - the target for the
  * ui/QuickAddWidget.tsx "File: <Name>"/"+ Add to <Name>" quick-file
- * affordance (feature_abbrev_quick_file, chat 2026-09-17). Reuses
+ * affordance. Reuses
  * extractContextTags for tag scanning (already lowercased, deduped,
  * reserved flow-state/due/#now words excluded - an abbreviation can never
  * collide with those per validateAbbrev, so nothing here needs to re-derive
@@ -171,11 +167,8 @@ export interface AbbrevFileMatch {
  * wherever the item already is/would be created is a no-op, so this returns
  * null rather than a self-target. This check happens on the FIRST matching
  * tag only: if that tag is a self-match, quick-file is unavailable even if a
- * later tag in the text would resolve elsewhere - "the first recognized tag
- * decides, full stop" (chat's "first one wins" answer didn't explicitly
- * cover this interaction; this is the reading that keeps the rule simple -
- * revisit with Tilman if a cascade to the next tag turns out to be wanted
- * instead).
+ * later tag in the text would resolve elsewhere - the first recognized tag
+ * decides, which keeps the rule simple.
  *
  * Deliberately broader than domain/destination.ts's own destinationCandidates
  * (the picker Daily/Capture use for a brand-new item with no tag typed),

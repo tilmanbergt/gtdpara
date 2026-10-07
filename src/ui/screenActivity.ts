@@ -1,6 +1,6 @@
 /**
  * "Is my screen the visible tab?" for screens kept alive across tab
- * switches (docs/dev/technical-design-keep-tabs-alive.md §3.3).
+ * switches (docs/dev/history/technical-design-keep-tabs-alive.md §3.3).
  *
  * The context carries a small store rather than a boolean on purpose:
  * hiding or showing a tab must not re-render the whole screen (that would

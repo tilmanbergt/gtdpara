@@ -1,8 +1,8 @@
 /**
- * "Mark for later" - the pure part (docs/dev/technical-design-lasso-0.8.md
+ * "Mark for later" - the pure part (docs/dev/history/technical-design-lasso-0.8.md
  * §3.1-§3.2, §3.8, §3.10): the `## Marks` line format, mark ids, which
  * project/area/Inbox owns a mark, icon geometry, the shifted copy of the
- * stored strokes that recognition uses (§2.1, the root-cause fix), and the
+ * stored strokes that recognition uses (§2.1), and the
  * grouping of the marks column.
  *
  * No React Native, no sn-plugin-lib, no I/O (design-overview.md §3).
@@ -411,7 +411,7 @@ export interface MarkDataFile {
   strokes: StoredStroke[];
   icon: {box: PxRect; placed: boolean} | null;
   /**
-   * The text recognition returned the first time (checkpoint B, 2026-10-05):
+   * The text recognition returned the first time:
    * kept here so a mark is recognized once, not on every open. Private data -
    * the `## Marks` line itself never gets it.
    */

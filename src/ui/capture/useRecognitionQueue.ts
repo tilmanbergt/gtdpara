@@ -1,6 +1,6 @@
 /**
  * Recognizes open marks while the capture screen is open
- * (docs/dev/technical-design-lasso-0.8.md §3.7): the selected mark first,
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.7): the selected mark first,
  * then the next PREFETCH marks in list order, one at a time (the host
  * recognizer is never asked twice at once). Each result is kept in the
  * mark's private data (storage/marks.ts recognizeMark), so a mark is
@@ -10,6 +10,7 @@ import {useEffect, useRef, useState} from 'react';
 import {OpenMark} from '../../domain/marks';
 import {recognizeMark, storedMarkText} from '../../storage/marks';
 import {logWarn} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 export type RecognitionState = 'waiting' | 'recognizing' | 'done' | 'empty' | 'failed';
 
@@ -115,7 +116,7 @@ export function useRecognitionQueue(marks: OpenMark[], selectedId: string | null
         return {state, text, missing: r.missing} as MarkRecognition;
       })
       .catch(e => {
-        logWarn('useRecognitionQueue: failed', nextId, e instanceof Error ? e.message : String(e));
+        logWarn('useRecognitionQueue: failed', nextId, errorMessage(e));
         return {state: 'failed', text: ''} as MarkRecognition;
       })
       .then(result => {

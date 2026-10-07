@@ -1,8 +1,7 @@
 /**
  * The Week AND Month views' Focus/Projects/Areas panel (docs/dev/technical-design-
- * monthly-view.md §5.4) - ui/WeeklyFocusPanel.tsx generalized by `scope`, so
- * weekly and monthly focus have the same UX by construction (Tilman,
- * 2026-09-23: "weekly and monthly focus have very similar UX experience").
+ * monthly-view.md §5.4) - parameterized by `scope`, so weekly and monthly
+ * focus have the same UX by construction.
  * Same three mini-tabs (Focus | Projects | Areas), same arm-and-pick for an
  * empty slot (ui/FileBrowserPane.tsx's `LinkTarget` arming), same
  * tab-blocking-while-armed and leave-the-screen-cancels-the-arm behavior as
@@ -20,9 +19,8 @@
  * ui/PeriodGoalsHistoryPanel.tsx instead. Focus and goal writes are the
  * caller's (`onToggle`/`onSaveGoal`) - this panel only renders and collects.
  *
- * Self-measuring (see WeeklyFocusPanel's former `viewportHeight` note): with
- * `viewportHeight` omitted, this panel's root is `flex:1` and both
- * FileBrowserPanes measure the bounded box they're given.
+ * Self-measuring: with `viewportHeight` omitted, this panel's root is
+ * `flex:1` and both FileBrowserPanes measure the bounded box they're given.
  */
 import React, {useCallback, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -39,6 +37,7 @@ import MiniTabs, {MiniTabDef} from './MiniTabs';
 import {FONT} from './theme';
 import {useErrorStatus} from './status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 type FocusKind = 'project' | 'area';
 type FocusPanelTab = 'focus' | 'projects' | 'areas';
@@ -67,13 +66,11 @@ interface Props {
   /**
    * The Projects/Areas tabs' own `FileBrowserPane` viewport, in px.
    *
-   * Optional (2026-09-17, [[feature_pagination_fixed_height]]) - omitted
-   * (today's only caller, screens/WeekView.tsx), this panel's own root gets
+   * Optional - when omitted (screens/WeekView.tsx), this panel's own root gets
    * a conditional `flex:1` and forwards `undefined` into both `FileBrowserPane`
    * calls, which self-measure on their own - see the module doc comment.
    * Passed explicitly, it goes straight to both calls instead, bypassing
-   * self-measuring entirely (the escape hatch, same shape every other
-   * optional `viewportHeight` prop this session has).
+   * self-measuring entirely (the escape hatch).
    */
   viewportHeight?: number;
   textColor: string;
@@ -137,8 +134,8 @@ function PeriodFocusPanel({
           setActiveTab('focus');
         })
         .catch(e => {
-          logError('PeriodFocusPanel: pick failed', e instanceof Error ? e.message : String(e));
-          setPickError(e instanceof Error ? e.message : String(e));
+          logError('PeriodFocusPanel: pick failed', errorMessage(e));
+          setPickError(errorMessage(e));
         });
     },
     [focusArm, projectsPath, areasPath, items, onToggle],
@@ -182,7 +179,7 @@ function PeriodFocusPanel({
   ];
 
   // Monthly defaults to more areas than projects (3 A / 2 P), so Areas lead
-  // there; weekly keeps its original Projects-first order.
+  // there; weekly keeps Projects first.
   const sectionOrder: FocusKind[] = scope === 'monthly' ? ['area', 'project'] : ['project', 'area'];
 
   const cardFor = (path: string): PeriodFocusCardData | null =>
@@ -290,8 +287,8 @@ function FixedSlotSection({
     setPending(true);
     onToggle(item, false)
       .catch(e => {
-        logError('PeriodFocusPanel: remove failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('PeriodFocusPanel: remove failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(false));
   };
@@ -475,7 +472,7 @@ const styles = StyleSheet.create({
 });
 
 /**
- * Memoized (docs/dev/technical-design-render-perf-ab.md §3 B2): re-renders only
+ * Memoized (docs/dev/history/technical-design-render-perf-ab.md §3 B2): re-renders only
  * when its props change. Call sites pass stable callbacks
  * (ui/useStableCallback.ts); an unstable prop somewhere only means the memo
  * doesn't skip there, never a stale render.

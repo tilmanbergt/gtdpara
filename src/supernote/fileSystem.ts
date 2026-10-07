@@ -3,6 +3,7 @@ import {PluginCommAPI, PluginFileAPI} from 'sn-plugin-lib';
 import {ensureFileDeletePermission, ensureFileReadPermission, ensureFileWritePermission} from './pluginPermissions';
 import {log, logError, logWarn} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 export interface FolderEntry {
   name: string;
@@ -24,43 +25,38 @@ export interface KeyWord {
 }
 
 /**
- * Fixed OS path this device already deploys plugins/shared assets to
- * (confirmed via the existing `adb push build/outputs/*.snplg
- * /storage/emulated/0/MyStyle/` deploy step) - not a setting, unlike
- * `baseRoot`: it's where the Supernote's own MyStyle assets live, not
- * something a user would ever want to redirect elsewhere. Used by the
- * meeting-note-template feature (docs/dev/technical-design-meeting-notes.md §1.2)
+ * Fixed OS path where the Supernote's own MyStyle assets live (the same
+ * folder `.snplg` builds are deployed to) - not a setting, unlike
+ * `baseRoot`: nothing a user would want to redirect elsewhere. Used by the
+ * meeting-note-template feature (docs/dev/history/technical-design-meeting-notes.md §1.2)
  * to list `.png` files a note-template setting can pick from.
  */
 export const MYSTYLE_FOLDER = '/storage/emulated/0/MyStyle';
 
 /**
- * Fixed, settings-independent home for on-device diagnostics, originally
- * built (2026-09-18) for createNote's "randomly rejected by host with 'not
- * allowed to use this API'" investigation - host-side gate in
+ * Fixed, settings-independent home for on-device diagnostics: every event
+ * `recordDebugLogEntry` logs (see its doc comment;
+ * docs/dev/history/technical-design-shared-note-pages.md §4/§12), including the
+ * host-side createNote rejection ("not allowed to use this API" - a gate in
  * HostCommImpl.checkAPIAvailable, unrelated to plugin.permission.FILE:WRITE,
- * that intermittently flips from denied to allowed within the same app
- * session for reasons not yet understood. Generalized (2026-09-22,
- * docs/dev/technical-design-shared-note-pages.md §4/§12 Slice 4) to every event
- * `recordDebugLogEntry` logs, not just createNote - see that function's own
- * doc comment. A literal path (matching MYSTYLE_FOLDER's own convention
- * above) rather than `resolvePaths(settings).base` like _meeting_note_spike
- * uses - deliberately NOT settings-dependent, so this still works even if
- * settings/base resolution is ever itself part of what's broken. Assumes
- * nothing settings-dependent - if baseRoot is ever changed, entries still land here.
+ * that intermittently flips from denied to allowed within one app session).
+ * A literal path (matching MYSTYLE_FOLDER's own convention above) rather
+ * than `resolvePaths(settings).base` - deliberately NOT settings-dependent,
+ * so this still works even if settings/base resolution is itself what's
+ * broken, and entries land here whatever baseRoot is.
  *
- * 2026-09-30 (Tilman): everything gtdpara exports lives under the device's
- * EXPORT folder, not under Note, so it doesn't fill the space used for
- * working material: EXPORT/gtdpara/debug (logs, bundles, reports, perf
- * traces) and EXPORT/gtdpara/profiles (docs/dev/technical-design-profiles-demo-space.md).
+ * Everything gtdpara exports lives under the device's EXPORT folder, not
+ * under Note, so it doesn't fill the space used for working material:
+ * EXPORT/gtdpara/debug (logs, bundles, reports, perf traces) and
+ * EXPORT/gtdpara/profiles (docs/dev/history/technical-design-profiles-demo-space.md).
  */
 export const GTDPARA_EXPORT_ROOT = '/storage/emulated/0/EXPORT/gtdpara';
 const DEBUG_LOG_FOLDER = `${GTDPARA_EXPORT_ROOT}/debug`;
 
-/** Same folder, for UI text and the debug tools (docs/dev/technical-design-about-debug-experimental.md). */
+/** Same folder, for UI text and the debug tools (docs/dev/history/technical-design-about-debug-experimental.md). */
 export const DEBUG_LOG_FOLDER_PATH = DEBUG_LOG_FOLDER;
 
-/** Profile files (docs/dev/technical-design-profiles-demo-space.md §3.1). */
+/** Profile files (docs/dev/history/technical-design-profiles-demo-space.md §3.1). */
 export const PROFILES_FOLDER_PATH = `${GTDPARA_EXPORT_ROOT}/profiles`;
 
 /** "EXPORT/gtdpara/debug" - the part of a path a user sees in the Supernote file manager. */
@@ -68,16 +64,6 @@ export function displayPath(path: string): string {
   return path.replace(/^\/storage\/emulated\/0\//, '');
 }
 
-/**
- * `Element.type` values (docs.supernote.com's `ElementType` enum) - only the
- * two this codebase actually constructs so far are named; the rest
- * (TYPE_STROKE 0, TYPE_PICTURE 200, TYPE_TEXT_DIGEST_QUOTE 501,
- * TYPE_TEXT_DIGEST_CREATE 502, TYPE_GEO 700, TYPE_FIVE_STAR 800) are left out
- * until something here actually needs to construct one - the same "don't
- * wrap what nothing calls yet" posture getKeyWords/deleteKeyWord used to
- * follow too, before docs/dev/technical-design-shared-note-pages.md needed them.
- */
-export const ELEMENT_TYPE_TITLE = 100;
 export const ELEMENT_TYPE_TEXT = 500;
 export const ELEMENT_TYPE_LINK = 600;
 
@@ -91,7 +77,7 @@ export const ELEMENT_TYPE_LINK = 600;
  * meeting-note-block feature is built around - a free-form string that
  * round-trips through getElements/insertElements/modifyElements untouched,
  * letting a plugin-inserted element be found again later by tag rather than
- * by position (docs/dev/technical-design-meeting-notes.md §3.1/§5.1's "why not
+ * by position (docs/dev/history/technical-design-meeting-notes.md §3.1/§5.1's "why not
  * PluginNoteAPI.insertText" note - that convenience call has no such field).
  */
 export interface Element {
@@ -105,9 +91,9 @@ export interface Element {
    * Free-form marker this plugin sets on elements it inserts. Absent
    * (undefined/null) on every element it did NOT write - handwriting strokes,
    * textboxes the user typed - so anything READING this off a getElements
-   * result must treat it as optional (bugfix 2026-09-21: an unguarded
-   * `.startsWith` on it crashed re-opening a meeting note). Writing a string
-   * to it, as createElement callers do, is unaffected.
+   * result must treat it as optional (an unguarded `.startsWith` on it would
+   * crash re-opening a meeting note). Writing a string to it, as
+   * createElement callers do, is fine.
    */
   userData?: string | null;
   textBox: ElementTextBox | null;
@@ -121,12 +107,9 @@ export interface Element {
 
 /**
  * A top-left/bottom-right box - Rect (docs.supernote.com/.../types/rect) is
- * `{left, top, right, bottom}`, NOT `{x, y, width, height}`. Phase 1's
- * on-device run (2026-09-18) caught this directly: passing an
- * `{x,y,width,height}` object as textRect failed with "textRect.left is
- * required" - the docs summary this codebase's earlier draft went from
- * didn't spell the field names out, and `{x,y,width,height}` was a wrong
- * guess, not a documented alternative. Use toRect() below to build one from
+ * `{left, top, right, bottom}`, NOT `{x, y, width, height}`: passing an
+ * `{x,y,width,height}` object as textRect fails on the device with
+ * "textRect.left is required". Use toRect() below to build one from
  * a left/top/width/height box (the shape settings.ts's
  * meetingNoteBlockTopX/Y/MaxWidth naturally produce) rather than
  * constructing this by hand at each call site.
@@ -138,7 +121,7 @@ export interface Rect {
   bottom: number;
 }
 
-/** `{left, top, width, height}` -> Rect. The one conversion point every caller building a textRect (or, if Element.link turns out to also want a Rect rather than its documented flat X/Y/width/height - unconfirmed, Phase 1's check C hasn't run yet - that too) should go through, rather than hand-computing `right`/`bottom` inline. */
+/** `{left, top, width, height}` -> Rect. The one conversion point every caller building a textRect should go through (and Element.link too, should it turn out to want a Rect rather than its documented flat X/Y/width/height - unconfirmed), rather than hand-computing `right`/`bottom` inline. */
 export function toRect(left: number, top: number, width: number, height: number): Rect {
   return {left, top, right: left + width, bottom: top + height};
 }
@@ -155,7 +138,7 @@ export interface ElementTextBox {
   textItalics: number;
   textFrameWidthType: number;
   textFrameStyle: number;
-  /** 1 = user can tap in and edit normally afterward (what this feature wants - the block stays a real, editable Supernote textbox, not a locked/baked-in one), 0 = not editable. Exact accepted values unconfirmed against the docs (only the field's existence is documented) - treat 0/1 as a starting guess, re-check on-device (Phase 1). */
+  /** 1 = user can tap in and edit normally afterward (what this feature wants - the block stays a real, editable Supernote textbox, not a locked/baked-in one), 0 = not editable. Exact accepted values unconfirmed against the docs (only the field's existence is documented) - 0/1 is a working guess. */
   textEditable: number;
 }
 
@@ -165,9 +148,8 @@ export interface ElementTextBox {
  * PluginNoteAPI.insertTextLink's standalone param (that one nests `rect:
  * Rect`; this one is flat X/Y/width/height/page, and adds `category`/
  * `controlTrailNums` that the convenience call doesn't expose at all).
- * `category`/`style` meanings are undocumented beyond "number" - Phase 1
- * (docs/dev/technical-design-meeting-notes.md §8) tries 0 for both as a neutral
- * default and records whatever the device actually accepts/rejects.
+ * `category`/`style` meanings are undocumented beyond "number" - 0 is used
+ * for both as a neutral default (docs/dev/history/technical-design-meeting-notes.md §8).
  */
 export interface ElementLink {
   category: number;
@@ -177,7 +159,7 @@ export interface ElementLink {
   height: number;
   page: number;
   style: number;
-  /** 1 = other note file, 2 = document (with page nav), 3 = image file, 4 = URL - per docs.supernote.com's insertTextLink page; unconfirmed whether Element.link's own linkType uses the identical numbering (it's presented as the same conceptual field, but insertTextLink and Element.link are documented on separate pages with no cross-reference either way - Phase 1 checks this too). */
+  /** 1 = other note file, 2 = document (with page nav), 3 = image file, 4 = URL - per docs.supernote.com's insertTextLink page; unconfirmed whether Element.link's own linkType uses the identical numbering (it's presented as the same conceptual field, but insertTextLink and Element.link are documented on separate pages with no cross-reference either way). */
   linkType: number;
   destPath: string;
   destPage: number;
@@ -197,18 +179,18 @@ interface GtdParaFileNativeModule {
   moveFile(fromPath: string, toPath: string): Promise<boolean>;
   moveFolderMerge(fromPath: string, toPath: string): Promise<boolean>;
   deleteTempTree(path: string): Promise<boolean>;
-  /** Added 2026-10-01 (InkHub compliance); missing on older native builds. */
+  /** InkHub compliance; missing on older native builds. */
   getPrivateTempDir?(): Promise<string>;
-  /** Added in 0.8.0 (technical-design-lasso-0.8.md §3.3); missing on older native builds. */
+  /** technical-design-lasso-0.8.md §3.3; missing on native builds before 0.8.0. */
   getPrivateDataDir?(): Promise<string>;
-  /** Added in 0.8.0: recursive delete strictly inside the private data folder. */
+  /** Recursive delete strictly inside the private data folder; missing on native builds before 0.8.0. */
   deletePrivateDataTree?(path: string): Promise<boolean>;
-  /** Added 2026-10-01: deletes an EMPTY folder only. */
+  /** Deletes an EMPTY folder only; missing on older native builds. */
   deleteEmptyFolder?(path: string): Promise<boolean>;
   writeBinaryFile(path: string, base64Content: string): Promise<boolean>;
-  /** Added 2026-09-30 (debug-log sink); missing on older native builds. */
+  /** Debug-log sink; missing on older native builds. */
   appendTextFile?(path: string, content: string, maxBytes: number): Promise<number>;
-  /** Added in 0.6.0 (technical-design-files-0.6.md §3.1); missing on older native builds. */
+  /** technical-design-files-0.6.md §3.1; missing on native builds before 0.6.0. */
   statFiles?(paths: string[]): Promise<FileStat[]>;
 }
 
@@ -217,8 +199,8 @@ const {GtdParaFile} = NativeModules as {GtdParaFile?: GtdParaFileNativeModule};
 // ---- folder-change notifications ----
 // File-creating and moving calls below report the folder(s) they changed, so
 // a live folder listing (ui/FileBrowserPane.tsx) can rescan the folder it is
-// showing instead of waiting for the user to navigate away and back
-// (bug 2026-10-01: a Quick Add note didn't appear in the Files pane). Plain
+// showing instead of waiting for the user to navigate away and back (e.g. a
+// Quick Add note appears in the Files pane right away). Plain
 // text writes (project.txt saves) deliberately do NOT notify - they never
 // add a file the user browses for, and a rescan per todo edit would flicker.
 
@@ -245,7 +227,7 @@ function notifyFolderChanged(...paths: string[]): void {
       try {
         listener(folder);
       } catch (e) {
-        logError('notifyFolderChanged: listener threw', e instanceof Error ? e.message : String(e));
+        logError('notifyFolderChanged: listener threw', errorMessage(e));
       }
     });
   }
@@ -277,7 +259,7 @@ export async function listFolderEntries(folderPath: string): Promise<FolderEntry
     logError(
       'listFolderEntries: failed',
       folderPath,
-      e instanceof Error ? e.message : String(e),
+      errorMessage(e),
     );
     throw e;
   }
@@ -292,7 +274,7 @@ export interface FileStat {
 }
 
 /**
- * Stats many files in ONE native call (docs/dev/technical-design-files-0.6.md
+ * Stats many files in ONE native call (docs/dev/history/technical-design-files-0.6.md
  * §3.1) - what storage/dataCache.ts's refreshCache uses to see which data
  * files changed since they were read. Resolves `null` on a native build that
  * doesn't have the call yet, so the caller can fall back to a full re-read.
@@ -312,7 +294,7 @@ export async function statFiles(paths: string[]): Promise<FileStat[] | null> {
     perfEnd('io:stat', perfToken, {files: paths.length});
     return stats;
   } catch (e) {
-    logError('statFiles: failed', `${paths.length} paths`, e instanceof Error ? e.message : String(e));
+    logError('statFiles: failed', `${paths.length} paths`, errorMessage(e));
     throw e;
   }
 }
@@ -325,13 +307,11 @@ export async function statFiles(paths: string[]): Promise<FileStat[] | null> {
  * to `[]`, not a throw" behavior, so a path under a folder that doesn't
  * exist at all correctly comes back `false` rather than erroring.
  *
- * Added 2026-09-23 ([[bugfix_shared_note_content_missing]] round 3) for two
- * call sites that both need the same check: `storage/noteLinks.ts`'s
- * `resolveNotePath`, to verify a `parseSharedNoteAnchor` guess actually
- * resolves to a real file before trusting it over the plain reading, and
- * `storage/integrityCheck.ts`'s `hashNotePath` check, to tell a genuinely
- * broken/orphaned notePath apart from one that `resolveNotePath`'s fallback
- * already handles fine.
+ * Used by `storage/noteLinks.ts`'s `resolveNotePath`, to verify a
+ * `parseSharedNoteAnchor` guess actually resolves to a real file before
+ * trusting it over the plain reading, and `storage/integrityCheck.ts`'s
+ * `hashNotePath` check, to tell a genuinely broken/orphaned notePath apart
+ * from one that `resolveNotePath`'s fallback already handles fine.
  */
 export async function fileExists(path: string): Promise<boolean> {
   const lastSlash = path.lastIndexOf('/');
@@ -346,8 +326,8 @@ export async function fileExists(path: string): Promise<boolean> {
  * Same idea as fileExists, but for a folder (e.g. a Project/Area's
  * `defaultResourceFolder`, which names a Resources subfolder, not a file) -
  * lists the parent and looks for a matching entry with isFolder true instead
- * of false. Added 2026-09-23 for domain/integrityCheck.ts's
- * defaultResourceFolderMissing check ([[feature_integrity_check]]).
+ * of false. Used by domain/integrityCheck.ts's defaultResourceFolderMissing
+ * check ([[feature_integrity_check]]).
  */
 export async function folderExists(path: string): Promise<boolean> {
   const lastSlash = path.lastIndexOf('/');
@@ -387,14 +367,14 @@ export async function openPath(path: string, page = -1): Promise<void> {
     response = (await PluginFileAPI.openFile(path, page)) as typeof response;
   } catch (e) {
     rollback?.();
-    // TEMPORARY diagnostic - see getElements' own comment (above, this
+    // Diagnostic - see getElements' own comment (above, this
     // file) for why. A thrown (not just unsuccessful) openFile call gets
     // its own entry too, same as the other two - errorMessage from
     // whatever the exception itself carries.
     await recordDebugLogEntry('openPath', false, Date.now() - start, {
       path,
       page,
-      errorMessage: e instanceof Error ? e.message : String(e),
+      errorMessage: errorMessage(e),
     });
     throw e;
   }
@@ -454,7 +434,7 @@ export async function readTextFile(path: string): Promise<string | null> {
     log('readTextFile: done', path, content == null ? 'missing' : `${content.length} chars`);
     return content;
   } catch (e) {
-    logError('readTextFile: failed', path, e instanceof Error ? e.message : String(e));
+    logError('readTextFile: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -480,7 +460,7 @@ export async function writeTextFile(path: string, content: string): Promise<void
     await GtdParaFile.writeTextFile(path, content);
     log('writeTextFile: done', path);
   } catch (e) {
-    logError('writeTextFile: failed', path, e instanceof Error ? e.message : String(e));
+    logError('writeTextFile: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -506,7 +486,7 @@ export async function ensureFolderExists(path: string): Promise<void> {
     await GtdParaFile.ensureFolder(path);
     log('ensureFolderExists: done', path);
   } catch (e) {
-    logError('ensureFolderExists: failed', path, e instanceof Error ? e.message : String(e));
+    logError('ensureFolderExists: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -515,12 +495,11 @@ export async function ensureFolderExists(path: string): Promise<void> {
  * Writes `base64Content` (already-encoded bytes, e.g. a Gmail attachment
  * fetched via gmailImapNative.ts's fetchAttachment) to `path`, creating any
  * missing parent folders first - the binary counterpart of writeTextFile
- * above. Added for storage/gmailAttachments.ts's saveGmailAttachment:
+ * above. Used by storage/gmailAttachments.ts's saveGmailAttachment:
  * PluginFileAPI has no generic binary-file write (only .note pages/
  * elements), and writeTextFile's own native implementation is text-only, so
- * this is a new, small addition to the native module this plugin already
- * owns - the same "add a plain File.* operation here when the SDK doesn't
- * cover something" precedent moveFolder set for Archive.
+ * this is a plain File.* operation in the plugin's own native module (as
+ * moveFolder is for Archive).
  */
 export async function writeBinaryFile(path: string, base64Content: string): Promise<void> {
   if (!GtdParaFile) {
@@ -538,7 +517,7 @@ export async function writeBinaryFile(path: string, base64Content: string): Prom
     log('writeBinaryFile: done', path);
     notifyFolderChanged(parentFolder(path));
   } catch (e) {
-    logError('writeBinaryFile: failed', path, e instanceof Error ? e.message : String(e));
+    logError('writeBinaryFile: failed', path, errorMessage(e));
     throw e;
   }
 }
@@ -569,13 +548,13 @@ export async function moveFolder(fromPath: string, toPath: string): Promise<void
     log('moveFolder: done', fromPath, '->', toPath);
     notifyFolderChanged(parentFolder(fromPath), parentFolder(toPath), fromPath);
   } catch (e) {
-    logError('moveFolder: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
+    logError('moveFolder: failed', fromPath, '->', toPath, errorMessage(e));
     throw e;
   }
 }
 
 /**
- * Moves one FILE (docs/dev/technical-design-project-close-out.md §2.2 - outcome
+ * Moves one FILE (docs/dev/history/technical-design-project-close-out.md §2.2 - outcome
  * moves and the project PDF). Never overwrites: rejects if `toPath` exists.
  * Missing parent folders are created. Same permission/logging shape as
  * moveFolder.
@@ -589,7 +568,7 @@ export async function moveFile(fromPath: string, toPath: string): Promise<void> 
     log('moveFile: done', fromPath, '->', toPath);
     notifyFolderChanged(parentFolder(fromPath), parentFolder(toPath));
   } catch (e) {
-    logError('moveFile: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
+    logError('moveFile: failed', fromPath, '->', toPath, errorMessage(e));
     throw e;
   }
 }
@@ -609,7 +588,7 @@ export async function moveFolderMerge(fromPath: string, toPath: string): Promise
     log('moveFolderMerge: done', fromPath, '->', toPath);
     notifyFolderChanged(parentFolder(fromPath), toPath, fromPath);
   } catch (e) {
-    logError('moveFolderMerge: failed', fromPath, '->', toPath, e instanceof Error ? e.message : String(e));
+    logError('moveFolderMerge: failed', fromPath, '->', toPath, errorMessage(e));
     throw e;
   }
 }
@@ -620,7 +599,7 @@ let privateTempDir: string | null = null;
  * gtdpara's temp folder inside the plugin's PRIVATE folder
  * (`.../files/plugins/<pluginID>/tmp`) - exempt from every plugin
  * permission and never visible in the user's file manager
- * (docs/dev/technical-design-inkhub-submission.md §3.2). Rendered PDF pages
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.2). Rendered PDF pages
  * live here, never under Note.
  */
 export async function getPrivateTempDir(): Promise<string> {
@@ -642,7 +621,7 @@ export async function deleteTempTree(path: string): Promise<void> {
   try {
     await GtdParaFile.deleteTempTree(path);
   } catch (e) {
-    logError('deleteTempTree: failed', path, e instanceof Error ? e.message : String(e));
+    logError('deleteTempTree: failed', path, errorMessage(e));
   }
 }
 
@@ -652,7 +631,7 @@ let privateDataDir: string | null = null;
  * gtdpara's own data folder inside the plugin's PRIVATE folder
  * (`.../files/plugins/<pluginID>/data`) - unlike the temp folder it is not
  * cleared on start. Holds the picture and stroke data of open "Mark for
- * later" marks (docs/dev/technical-design-lasso-0.8.md §3.3). Like the temp
+ * later" marks (docs/dev/history/technical-design-lasso-0.8.md §3.3). Like the temp
  * folder it needs no permission and isn't visible in the file manager.
  */
 export async function getPrivateDataDir(): Promise<string> {
@@ -673,7 +652,7 @@ export async function deletePrivateDataTree(path: string): Promise<boolean> {
   try {
     return await GtdParaFile.deletePrivateDataTree(path);
   } catch (e) {
-    logError('deletePrivateDataTree: failed', path, e instanceof Error ? e.message : String(e));
+    logError('deletePrivateDataTree: failed', path, errorMessage(e));
     return false;
   }
 }
@@ -703,14 +682,14 @@ export async function deleteEmptyFolder(path: string, reason: string): Promise<b
       logWarn('deleteEmptyFolder: folder is not empty, kept', path);
       return false;
     }
-    logError('deleteEmptyFolder: failed', path, e instanceof Error ? e.message : String(e));
+    logError('deleteEmptyFolder: failed', path, errorMessage(e));
     throw e;
   }
 }
 
 /**
  * The built-in note templates the host offers (PluginCommAPI's own call) -
- * used to pick a default template when creating a linked note, since
+ * for picking a default template when creating a linked note, since
  * PluginFileAPI.createNote requires a non-empty template name and there's
  * no "just give me a blank note" shortcut.
  */
@@ -722,7 +701,7 @@ export async function getNoteSystemTemplates(): Promise<NoteTemplate[]> {
     log('getNoteSystemTemplates: done', `${result.length} templates`);
     return result;
   } catch (e) {
-    logError('getNoteSystemTemplates: failed', e instanceof Error ? e.message : String(e));
+    logError('getNoteSystemTemplates: failed', errorMessage(e));
     throw e;
   }
 }
@@ -739,17 +718,13 @@ let debugAttemptSeq = 0;
  * Logs one host-API call (openPath, createNote, getElements, insertElements
  * and the shared-note page engine) with its result, timing and launch
  * context - success AND failure, since comparing the two is the point
- * (built during the DOC-vs-NOTE createNote investigation,
- * bugfix_createnote_blocked; generalized 2026-09-22).
+ * (bugfix_createnote_blocked).
  *
- * Until 2026-10-01 this wrote one small file per call into
- * EXPORT/gtdpara/debug - silently, on every call, whether or not the user
- * had asked for any diagnostics. That is exactly the kind of unannounced
- * file activity the InkHub review (and our own transparency rule,
- * docs/dev/technical-design-inkhub-submission.md §3.8) rules out, so it is
- * now ONE log line through utils/log.ts: always in the in-memory ring buffer
- * (debug bundle), and in the log file only while the user has switched on
- * Debug logging. Never throws.
+ * Writes ONE log line through utils/log.ts: always in the in-memory ring
+ * buffer (debug bundle), and in the log file only while the user has
+ * switched on Debug logging - never a file of its own, since unannounced
+ * file activity is ruled out by the InkHub review and our transparency rule
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.8). Never throws.
  */
 export async function recordDebugLogEntry(
   event: string,
@@ -775,7 +750,7 @@ export async function recordDebugLogEntry(
   else logWarn(`hostCall: ${event} FAIL`, `${durationMs}ms`, detail, context);
 }
 
-/** Where utils/perf.ts's trace files land (docs/dev/technical-design-perf-tracing.md §4). */
+/** Where utils/perf.ts's trace files land (docs/dev/history/technical-design-perf-tracing.md §4). */
 export const PERF_LOG_FOLDER = `${DEBUG_LOG_FOLDER}/perf`;
 let perfFolderEnsured = false;
 
@@ -798,18 +773,17 @@ export async function writePerfTraceFile(fileName: string, content: string): Pro
 }
 
 /**
- * Writes the Integrity Check's (docs/dev/technical-design-integrity-check.md,
+ * Writes the Integrity Check's (docs/dev/history/technical-design-integrity-check.md,
  * storage/integrityCheck.ts) single summary report for one run to
- * DEBUG_LOG_FOLDER. Unlike recordDebugLogEntry above - one small file per
- * hot-path device call, errors swallowed so a failed diagnostic write never
- * becomes a user-facing failure - this IS the user-facing feature itself:
- * a failed write here should surface to whoever just tapped the button, so
- * it throws rather than swallowing. Reuses the already-permission-checked,
- * already-logged writeTextFile (which creates DEBUG_LOG_FOLDER itself if
- * missing) rather than the raw GtdParaFile calls recordDebugLogEntry uses
- * directly - this isn't a hot-path call, so the extra permission-check/log
- * overhead doesn't matter. The filename includes a filesystem-safe
- * timestamp (colons/dots replaced) so repeated runs never collide.
+ * DEBUG_LOG_FOLDER. Unlike recordDebugLogEntry above - errors swallowed so a
+ * failed diagnostic never becomes a user-facing failure - this IS the
+ * user-facing feature itself: a failed write here should surface to whoever
+ * just tapped the button, so it throws rather than swallowing. Reuses the
+ * already-permission-checked, already-logged writeTextFile (which creates
+ * DEBUG_LOG_FOLDER itself if missing) - this isn't a hot-path call, so the
+ * extra permission-check/log overhead doesn't matter. The filename includes
+ * a filesystem-safe timestamp (colons/dots replaced) so repeated runs never
+ * collide.
  */
 export async function writeIntegrityCheckReport(content: string): Promise<string> {
   const fileName = `integrity-check-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
@@ -851,13 +825,12 @@ export async function createNote(
     logError('createNote: failed', path, hostMessage);
     await recordDebugLogEntry('createNote', false, durationMs, {notePath: path, template, isPortrait, errorMessage: hostMessage});
     // ensureFileWritePermission() above already succeeded by this point, so
-    // every failure reaching here is exactly the "granted != allowed"
-    // situation (2026-09-18 investigation: a second, separate host-side
-    // gate in HostCommImpl.checkAPIAvailable, unrelated to
-    // plugin.permission.FILE:WRITE) - the plain host message alone reads
-    // like a permission problem and sends people chasing the wrong thing,
-    // so lead with the actual shape of the failure and keep the host's own
-    // wording attached for continued debugging/searchability.
+    // every failure reaching here is the "granted != allowed" situation (a
+    // second, separate host-side gate in HostCommImpl.checkAPIAvailable,
+    // unrelated to plugin.permission.FILE:WRITE) - the plain host message
+    // alone reads like a permission problem and sends people chasing the
+    // wrong thing, so lead with the actual shape of the failure and keep the
+    // host's own wording attached for debugging/searchability.
     throw new Error(`Though write permission is granted, note creation was blocked by the device: ${hostMessage}`);
   }
   log('createNote: done', path);
@@ -918,11 +891,10 @@ export async function insertNotePage(path: string, page: number, template: strin
  * `#context` markdown tags embedded in project.txt/area.txt text
  * (domain/markdown.ts's extractContextTags). Used by
  * storage/standaloneNotes.ts's createStandaloneNote for the "Note" quick-add
- * tab. Signature confirmed against
+ * tab and by the shared-note page engine. Signature confirmed against
  * https://docs.supernote.com/en/api-reference/supernote-plugin/plugin-file-api/insert-key-word -
- * `getKeyWords`/`deleteKeyWord` (docs/dev/technical-design-shared-note-pages.md
- * §4) are now wrapped below too, once that feature needed to read/remove
- * keywords, not just write them.
+ * `getKeyWords`/`deleteKeyWord` (docs/dev/history/technical-design-shared-note-pages.md
+ * §4) are wrapped below.
  */
 export async function insertKeyWord(path: string, page: number, keyword: string): Promise<void> {
   const granted = await ensureFileWritePermission();
@@ -945,7 +917,7 @@ export async function insertKeyWord(path: string, page: number, keyword: string)
 
 /**
  * Reads every keyword on `path`'s pages in `pageList` (each 0-indexed) in
- * ONE call - docs/dev/technical-design-shared-note-pages.md §4's page engine
+ * ONE call - docs/dev/history/technical-design-shared-note-pages.md §4's page engine
  * builds `pageList` as every page (0..getNoteTotalPageNum-1) so a shared
  * note's whole keyword index comes back in a single round trip, never one
  * call per page. Signature confirmed against
@@ -980,12 +952,10 @@ export async function getKeyWords(path: string, pageList: number[]): Promise<Key
  * `index` (NOT a 0-indexed array position - `index` is exactly the field a
  * prior `getKeyWords` result already carries per keyword, meant to be passed
  * straight through, same "the API's own index field is load-bearing"
- * pattern `deleteElements`' `numInPage` already established for elements).
+ * pattern as `deleteElements`' `numInPage` for elements).
  * Signature confirmed against the `sn-plugin-lib` 0.1.65 typings
- * (`deleteKeyWord(notePath, page, index): Promise<APIResponse<boolean>>`) -
- * its individual docs.supernote.com reference page is listed alongside
- * `get-key-words`/`insert-key-word` but wasn't itself fetched while
- * researching this feature, only its typed signature.
+ * (`deleteKeyWord(notePath, page, index): Promise<APIResponse<boolean>>`);
+ * its docs.supernote.com reference page was not checked.
  */
 export async function deleteKeyWord(path: string, page: number, index: number): Promise<void> {
   const granted = await ensureFileWritePermission();
@@ -1012,10 +982,8 @@ export async function deleteKeyWord(path: string, page: number, index: number): 
  * concrete `pageList` (`[0..count-1]`) to pass to `getKeyWords`, and for
  * knowing where "append at the end" actually is. Signature confirmed
  * against the `sn-plugin-lib` 0.1.65 typings (`getNoteTotalPageNum(notePath):
- * Promise<APIResponse<number>>`) - unlike `getKeyWords`/`deleteKeyWord`
- * above, this method's individual reference page wasn't fetched from
- * docs.supernote.com while researching this feature, only its typed
- * signature.
+ * Promise<APIResponse<number>>`); its docs.supernote.com reference page was
+ * not checked.
  */
 export async function getNoteTotalPageNum(path: string): Promise<number> {
   const granted = await ensureFileReadPermission();
@@ -1059,7 +1027,7 @@ export async function getCurrentNotePath(): Promise<string | null> {
     log('getCurrentNotePath: done', response.result);
     return response.result;
   } catch (e) {
-    logError('getCurrentNotePath: failed', e instanceof Error ? e.message : String(e));
+    logError('getCurrentNotePath: failed', errorMessage(e));
     return null;
   }
 }
@@ -1098,14 +1066,10 @@ let coldStartCaptured = false;
  * the cold-start value the first time it's called this process - see
  * getRememberedColdStartNotePath below.
  *
- * Originally added (2026-09-18) so createNote's diagnostic logging (see
- * recordDebugLogEntry below, generalized 2026-09-22 to cover every logged
- * event, not just createNote) could record which file the plugin was
- * opened from, to help track the Supernote plugin-dev community's "does
- * createNote's host-side rejection correlate with launch context (a NOTE
- * vs. a DOC/PDF)" theory - kept as a general-purpose accessor
- * (getRememberedLaunchNotePath) since knowing the launching file is likely
- * useful for future features too, not just this one diagnostic.
+ * Lets recordDebugLogEntry record which file the plugin was opened from
+ * (does a host-side rejection correlate with launch context - a NOTE vs. a
+ * DOC/PDF?), and is available to any other code via
+ * getRememberedLaunchNotePath.
  */
 export function rememberLaunchNotePath(path: string | null): void {
   rememberedLaunchNotePath = path;
@@ -1142,8 +1106,8 @@ export function getRememberedColdStartNotePath(): {path: string | null; captured
  * call (or from a previous getElements read) rather than being a bare JS
  * object, since insertElements resolves the object back to a native cache
  * entry by `uuid`, not by re-serializing the fields it's given (confirmed
- * from insert-trails' own doc: "the element's uuid can no longer be found
- * in the cache ... that item is silently skipped" - i.e. the uuid is load-
+ * from insert-trails' own doc: an element whose uuid can't be found in the
+ * cache is silently skipped - i.e. the uuid is load-
  * bearing, not decorative). Caller sets whichever sub-fields it needs
  * (`.userData`, `.textBox` or `.link`, `.pageNum`, `.layerNum`) on the
  * returned object before passing it to insertElements, and must call
@@ -1169,12 +1133,10 @@ export async function createElement(type: number): Promise<Element> {
  * Reads every element on `path`'s `page` (0-indexed) - file-level, no
  * dependence on that note being the one currently open in the NOTE app
  * (unlike PluginNoteAPI's calls - see docs/dev/technical-design-meeting-
- * notes.md §5.1's "why not PluginNoteAPI" note, and Phase 1's #2 spike
- * check, which is what first actually exercises that assumption for real).
+ * notes.md §5.1's "why not PluginNoteAPI" note).
  * Param order is (page, path) - PluginFileAPI's read-only calls put page
  * first, write calls put path first (gtdpara_project.md's own gotcha #10),
- * confirmed again here against the docs rather than assumed from that
- * pattern alone.
+ * confirmed here against the docs.
  */
 export async function getElements(page: number, path: string): Promise<Element[]> {
   const granted = await ensureFileReadPermission();
@@ -1192,18 +1154,11 @@ export async function getElements(page: number, path: string): Promise<Element[]
   if (!response || !response.success) {
     const message = response?.error?.message || 'Could not read this page\'s elements.';
     logError('getElements: failed', path, message);
-    // TEMPORARY (2026-09-22, docs/dev/technical-design-shared-note-pages.md
-    // follow-up investigation - "File does not exist. Cannot call the API."
-    // on a page just inserted via insertNotePage moments earlier in the same
-    // call chain, no pieces ever landing on it): persistent debug-log entry
-    // via the same recordDebugLogEntry mechanism §4/§12 Slice 4 built for
-    // the page-engine calls, extended here (and on insertElements/openPath
-    // below) purely to localize which of those three calls actually fails,
-    // without needing adb logcat. Logs BOTH outcomes, unlike a permanent
-    // addition would want to - getElements/insertElements/openPath run on
-    // EVERY note open, including the already-working page-0 own-note path,
-    // so leaving this on indefinitely would flood the debug-log folder;
-    // revert once the failing call is identified.
+    // Diagnostic (docs/dev/history/technical-design-shared-note-pages.md): logs BOTH
+    // outcomes via recordDebugLogEntry, here and on insertElements/openPath
+    // below, to localize which call fails with "File does not exist. Cannot
+    // call the API." on a page just inserted via insertNotePage - without
+    // needing adb logcat.
     await recordDebugLogEntry('getElements', false, durationMs, {path, page, errorMessage: message});
     throw new Error(message);
   }
@@ -1218,7 +1173,7 @@ export async function getElements(page: number, path: string): Promise<Element[]
  * read - see createElement's own doc comment) onto `path`'s `page`. Used by
  * the meeting-note-block feature to write its textbox + (optionally) link
  * element in one call, so a failure partway can't leave one without the
- * other (docs/dev/technical-design-meeting-notes.md §5 step 5).
+ * other (docs/dev/history/technical-design-meeting-notes.md §5 step 5).
  */
 export async function insertElements(path: string, page: number, elements: Element[]): Promise<void> {
   const granted = await ensureFileWritePermission();
@@ -1236,7 +1191,7 @@ export async function insertElements(path: string, page: number, elements: Eleme
   if (!response || !response.success || response.result === false) {
     const message = response?.error?.message || 'Could not insert the elements.';
     logError('insertElements: failed', path, message);
-    // TEMPORARY diagnostic - see getElements' own comment above for why.
+    // Diagnostic - see getElements' own comment above for why.
     await recordDebugLogEntry('insertElements', false, durationMs, {path, page, elementCount: elements.length, errorMessage: message});
     throw new Error(message);
   }
@@ -1247,11 +1202,10 @@ export async function insertElements(path: string, page: number, elements: Eleme
 /**
  * Deletes elements on `path`'s `page` by their 1-indexed `numInPage`
  * position (NOT uuid - confirmed against docs.supernote.com's delete-
- * elements page; `Element.numInPage`'s own doc comment already flags
- * "starts from 1", this just re-confirms deleteElements is what actually
- * consumes that specific field). Used by the meeting-note-block feature to
+ * elements page; `Element.numInPage`'s own doc comment flags
+ * "starts from 1"). Used by the meeting-note-block feature to
  * remove whatever it inserted last time before inserting the fresh version
- * ("always regenerate" - docs/dev/technical-design-meeting-notes.md §5 step 2).
+ * ("always regenerate" - docs/dev/history/technical-design-meeting-notes.md §5 step 2).
  */
 export async function deleteElements(path: string, page: number, numsInPage: number[]): Promise<void> {
   const granted = await ensureFileWritePermission();

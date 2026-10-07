@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 // Build info, changelog and user guide (in-app help) for the app, and small helpers for release.ps1.
-// Design: docs/dev/technical-design-versioning-release.md
+// Design: docs/dev/history/technical-design-versioning-release.md
 //
 //   node scripts/gen-bundled-content.mjs                  dev: write src/generated/* (versionCode 0)
-//   node scripts/gen-bundled-content.mjs --build          + compute versionCode, write build/build-info.json
+//   node scripts/gen-bundled-content.mjs --build [--stage alpha|beta]
+//                                                        + compute versionCode, write build/build-info.json
 //   node scripts/gen-bundled-content.mjs --patch-config <PluginConfig.json copy>
 //   node scripts/gen-bundled-content.mjs --release-notes <x.y.z> <outfile>
 //   node scripts/gen-bundled-content.mjs --next-version <patch|minor|major>   prints the next version
 //   node scripts/gen-bundled-content.mjs --check-release <x.y.z>              exit 1 + message if not releasable
 //   node scripts/gen-bundled-content.mjs --set-version <x.y.z>                package.json + PluginConfig.json versionName
+//   node scripts/gen-bundled-content.mjs --set-next <x.y.z>                   package.json nextVersion (the release being worked on)
+//   node scripts/gen-bundled-content.mjs --target-version                     prints nextVersion if it is above version, else nothing
 //   node scripts/gen-bundled-content.mjs --stamp-changelog <x.y.z> <YYYY-MM-DD>
 
 import {execFileSync} from 'node:child_process';
@@ -16,10 +19,13 @@ import {existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync} from 'n
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
+  BUILD_STAGES,
   bumpVersion,
   buildLabel,
+  compareVersions,
   computeVersionCode,
   isSemver,
+  packagedVersionName,
   parseChangelog,
   releaseNotes,
   renderBuildInfoTs,
@@ -27,6 +33,7 @@ import {
   selectChangelogForApp,
   setJsonStringField,
   stampChangelog,
+  targetVersion,
   unreleasedIsEmpty,
 } from './lib/versioning.mjs';
 import {buildUserDocs, renderUserDocsTs} from './lib/userDocs.mjs';
@@ -70,6 +77,11 @@ function packageVersion() {
   return v;
 }
 
+function packageNextVersion() {
+  const v = JSON.parse(read(P.pkg)).nextVersion;
+  return typeof v === 'string' && isSemver(v) ? v : null;
+}
+
 function snPluginLibVersion() {
   try {
     return JSON.parse(read(join(ROOT, 'node_modules', 'sn-plugin-lib', 'package.json'))).version || 'unknown';
@@ -88,9 +100,12 @@ function gitInfo(version) {
   return {commit, dirty, release: tagged && !dirty && commit !== 'unknown'};
 }
 
-function generate({build}) {
+function generate({build, stage = 'alpha'}) {
+  if (!BUILD_STAGES.includes(stage)) throw new Error(`unknown stage "${stage}" (${BUILD_STAGES.join(', ')})`);
   const version = packageVersion();
+  const nextVersion = packageNextVersion();
   const {commit, dirty, release} = gitInfo(version);
+  const target = release ? null : targetVersion(version, nextVersion);
   let versionCode = 0;
   if (build) {
     const last = existsSync(P.lastVersionCode) ? parseInt(read(P.lastVersionCode).trim(), 10) : 0;
@@ -99,7 +114,10 @@ function generate({build}) {
   const info = {
     version,
     versionCode,
-    label: buildLabel({version, commit, dirty, release}),
+    label: buildLabel({version, commit, dirty, release, nextVersion, stage}),
+    versionName: packagedVersionName({version, release, nextVersion, stage}),
+    nextVersion: target,
+    stage: target ? stage : null,
     commit,
     dirty,
     release,
@@ -119,7 +137,7 @@ function generate({build}) {
   const next = renderBuildInfoTs(info);
   if (build || withoutDate(prev) !== withoutDate(next)) writeIfChanged(buildInfoPath, next);
   writeIfChanged(join(P.generatedDir, 'changelog.ts'), renderChangelogTs(changelog));
-  // In-app help (docs/dev/technical-design-in-app-help.md §3.1).
+  // In-app help (docs/dev/history/technical-design-in-app-help.md §3.1).
   const docFiles = existsSync(P.userDocsDir)
     ? readdirSync(P.userDocsDir)
         .filter(f => f.endsWith('.md'))
@@ -139,6 +157,9 @@ function generate({build}) {
       );
     }
     console.log(`gtdpara ${info.label}  build ${versionCode}${dirty ? '  (uncommitted changes!)' : ''}`);
+    if (!release && !target) {
+      console.warn(`No next version set - this build is labelled after ${version}. Set it with: npm run next-version -- <x.y.z>`);
+    }
   } else {
     console.log(`src/generated updated: gtdpara ${info.label}`);
   }
@@ -148,10 +169,10 @@ function patchConfig(path) {
   if (!existsSync(P.buildInfoJson)) throw new Error('build/build-info.json missing - run with --build first');
   const info = JSON.parse(read(P.buildInfoJson));
   let text = read(path);
-  text = setJsonStringField(text, 'versionName', info.version);
+  text = setJsonStringField(text, 'versionName', info.versionName || info.version);
   text = setJsonStringField(text, 'versionCode', String(info.versionCode));
   writeFileSync(path, text, 'utf8');
-  console.log(`Patched ${path}: versionName ${info.version}, versionCode ${info.versionCode}`);
+  console.log(`Patched ${path}: versionName ${info.versionName || info.version}, versionCode ${info.versionCode}`);
 }
 
 function checkRelease(version) {
@@ -175,13 +196,34 @@ function setVersion(version) {
   console.log(`Version set to ${version} (package.json, PluginConfig.json)`);
 }
 
+/** Sets package.json's nextVersion - the release the following builds are for. */
+function setNext(version) {
+  if (!isSemver(version)) throw new Error(`"${version}" is not x.y.z`);
+  const current = packageVersion();
+  if (compareVersions(version, current) <= 0) throw new Error(`next version ${version} must be above the current version ${current}`);
+  let text = read(P.pkg);
+  if (/"nextVersion"\s*:/.test(text)) text = setJsonStringField(text, 'nextVersion', version);
+  else text = text.replace(/("version"\s*:\s*"[^"]*",)/, `$1\n  "nextVersion": "${version}",`);
+  writeFileSync(P.pkg, text, 'utf8');
+  console.log(`Next version set to ${version}: builds are now labelled ${version}-alpha / ${version}-beta`);
+}
+
 function main(argv) {
   const [cmd, a, b] = argv;
   switch (cmd) {
     case undefined:
       return generate({build: false});
-    case '--build':
-      return generate({build: true});
+    case '--build': {
+      const stage = a === '--stage' ? b : 'alpha';
+      return generate({build: true, stage});
+    }
+    case '--set-next':
+      return setNext(a);
+    case '--target-version': {
+      const target = targetVersion(packageVersion(), packageNextVersion());
+      if (target) console.log(target);
+      return;
+    }
     case '--patch-config':
       if (!a) throw new Error('--patch-config needs a path');
       return patchConfig(resolve(a));

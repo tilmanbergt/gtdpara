@@ -1,6 +1,6 @@
 /**
  * Creates the project's archive PDF for the close-out wizard's step 4
- * (docs/dev/technical-design-project-close-out.md §5.4/§8.2): builds the
+ * (docs/dev/history/technical-design-project-close-out.md §5.4/§8.2): builds the
  * document from the current contents and plan, runs the generic export
  * service (storage/pdfExport.ts) into the project folder - it moves into
  * the archive only in step 5 - and records the result in the plan

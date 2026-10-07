@@ -7,7 +7,7 @@
  * section on the next task/meeting save, or drop that save here.
  */
 import {ensureSkeleton} from '../../domain/markdown';
-import {CloseOutPlan, parsePlan, removePlanFromContent, writePlanIntoContent} from '../../domain/closeOut/plan';
+import {CloseOutPlan, parsePlan, writePlanIntoContent} from '../../domain/closeOut/plan';
 import {writeTextFile} from '../../supernote/fileSystem';
 import {findCachedItem, updateItemRawContent} from '../dataCache';
 import {dataFilePath} from '../projectFile';
@@ -29,20 +29,4 @@ async function writeContent(path: string, transform: (content: string) => string
 
 export function savePlan(path: string, plan: CloseOutPlan): Promise<void> {
   return writeContent(path, content => writePlanIntoContent(content, plan));
-}
-
-/** Removes the close-out section entirely ("Start over"). */
-export function clearPlan(path: string): Promise<void> {
-  return writeContent(path, removePlanFromContent);
-}
-
-/**
- * Plan save for a project file at a path that is NOT in the cache - the
- * executor's last journal line, written after the folder has already moved
- * into the archive (docs/dev/technical-design-project-close-out.md §7).
- */
-export async function savePlanAt(kind: 'project' | 'area', itemPath: string, rawContent: string, plan: CloseOutPlan): Promise<string> {
-  const next = writePlanIntoContent(ensureSkeleton(rawContent, kind), plan);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
 }

@@ -1,8 +1,8 @@
 /**
- * Collision-free file names inside an existing folder. Extracted (2026-09-21,
- * docs/dev/technical-design-gmail-email-note.md 3.6) from storage/noteLinks.ts's
- * createLinkedNote and storage/gmailAttachments.ts's collisionFreeFileName,
- * which each had their own copy of this loop.
+ * Collision-free file names inside an existing folder
+ * (docs/dev/history/technical-design-gmail-email-note.md 3.6) - the one shared loop
+ * used by storage/noteLinks.ts's createLinkedNote and
+ * storage/gmailAttachments.ts's collisionFreeFileName.
  */
 import {listFolderEntries} from '../supernote/fileSystem';
 

@@ -1,6 +1,6 @@
 /**
  * The experimental switches as app-wide state
- * (docs/dev/technical-design-about-debug-experimental.md §3.2). Set by
+ * (docs/dev/history/technical-design-about-debug-experimental.md §3.2). Set by
  * App.tsx after loading settings and by Settings → Advanced when a switch is
  * tapped; screens read it with useFeatures(), so kept-alive tabs pick up a
  * change immediately without reloading their own settings copy. Same
@@ -16,10 +16,6 @@ export function setFeatures(next: Features): void {
   if (current.googleCalendar === next.googleCalendar && current.gmail === next.gmail) {return;}
   current = {...next};
   Array.from(listeners).forEach(l => l());
-}
-
-export function getFeatures(): Features {
-  return current;
 }
 
 export function useFeatures(): Features {

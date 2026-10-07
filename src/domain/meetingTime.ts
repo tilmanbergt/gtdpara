@@ -2,12 +2,13 @@
  * Date/time helpers for Meetings: today's-date default, flexible time-entry
  * parsing, the upcoming/past split+sort ProjectDataPanel's Meetings section
  * uses, and the combined title/date/time validation every Meeting add/edit
- * form (ProjectDataPanel's, and now DailyView's own) runs before saving.
+ * form (ProjectDataPanel's, DailyView's) runs before saving.
  * Pure, zero RN/SDK imports (domain/ convention, see markdown.ts) - all
  * wall-clock reads happen through an injectable `now` parameter so this
  * stays testable without mocking global Date.
  */
 import {Meeting} from './types';
+import {formatDate} from './dateFormat';
 
 /** Today's date as YYYY-MM-DD, in local time - used to prefill a new meeting's date field. */
 export function todayIso(now: Date = new Date()): string {
@@ -47,8 +48,8 @@ export function parseFlexibleTime(input: string): FlexibleTimeResult {
   if (trimmed.length === 0) return {ok: true, value: ''};
 
   const bareHour = /^(\d{1,2})$/.exec(trimmed);
-  // ":" or "." as the minute separator ("16:30" / "16.30") - docs/technical-
-  // design-monthly-view.md §3.2.
+  // ":" or "." as the minute separator ("16:30" / "16.30") -
+  // docs/dev/history/technical-design-monthly-view.md §3.2.
   const hourAndMinute = /^(\d{1,2})[:.](\d+)$/.exec(trimmed);
 
   let hour: number;
@@ -78,7 +79,7 @@ export function parseFlexibleTime(input: string): FlexibleTimeResult {
 
 export const MEETING_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** A meeting's "when" beyond its date - what the Quick Add time field parses to (docs/dev/technical-design-monthly-view.md §3.2). */
+/** A meeting's "when" beyond its date - what the Quick Add time field parses to (docs/dev/history/technical-design-monthly-view.md §3.2). */
 export interface MeetingWhen {
   /** HH:mm start, or '' for a date-only meeting. */
   time: string;
@@ -136,7 +137,7 @@ export function formatMeetingWhen(w: Pick<Meeting, 'time' | 'endTime' | 'days'>)
  * The date portion to prepend to a meeting/event's displayed time, per the
  * app's list-display rule: today shows no date prefix (the time alone is
  * enough), any other day gets a short "day.month." prefix (e.g. "20.4.")
- * ahead of the time, so a meeting/event list spanning more than one day
+ * ahead of the time (domain/dateFormat.ts), so a meeting/event list spanning more than one day
  * (ProjectDataPanel's/InboxScreen's Meetings sections, ReviewScreen's
  * Inbox-to-zero cards, ui/GoogleCalendarPanel.tsx's up-to-30-day window)
  * never shows a bare time with no indication of which day it's on. Used by
@@ -144,12 +145,11 @@ export function formatMeetingWhen(w: Pick<Meeting, 'time' | 'endTime' | 'days'>)
  * app follows the same rule.
  */
 export function meetingDatePrefix(date: string, now: Date = new Date()): string {
-  if (date === todayIso(now)) return '';
-  const [, month, day] = date.split('-');
-  return `${Number(day)}.${Number(month)}.`;
+  const today = todayIso(now);
+  return date === today ? '' : formatDate(date, today);
 }
 
-/** Which Quick Add field a failed validation is about - drives the in-place ⚠ mark (docs/dev/technical-design-status-slot.md §6). */
+/** Which Quick Add field a failed validation is about - drives the in-place ⚠ mark (docs/dev/history/technical-design-status-slot.md §6). */
 export type MeetingField = 'title' | 'date' | 'time';
 
 export type MeetingFieldsValidation =
@@ -201,7 +201,7 @@ export function meetingTimestampMs(
  * a timestamp one: a meeting earlier today that already started still counts
  * (unlike `meetingTimestampMs`/`splitAndSortMeetings`' upcoming/past split,
  * which is time-aware). Used by Review's Inbox-to-zero step, which only
- * wants to surface meetings that can still be acted on (2026-09-21). A
+ * wants to surface meetings that can still be acted on. A
  * malformed/missing date is treated as "keep it" so such an entry can never
  * silently drop out of the review. Plain string comparison is correct here
  * because both sides are zero-padded YYYY-MM-DD.
@@ -223,83 +223,20 @@ export interface SplitMeetings {
   past: IndexedMeeting[];
 }
 
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-function ordinalSuffix(day: number): string {
-  if (day >= 11 && day <= 13) return 'th';
-  switch (day % 10) {
-    case 1: return 'st';
-    case 2: return 'nd';
-    case 3: return 'rd';
-    default: return 'th';
-  }
-}
-
 function parseIsoDateLocal(iso: string): {year: number; month: number; day: number} {
   const [year, month, day] = iso.split('-').map(Number);
   return {year, month, day};
 }
 
 /**
- * "Tuesday, September 16th" - the resolved-date header for Daily view's
- * Calendar column Today/Tomorrow tabs (docs/dev/technical-design-pagination-
- * fixed-height.md §3.2), replacing the old generic "Today"/"Tomorrow" tab
- * labels with the actual date so the header itself says which day is
- * showing. Built from calendar fields via `parseIsoDateLocal` +
- * `new Date(year, month-1, day)` rather than `new Date(iso)` directly, so it
- * reads as the LOCAL calendar day `iso` names rather than a UTC-midnight
- * instant that could shift a day in either direction depending on the
- * device's timezone offset - same "build from calendar fields, not a raw
- * Date-arithmetic shortcut" convention `isoDateOffset` above already follows.
- */
-export function formatFullDate(iso: string): string {
-  const {year, month, day} = parseIsoDateLocal(iso);
-  const date = new Date(year, month - 1, day);
-  const weekday = WEEKDAY_NAMES[date.getDay()];
-  const monthName = MONTH_NAMES[month - 1];
-  return `${weekday}, ${monthName} ${day}${ordinalSuffix(day)}`;
-}
-
-/**
- * "May 15th-16th 2026" (same month) / "May 30th - Jun 2nd 2026" (spanning a
- * month boundary) - the resolved-range header for ui/GoogleCalendarPanel.tsx's
- * own `PagedSection` (docs/dev/technical-design-pagination-fixed-height.md §3.3),
- * replacing the old "today .. +30 days" / explicit-range hint text. A single
- * trailing year is safe for every current caller (`maxDays` tops out at 30,
- * so a window never spans a year boundary in practice) - defensively falls
- * back to giving each side its own year when they differ, rather than
- * assuming that can't happen. Collapses to one date when `startIso ===
- * endIso` (a single-day window).
- */
-export function formatDateRangeHeader(startIso: string, endIso: string): string {
-  const start = parseIsoDateLocal(startIso);
-  const end = parseIsoDateLocal(endIso);
-  const startMonth = MONTH_NAMES[start.month - 1];
-  const endMonth = MONTH_NAMES[end.month - 1];
-  const startLabel = `${startMonth} ${start.day}${ordinalSuffix(start.day)}`;
-  if (startIso === endIso) return `${startLabel} ${start.year}`;
-  const endLabel = `${endMonth} ${end.day}${ordinalSuffix(end.day)}`;
-  if (start.year !== end.year) return `${startLabel} ${start.year} - ${endLabel} ${end.year}`;
-  if (start.month === end.month) {
-    return `${startMonth} ${start.day}${ordinalSuffix(start.day)}-${end.day}${ordinalSuffix(end.day)} ${start.year}`;
-  }
-  return `${startLabel} - ${endLabel} ${start.year}`;
-}
-
-/**
  * The instant a Meeting's note stops getting auto-*re*populated on open
- * (docs/dev/technical-design-note-templates.md Phase 3, 2026-09-18 - Tilman:
- * "auto update of data will only happen till the day (including that day)
- * and the time (including that time + 1h)"). A date-only meeting (no time
- * given) freezes at the end of its date - 23:59:59.999 local - since
- * nothing pins it to a specific hour; a timed meeting freezes one hour past
- * its start. Built from calendar fields via `parseIsoDateLocal` +
- * `new Date(year, month-1, day, ...)`, same local-time-construction
- * convention `formatFullDate`/`isoDateOffset` above already follow, so this
+ * (docs/dev/history/technical-design-note-templates.md Phase 3): auto-update runs
+ * through the meeting's day and until one hour after its time. A date-only
+ * meeting (no time given) freezes at the end of its date - 23:59:59.999
+ * local - since nothing pins it to a specific hour; a timed meeting freezes
+ * one hour past its start. Built from calendar fields via
+ * `parseIsoDateLocal` + `new Date(year, month-1, day, ...)`, same
+ * local-time-construction convention `isoDateOffset` above follows, so this
  * never shifts a day depending on the device's timezone offset. This is
  * *only* the cutoff instant - see `isMeetingAutoUpdateFrozen` below for the
  * actual frozen/not-frozen check, which also folds in `cancelled`.
@@ -308,14 +245,14 @@ export function meetingAutoUpdateCutoffMs(meeting: MeetingEndInput): number {
   return meetingEndMs(meeting);
 }
 
-/** What `meetingEndMs` reads - `endTime`/`days` optional so older call sites' narrower Picks still fit (missing = no end / 1 day). */
+/** What `meetingEndMs` reads - `endTime`/`days` optional so callers' narrower Picks still fit (missing = no end / 1 day). */
 export type MeetingEndInput = Pick<Meeting, 'date' | 'time'> & Partial<Pick<Meeting, 'endTime' | 'days'>>;
 
 /**
- * The instant a meeting is over (docs/dev/technical-design-monthly-view.md §3.2,
- * 2026-09-23 - Tilman: "use real meeting end if available"):
+ * The instant a meeting is over (docs/dev/history/technical-design-monthly-view.md
+ * §3.2), using the real meeting end when available:
  * - timed with an end time -> that end time
- * - timed without one      -> start + 1 h (the old rule, unchanged)
+ * - timed without one      -> start + 1 h
  * - date-only              -> end (23:59:59.999) of its LAST covered day
  * Used for the note-refresh freeze and the prep->review switch
  * (domain/meetingTracking.ts), so both follow the real end.
@@ -340,12 +277,11 @@ export function meetingEndMs(meeting: MeetingEndInput): number {
  * Whether a Meeting's note should stop being auto-*re*populated on open
  * (storage/meetingNoteContent.ts's `refreshMeetingNoteBlock`) - true once
  * `now` is past `meetingAutoUpdateCutoffMs`, or immediately for a cancelled
- * meeting (2026-09-18, Tilman: "yes, treat cancelled the same" - a
- * cancelled meeting's note is done changing regardless of its date/time).
- * Never gates *creation* - a newly-linked note always gets populated once
- * regardless of how frozen its meeting already is ("newly created notes...
- * will still get the initial data") - callers pass an explicit bypass for
- * that path rather than this function trying to distinguish the two itself.
+ * meeting (a cancelled meeting's note is done changing regardless of its
+ * date/time). Never gates *creation* - a newly-linked note always gets its
+ * initial data once, however frozen its meeting already is - callers pass
+ * an explicit bypass for that path rather than this function trying to
+ * distinguish the two itself.
  */
 export function isMeetingAutoUpdateFrozen(
   meeting: MeetingEndInput & Pick<Meeting, 'cancelled'>,

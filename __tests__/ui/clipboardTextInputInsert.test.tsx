@@ -1,4 +1,4 @@
-// docs/dev/technical-design-split-by-tag.md §3.6: placeholder chips insert at the cursor.
+// docs/dev/history/technical-design-split-by-tag.md §3.6: placeholder chips insert at the cursor.
 
 jest.mock('@react-native-clipboard/clipboard', () => ({
   __esModule: true,

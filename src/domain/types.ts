@@ -108,7 +108,7 @@ export interface Task {
   /** Slug from a `#waiting-for:<slug>` tag, or null - only meaningful when flowState === 'waiting-for'. */
   waitingOn: string | null;
   /**
-   * Whether this task carries `#now` (docs/dev/technical-design-now-focus-mode.md
+   * Whether this task carries `#now` (docs/dev/history/technical-design-now-focus-mode.md
    * §2) - "what I'm actually on the hook for right now", inside a focus-mode
    * session. Layered on top of flowState, never a replacement for it: `#now`
    * is deliberately not exclusive with `#next` (or with anything else),
@@ -143,7 +143,7 @@ export interface Meeting {
   /**
    * HH:mm end of a timed meeting, or '' when no end was given (1 h is
    * assumed wherever an end is needed). Always '' for a date-only meeting
-   * (docs/dev/technical-design-monthly-view.md §2.3).
+   * (docs/dev/history/technical-design-monthly-view.md §2.3).
    */
   endTime: string;
   /**
@@ -160,8 +160,8 @@ export interface Meeting {
 }
 
 /**
- * One Project/Area's stated intent for a single ISO week (docs/technical-
- * design-weekly-goals.md, V2 of the Week view) - a short free-text line, not
+ * One Project/Area's stated intent for a single ISO week (
+ * docs/dev/history/technical-design-weekly-goals.md, V2 of the Week view) - a short free-text line, not
  * a task (no done/cancelled state). One entry per `weekKey` at most; setting
  * a new goal for a week that already has one replaces it (domain/
  * markdown.ts's `setGoalForWeek`). Lives in a `## Weekly Goals` content
@@ -176,7 +176,7 @@ export interface WeeklyGoal {
 }
 
 /**
- * One open "Mark for later" (docs/dev/technical-design-lasso-0.8.md §3.1):
+ * One open "Mark for later" (docs/dev/history/technical-design-lasso-0.8.md §3.1):
  * a lasso selection stored for later processing. Lives as one line in the
  * `## Marks` section of the project.txt / area.txt / Inbox.txt that owns
  * the note (domain/marks.ts `markOwner`). The picture and stroke data live
@@ -210,7 +210,7 @@ export interface MonthlyGoal {
  * A parsed project.txt / area.txt / Inbox.txt. `rawContent` is kept
  * alongside the parsed model so write-through can target only the
  * Tasks/Meetings span and leave any hand-added content untouched
- * (design-overview.md §6, "Write-through must not clobber hand-added content").
+ * (design-overview.md §2.2, "Write-through must not clobber hand-added content").
  */
 export interface GtdParaFile {
   kind: GtdParaKind;

@@ -10,6 +10,26 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- Review's Focus reset step shows a Week | Month switch with the same focus panel as the Week and Month tabs, instead of its own list.
+- One date format everywhere: day and month without leading zeros (`6.10.`, `6.10.2027` for another
+  year) and 24-hour times without a leading zero (`9:05`). Day headings read `Tue 6.10.`. This also
+  applies to the date and time pieces written into new meeting notes; files keep `2026-10-06`.
+
+### Removed
+- The one-time move of the Inbox out of `Note` (from 0.1.0 to the Inbox folder under Areas).
+
+### Fixed
+- Integrity Check now also checks archived projects and areas in the Archive's year folders
+  (where close-out puts them), including a close-out that was interrupted after the folder move.
+
+### Upgrade notes
+- **Upgrading straight from 0.1.0 is no longer supported.** Install any version from 0.2 to 0.8
+  first (it moves the Inbox), or move `Inbox.txt` and its `Todos` and `Meetings` folders from
+  `Note` into `Note/2 Areas/0 Inbox` yourself. **Run Integrity Check** points out anything left.
+- Tag Rules are stored under a new name in the settings. This happens automatically on the first
+  start; profile files saved by earlier versions still load.
+
 ## [0.8.0] — 2026-10-06
 
 ### New

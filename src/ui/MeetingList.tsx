@@ -1,12 +1,12 @@
 /**
- * The standard paged meeting list (docs/dev/technical-design-meeting-lists.md
+ * The standard paged meeting list (docs/dev/history/technical-design-meeting-lists.md
  * §2.5): ui/PagedSection.tsx plus the 1-line/2-line switch (two small icons
  * in PagedSection's `headerAccessory` slot, so no extra header line) and
  * optional group headers (Upcoming/Past). No pagination logic of its own -
  * every row has a fixed height (ui/MeetingRow.tsx's MEETING_ROW_HEIGHT), so
  * the page split is exact. The layout choice is remembered per list for the
  * session (ui/listLayout.ts). Switching layout keeps the row that was at the
- * top of the page in view (Tilman 2026-09-29: not back to page one) - the
+ * top of the page in view (not back to page one) - the
  * list re-pages via PagedSection's `jumpTo` to wherever that row now falls.
  *
  * The screen keeps building the rows itself (`renderRow` gets the current

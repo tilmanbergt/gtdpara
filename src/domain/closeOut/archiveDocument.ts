@@ -10,6 +10,7 @@ import {Meeting, Task} from '../types';
 import {meetingDisplayTitle} from '../meetingTracking';
 import {ContentEntry, ContentsModel} from './inventory';
 import {CloseOutPlan, OutcomeDest} from './plan';
+import {formatDateTime} from '../dateFormat';
 
 export interface ArchiveDocumentInput {
   projectName: string;
@@ -119,7 +120,7 @@ export function buildArchiveDocument(input: ArchiveDocumentInput): PdfDocument {
   if (sortedMeetings.length === 0 && plan.moved.every(m => m.kind !== 'meeting')) record.push({kind: 'paragraph', style: 'small', text: 'No meetings.'});
   sortedMeetings.forEach(({m, index}) => {
     const anchor = noteAnchorByItem.get(`meeting:${index}`);
-    const label = `${m.date}${m.time ? ` ${m.time}` : ''} · ${meetingDisplayTitle(m)}${m.cancelled ? ' (cancelled)' : ''}`;
+    const label = `${formatDateTime(m.date, m.time)} · ${meetingDisplayTitle(m)}${m.cancelled ? ' (cancelled)' : ''}`;
     record.push(anchor ? row([label, ''], [0.88, 0.12], {linkTo: anchor, pageOf: anchor}) : row([label], [1]));
   });
   plan.moved.filter(m => m.kind === 'meeting').forEach(m => record.push(row([`${m.label}`, `moved: ${m.to.replace(/^area:/, 'Area ')}`], [0.7, 0.3])));

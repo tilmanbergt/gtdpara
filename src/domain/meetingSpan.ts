@@ -1,11 +1,9 @@
 /**
- * Multi-day meetings (docs/dev/technical-design-monthly-view.md §2.3, extended
- * 2026-09-23 - Tilman: "multiday events should show up on every day they are
- * happening in both weekly and daily view (with small arrows indicating they
- * continue, like in monthly view)"). A date-only meeting with `days > 1`
- * covers `date` .. `date + days - 1`; every calendar view (Daily, Week,
- * Month) lists it on each covered day, marked with where in the run that
- * day sits. One module so all three views agree. Pure, no RN/SDK imports.
+ * Multi-day meetings (docs/dev/history/technical-design-monthly-view.md §2.3). A
+ * date-only meeting with `days > 1` covers `date` .. `date + days - 1`;
+ * every calendar view (Daily, Week, Month) lists it on each covered day,
+ * marked with small arrows for where in the run that day sits. One module
+ * so all three views agree. Pure, no RN/SDK imports.
  */
 import {isoDateOffset, MAX_MEETING_DAYS} from './meetingTime';
 import {Meeting} from './types';

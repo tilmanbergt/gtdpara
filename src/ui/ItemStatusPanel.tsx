@@ -1,34 +1,22 @@
 /**
  * Status (Active/On Hold/Done) + Archive + Assign to Area - the Current
- * tab's left pane, below Files (docs/dev/technical-design-inbox-tab.md §4,
- * 2026-09-03: Status+Archive relocated here from the right pane's
- * screens/ProjectDataPanel.tsx, which used to render Status/Focus/Archive
- * as the very first thing above Todos).
+ * tab's left pane, below Files (docs/dev/history/technical-design-inbox-tab.md §4).
  *
- * Focus briefly lived here too (2026-09-09, right above Archive, per direct
- * feedback that "docked to the right/bottom, out of the way of the widget"
- * was the preferred placement then) but moved back out on 2026-09-13
- * (Tilman: "move now the focus selection and display to the top of that
- * column, above the file panel") into its own file, ui/ItemFocusPanel.tsx,
- * now pinned to the TOP of the same column instead - see that file's
- * module doc comment for the full reasoning (independent load, the weekly
- * goal line it grew, and the accepted eventual-consistency window between
- * it and this component). `dailyFocus`/`weeklyFocus` stay on this
- * component's own StatusPanelState below regardless - changeStatus/
- * handleAssignArea/handleUnassignArea still need them to round-trip the
- * frontmatter block without clobbering them, even though nothing here
- * renders them anymore.
+ * Focus is shown by ui/ItemFocusPanel.tsx at the TOP of the same column -
+ * see that file's module doc comment (independent load, the weekly goal
+ * line, and the accepted eventual-consistency window between it and this
+ * component). `dailyFocus`/`weeklyFocus` stay on this component's own
+ * StatusPanelState anyway: changeStatus/handleAssignArea/handleUnassignArea
+ * need them to round-trip the frontmatter block without clobbering them,
+ * even though nothing here renders them.
  *
- * Extract, don't lift: rather than hoist ProjectDataPanel's PanelState/
- * changeStatus/handleArchivePress up into screens/ItemDetail.tsx (which
- * would make ItemDetail a second owner of item data), this component does
- * its own small, independent ensureItemCached load - the same "independent
- * per-section state, synchronized only through the shared cache +
- * write-through" pattern DailyFocusKindSection/ItemsList/ProjectDataPanel/
- * ui/ItemFocusPanel.tsx already use side-by-side without sharing state
- * directly (design-overview.md §3's "reads should prefer the cache").
- * StatusSection/ArchiveAction/changeStatus/handleArchivePress below are a
- * near-verbatim lift of ProjectDataPanel's former versions of the same.
+ * Extract, don't lift: rather than hoist status state up into
+ * screens/ItemDetail.tsx (which would make ItemDetail a second owner of item
+ * data), this component does its own small, independent ensureItemCached
+ * load - the same "independent per-section state, synchronized only through
+ * the shared cache + write-through" pattern DailyFocusKindSection/ItemsList/
+ * ProjectDataPanel/ui/ItemFocusPanel.tsx use side-by-side without sharing
+ * state directly (design-overview.md §3's "reads should prefer the cache").
  *
  * **Assign to Area** (technical-design-project-area-assignment.md §4.1,
  * Projects only) sits in the same row as "🗄 Archive…", to its right - a
@@ -36,13 +24,12 @@
  * once assigned. Picking works the same way linked-files arming does: this
  * component doesn't own a FileBrowserPane of its own (that's a sibling,
  * owned by screens/ItemDetail.tsx), so pressing the button reports a full
- * `LinkTarget` up via `onRequestAreaAssignment` - the exact same
- * report-a-LinkTarget shape ProjectDataPanel's `onLinkTargetChange` already
- * uses, just from a different UI element. `onPick`/`onCancel` are fully
- * owned/constructed here (this component has everything it needs - state,
- * kind, path), same "the closure that owns the mutation also builds the
- * callback" convention ProjectDataPanel's own armTarget/onPick already
- * follows.
+ * `LinkTarget` up via `onRequestAreaAssignment` - the same
+ * report-a-LinkTarget shape ProjectDataPanel's `onLinkTargetChange` uses.
+ * `onPick`/`onCancel` are fully owned/constructed here (this component has
+ * everything it needs - state, kind, path), same "the closure that owns the
+ * mutation also builds the callback" convention ProjectDataPanel's own
+ * armTarget/onPick follows.
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -63,12 +50,13 @@ import {common} from './commonStyles';
 import {COLORS, FONT} from './theme';
 import {useErrorStatus, useStatus, useStatusApi} from './status/StatusProvider';
 import {usePerfRender} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   kind: 'project' | 'area';
   name: string;
   path: string;
-  /** Called once this item's folder has actually moved to Archive - same convention as ProjectDataPanel's former prop of the same name (the caller navigates away, since `path` no longer resolves to anything under Projects/Areas). */
+  /** Called once this item's folder has actually moved to Archive (the caller navigates away, since `path` then points at nothing under Projects/Areas). */
   onArchived?: () => void;
   /**
    * Projects only: when set, "Archive…" becomes "Close out…" and opens the
@@ -93,7 +81,7 @@ interface StatusPanelState {
   defaultResourceFolder: string | null;
   /** The Area this Project supports, by bare folder name, or null - always null for Areas. */
   area: string | null;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - carried through unchanged on every write here, same reason `area`/`defaultResourceFolder` already are (see storage/projectFile.ts's saveFrontMatter doc comment). */
+  /** This item's short abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md), or null - carried through unchanged on every write here, same reason `area`/`defaultResourceFolder` already are (see storage/projectFile.ts's saveFrontMatter doc comment). */
   abbrev: string | null;
 }
 
@@ -102,7 +90,7 @@ interface StatusPanelState {
  * shared cache when present (another panel on this screen - ItemFocusPanel,
  * ItemDetail's own resource-folder/abbrev saves - may have written the
  * file since this panel loaded), falling back to this panel's own snapshot.
- * Every write spreads the whole thing (docs/dev/technical-design-monthly-view.md
+ * Every write spreads the whole thing (docs/dev/history/technical-design-monthly-view.md
  * §2.1), so no field - focus flags included - can be clobbered by a stale copy.
  */
 function currentItem(kind: 'project' | 'area', name: string, path: string, snapshot: StatusPanelState) {
@@ -132,8 +120,8 @@ export default function ItemStatusPanel({
   const statusApi = useStatusApi();
   const [archiveError, setArchiveError] = useState<string | null>(null);
   useErrorStatus('ItemStatusPanel.archiveError', archiveError, () => setArchiveError(null));
-  // "Can't archive yet" (was a native dialog) and the archive confirm (was
-  // a native Alert) - both in the central status slot now (D10).
+  // "Can't archive yet" and the archive confirm are both shown in the
+  // central status slot (D10).
   const [archiveBlock, setArchiveBlock] = useState<string | null>(null);
   const [archiveConfirm, setArchiveConfirm] = useState<{text: string; detail: string; run: () => void} | null>(null);
   useStatus(
@@ -183,7 +171,7 @@ export default function ItemStatusPanel({
         abbrev: item.abbrev,
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ItemStatusPanel: load failed', kind, path, message);
       setLoadError(message);
     }
@@ -191,10 +179,9 @@ export default function ItemStatusPanel({
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.3):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.3):
   // reload from the shared cache only if this item's file changed while
   // hidden (e.g. its status or focus changed from Daily/Week/Projects).
   useOnScreenShow(() => {
@@ -267,13 +254,13 @@ export default function ItemStatusPanel({
                 .join(', ')}.`
             : '';
         const plural = cascaded.length > 0;
-        // Exact year/area target (docs/dev/technical-design-project-close-out.md §5.1), shown relative to the base root.
+        // Exact year/area target (docs/dev/history/technical-design-project-close-out.md §5.1), shown relative to the base root.
         const base = resolvePaths(settings).base;
         const target = archiveTargetsFor(currentItem(kind, name, path, state), settings);
         const targetLabel = target.folder.startsWith(`${base}/`) ? target.folder.slice(base.length + 1) : target.folder;
         // A merge into an existing folder leaves this folder empty: name it
         // here, so the confirmation is also the explicit OK for deleting it
-        // (docs/dev/technical-design-inkhub-submission.md §3.4).
+        // (docs/dev/history/technical-design-inkhub-submission.md §3.4).
         const leavesEmpty = await archiveLeavesEmptyFolder(currentItem(kind, name, path, state), settings);
         const mergeNote = leavesEmpty ? emptyFolderConfirmNote(displayPath(path), displayPath(target.folder)) : '';
         // Confirm in the central status slot (D10) - short question in the
@@ -298,15 +285,15 @@ export default function ItemStatusPanel({
                 onArchived?.();
               })
               .catch(e => {
-                logError('ItemStatusPanel: archive failed', e instanceof Error ? e.message : String(e));
-                setArchiveError(e instanceof Error ? e.message : String(e));
+                logError('ItemStatusPanel: archive failed', errorMessage(e));
+                setArchiveError(errorMessage(e));
               })
               .finally(() => setArchiving(false));
           },
         });
       } catch (e) {
-        logError('ItemStatusPanel: archive confirm setup failed', e instanceof Error ? e.message : String(e));
-        setArchiveError(e instanceof Error ? e.message : String(e));
+        logError('ItemStatusPanel: archive confirm setup failed', errorMessage(e));
+        setArchiveError(errorMessage(e));
       }
     })();
   }, [state, kind, name, path, onArchived, statusApi]);
@@ -323,7 +310,7 @@ export default function ItemStatusPanel({
         );
         setState(prev => (prev ? {...prev, rawContent: result.rawContent, area: result.area} : prev));
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
+        const message = errorMessage(e);
         logError('ItemStatusPanel: assign area failed', message);
         setAreaError(message);
       } finally {
@@ -341,13 +328,13 @@ export default function ItemStatusPanel({
       const result = await unassignProject(currentItem(kind, name, path, state));
       setState(prev => (prev ? {...prev, rawContent: result.rawContent, area: result.area} : prev));
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ItemStatusPanel: unassign area failed', message);
       setAreaError(message);
     }
   }, [state, kind, name, path]);
 
-  /** Presses "Assign to Area…" (or re-taps the "Area: <name>" pill to reassign) - arms the Browse tab, landing directly inside its Areas category (`startAt: 'area'`, ui/FileBrowserPane.tsx's `startAt` doc comment - 2026-09-09 follow-up, replacing the screen's former standalone Areas root), same way ProjectDataPanel arms a file-link/refile. */
+  /** Presses "Assign to Area…" (or re-taps the "Area: <name>" pill to reassign) - arms the Browse tab, landing directly inside its Areas category (`startAt: 'area'`, see ui/FileBrowserPane.tsx's `startAt` doc comment), same way ProjectDataPanel arms a file-link/refile. */
   const handleArmAreaAssignment = useCallback(() => {
     onRequestAreaAssignment?.({
       mode: 'arming',
@@ -441,8 +428,8 @@ function StatusSection({
     setPending(true);
     onChange(value)
       .catch(e => {
-        logError('StatusSection: change failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('StatusSection: change failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(false));
   };

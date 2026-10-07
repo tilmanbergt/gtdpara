@@ -81,8 +81,8 @@ export function setFlowStateTag(text: string, next: FlowState, waitingOnSlug?: s
   return stripped ? `${stripped} ${tag}` : tag;
 }
 
-// Bare (value-less) reserved tags - `#now` (docs/dev/technical-design-now-focus-mode.md
-// §2) and, since docs/dev/technical-design-meeting-tracking.md, `#prepped`/
+// Bare (value-less) reserved tags - `#now` (docs/dev/history/technical-design-now-focus-mode.md
+// §2) and, since docs/dev/history/technical-design-meeting-tracking.md, `#prepped`/
 // `#reviewed`. Unlike flow-state tags, a bare tag never carries a `:value`
 // suffix, and it is additive on top of everything else rather than exclusive
 // with it. One derive/set/strip trio (`hasBareTag`/`setBareTag`/
@@ -104,7 +104,7 @@ function bareTagRe(tag: string): RegExp {
  * helpers and forgotten in the context-tag exclusion (which would make it
  * show up as a tappable filter tag and a suggestion chip).
  */
-// 'monthly' = the Month view's meeting highlight flag (docs/dev/technical-design-monthly-view.md §2.4).
+// 'monthly' = the Month view's meeting highlight flag (docs/dev/history/technical-design-monthly-view.md §2.4).
 export const RESERVED_BARE_TAGS: readonly string[] = ['next', 'someday', 'maybe', 'now', 'prepped', 'reviewed', 'monthly'];
 
 /**

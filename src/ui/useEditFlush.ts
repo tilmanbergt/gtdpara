@@ -1,6 +1,6 @@
 /**
  * Save-then-switch for a screen's Quick Add edit mode (docs/dev/technical-design-
- * meeting-lists.md §10, decided by Tilman 2026-09-29): before the screen
+ * meeting-lists.md §10): before the screen
  * moves the edit to another row (or ends it by closing a panel, changing the
  * day/week/month, arming a file link), the widget first saves the current
  * row's pending changes - only if something changed. If that save fails

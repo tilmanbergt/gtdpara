@@ -5,19 +5,15 @@
  * of which tab is active. Switching tabs is the only navigation; there is no
  * back stack.
  *
- * Week (2026-09-13, docs/dev/technical-design-weekly-view.md §9) sits right
- * after Daily - both are calendar-scoped "what's coming up" tabs (Daily for
- * today, Week for the current Monday..Sunday), so grouping them adjacently
- * reads naturally; Inbox stays right after, same relative order as before.
+ * Week (docs/dev/history/technical-design-weekly-view.md §9) sits right after
+ * Daily - both are calendar-scoped "what's coming up" tabs (Daily for today,
+ * Week for the current Monday..Sunday).
  *
- * Inbox (2026-09-03, docs/dev/technical-design-inbox-tab.md §2) sits right
- * after Daily - both are "flow" tabs (where captured/triaged work lands and
- * gets acted on day-to-day), grouped ahead of the more structural
- * Current/Review/Settings tabs, same placement reasoning
- * technical-design-daily-compact-ui.md §5.4 worked through before this
- * document superseded that section.
+ * Inbox (docs/dev/history/technical-design-inbox-tab.md §2) follows - a "flow" tab
+ * (where captured/triaged work lands and gets acted on day-to-day), grouped
+ * ahead of the more structural Current/Review/Settings tabs.
  *
- * Review sits just left of Settings (2026-09-02, screens/ReviewScreen.tsx) -
+ * Review sits just left of Settings (screens/ReviewScreen.tsx) -
  * a small "●" badge appears on it when `reviewOverdue` is true (App.tsx
  * derives this from domain/reviewSteps.ts's isReviewOverdue against the
  * loaded settings' per-step review records - true when any step's last
@@ -28,9 +24,9 @@
  * Reloading: there is no refresh icon here. Settings → Advanced → "Reload
  * all files" rebuilds the cache and drops the kept tabs (ui/keepAliveStore.ts),
  * so every tab loads again on its next visit
- * (docs/dev/technical-design-cleanup-0.5.md S8).
+ * (docs/dev/history/technical-design-cleanup-0.5.md S8).
  *
- * "?" (2026-09-30, docs/dev/technical-design-in-app-help.md): opens the
+ * "?" (docs/dev/history/technical-design-in-app-help.md): opens the
  * in-app help as an overlay over the body; while it's open the "?" carries
  * the active underline instead of the current tab.
 
@@ -62,13 +58,13 @@ interface Props {
   reviewOverdue?: boolean;
   /**
    * Set while a profile other than the default is active
-   * (docs/dev/technical-design-profiles-demo-space.md §3.6): shown as a small
+   * (docs/dev/history/technical-design-profiles-demo-space.md §3.6): shown as a small
    * bordered label left of ✕, so demo data is never mistaken for real data.
    * Tapping it opens Settings → Advanced.
    */
   profileLabel?: string | null;
   onProfilePress?: () => void;
-  /** In-app help (docs/dev/technical-design-in-app-help.md §3.3): "?" toggles it; drawn active while open. */
+  /** In-app help (docs/dev/history/technical-design-in-app-help.md §3.3): "?" toggles it; drawn active while open. */
   helpOpen?: boolean;
   onHelpPress?: () => void;
 }
@@ -84,7 +80,7 @@ export default function TabBar({
   onHelpPress,
 }: Props): React.JSX.Element {
   usePerfRender('TabBar');
-  const {isDarkMode, textColor, borderColor} = useThemeColors();
+  const {textColor, borderColor} = useThemeColors();
 
   return (
     <View style={[styles.container, {borderColor}]}>
@@ -139,9 +135,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    // Was 40/8. The space above the tabs was unused (the device has no
-    // system status bar); it now pays for the central status slot right
-    // below (docs/dev/technical-design-status-slot.md D7).
+    // Small top padding: the device has no system status bar, so the space
+    // goes to the central status slot right below
+    // (docs/dev/history/technical-design-status-slot.md D7).
     paddingTop: 8,
     paddingHorizontal: 16,
     paddingBottom: 4,

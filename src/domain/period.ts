@@ -73,7 +73,7 @@ export function shiftPeriod(scope: PeriodScope, now: Date, n: number): Date {
  * - weekly: the current week, or next week when today is Fri/Sat/Sun
  *   (moved here unchanged from screens/WeekView.tsx's `canEditFocus`).
  * - monthly: the current month, or next month during the last 7 days of
- *   the current one (docs/dev/technical-design-monthly-view.md §0.5).
+ *   the current one (docs/dev/history/technical-design-monthly-view.md §0.5).
  */
 export function canEditPeriod(scope: PeriodScope, offset: number, today: Date = new Date()): boolean {
   if (offset === 0) return true;

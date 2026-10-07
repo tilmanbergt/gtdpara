@@ -1,5 +1,5 @@
 /**
- * Central status slot - rendering (docs/dev/technical-design-status-slot.md §5).
+ * Central status slot - rendering (docs/dev/history/technical-design-status-slot.md §5).
  *
  * `<StatusFrame>` wraps a screen body: a fixed-height slot on top (always
  * reserved, D1), the body below it, and - on a tap on the message text -

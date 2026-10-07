@@ -1,6 +1,6 @@
 /**
  * Date "nudge" arithmetic behind ui/DateInput.tsx's -1 / Today / +1 / +7
- * button strip (docs/dev/technical-design-meeting-date-nudge-and-new-from-this.md
+ * button strip (docs/dev/history/technical-design-meeting-date-nudge-and-new-from-this.md
  * §A). The point of the buttons is to avoid retyping a whole YYYY-MM-DD just
  * to move a date by a day or a week, so every rule reduces to one:
  *

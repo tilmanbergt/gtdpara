@@ -1,14 +1,12 @@
 /**
  * The unified Todo/Meeting add-and-edit widget (docs/dev/technical-design-
- * unified-quickadd.md) - replaces ui/TaskQuickAdd.tsx and ui/
- * MeetingQuickAdd.tsx, both retired once every call site has moved over
- * (design doc §10 step 5). Sits inside one Todo/Meeting mini-tab (Todo
- * default) rather than two independent fixed-slot forms side by side, so
- * every screen has exactly one add/edit surface no matter which of the four
- * styles (Create·Todo, Edit·Todo, Create·Meeting, Edit·Meeting) is showing -
- * see the design doc §1 for why (screen estate, a stable spot for text
- * input, no more "editing a Todo silently closes because a Meeting row was
- * tapped", room for Refile/a wider meeting date field later).
+ * unified-quickadd.md). Sits inside one Todo/Meeting mini-tab (Todo default)
+ * rather than two independent fixed-slot forms side by side, so every screen
+ * has exactly one add/edit surface no matter which of the four styles
+ * (Create·Todo, Edit·Todo, Create·Meeting, Edit·Meeting) is showing - see
+ * the design doc §1 for why (screen estate, a stable spot for text input,
+ * an edit of one type is never silently closed by tapping a row of the
+ * other type, room for Refile/a wider meeting date field).
  *
  * Four fixed rows, same slots in every style (design doc §3):
  *   R1 Tabs      - Todo/Meeting mini-tab. Never disappears; the inactive tab
@@ -24,15 +22,13 @@
  *                  chips out for a "Waiting on" field in this same row,
  *                  rather than growing a fifth row for it.
  *   R4 Actions   - create styles: "+ Add" right (status texts go to the
- *                  central status slot, docs/dev/technical-design-status-slot.md)
+ *                  central status slot, docs/dev/history/technical-design-status-slot.md)
  *                  (relabels to "+ Add to <Name>" and creates there directly
- *                  when a recognized abbreviation #tag is typed - feature_
- *                  abbrev_quick_file, 2026-09-17, docs/dev/technical-design-
- *                  abbrev-quick-file.md).
- *                  edit styles: trash icon (delete; was the text "Delete"
- *                  until 2026-09-21) + Refile (Refile only when the caller
- *                  passes onRefile - storage/inboxFiling.ts's module doc
- *                  comment, 2026-09-09 §7) on the left, Cancel + Save on
+ *                  when a recognized abbreviation #tag is typed -
+ *                  docs/dev/history/technical-design-abbrev-quick-file.md).
+ *                  edit styles: trash icon (delete) + Refile (Refile only
+ *                  when the caller passes onRefile - storage/inboxFiling.ts's
+ *                  module doc comment §7) on the left, Cancel + Save on
  *                  the right - Refile's
  *                  own slot shows "File: <Name>" instead whenever a
  *                  recognized abbreviation #tag is present (onQuickFile,
@@ -48,73 +44,67 @@
  * `editingMeeting` is currently set - seeded by an effect, not by
  * remounting.
  *
- * No more `key`-remount trick. TaskQuickAdd/MeetingQuickAdd used to rely on
- * every call site passing `key={editingXKey ?? 'add'}` so the component
- * remounted (and re-ran its useState initializers) on every edit-target
- * change. That can't survive here - remounting this widget would wipe
- * taskDraft/meetingDraft, defeating the point above. QuickAddWidget must be
- * a stable, long-lived instance per screen; call sites pass no `key` at
- * all. The seeding effect below only reacts to `editingTask`/`editingMeeting`
- * *transitioning* between unset and set (tracked via `wasEditingRef`, not
- * the effect's dependency identity) - callers hand in a freshly-spread
- * object on every render (e.g. `{...task, text: displayTaskText(...)}`), so
- * keying naively off that object reference would reseed - and clobber
- * whatever the user just typed - on every unrelated re-render while an edit
- * is open.
+ * No key-remount. Remounting this widget would wipe taskDraft/meetingDraft,
+ * defeating the point above, so QuickAddWidget must be a stable, long-lived
+ * instance per screen; call sites pass no `key` at all. The seeding effect
+ * below only reacts to `editingTask`/`editingMeeting` *transitioning*
+ * between unset and set (tracked via `wasEditingRef`, not the effect's
+ * dependency identity) - callers hand in a freshly-spread object on every
+ * render (e.g. `{...task, text: displayTaskText(...)}`), so keying naively
+ * off that object reference would reseed - and clobber whatever the user
+ * just typed - on every unrelated re-render while an edit is open.
  *
- * Direct switches (2026-09-29, docs/dev/technical-design-meeting-lists.md §10):
- * the screens no longer block tapping another row while an edit is open
- * ("Finish edit!"). A screen passes `editTargetKey` (a stable id of the
- * target, e.g. "meeting:/p#3"); when it changes while editing, the fields
- * reload from the new target. Before the screen switches, it calls
- * `flushEditRef.current()` (ui/useEditFlush.ts's afterSave), which saves the
- * current target's changes - only if the fields differ from what was loaded
- * - and resolves false when that save failed, so the screen stays on the
- * current target and the error shows. Leaving the tab (unmount) saves the
- * same way. Drafts of new items are separate and never saved implicitly.
+ * Direct switches (docs/dev/history/technical-design-meeting-lists.md §10): tapping
+ * another row while an edit is open switches to it. A screen passes
+ * `editTargetKey` (a stable id of the target, e.g. "meeting:/p#3"); when it
+ * changes while editing, the fields reload from the new target. Before the
+ * screen switches, it calls `flushEditRef.current()` (ui/useEditFlush.ts's
+ * afterSave), which saves the current target's changes - only if the fields
+ * differ from what was loaded - and resolves false when that save failed, so
+ * the screen stays on the current target and the error shows. Leaving the
+ * tab (unmount) saves the same way. Drafts of new items are separate and
+ * never saved implicitly.
  *
- * Row 2/row 3 never remount on tab switch (bugfix 2026-09-09). Task's and
- * Meeting's row2/row3 are both always in the tree; only their `display`
- * (styles.hidden) toggles with the active tab, so their TextInputs are
- * created once and stay mounted for the widget's whole lifetime. Swapping
- * the two subtrees in and out of the JSX instead (as this originally
- * shipped) forced Android to freshly create each TextInput's native view
- * on every tab switch, which briefly measured at its own intrinsic size
- * before the custom border/padding style applied - a one-frame "widget
- * grows, then shrinks back" flicker. Because the fields now stay mounted,
- * `autoFocus` can no longer reliably grab focus when an edit starts (it
- * only fires on mount); `taskInputRef`/`meetingInputRef` do that
- * imperatively instead, from a small dedicated effect below.
+ * Row 2/row 3 never remount on tab switch. Task's and Meeting's row2/row3
+ * are both always in the tree; only their `display` (styles.hidden) toggles
+ * with the active tab, so their TextInputs are created once and stay mounted
+ * for the widget's whole lifetime. Swapping the two subtrees in and out of
+ * the JSX would force Android to freshly create each TextInput's native view
+ * on every tab switch, which briefly measures at its own intrinsic size
+ * before the custom border/padding style applies - a one-frame "widget
+ * grows, then shrinks back" flicker. Because the fields stay mounted,
+ * `autoFocus` can't reliably grab focus when an edit starts (it only fires
+ * on mount); `taskInputRef`/`meetingInputRef` do that imperatively instead,
+ * from a small dedicated effect below.
  *
- * Third mini-tab "Note" (2026-09-16, memory: feature_standalone_note_
- * quickadd.md) - creates a standalone, unlinked .note file (storage/
- * standaloneNotes.ts), not a fourth kind of edit-able item: `onAddNote`/
- * `noteFolderPath` are the only new props, both optional, and Row 1's Note
- * tab is rendered at all only when `onAddNote` is passed (same "absent, not
- * permanently greyed" convention `onRefile` already uses) - so screens with
- * no Files pane (Daily, Review's bare add-only cards) never show it. Where
- * it IS rendered, it's `disabled` purely off `noteFolderPath` being `null`
- * (no extra label/banner) - the Files pane's currently-browsed folder,
- * re-read fresh at the moment "+Add" is pressed, not frozen when the Note
- * tab was opened, so freely switching the Files pane around mid-draft does
- * nothing until Add is actually pressed. Tags aren't a separate input: typing
- * `#tag` into the title (or tapping a TagChips suggestion, which inserts/
- * removes `#tag` in the title text exactly like Todo/Meeting already do)
- * pins it; `#tag` tokens are stripped back out of the title before it's
- * saved, and become real Supernote page-keywords instead (`insertKeyWord`),
- * not this app's own `#context` markdown-tag convention. No edit mode, no
- * persistent per-tab drafts beyond the plain `noteDraft` below, no
- * project.txt/area.txt footprint at all.
+ * Third mini-tab "Note" - creates a standalone, unlinked .note file
+ * (storage/standaloneNotes.ts), not a fourth kind of edit-able item:
+ * `onAddNote`/`noteFolderPath` are its only props, both optional, and Row 1's
+ * Note tab is rendered at all only when `onAddNote` is passed (same "absent,
+ * not permanently greyed" convention `onRefile` uses) - so screens with no
+ * Files pane (Daily, Review's bare add-only cards) never show it. Where it IS
+ * rendered, it's `disabled` purely off `noteFolderPath` being `null` (no
+ * extra label/banner) - the Files pane's currently-browsed folder, re-read
+ * fresh at the moment "+Add" is pressed, not frozen when the Note tab was
+ * opened, so freely switching the Files pane around mid-draft does nothing
+ * until Add is actually pressed. Tags aren't a separate input: typing `#tag`
+ * into the title (or tapping a TagChips suggestion, which inserts/removes
+ * `#tag` in the title text exactly like Todo/Meeting do) pins it; `#tag`
+ * tokens are stripped back out of the title before it's saved, and become
+ * real Supernote page-keywords instead (`insertKeyWord`), not this app's own
+ * `#context` markdown-tag convention. No edit mode, no persistent per-tab
+ * drafts beyond the plain `noteDraft` below, no project.txt/area.txt
+ * footprint at all.
  *
- * Date fields (2026-09-20, docs/dev/technical-design-meeting-date-nudge-and-new-
+ * Date fields (docs/dev/technical-design-meeting-date-nudge-and-new-
  * from-this.md §A): the Meeting date and the Todo due date are both
- * ui/DateInput.tsx now - a text field that shows a -1/Today/+1/+7 button strip
+ * ui/DateInput.tsx - a text field that shows a -1/Today/+1/+7 button strip
  * above itself while focused. Tapping the Todo 📅 icon unfolds the due field
  * and focuses it (`dueInputRef` + `dueFocusRequested` below) so the strip is
  * there straight away; an edit that merely starts with an existing due date
  * does NOT focus it (that focus belongs to the text field).
  *
- * "New from this" (2026-09-20, same design doc §B): a Meeting-edit-only Row 4
+ * "New from this" (same design doc §B): a Meeting-edit-only Row 4
  * button (`handleNewFromThis`) that cancels the edit through the screen's own
  * `onCancelEdit` and flips this widget to Create·Meeting with the draft
  * pre-filled from the edit form's current values - so a meeting can be used
@@ -158,14 +148,15 @@ import {usePerfRender} from '../utils/perf';
 import {useAbbrevItems} from './useAbbrevItems';
 import {useOnScreenHide} from './screenActivity';
 import {common} from './commonStyles';
+import {errorMessage} from '../utils/errorMessage';
 
-/** Same shape MeetingQuickAdd.tsx used to export - QuickAddWidget is now this type's home; other files import it from here. */
+/** The fields of a meeting being added or edited; other files import this type from here. */
 export interface MeetingQuickAddFields {
   title: string;
   date: string;
   /** Already normalized (HH:mm, zero-padded) or '' - see validateMeetingFields. */
   time: string;
-  /** HH:mm end or '' (docs/dev/technical-design-monthly-view.md §2.3) - parsed from the same time field ("15-16.30"). */
+  /** HH:mm end or '' (docs/dev/history/technical-design-monthly-view.md §2.3) - parsed from the same time field ("15-16.30"). */
   endTime: string;
   /** Whole days of a date-only meeting ("3d"), 1 for a timed one. A blank time field saves as 1 day. */
   days: number;
@@ -173,15 +164,12 @@ export interface MeetingQuickAddFields {
 
 /**
  * `Selection`, `spliceAtSelection` and `copyCutRange` - the pure logic
- * behind the custom Select All/Copy/Cut/Paste overlay below (2026-09-11) -
- * now live in domain/clipboardText.ts (extracted 2026-09-11, same day as
- * the original bugfix, so ui/ClipboardTextInput.tsx - a reusable version of
- * the same field, used by any *new* plain text input that wants the same
- * copy/paste affordance - can share them instead of re-deriving them). See
- * that module for the full doc comment on why a custom overlay exists at
- * all on this hardware, and why the selection itself is tracked in a ref
- * (`taskLastSelectionRef`/`meetingLastSelectionRef` below), never React
- * state.
+ * behind the custom Select All/Copy/Cut/Paste overlay below - live in
+ * domain/clipboardText.ts, shared with ui/ClipboardTextInput.tsx (a reusable
+ * version of the same field). See that module for why a custom overlay
+ * exists at all on this hardware, and why the selection itself is tracked
+ * in a ref (`taskLastSelectionRef`/`meetingLastSelectionRef` below), never
+ * React state.
  */
 
 interface TaskDraft {
@@ -189,7 +177,7 @@ interface TaskDraft {
   flowState: FlowState;
   waitingOnText: string;
   dueDate: string;
-  /** Whether the due-date field has been unfolded - independent of dueDate's value, and stays true for the life of this draft once set (chat decision: "no need to hide date field again once shown"). */
+  /** Whether the due-date field has been unfolded - independent of dueDate's value, and stays true for the life of this draft once set (no need to hide the field again once shown). */
   dueDateOpen: boolean;
 }
 
@@ -198,7 +186,7 @@ interface MeetingDraft {
   date: string;
   /** The time field's raw text - "15", "15-16.30", "3d" or '' (= 1d); parsed on submit by validateMeetingFields. */
   time: string;
-  /** The "M" toggle (docs/dev/technical-design-monthly-view.md §5.1) - composed into the title as `#monthly` on submit, never shown in the title field. */
+  /** The "M" toggle (docs/dev/history/technical-design-monthly-view.md §5.1) - composed into the title as `#monthly` on submit, never shown in the title field. */
   monthly: boolean;
 }
 
@@ -231,8 +219,8 @@ function makeTaskDraft(): TaskDraft {
 }
 
 function makeMeetingDraft(initialDate?: string, initialMonthly = false): MeetingDraft {
-  // Time starts EMPTY (Tilman, 2026-09-23: "keep it empty, but fill it with
-  // 1d if left empty" - most meetings get a time); a blank field is saved as 1d.
+  // Time starts EMPTY (most meetings get a time); a blank field is saved as
+  // 1d.
   return {title: '', date: initialDate ?? todayIso(), time: '', monthly: initialMonthly};
 }
 
@@ -242,12 +230,10 @@ function makeNoteDraft(): NoteDraft {
 
 /**
  * Keeps Row 4's "+ Add to <Name>"/"File: <Name>" buttons from growing
- * unboundedly on a long Project/Area name (feature_abbrev_quick_file,
- * 2026-09-17 - "limit very long area and project names... enough to have
- * starting 10-15 characters") - shows the first 14 characters verbatim,
- * "…" beyond that. Display-only; never affects which item actually gets
- * matched/filed (resolveAbbrevFileTarget always sees the real, untruncated
- * name).
+ * unboundedly on a long Project/Area name - shows the first 14 characters
+ * verbatim, "…" beyond that. Display-only; never affects which item actually
+ * gets matched/filed (resolveAbbrevFileTarget always sees the real,
+ * untruncated name).
  */
 /** Which field a Quick Add error is about - the in-place ⚠ mark goes there. */
 type QuickAddField = 'text' | MeetingField;
@@ -261,26 +247,24 @@ function truncateItemName(name: string, max = 14): string {
 
 /**
  * What `onQuickFile` (edit mode) hands the caller to save at the resolved
- * target (feature_abbrev_quick_file, 2026-09-18 bugfix) - the widget's own
- * currently-edited text/fields, fully composed exactly the way `Save` itself
- * composes them (flow-state/due tags folded in via `setFlowStateTag`/
- * `setDueTag` for a task, `validateMeetingFields`-normalized for a meeting)
- * and with the matched abbreviation tag already stripped out via
- * `removeTagFromText`. Callers must NOT re-read their own last-*saved*
- * task/meeting for the text/title - that would silently discard whatever the
- * user typed or changed during this edit session (the original
- * implementation's bug: it moved the stale stored copy, tag and all,
- * ignoring any live edits). `linkedFile` is threaded through the same way
- * `onSaveEditTask`/`onSaveEditMeeting`'s own second parameter already is.
- * The `kind` always matches whichever of `editingTask`/`editingMeeting` is
- * currently set - callers already know this from their own edit-target
- * state, but it's included so this type stands alone as a single parameter.
+ * target - the widget's own currently-edited text/fields, fully composed
+ * exactly the way `Save` itself composes them (flow-state/due tags folded in
+ * via `setFlowStateTag`/`setDueTag` for a task, `validateMeetingFields`-
+ * normalized for a meeting) and with the matched abbreviation tag already
+ * stripped out via `removeTagFromText`. Callers must NOT re-read their own
+ * last-*saved* task/meeting for the text/title - that would silently discard
+ * whatever the user typed or changed during this edit session. `linkedFile`
+ * is threaded through the same way `onSaveEditTask`/`onSaveEditMeeting`'s
+ * own second parameter is. The `kind` always matches whichever of
+ * `editingTask`/`editingMeeting` is currently set - callers already know
+ * this from their own edit-target state, but it's included so this type
+ * stands alone as a single parameter.
  */
 export type QuickFilePayload =
   | {kind: 'task'; text: string; linkedFile: string}
   | {kind: 'meeting'; fields: MeetingQuickAddFields; linkedFile: string};
 
-/** Which Save button of the capture variant was pressed (docs/dev/technical-design-lasso-0.8.md §3.9). */
+/** Which Save button of the capture variant was pressed (docs/dev/history/technical-design-lasso-0.8.md §3.9). */
 export type CaptureSaveMode = 'next' | 'view' | 'close';
 
 /**
@@ -302,7 +286,7 @@ export interface CaptureSeed {
 
 interface Props {
   /**
-   * 'capture' (docs/dev/technical-design-lasso-0.8.md §3.9): the wide panel of
+   * 'capture' (docs/dev/history/technical-design-lasso-0.8.md §3.9): the wide panel of
    * the lasso capture / marks screen - multi-line text or one row per item
    * (Split lines), flow chips without the paged tag row, Save & next / view /
    * close right under the input, then tag and "File to" chips in wrapped rows
@@ -322,11 +306,11 @@ interface Props {
   /**
    * Optional id of the screen slot this widget sits in (e.g. 'daily',
    * 'current') - its tag-row widths are remembered under it, so a revisit
-   * needs no re-measure render (docs/dev/technical-design-render-perf-ab.md §3
-   * A2). Omitted: widths are measured fresh on every mount, as before.
+   * needs no re-measure render (docs/dev/history/technical-design-render-perf-ab.md §3
+   * A2). Omitted: widths are measured fresh on every mount.
    */
   layoutKey?: string;
-  /** Every add/edit goes to this one destination - no picker is ever shown (docs/dev/technical-design-filing-unification.md §7). */
+  /** Every add/edit goes to this one destination - no picker is ever shown (docs/dev/history/technical-design-filing-unification.md §7). */
   fixedDestination: Destination;
   /** Default false. When true, row 1 still renders both tabs (uniform shape everywhere), but Meeting is permanently greyed and non-interactive. */
   taskOnly?: boolean;
@@ -341,7 +325,7 @@ interface Props {
    * just-added meeting, the status-slot success message says where it went - `Added meeting "Team
    * sync" - next week` / `- tomorrow` / `- 09/28` (domain/dateLabel.ts) - so an
    * Add that legitimately lands off-screen is never mistaken for a lost one
-   * (docs/dev/technical-design-cache-subscription-and-shared-add-path.md §C).
+   * (docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md §C).
    * Omit on screens that list every meeting anyway (Inbox, Project/Area,
    * Review): no suffix, message unchanged.
    */
@@ -358,58 +342,54 @@ interface Props {
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
   /**
    * Identity of the item being edited (e.g. "path#index"). When it changes
-   * while editing, the fields reload from the new target - switching
-   * directly from one row to another used to keep the previous row's
-   * fields (and Save then wrote them onto the new row). Without it, only
-   * unset<->set transitions reload (the old behaviour).
+   * while editing, the fields reload from the new target, so switching
+   * directly from one row to another never keeps the previous row's fields.
+   * Without it, only unset<->set transitions reload.
    */
   editTargetKey?: string | null;
   /**
-   * Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, Tilman
-   * 2026-09-29): the widget puts a `flush()` here that saves pending edits
-   * of the current target (only when something changed) and resolves
-   * whether the screen may move on. ui/useEditFlush.ts wraps a screen's
-   * "start editing another row" handlers with it.
+   * Save-then-switch (docs/dev/history/technical-design-meeting-lists.md §10): the
+   * widget puts a `flush()` here that saves pending edits of the current
+   * target (only when something changed) and resolves whether the screen
+   * may move on. ui/useEditFlush.ts wraps a screen's "start editing another
+   * row" handlers with it.
    */
   flushEditRef?: React.MutableRefObject<(() => Promise<boolean>) | null>;
   onCancelEdit?: () => void;
   onDeleteEdit?: () => void;
-  /** Renders the "Refile" button in edit mode when provided (storage/inboxFiling.ts's module doc comment, 2026-09-09) - arms the caller's own Files pane (Projects/Areas tabs) for the item currently being edited, same shape onDeleteEdit already has. Only passed by screens with a Files pane to arm (Current tab, Inbox tab, Review's Inbox-to-zero step) - its absence (Daily, Review's week-ahead/stalled-project/neglected-area cards) is what makes those screens' edit mode show no Refile control at all, rather than a disabled one. */
+  /** Renders the "Refile" button in edit mode when provided (storage/inboxFiling.ts's module doc comment) - arms the caller's own Files pane (Projects/Areas tabs) for the item currently being edited, same shape onDeleteEdit has. Only passed by screens with a Files pane to arm (Current tab, Inbox tab, Review's Inbox-to-zero step) - its absence (Daily, Review's week-ahead/stalled-project/neglected-area cards) is what makes those screens' edit mode show no Refile control at all, rather than a disabled one. */
   onRefile?: () => void;
   /**
    * Performs the abbreviation quick-file move directly (no Browse picker)
    * once a recognized #tag resolves to a registered Project/Area's
-   * abbreviation, while editing an existing task/meeting
-   * (feature_abbrev_quick_file, 2026-09-17) - renders "File: <Name>" in
-   * Refile's own Row 4 slot whenever a match is present, independent of
-   * onRefile's own presence (so it also works on a screen with no Files
-   * pane to arm, like Daily, which never passes onRefile at all). Absent
-   * entirely (no fallback, no error) on a screen whose edit mode doesn't
-   * support moving an item to a different file yet. See `QuickFilePayload`'s
-   * own doc comment for why this also hands the caller the fully-composed,
-   * tag-stripped current text/fields rather than just the target.
+   * abbreviation, while editing an existing task/meeting - renders
+   * "File: <Name>" in Refile's own Row 4 slot whenever a match is present,
+   * independent of onRefile's own presence (so it also works on a screen
+   * with no Files pane to arm, like Daily, which never passes onRefile at
+   * all). Absent entirely (no fallback, no error) on a screen whose edit mode
+   * doesn't support moving an item to a different file. See
+   * `QuickFilePayload`'s own doc comment for why this also hands the caller
+   * the fully-composed, tag-stripped current text/fields rather than just
+   * the target.
    */
   onQuickFile?: (target: AbbrevFileMatch, payload: QuickFilePayload) => Promise<void>;
   /**
    * The REAL current location of the item being edited right now, for
-   * resolveAbbrevFileTarget's self-exclude check (feature_abbrev_quick_file,
-   * 2026-09-17) - `null` when it's an Inbox item (Inbox never carries an
-   * abbreviation, so it can never self-match anyway). Omit this prop
-   * entirely on a screen where `fixedDestination` already always names
-   * whatever's being edited (Inbox tab, Current tab, Review's
-   * Inbox-to-zero step - every one of those is either always `{type:
-   * 'inbox'}` or always that Project/Area's own path): the exclude check
-   * then falls back to deriving it from `fixedDestination` exactly as
-   * before this prop existed. Daily is the one screen where that
-   * fallback is wrong and this prop is required: Daily's
+   * resolveAbbrevFileTarget's self-exclude check - `null` when it's an Inbox
+   * item (Inbox never carries an abbreviation, so it can never self-match
+   * anyway). Omit this prop entirely on a screen where `fixedDestination`
+   * already always names whatever's being edited (Inbox tab, Current tab,
+   * Review's Inbox-to-zero step - every one of those is either always
+   * `{type: 'inbox'}` or always that Project/Area's own path): the exclude
+   * check then derives it from `fixedDestination`. Daily is the one screen
+   * where that fallback is wrong and this prop is required: Daily's
    * `fixedDestination` is always `{type: 'inbox'}` (its own create-mode
    * default, unrelated to any given entry), while the
    * DailyTaskEntry/DailyMeetingEntry actually being edited can live in
    * Inbox OR any Project/Area - passing this prop lets self-exclusion
    * check the entry's real path instead of always assuming Inbox (which
-   * would otherwise show a same-place "File: <Name>" no-op button, or
-   * worse, whenever the tag typed while editing happened to name the
-   * item's own current Project/Area).
+   * would otherwise show a same-place "File: <Name>" no-op button whenever
+   * the tag typed while editing named the item's own current Project/Area).
    */
   editingItemPath?: string | null;
   linkedFileMissing?: boolean;
@@ -435,13 +415,13 @@ interface Props {
 
   /**
    * One-shot "put this text into the create draft" request (Gmail inbox
-   * review, 2026-09-21 - selected email text -> Todo/Meeting, see
-   * docs/dev/technical-design-gmail-body-select.md). Acts exactly when `nonce`
+   * review: selected email text -> Todo/Meeting, see
+   * docs/dev/history/technical-design-gmail-body-select.md). Acts exactly when `nonce`
    * changes (a fresh `{...}` object with the SAME nonce does nothing, so a
    * caller can hold it in state without it re-firing on every re-render):
    * switches to the Todo or Meeting tab and APPENDS `text` to that draft's
    * task text / meeting title, separated by one space when the field already
-   * has content (Tilman: several passages can be collected into one item).
+   * has content (several passages can be collected into one item).
    * Line breaks and repeated whitespace in `text` are collapsed to single
    * spaces first (a Todo/Meeting title is one line). Ignored while an edit
    * is open (the tabs are locked then) and for `kind: 'meeting'` on a
@@ -450,10 +430,7 @@ interface Props {
    */
   prefill?: {kind: 'task' | 'meeting'; text: string; nonce: number} | null;
 
-  /** Set by the caller when a row tap was blocked because an edit is already open elsewhere on screen (design doc §6). Shown as a warning in the central status slot while editing (docs/dev/technical-design-status-slot.md §7.3); cleared by the caller, not the widget. */
-  blockedMessage?: string;
-
-  /** Task input only; defaults to "New task" everywhere (this pass drops the old per-screen "New todo" override as incidental cleanup). */
+  /** Task input only; defaults to "New task" everywhere. */
   placeholder?: string;
   textColor: string;
   borderColor: string;
@@ -490,7 +467,6 @@ function QuickAddWidget({
   onAddNote,
   noteFolderPath = null,
   prefill,
-  blockedMessage,
   placeholder = 'New task',
   textColor,
   borderColor,
@@ -511,7 +487,7 @@ function QuickAddWidget({
     );
   }, [initialDate, initialMonthly]);
   const [noteDraft, setNoteDraft] = useState<NoteDraft>(makeNoteDraft);
-  // ---- capture variant (docs/dev/technical-design-lasso-0.8.md §3.9) ----
+  // ---- capture variant (docs/dev/history/technical-design-lasso-0.8.md §3.9) ----
   const isCapture = variant === 'capture';
   // One row per item while "Split lines" is on; null = one item in taskDraft.text.
   const [splitRows, setSplitRows] = useState<string[] | null>(null);
@@ -570,7 +546,7 @@ function QuickAddWidget({
   const [pending, setPending] = useState(false);
   // Validation/save error, plus which field it's about (drives the in-place
   // ⚠ mark; null = the Add/Save button gets it). The text itself goes to
-  // the central status slot (docs/dev/technical-design-status-slot.md §7.3).
+  // the central status slot (docs/dev/history/technical-design-status-slot.md §7.3).
   const [errorState, setErrorState] = useState<{text: string; field: QuickAddField | null} | null>(null);
   const error = errorState?.text ?? null;
   const setError = (text: string | null, field: QuickAddField | null = null) =>
@@ -605,10 +581,10 @@ function QuickAddWidget({
   const [taskSelectionOverride, setTaskSelectionOverride] = useState<Selection>(null);
   const [meetingSelectionOverride, setMeetingSelectionOverride] = useState<Selection>(null);
   // Whether the task-text/meeting-title field currently has focus - shows/
-  // hides the custom Select All/Copy/Cut/Paste overlay (Tilman, 2026-09-11:
-  // "only while that field is focused"). See that overlay's render for why
-  // it stays mounted (display:none) rather than being conditionally
-  // included/excluded from the tree.
+  // hides the custom Select All/Copy/Cut/Paste overlay (only while that
+  // field is focused). See that overlay's render for why it stays mounted
+  // (display:none) rather than being conditionally included/excluded from
+  // the tree.
   const [taskInputFocused, setTaskInputFocused] = useState(false);
   const [meetingInputFocused, setMeetingInputFocused] = useState(false);
 
@@ -653,7 +629,7 @@ function QuickAddWidget({
   const taskLastSelectionRef = useRef<Selection>(null);
   const meetingLastSelectionRef = useRef<Selection>(null);
 
-  // See the module doc comment's "No more key-remount trick" note - only
+  // See the module doc comment's "No key-remount" note - only
   // reacts to unset<->set transitions, never to editingTask/editingMeeting
   // being a fresh object with the same underlying target.
   const wasEditingRef = useRef(false);
@@ -665,10 +641,9 @@ function QuickAddWidget({
     const isEditingNow = !!editingTask || !!editingMeeting;
     const targetChanged = editTargetKey !== undefined && editTargetKey !== lastTargetKeyRef.current;
     if (isEditingNow && (!wasEditingRef.current || targetChanged)) {
-      // Fresh edit target: the previous field's cursor position is no
-      // longer meaningful, same as the old `lastSelection: null` reset this
-      // used to do inline - see taskLastSelectionRef/meetingLastSelectionRef's
-      // doc comment for why this now lives in a ref instead of field state.
+      // Fresh edit target: the previous field's cursor position is not
+      // meaningful for it - see taskLastSelectionRef/meetingLastSelectionRef's
+      // doc comment for why this lives in a ref instead of field state.
       taskLastSelectionRef.current = null;
       meetingLastSelectionRef.current = null;
       let loaded: EditFields | null = null;
@@ -712,7 +687,6 @@ function QuickAddWidget({
     }
     wasEditingRef.current = isEditingNow;
     lastTargetKeyRef.current = isEditingNow ? editTargetKey : undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingTask, editingMeeting, editTargetKey]);
 
   // Applies a caller's one-shot `prefill` request (see the prop's doc
@@ -823,9 +797,9 @@ function QuickAddWidget({
     Keyboard.dismiss();
     const trimmed = taskDraft.text.trim();
     if (!trimmed) return;
-    // Flow-state, due and - for abbreviation quick-file (feature_abbrev_quick_file,
-    // 2026-09-18 bugfix) - removing the matched #tag, which did its job picking the
-    // destination: domain/quickAddCompose.ts, shared with the lasso capture panel.
+    // Flow-state, due and - for abbreviation quick-file - removing the
+    // matched #tag, which did its job picking the destination:
+    // domain/quickAddCompose.ts, shared with the lasso capture panel.
     const finalText = composeTaskText(taskDraft, taskAbbrevTarget ? taskAbbrevTarget.tag : null);
     setError(null);
     setPending(true);
@@ -841,7 +815,7 @@ function QuickAddWidget({
         setTaskTagPage(0);
         recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags);
       })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -864,7 +838,7 @@ function QuickAddWidget({
         return true;
       })
       .catch(e => {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
         return false;
       })
       .finally(() => setPending(false));
@@ -877,8 +851,8 @@ function QuickAddWidget({
       setError(result.error, result.field);
       return;
     }
-    // Abbreviation quick-file (feature_abbrev_quick_file, 2026-09-18
-    // bugfix): see submitTaskCreate's identical note just above.
+    // Abbreviation quick-file: see submitTaskCreate's identical note just
+    // above.
     const trimmedTitle = setHighlight(
       meetingAbbrevTarget
         ? removeTagFromText(meetingDraft.title.trim(), meetingAbbrevTarget.tag)
@@ -905,7 +879,7 @@ function QuickAddWidget({
         setMeetingTagPage(0);
         recordTagsUsed(extractContextTags(trimmedTitle)).then(refreshRecentTags);
       })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -931,7 +905,7 @@ function QuickAddWidget({
         return true;
       })
       .catch(e => {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
         return false;
       })
       .finally(() => setPending(false));
@@ -961,8 +935,8 @@ function QuickAddWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  // Kept tab hidden (docs/dev/technical-design-keep-tabs-alive.md §4.1, D2):
-  // same as leaving the tab used to be - save what changed, then close the
+  // Kept tab hidden (docs/dev/history/technical-design-keep-tabs-alive.md §4.1, D2):
+  // same as leaving the tab - save what changed, then close the
   // edit. If the save fails, the edit stays open and its error shows when
   // the tab is shown again. Drafts of new items are left as they are (D3).
   useOnScreenHide(() => {
@@ -1007,7 +981,7 @@ function QuickAddWidget({
         setNoteTagPage(0);
         recordTagsUsed(tags).then(refreshRecentTags);
       })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
@@ -1118,25 +1092,23 @@ function QuickAddWidget({
     </View>
   );
 
-  // ---- Tag display: recognized-abbreviation uppercasing (2026-09-18) ----
-  // Tilman: "write recognized area or project tags with upper case letters
-  // so they are immediately visible as such in the tag list" - purely a
-  // TagChips display transform (Row 3's tag chip row, both pinned and
-  // suggested chips), never touches the stored/typed text, matching, or
-  // `onInsertTag`/`onRemoveTag`'s own tag string. "Recognized" uses the same
-  // Active-or-On-Hold eligibility resolveAbbrevFileTarget itself applies
-  // (chat, 2026-09-18) - a Done/Archived item's old abbreviation still
-  // renders as a plain lowercase tag, consistent with it no longer being a
-  // valid quick-file target either. Hoisted above Row 2/3 (rather than
-  // living alongside the abbrev quick-file section below, which also reads
-  // `getCachedData()`) purely so it's declared before every TagChips call
-  // site that needs it; `cachedAbbrevItems` below reuses this same read
-  // rather than calling `getCachedData()` a second time.
+  // ---- Tag display: recognized-abbreviation uppercasing ----
+  // Recognized Project/Area tags are written in upper case so they stand out
+  // in the tag list - purely a TagChips display transform (Row 3's tag chip
+  // row, both pinned and suggested chips), never touches the stored/typed
+  // text, matching, or `onInsertTag`/`onRemoveTag`'s own tag string.
+  // "Recognized" uses the same Active-or-On-Hold eligibility
+  // resolveAbbrevFileTarget itself applies - a Done/Archived item's
+  // abbreviation renders as a plain lowercase tag, consistent with it not
+  // being a valid quick-file target either. Declared above Row 2/3 so it
+  // exists before every TagChips call site that needs it;
+  // `cachedAbbrevItems` below reuses this same read rather than calling
+  // `getCachedData()` a second time.
   // Subscribed (not a plain getCachedData() read) since this component is
   // React.memo'd (render-perf-ab §3 B2): it must re-render by itself when an
-  // abbreviation or status changes, as it did before through its parent -
-  // but only then (useAbbrevItems, render-perf-ab §7), not on every cache
-  // change. Returns [] while no cache exists yet.
+  // abbreviation or status changes - but only then (useAbbrevItems,
+  // render-perf-ab §7), not on every cache change. Returns [] while no cache
+  // exists yet.
   const cachedAbbrevItems = useAbbrevItems();
   const recognizedAbbrevTags = new Set(
     cachedAbbrevItems
@@ -1188,9 +1160,9 @@ function QuickAddWidget({
   };
   // No setState here on purpose - see the `Selection` type's doc comment.
   // onSelectionChange fires on almost every cursor/selection movement, and
-  // a setState-driven re-render on every one of those was what broke native
-  // text selection (drag handles, the copy/cut/paste/select-all action bar)
-  // on Android (2026-09-11 bugfix).
+  // a setState-driven re-render on every one of those breaks native text
+  // selection (drag handles, the copy/cut/paste/select-all action bar) on
+  // Android.
   const onTaskSelectionChange = (selection: Selection) => {
     taskLastSelectionRef.current = selection;
     if (taskSelectionOverride) setTaskSelectionOverride(null);
@@ -1251,7 +1223,7 @@ function QuickAddWidget({
         <Text style={[styles.iconButtonText, {color: textColor}]}>📅</Text>
       </Pressable>
     );
-  // ---- Capture: Split lines (docs/dev/technical-design-lasso-0.8.md §3.5, §3.9) ----
+  // ---- Capture: Split lines (docs/dev/history/technical-design-lasso-0.8.md §3.5, §3.9) ----
   // One editable row per item, each removable; more than SPLIT_ROWS_PER_PAGE
   // rows page with ‹ › instead of scrolling. Chips apply to every row.
   function toggleSplit() {
@@ -1394,11 +1366,10 @@ function QuickAddWidget({
   // tree. Swapping subtrees means Android has to freshly create each
   // TextInput's native view on every tab switch, which briefly renders at
   // its native intrinsic size before the custom padding/border style
-  // settles - exactly the "widget grows for an instant, then shrinks back"
-  // flicker Tilman reported (2026-09-09). Keeping both variants' native
-  // views alive the whole time and just hiding the inactive one avoids
-  // that remount entirely, consistent with this widget's fixed-row,
-  // avoid-reflow design (design doc §3).
+  // settles - a "widget grows for an instant, then shrinks back" flicker.
+  // Keeping both variants' native views alive the whole time and just
+  // hiding the inactive one avoids that remount entirely, consistent with
+  // this widget's fixed-row, avoid-reflow design (design doc §3).
   const taskRow2 = (
     <View style={[styles.row2, displayType !== 'task' && styles.hidden]}>
       {isCapture && splitRows ? splitRowsBlock : null}
@@ -1423,7 +1394,7 @@ function QuickAddWidget({
         </MarkWrap>
         {isCapture ? null : taskDueControl}
       </View>
-      {/* Custom Select All/Copy/Cut/Paste overlay (Tilman, 2026-09-11) -
+      {/* Custom Select All/Copy/Cut/Paste overlay -
           hovers above the field, right-aligned so it clears row 1's Todo/
           Meeting tabs (which sit top-left, directly above this row) rather
           than covering them. Absolutely positioned (`bottom: '100%'` = flush
@@ -1453,8 +1424,7 @@ function QuickAddWidget({
   );
 
   // `onLayout` feeds that row's tag budget (ui/tagChipLayout.ts) so the
-  // chips leave room for this cluster instead of painting over the ✕
-  // (bugfix 2026-09-29).
+  // chips leave room for this cluster instead of painting over the ✕.
   const attachmentCluster = (linkedFile: string, onClear: () => void, onLayout?: (e: LayoutChangeEvent) => void) =>
     linkedFile ? (
       <View style={styles.attachCluster} onLayout={onLayout}>
@@ -1466,9 +1436,9 @@ function QuickAddWidget({
       </View>
     ) : null;
 
-  // Row 3 pixel budgets for TagChips (bugfix 2026-09-29, ui/tagChipLayout.ts):
-  // each variant measures its row, the element sharing page 0 with the tags,
-  // and the attachment cluster, instead of trusting fixed chip counts.
+  // Row 3 pixel budgets for TagChips (ui/tagChipLayout.ts): each variant
+  // measures its row, the element sharing page 0 with the tags, and the
+  // attachment cluster, instead of trusting fixed chip counts.
   // Widths remembered per screen via `layoutKey` (render-perf-ab §3 A2).
   const taskTagBudget = useTagRowBudget(
     editFields?.kind === 'task' && !!editFields.fields.linkedFile,
@@ -1673,9 +1643,9 @@ function QuickAddWidget({
 
   // Meeting Row 3 has no flow chips ever competing for space, so TagChips
   // runs wide from page 0 on (technical-design-context-tags.md §8) - the
-  // time field shrinks to make room for it (chat round 1: "Time itself
-  // would remain visible always, but become smaller"), same paging as
-  // Todo's page 1+ once tag count exceeds one page.
+  // time field shrinks to make room for it (time stays always visible,
+  // just smaller), same paging as Todo's page 1+ once tag count exceeds one
+  // page.
   const meetingRow3 = (
     <View style={[styles.row3, displayType !== 'meeting' && styles.hidden]} onLayout={meetingTagBudget.onRowLayout}>
       <View style={styles.row3ChipsGroup}>
@@ -1750,7 +1720,7 @@ function QuickAddWidget({
     </View>
   );
 
-  // ---- Abbreviation quick-file (feature_abbrev_quick_file, 2026-09-17) ----
+  // ---- Abbreviation quick-file (docs/dev/history/technical-design-abbrev-quick-file.md) ----
   // The one Project/Area a recognized #tag in the CURRENT field's text
   // resolves to, or null - see domain/abbrev.ts's resolveAbbrevFileTarget
   // for the match/status-filter/self-exclude rules. Deliberately derived
@@ -1762,7 +1732,7 @@ function QuickAddWidget({
   // function, since neither submit function is invoked until well after
   // this render has finished assigning it) and Row 4's "File: <Name>" render
   // below (edit mode: taskFields === editFields.fields). Recomputed every
-  // render, same as TagChips already re-deriving extractContextTags(text)
+  // render, same as TagChips re-deriving extractContextTags(text)
   // every render - one array scan over however many Projects/Areas exist,
   // cheap enough to not memoize. `cachedAbbrevItems` itself is declared up
   // above, before Row 2/3, so the tag-display recognizedAbbrevTags Set (see
@@ -1782,7 +1752,7 @@ function QuickAddWidget({
   const abbrevExcludePath = isEditing && editingItemPath !== undefined ? editingItemPath : fixedExcludePath;
   const taskAbbrevTarget = resolveAbbrevFileTarget(taskFields.text, cachedAbbrevItems, abbrevExcludePath);
   const meetingAbbrevTarget = resolveAbbrevFileTarget(meetingFields.title, cachedAbbrevItems, abbrevExcludePath);
-  // Note has no filing concept (feature_standalone_note_quickadd) - never matched.
+  // Note has no filing concept - never matched.
   const abbrevTarget = displayType === 'task' ? taskAbbrevTarget : displayType === 'meeting' ? meetingAbbrevTarget : null;
 
   const abbrevDestination = (target: AbbrevFileMatch): Destination => ({
@@ -1793,17 +1763,15 @@ function QuickAddWidget({
   });
 
   /**
-   * Edit-mode quick-file (feature_abbrev_quick_file, 2026-09-18 bugfix).
-   * Composes the payload exactly the way submitTaskEdit/submitMeetingEdit
-   * compose their own `nextText`/`fields` - flow-state/due tags folded in,
-   * meeting fields validated/normalized - so any OTHER edit made during this
-   * session (text changes, a flow-state/due/time change, a pending linked-
-   * file pick) is carried over to the new location instead of silently
-   * discarded in favor of the last-saved copy (the original bug: `onQuickFile`
-   * used to take only the target, so every caller re-read its own stale
-   * stored task/meeting). The one difference from Save: the matched
-   * abbreviation tag is additionally stripped via `removeTagFromText`, same
-   * as the create-mode submit functions just above.
+   * Edit-mode quick-file. Composes the payload exactly the way
+   * submitTaskEdit/submitMeetingEdit compose their own `nextText`/`fields` -
+   * flow-state/due tags folded in, meeting fields validated/normalized - so
+   * any OTHER edit made during this session (text changes, a flow-state/due/
+   * time change, a pending linked-file pick) is carried over to the new
+   * location instead of being discarded in favor of the last-saved copy. The
+   * one difference from Save: the matched abbreviation tag is additionally
+   * stripped via `removeTagFromText`, same as the create-mode submit
+   * functions just above.
    */
   const handleQuickFile = () => {
     if (!abbrevTarget || !onQuickFile || !editFields) return;
@@ -1816,7 +1784,7 @@ function QuickAddWidget({
       setPending(true);
       onQuickFile(abbrevTarget, {kind: 'task', text: finalText, linkedFile: editFields.fields.linkedFile})
         .then(() => recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags))
-        .catch(e => setError(e instanceof Error ? e.message : String(e)))
+        .catch(e => setError(errorMessage(e)))
         .finally(() => setPending(false));
     } else {
       const result = validateMeetingFields(editFields.fields.title, editFields.fields.date, editFields.fields.time);
@@ -1836,17 +1804,17 @@ function QuickAddWidget({
         linkedFile: editFields.fields.linkedFile,
       })
         .then(() => recordTagsUsed(extractContextTags(trimmedTitle)).then(refreshRecentTags))
-        .catch(e => setError(e instanceof Error ? e.message : String(e)))
+        .catch(e => setError(errorMessage(e)))
         .finally(() => setPending(false));
     }
   };
 
   // ---- Row 4: Actions ----
-  // Row 4 has no status text any more: errors, the "blocked" warning and
-  // the success messages go to the central status slot
-  // (docs/dev/technical-design-status-slot.md §7.3); only a ⚠/✓ mark stays in
-  // place (on the field concerned, or on the Add/Save button). This also
-  // fixes edit mode never showing the widget's own `error` at all.
+  // Row 4 has no status text: errors, the "blocked" warning and the success
+  // messages go to the central status slot
+  // (docs/dev/history/technical-design-status-slot.md §7.3); only a ⚠/✓ mark stays in
+  // place (on the field concerned, or on the Add/Save button), in edit mode
+  // as well as create mode.
   const justAdded = displayType === 'task' ? taskJustAdded : displayType === 'meeting' ? meetingJustAdded : noteJustAdded;
   const successText = isEditing
     ? null
@@ -1868,13 +1836,12 @@ function QuickAddWidget({
 
   const statusId = useRef(`quickadd.${++nextQuickAddInstance}`).current;
   useStatus(`${statusId}.error`, error ? {kind: 'error', text: error, onDismiss: () => setError(null)} : null);
-  useStatus(`${statusId}.blocked`, isEditing && blockedMessage ? {kind: 'warning', text: blockedMessage} : null);
   useStatus(`${statusId}.success`, successText ? {kind: 'success', text: successText, onDismiss: dismissSuccess} : null);
   useStatus(`${statusId}.info`, infoText ? {kind: 'info', text: infoText, onDismiss: () => setMeetingCopyNote(null)} : null);
 
   const buttonMark = errorState && errorState.field === null ? ('warning' as const) : successText ? ('success' as const) : null;
 
-  // ---- Capture: save, buttons, chips (docs/dev/technical-design-lasso-0.8.md §3.9) ----
+  // ---- Capture: save, buttons, chips (docs/dev/history/technical-design-lasso-0.8.md §3.9) ----
   const captureItems = (): string[] =>
     (splitRows ?? [taskDraft.text]).map(t => t.trim()).filter(t => t.length > 0);
   // A typed #ABBR in any item wins over the "File to" choice, as in Quick Add.
@@ -1913,7 +1880,7 @@ function QuickAddWidget({
           captureDestination,
         );
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(errorMessage(e));
         setPending(false);
         return;
       }
@@ -1942,7 +1909,7 @@ function QuickAddWidget({
         saved += 1;
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       // Saved ones are gone from the list; the rest stays for another try.
       if (splitRows && saved > 0) setSplitRows(splitRows.filter(r => r.trim()).slice(saved));
       setError(saved > 0 ? `Saved ${saved} of ${texts.length}. ${message}` : message);
@@ -2093,7 +2060,7 @@ function QuickAddWidget({
   const row4 = isCapture && !isEditing ? captureRow4 : isEditing ? (
     <View style={styles.row4}>
       <View style={styles.actionsLeft}>
-        {/* Icon instead of the word "Delete" (2026-09-21) - frees ~40px in
+        {/* An icon rather than the word "Delete" - frees ~40px in
             this crowded row. Leftmost on purpose and hitSlop 4 (not the 8 the
             text buttons use): delete is one tap with no confirmation, so its
             touch area must not spill into "New from this" next to it. */}
@@ -2185,9 +2152,8 @@ const SPLIT_ROWS_PER_PAGE = 6;
 /** Capture's "File to" full list: items per page behind More…. */
 const FILE_TO_PAGE = 15;
 
-// Row 3 tag paging is width-based since the 2026-09-29 overflow bugfix -
-// the old fixed TASK/MEETING/NOTE_TAG_CAPACITY chip counts are gone; see
-// ui/tagChipLayout.ts and useTagRowBudget above.
+// Row 3 tag paging is width-based - see ui/tagChipLayout.ts and
+// useTagRowBudget above.
 
 const styles = StyleSheet.create({
   card: {
@@ -2228,7 +2194,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  // Custom Select All/Copy/Cut/Paste overlay (Tilman, 2026-09-11) - see
+  // Custom Select All/Copy/Cut/Paste overlay - see
   // taskRow2's comment for the full reasoning. `bottom: '100%'` sits it
   // flush above row2's own top edge without any hardcoded height; `right: 0`
   // keeps it clear of row 1's Todo/Meeting tabs (top-left) instead of
@@ -2277,22 +2243,21 @@ const styles = StyleSheet.create({
   captureDest: {flex: 1, fontSize: FONT.small, fontWeight: '600', marginRight: 8},
   captureBelow: {borderTopWidth: 1, borderTopColor: COLORS.borderLight, marginTop: 10, paddingTop: 8},
   captureLabel: {fontSize: FONT.small, fontWeight: '700', marginBottom: 6, marginTop: 4},
-  /** Meeting Row 3's time field, sized to leave room for TagChips alongside it (see meetingRow3's own comment) - roughly half the old fixed-width field's size, still wide enough for "HH:mm". */
+  /** Meeting Row 3's time field, sized to leave room for TagChips alongside it (see meetingRow3's own comment). */
   timeInputCompact: {
     fontSize: FONT.small,
-    // 70 -> 110 (docs/dev/technical-design-monthly-view.md §5.1): the field now
-    // also takes a range/length - "15:00-16:30" must fit. Tag capacity below
-    // gives back one chip for it.
+    // 110 wide (docs/dev/history/technical-design-monthly-view.md §5.1): the field
+    // also takes a range/length - "15:00-16:30" must fit.
     width: 110,
     marginRight: 6,
   },
-  /** Groups FlowStateChips/time-input with TagChips so the pair flows together on the row's left side, leaving row3's existing space-between to place the attachment cluster (when present) on the right - unchanged from before this feature. */
+  /** Groups FlowStateChips/time-input with TagChips so the pair flows together on the row's left side, leaving row3's space-between to place the attachment cluster (when present) on the right. */
   row3ChipsGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 1,
-    // Safety net (bugfix 2026-09-29): tags can never paint past this group
-    // into the attachment cluster.
+    // Safety net: tags can never paint past this group into the attachment
+    // cluster.
     overflow: 'hidden',
   },
   /** Wraps FlowStateChips / the meeting time field so its width can be measured for the tag budget; never shrinks. */
@@ -2343,7 +2308,7 @@ const styles = StyleSheet.create({
   attachCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    // Never squeezed by the tags (bugfix 2026-09-29); the padding keeps a
+    // Never squeezed by the tags; the padding keeps a
     // visible gap to the last chip and is included in the measured width.
     flexShrink: 0,
     paddingLeft: 8,
@@ -2363,7 +2328,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
-  /** Keeps actionsLeft/actionsRight at the row's two ends - was the status text's slot until the central status slot took it over. */
+  /** Keeps actionsLeft/actionsRight at the row's two ends. */
   centerSpacer: {
     flex: 1,
   },
@@ -2405,7 +2370,7 @@ const styles = StyleSheet.create({
 });
 
 /**
- * Memoized (docs/dev/technical-design-render-perf-ab.md §3 B2): re-renders only
+ * Memoized (docs/dev/history/technical-design-render-perf-ab.md §3 B2): re-renders only
  * when its props change. Call sites pass stable callbacks
  * (ui/useStableCallback.ts); an unstable prop somewhere only means the memo
  * doesn't skip there, never a stale render.

@@ -1,5 +1,5 @@
 /**
- * storage/markStore.ts (docs/dev/technical-design-lasso-0.8.md §3.6): mark
+ * storage/markStore.ts (docs/dev/history/technical-design-lasso-0.8.md §3.6): mark
  * lines are written from the file on disk, one change at a time, and the
  * cache is updated so a later task save keeps them.
  */
@@ -21,11 +21,6 @@ jest.mock('../../src/supernote/fileSystem', () => ({
     mockFiles.set(path, content);
   },
   statFiles: async () => null,
-}));
-jest.mock('../../src/storage/inboxMigration', () => ({
-  migrateInboxIfNeeded: async () => ({kind: 'none'}),
-  effectiveInboxFolderFor: async (paths: {inboxFolder: string}) => paths.inboxFolder,
-  hiddenAreaFolderFor: (paths: {inboxFolder: string}) => paths.inboxFolder,
 }));
 
 import {parseMarksSpan} from '../../src/domain/markdown';

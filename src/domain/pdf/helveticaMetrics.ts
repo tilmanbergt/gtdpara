@@ -6,8 +6,8 @@
  * encode; anything else is printed by the writer as "?" and so measures as
  * "?" here too (see charWidth).
  *
- * Data: Adobe's standard AFM metrics for these fonts (generated 2026-09-28
- * from reportlab's copy of them). docs/dev/technical-design-project-close-out.md
+ * Data: Adobe's standard AFM metrics for these fonts (generated from
+ * reportlab's copy of them). docs/dev/history/technical-design-project-close-out.md
  * §3.2. Pure data, no imports - part of the reusable PDF pipeline.
  */
 
@@ -61,11 +61,6 @@ const QUESTION_MARK = 63;
 export function charWidth(codePoint: number, bold: boolean): number {
   const table = bold ? HELVETICA_BOLD : HELVETICA;
   return table[codePoint] ?? table[QUESTION_MARK];
-}
-
-/** Whether the writer can print this character as-is (otherwise it becomes "?"). */
-export function isWinAnsi(codePoint: number): boolean {
-  return HELVETICA[codePoint] !== undefined;
 }
 
 /** Width of `text` in points at `size` pt. Iterates code points, so an emoji counts as one "?", same as the writer. */

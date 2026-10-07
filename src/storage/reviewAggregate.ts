@@ -22,53 +22,43 @@
  *   Only its length is used, as the hub's count; the step itself is
  *   screens/ReviewWeekAhead.tsx.
  * - stalledProjects: Active projects with zero *actionable* open tasks -
- *   not done, not cancelled, and NOT tagged Someday or Maybe (technical-
- *   design-tags.md's follow-up decision, 2026-09-02: a project whose only
- *   open tasks are all shelved to Someday/Maybe has no real next action
- *   either, so those tasks don't count towards "has open work" any more
- *   than a done or cancelled one does - Waiting For tasks still count,
- *   since they represent real, if blocked, follow-up). Each stalled entry
- *   carries its own next-2-upcoming-meetings (not bounded to the week-ahead
- *   window above - a stalled project's only near-term touchpoint might be
- *   three weeks out, and that's still worth surfacing) AND its own
- *   `shelvedTasks` - the Someday/Maybe tasks that got excluded from the
- *   "is it stalled" check - so the Stalled Projects step can still show
- *   them, with a quick way to promote one to Next right there (the whole
- *   point of not just silently ignoring them).
+ *   not done, not cancelled, and NOT tagged Someday or Maybe (
+ *   technical-design-tags.md: a project whose only open tasks are all shelved to
+ *   Someday/Maybe has no real next action either; Waiting For tasks still
+ *   count, since they represent real, if blocked, follow-up). Each stalled
+ *   entry carries its own next-2-upcoming-meetings (not bounded to the
+ *   week-ahead window above - a stalled project's only near-term touchpoint
+ *   might be three weeks out, and that's still worth surfacing) AND its own
+ *   `shelvedTasks` - the Someday/Maybe tasks excluded from the "is it
+ *   stalled" check - so the Stalled Projects step can still show them, with
+ *   a quick way to promote one to Next right there.
  * - doneProjects: projects at status 'done' - Areas never reach this status
  *   (domain/types.ts's ItemStatus doc comment), so this is projects only.
  * - onHoldItems: Projects AND Areas at status 'on-hold', kind on each entry
  *   distinguishes them - Weekly Review's On Hold step reviews both kinds
- *   together (design decision 2026-09-02).
+ *   together.
  * - neglectedAreas: the Areas counterpart of stalledProjects, same
  *   Someday/Maybe-excluded/shelvedTasks treatment.
- * - unfocusedNextItems (2026-09-10, docs/dev/technical-design-daily-todo-
- *   filter.md; widened 2026-09-16, Tilman feedback): Active Projects AND
- *   Areas, not currently focused *at all* (`domain/destination.ts`'s
- *   `isFocused` - neither daily, weekly NOR monthly - monthly added
- *   2026-09-28, docs/dev/technical-design-review-monthly-focus.md §1), that have at least one open
- *   #next task WITHOUT a due date - the items whose #next work just went
- *   quiet everywhere once storage/dailyAggregate.ts's own rule narrowed to
- *   require daily-or-weekly focus for a #next task to show there. Originally
- *   this only checked *daily* focus (weekly-focused items still counted as
- *   "unfocused" here), but that read a weekly-focused item's #next task as
- *   still going unseen when in fact storage/weeklyAggregate.ts's own focus
- *   cards already surface a count for it on the Week view - matching
- *   storage/dailyAggregate.ts's now-widened daily-or-weekly `isFocused` leg
- *   keeps the two files' notion of "focused enough to not need flagging"
- *   in sync. A #next task that already carries a due date is excluded here
- *   (2026-09-16, Tilman feedback) - it's not actually quiet:
- *   storage/dailyAggregate.ts's own `isDueSoonOrOverdue` check means it'll
- *   surface on Daily on its own once due, so flagging it here too would be
- *   noise; the review step is for tasks with no other route back onto
- *   Daily's radar. Each entry carries its own nextTasks (nextTasksFor below)
- *   so the "Unfocused next items" review step can offer per-task Someday/
- *   Maybe/Done/Cancel/Set-due-date actions plus a whole-item "Add to Daily/
- *   Weekly focus" action. Can never overlap with stalledProjects/
- *   neglectedAreas: those require *zero* actionable open tasks, and a
- *   #next task always counts as actionable (isActionableOpenTask only
- *   excludes Someday/Maybe).
- * - meetingsToClose (docs/dev/technical-design-meeting-tracking.md): meetings whose
+ * - unfocusedNextItems (docs/dev/history/technical-design-daily-todo-filter.md,
+ *   docs/dev/history/technical-design-review-monthly-focus.md §1): Active Projects
+ *   AND Areas, not currently focused *at all* (`domain/destination.ts`'s
+ *   `isFocused` - neither daily, weekly NOR monthly), that have at least one
+ *   open #next task WITHOUT a due date - the items whose #next work is
+ *   otherwise quiet, since storage/dailyAggregate.ts shows a #next task
+ *   only for a daily- or weekly-focused item. Weekly-focused items don't
+ *   count as unfocused: storage/weeklyAggregate.ts's focus cards already
+ *   surface a count for them on the Week view. A #next task that already carries a due date is
+ *   excluded - it's not actually quiet: storage/dailyAggregate.ts's own
+ *   `isDueSoonOrOverdue` check means it'll surface on Daily on its own once
+ *   due, so flagging it here too would be noise; the review step is for
+ *   tasks with no other route back onto Daily's radar. Each entry carries
+ *   its own nextTasks (nextTasksFor below) so the "Unfocused next items"
+ *   review step can offer per-task Someday/Maybe/Done/Cancel/Set-due-date
+ *   actions plus a whole-item "Add to Daily/Weekly focus" action. Can never
+ *   overlap with stalledProjects/neglectedAreas: those require *zero*
+ *   actionable open tasks, and a #next task always counts as actionable
+ *   (isActionableOpenTask only excludes Someday/Maybe).
+ * - meetingsToClose (docs/dev/history/technical-design-meeting-tracking.md): meetings whose
  *   Tag Rule tracks "review after", that are over, not yet `#reviewed`, and
  *   within the last REVIEW_LOOKBACK_DAYS. The predicate is domain/
  *   meetingTracking.ts's `isReviewOutstanding` - the same resolution the Daily
@@ -80,7 +70,7 @@ import {isFocused} from '../domain/destination';
 import {countMeetingsInRange} from '../domain/meetingSpan';
 import {meetingTimestampMs, splitAndSortMeetings} from '../domain/meetingTime';
 import {isReviewOutstanding} from '../domain/meetingTracking';
-import {NoteCreationDefinition} from '../domain/noteTemplate';
+import {TagRule} from '../domain/tagRules';
 import {ReviewStepId} from '../domain/reviewSteps';
 import {Meeting, Task} from '../domain/types';
 import {weekAheadRangeIso} from '../domain/weekDate';
@@ -133,7 +123,7 @@ export interface ReviewAggregate {
   doneProjects: ReviewItemRef[];
   onHoldItems: ReviewItemRef[];
   neglectedAreas: ReviewProjectEntry[];
-  /** Active Projects/Areas, not focused at all (neither daily nor weekly), with ≥1 open #next task that has no due date yet - see the module doc comment's "unfocusedNextItems" note. */
+  /** Active Projects/Areas, not focused at all (not daily, weekly or monthly), with ≥1 open #next task that has no due date yet - see the module doc comment's "unfocusedNextItems" note. */
   unfocusedNextItems: ReviewUnfocusedNextEntry[];
   /** Past meetings still owing their tracked review, most recent first - see the module doc comment's "meetingsToClose" note. */
   meetingsToClose: ReviewMeetingEntry[];
@@ -153,11 +143,10 @@ function nextUpcomingMeetings(item: ReviewItemRef, meetings: Meeting[], now: Dat
 
 /**
  * Not done, not cancelled, and not shelved to Someday/Maybe - see the
- * module doc comment. Exported (2026-09-02 feedback) so
- * screens/ReviewScreen.tsx can apply the exact same "does this count as
- * open work" rule when it live-recomputes a frozen Stalled/Neglected
- * card's task list against the current cache, instead of drifting from
- * this file's own definition.
+ * module doc comment. Exported so screens/ReviewScreen.tsx can apply the
+ * exact same "does this count as open work" rule when it live-recomputes a
+ * frozen Stalled/Neglected card's task list against the current cache,
+ * instead of drifting from this file's own definition.
  */
 export function isActionableOpenTask(task: Task): boolean {
   return !task.done && !task.cancelled && task.flowState !== 'someday' && task.flowState !== 'maybe';
@@ -178,14 +167,13 @@ export function shelvedTasksFor(item: ReviewItemRef, tasks: Task[]): ReviewShelv
 
 /**
  * This item's own open (#next, not done, not cancelled), NOT-YET-DUE tasks -
- * the set the "Unfocused next items" review step (2026-09-10, due-date
- * exclusion added 2026-09-16) surfaces per item. A task that already has a
- * due date is excluded - see this module's own doc comment's
- * "unfocusedNextItems" note for why - so setting one on a task from that
- * review step (screens/ReviewScreen.tsx's handleSetTaskDueDate) is exactly
- * how a task leaves this list without being Someday/Maybe/Done/Cancelled:
- * it's the same live recompute that already drops a task the moment it's
- * resolved, now also dropping one the moment it's scheduled. Exported so
+ * the set the "Unfocused next items" review step surfaces per item. A task
+ * that already has a due date is excluded - see this module's own doc
+ * comment's "unfocusedNextItems" note for why - so setting one on a task from
+ * that review step (screens/ReviewScreen.tsx's handleSetTaskDueDate) is
+ * exactly how a task leaves this list without being Someday/Maybe/Done/
+ * Cancelled: the same live recompute that drops a task the moment it's
+ * resolved also drops one the moment it's scheduled. Exported so
  * ReviewScreen.tsx can recompute a frozen card's task list live against the
  * current cache, same reason isActionableOpenTask/shelvedTasksFor are
  * exported.
@@ -200,7 +188,7 @@ export function nextTasksFor(item: ReviewItemRef, tasks: Task[]): ReviewNextTask
 export function buildReviewAggregate(
   items: CachedItem[],
   now: Date = new Date(),
-  definitions: NoteCreationDefinition[] = [],
+  definitions: TagRule[] = [],
 ): ReviewAggregate {
   const week = weekAheadRangeIso(now);
 
@@ -284,7 +272,7 @@ export interface ReviewStepCount {
 }
 
 /**
- * The Review hub's per-step numbers (docs/dev/technical-design-review-hub.md
+ * The Review hub's per-step numbers (docs/dev/history/technical-design-review-hub.md
  * §5.2) - "how much is waiting in there", live from the same aggregate the
  * steps themselves read, so the hub and a step can never disagree about
  * membership (the steps' own frozen snapshots only affect what stays visible
@@ -329,8 +317,8 @@ export function buildReviewStepCounts(
     neglected: {n: aggregate.neglectedAreas.length},
     unfocusedNext: {n: aggregate.unfocusedNextItems.reduce((sum, entry) => sum + entry.nextTasks.length, 0)},
     // "Focus reset" (id kept as 'weeklyFocus' - see domain/reviewSteps.ts)
-    // sets weekly AND monthly focus since 2026-09-28, so its "N of M" counts
-    // both levels' filled slots against both levels' limits.
+    // sets weekly AND monthly focus, so its "N of M" counts both levels'
+    // filled slots against both levels' limits.
     weeklyFocus: {
       n: items.filter(item => item.weeklyFocus).length + items.filter(item => item.monthlyFocus).length,
       of:

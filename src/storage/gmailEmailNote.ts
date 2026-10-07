@@ -1,9 +1,9 @@
 /**
- * "Link email as note" (docs/dev/technical-design-gmail-email-note.md): writes an
+ * "Link email as note" (docs/dev/history/technical-design-gmail-email-note.md): writes an
  * email's Subject/From/Date header plus its full text into a multi-page .note
  * under `<Resources>/Gmail/<date> <subject>.note` and hands back the
- * base-relative `linkedFile` string for the Task/Meeting. Replaces the old
- * `.txt` writer (saveGmailEmailAsFile) - the device cannot open a .txt via
+ * base-relative `linkedFile` string for the Task/Meeting. A .note rather
+ * than a .txt because the device cannot open a .txt via
  * PluginFileAPI.openFile, a .note it can.
  */
 import {buildEmailNoteText, EMAIL_NOTE_MAX_PAGES, EMAIL_NOTE_TRUNCATION_NOTICE, emailNoteBaseName} from '../domain/emailNote';

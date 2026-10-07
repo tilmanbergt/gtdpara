@@ -1,5 +1,5 @@
 /**
- * The Month view's left column (docs/dev/technical-design-monthly-view.md §5.8):
+ * The Month view's left column (docs/dev/history/technical-design-monthly-view.md §5.8):
  * one fixed row per calendar day, every row an equal `flex:1` share of the
  * bounded box it's given (flex-weight stacking, docs/dev/technical-design-flex-
  * weight-stacking.md) - on the A5X that's ~50px per row for 31 days, so no

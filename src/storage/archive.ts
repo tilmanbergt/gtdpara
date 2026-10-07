@@ -1,6 +1,6 @@
 /**
  * Archiving a Project/Area (technical-design-status-archive.md §5; target
- * layout since 2026-09-28: docs/dev/technical-design-project-close-out.md §5.1 -
+ * layout: docs/dev/history/technical-design-project-close-out.md §5.1 -
  * Archive/<year>/[<Area>/]<Project>/ for Projects, Archive/<year>/<Area>/
  * merged for Areas, plus an `archivedAt:` date): the one
  * action that moves the folder out of Projects/Areas and into Archive/ AND
@@ -18,13 +18,14 @@
  */
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
 import {assignedProjects} from './areaAssignment';
-import {CachedItem, FrontMatterSource, frontMatterOf, removeCachedItem, resolveLivePaths} from './dataCache';
+import {CachedItem, FrontMatterSource, frontMatterOf, removeCachedItem} from './dataCache';
 import {moveMarksToInbox} from './markStore';
 import {saveFrontMatter} from './projectFile';
 import {deleteEmptyFolder, displayPath, folderExists, moveFolder, moveFolderMerge} from '../supernote/fileSystem';
 import {areaArchiveTarget, archiveYear, projectArchiveTargets} from '../domain/closeOut/archivePaths';
 import {isoDate, readLifecycleDate, writeLifecycleDate} from '../domain/lifecycleDates';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 /**
  * Moves `item`'s folder into its year/area archive folder (archiveTargetsFor
@@ -32,7 +33,7 @@ import {log, logError} from '../utils/log';
  * before anything moves if a name collides), then stamps
  * `status: archived` (and clears both focus flags, same as any other
  * status change) into the file at its *new* location, then drops the item
- * from the cross-project cache since it's no longer under Projects/Areas.
+ * from the cross-project cache since it now lives outside Projects/Areas.
  *
  * Ordering matters: the physical move happens first, so if the frontmatter
  * write in step 2 fails, the folder is still correctly out of Projects/
@@ -83,7 +84,7 @@ export function describeAreaArchiveBlock(areaName: string): string | null {
 }
 
 /**
- * Archive targets for `item` today (docs/dev/technical-design-project-close-out.md
+ * Archive targets for `item` today (docs/dev/history/technical-design-project-close-out.md
  * §5.1): a Project goes to Archive/<doneAt year>/[<Area>/]<name>/, an Area to
  * Archive/<this year>/<name>/ (merged). Exported for the close-out wizard,
  * which shows these paths before anything moves.
@@ -106,7 +107,7 @@ export function archiveTargetsFor(
  * True when archiving `item` will MERGE into an archive folder that already
  * exists - the only case that leaves an empty source folder behind. Callers
  * use it to name that folder in the confirmation text before archiving
- * (docs/dev/technical-design-inkhub-submission.md §3.4/§3.8).
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.4/§3.8).
  */
 export async function archiveLeavesEmptyFolder(
   item: Pick<CachedItem, 'kind' | 'name'> & FrontMatterSource,
@@ -152,12 +153,12 @@ export async function archiveItem(
   // Marks lines cleared) is what the status stamp below builds on.
   let rawContent = item.rawContent;
   try {
-    const {inboxFolder} = await resolveLivePaths(settings);
+    const {inboxFolder} = resolvePaths(settings);
     const {itemContent} = await moveMarksToInbox({kind: item.kind, folder: item.path}, toPath, inboxFolder);
     if (itemContent !== null) rawContent = itemContent;
   } catch (e) {
     // Nothing moved yet: stop here rather than archive marks out of sight.
-    throw new Error(`Could not move the open marks to the Inbox: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(`Could not move the open marks to the Inbox: ${errorMessage(e)}`);
   }
   let keptEmptyFolder: string | null = null;
   if (merge) {
@@ -172,7 +173,7 @@ export async function archiveItem(
           deleted = await deleteEmptyFolder(item.path, reason);
         } catch (e) {
           // The move itself succeeded - a failed clean-up must not turn the archive into an error.
-          logError('archiveItem: deleting the empty source folder failed', item.path, e instanceof Error ? e.message : String(e));
+          logError('archiveItem: deleting the empty source folder failed', item.path, errorMessage(e));
         }
       }
       if (!deleted) {
@@ -200,7 +201,7 @@ export async function archiveItem(
     logError(
       'archiveItem: folder moved but stamping status failed',
       toPath,
-      e instanceof Error ? e.message : String(e),
+      errorMessage(e),
     );
   }
 

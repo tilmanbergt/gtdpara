@@ -1,6 +1,6 @@
 /**
  * What happens to a todo's or meeting's note when the entry moves to another
- * Project, Area or the Inbox (docs/dev/technical-design-files-0.6.md §3.4).
+ * Project, Area or the Inbox (docs/dev/history/technical-design-files-0.6.md §3.4).
  * Pure: the caller has already classified the stored notePath
  * (storage/noteLinks.ts's classifyNotePath, which checks the disk).
  *

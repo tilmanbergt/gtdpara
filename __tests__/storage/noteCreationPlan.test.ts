@@ -1,4 +1,4 @@
-// docs/dev/technical-design-split-by-tag.md §3.4 / §3.5: what a note-icon tap
+// docs/dev/history/technical-design-split-by-tag.md §3.4 / §3.5: what a note-icon tap
 // plans, what it asks to confirm, and that ✕ writes nothing. Device APIs are
 // replaced by an in-memory file list.
 
@@ -54,7 +54,7 @@ jest.mock('../../src/supernote/noteElements', () => ({buildTextboxElement: jest.
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
-import {createEmptyDefinition, NoteCreationDefinition} from '../../src/domain/noteTemplate';
+import {createEmptyTagRule, TagRule} from '../../src/domain/tagRules';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
 import {Meeting, Task} from '../../src/domain/types';
 import {deriveMeetingFields, deriveTaskFields} from '../../src/domain/markdown';
@@ -64,9 +64,9 @@ import * as fs from '../../src/supernote/fileSystem';
 
 const AREA = '/storage/emulated/0/Note/2 Areas/Coaching';
 
-function coachingRule(extra: Partial<NoteCreationDefinition> = {}): NoteCreationDefinition {
+function coachingRule(extra: Partial<TagRule> = {}): TagRule {
   return {
-    ...createEmptyDefinition('1', 'meeting'),
+    ...createEmptyTagRule('1', 'meeting'),
     name: 'Coaching',
     tags: ['coaching'],
     enabled: true,
@@ -77,8 +77,8 @@ function coachingRule(extra: Partial<NoteCreationDefinition> = {}): NoteCreation
   };
 }
 
-function settingsWith(rules: NoteCreationDefinition[]): GtdParaSettings {
-  return {...DEFAULT_SETTINGS, noteCreationDefinitions: rules};
+function settingsWith(rules: TagRule[]): GtdParaSettings {
+  return {...DEFAULT_SETTINGS, tagRules: rules};
 }
 
 function meeting(title: string, date = '2026-10-02', notePath = ''): Meeting {
@@ -91,7 +91,13 @@ function task(text: string, notePath = ''): Task {
 
 function recorder(answer: boolean) {
   const plans: NoteCreationPlan[] = [];
-  return {plans, confirm: async (plan: NoteCreationPlan) => (plans.push(plan), answer)};
+  return {
+    plans,
+    confirm: async (plan: NoteCreationPlan) => {
+      plans.push(plan);
+      return answer;
+    },
+  };
 }
 
 beforeEach(() => {

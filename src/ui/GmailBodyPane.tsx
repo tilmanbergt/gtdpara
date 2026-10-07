@@ -1,17 +1,17 @@
 /**
- * The Gmail inbox review step's email-text pane (2026-09-21,
- * docs/dev/technical-design-gmail-body-select.md): a fixed action bar - All /
+ * The Gmail inbox review step's email-text pane
+ * (docs/dev/history/technical-design-gmail-body-select.md): a fixed action bar - All /
  * Copy / -> Todo / -> Meeting - over the email text, which fills all the
  * remaining height of the detail panel and scrolls inside it. This is the ONE
- * deliberate exception to the app-wide no-scroll policy (Tilman, 2026-09-21):
- * an email has no useful page size, and the rest of the panel needs to stay
- * put while reading it.
+ * deliberate exception to the app-wide no-scroll policy: an email has no
+ * useful page size, and the rest of the panel needs to stay put while
+ * reading it.
  *
  * Why the text is a read-only multiline `TextInput` and not a `<Text
  * selectable>`: Android's native selection toolbar (Copy/Cut/Select-all) never
  * appears inside Supernote's plugin-host window (domain/clipboardText.ts's
- * module doc comment, bugfix 2026-09-11) - a selectable Text would let the user
- * select and then offer nothing to do with the selection. A TextInput gives the
+ * module doc comment) - a selectable Text would let the user select and then
+ * offer nothing to do with the selection. A TextInput gives the
  * same word-select/handle behavior AND reports the selection range through
  * `onSelectionChange`, which is what the bar's buttons act on. It is kept
  * read-only by being fully controlled (`value` never changes, `onChangeText`
@@ -21,8 +21,8 @@
  *
  * The selection lives in a ref (`selectionRef`), never state - see
  * domain/clipboardText.ts's `Selection` doc comment (a setState on every
- * onSelectionChange broke native selection in 2026-09-11's bugfix). The one
- * piece of selection-derived state is the boolean `hasSelection`, which drives
+ * onSelectionChange breaks native selection). The one piece of
+ * selection-derived state is the boolean `hasSelection`, which drives
  * the bar's enabled/greyed look: React bails out of a setState with an
  * unchanged primitive, so it re-renders only when the selection flips between
  * empty and non-empty - not on every handle drag - and only THIS small
@@ -33,8 +33,8 @@
  * onSelectionChange, same mechanism ui/ClipboardTextInput.tsx uses).
  *
  * Without a selection Copy / -> Todo / -> Meeting are greyed out and do
- * nothing (Tilman's decision, 2026-09-21) - there is deliberately no "whole
- * email" fallback for them; that is what "All" is for.
+ * nothing - there is deliberately no "whole email" fallback for them; that
+ * is what "All" is for.
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';

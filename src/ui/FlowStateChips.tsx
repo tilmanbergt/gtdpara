@@ -13,18 +13,15 @@
  * null) - StatusSection always has exactly one value selected, flow-state
  * doesn't require one.
  *
- * (Bonus opportunity, not pursued here: StatusSection could eventually be
- * rebuilt on this same chip primitive - noted, not required for this
- * feature, to avoid putting the already-shipped Status feature at risk over
- * an unrelated refactor.)
+ * StatusSection could be rebuilt on this same chip primitive; that refactor
+ * is deliberately left out to avoid putting the Status feature at risk.
  *
- * Compact row (2026-09-07 feedback): "Waiting For" was the one label wide
- * enough to force this row (plus ui/TaskQuickAdd.tsx's due-date field
- * alongside it) onto two lines at column (half) width - abbreviated to
- * "w/f" rather than switched to icons, since Next/Someday/Maybe were
- * already short enough. `row` no longer wraps - now that all four labels
- * are short, wrapping would only hide a fit problem instead of solving it,
- * and TaskQuickAdd needs this to stay one line to sit beside the due field.
+ * Compact row: "Waiting For" is abbreviated to "w/f" (rather than switched
+ * to icons, since Next/Someday/Maybe are already short enough) so this row
+ * plus ui/TaskQuickAdd.tsx's due-date field alongside it fits one line at
+ * column (half) width. `row` doesn't wrap - with all four labels short,
+ * wrapping would only hide a fit problem instead of solving it, and
+ * TaskQuickAdd needs this to stay one line to sit beside the due field.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -58,7 +55,7 @@ export default function FlowStateChips({value, onChange, textColor, borderColor,
             disabled={disabled}
             onPress={() => onChange(selected ? null : option.value)}
             hitSlop={8}>
-            <Text style={[styles.chipText, {color: selected ? '#ffffff' : textColor}]}>{option.label}</Text>
+            <Text style={[styles.chipText, {color: selected ? COLORS.accentText : textColor}]}>{option.label}</Text>
           </Pressable>
         );
       })}

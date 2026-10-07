@@ -1,5 +1,5 @@
 /**
- * The Week screen's body (docs/dev/technical-design-meeting-lists.md §2.9) -
+ * The Week screen's body (docs/dev/history/technical-design-meeting-lists.md §2.9) -
  * everything below the "‹ Week 40 · 2026 ›" header, extracted from
  * screens/WeekView.tsx so the Review's "week ahead" step can show exactly the
  * same screen (design §4.6).
@@ -9,8 +9,7 @@
  * - Right: Quick Add on top, then EITHER the shared day panel
  *   (ui/DayMeetingsPanel.tsx, after tapping a chip or a day header) OR the
  *   weekly focus panel / goal history - the same pattern as the Month view.
- *   The old "Focus" label above Quick Add is gone so Week and Month line up
- *   (decided 2026-09-29).
+ *   No "Focus" label above Quick Add, so Week and Month line up.
  *
  * All state and actions come from screens/usePlanningScreen.ts, which the
  * host screen owns (it also owns loading/refresh) and passes in.
@@ -78,7 +77,7 @@ export default function WeekPlanner({
   const {items, settings, inboxPath, paths, inbox, editingKey, selectedDate} = planning;
   const [leftTabState, setLeftTab] = useState<LeftTab>('meetings');
   // Google tabs only while the experimental Google Calendar integration is on
-  // (docs/dev/technical-design-about-debug-experimental.md §3.2).
+  // (docs/dev/history/technical-design-about-debug-experimental.md §3.2).
   const features = useFeatures();
   const left = visibleTabs(LEFT_TABS, leftTabState, 'google', features.googleCalendar);
   const leftTab = left.activeKey;
@@ -90,7 +89,7 @@ export default function WeekPlanner({
   const isCurrentWeek = weekOffset === 0;
   const canEditFocus = canEditPeriod('weekly', weekOffset);
 
-  // Memoized on their real inputs (docs/dev/technical-design-render-perf-ab.md
+  // Memoized on their real inputs (docs/dev/history/technical-design-render-perf-ab.md
   // §3 B4); `todayDate` keeps "today"-dependent parts fresh over midnight.
   const todayDate = todayIso();
   const aggregate = useMemo(
@@ -136,7 +135,7 @@ export default function WeekPlanner({
   ];
 
   // Stable props for the React.memo'd QuickAddWidget/PeriodFocusPanel
-  // (docs/dev/technical-design-render-perf-ab.md §3 B2) - all only called from
+  // (docs/dev/history/technical-design-render-perf-ab.md §3 B2) - all only called from
   // their event handlers; presence conditions stay at the call sites.
   const stableIsMeetingDateVisible = useStableCallback((date: string) => date >= weekStart && date <= weekEnd);
   const stableSaveEditMeeting = useStableCallback((fields: MeetingQuickAddFields, nextLinkedFile: string) =>

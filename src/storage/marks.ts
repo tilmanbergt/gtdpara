@@ -1,6 +1,6 @@
 /**
  * "Mark for later" - the flow behind the lasso toolbar's Mark button
- * (docs/dev/technical-design-lasso-0.8.md §3.6). It runs from index.js
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.6). It runs from index.js
  * without any gtdpara screen (`showType: 0`), so it never relies on the
  * data cache being there.
  *
@@ -15,7 +15,7 @@
  * The outcome is silent when everything worked. Otherwise it is kept in
  * `markOutcome` for App's small result screen (opened via showPluginView).
  */
-import {findEnclosingItem} from '../domain/settings';
+import {findEnclosingItem, resolvePaths} from '../domain/settings';
 import {isEmptyLasso, readLasso, saveLassoPreview} from '../supernote/lassoRead';
 import {setLassoBoxState} from '../supernote/lasso';
 import {changeMarkIcon, insertBookmark} from '../supernote/markIcons';
@@ -24,7 +24,7 @@ import {collectOpenMarks, MARK_DATA_VERSION, markCreatedAt, markOwner, MarkScope
 import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import {Mark} from '../domain/types';
 import {log, logError, logWarn} from '../utils/log';
-import {findCachedItem, getCachedData, getCachedInbox, resolveLivePaths} from './dataCache';
+import {findCachedItem, getCachedData, getCachedInbox} from './dataCache';
 import {
   addPendingIconChange,
   cleanOrphanedMarkData,
@@ -40,6 +40,7 @@ import {
 import {addMarkLine, markFileRef, markNotePathFor, removeMarkLine} from './markStore';
 import {dataFilePath} from './projectFile';
 import {loadSettings} from './settingsStorage';
+import {errorMessage} from '../utils/errorMessage';
 
 export type MarkOutcome =
   | {kind: 'saved'; id: string}
@@ -81,7 +82,7 @@ let running = false;
 
 async function ownerFor(absNotePath: string) {
   const settings = await loadSettings();
-  const paths = await resolveLivePaths(settings);
+  const paths = resolvePaths(settings);
   const enclosing = findEnclosingItem(paths, absNotePath);
   let exists = false;
   if (enclosing) {
@@ -123,7 +124,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
     try {
       await setLassoBoxState(2);
     } catch (e) {
-      logWarn('marks: removing the lasso failed', e instanceof Error ? e.message : String(e));
+      logWarn('marks: removing the lasso failed', errorMessage(e));
     }
 
     const icon = snap.rect ? await insertBookmark(page, snap.rect, id) : null;
@@ -168,7 +169,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
     }
     return {kind: 'saved', id};
   } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e);
+    const detail = errorMessage(e);
     logError('marks: saving failed', id, detail);
     // Not saved: take back what is already there.
     if (iconPlaced && path && page != null) {await changeMarkIcon({id, path, page}, 'remove', path);}
@@ -194,7 +195,7 @@ export async function retryBookmark(id: string): Promise<boolean> {
   return icon.placed;
 }
 
-// ---- processing marks (docs/dev/technical-design-lasso-0.8.md §3.7, §3.8, §3.10) ----
+// ---- processing marks (docs/dev/history/technical-design-lasso-0.8.md §3.7, §3.8, §3.10) ----
 
 /** Open marks in `scope`, from the cache (empty while there is none). */
 export function listOpenMarks(scope: MarkScope): OpenMark[] {
@@ -223,7 +224,7 @@ export async function recognizeMark(open: OpenMark): Promise<RecognitionResult &
     try {
       await writeMarkData({...data, recognizedText: result.text});
     } catch (e) {
-      logWarn('marks: keeping recognized text failed', open.mark.id, e instanceof Error ? e.message : String(e));
+      logWarn('marks: keeping recognized text failed', open.mark.id, errorMessage(e));
     }
   }
   return {...result, missing: false};
@@ -245,7 +246,7 @@ export interface FinishResult {
  */
 export async function finishMark(open: OpenMark, change: 'done' | 'remove', currentPath: string | null): Promise<FinishResult> {
   const cache = getCachedData();
-  const inboxFolder = cache?.paths.inboxFolder ?? (await resolveLivePaths(await loadSettings())).inboxFolder;
+  const inboxFolder = cache?.paths.inboxFolder ?? resolvePaths(await loadSettings()).inboxFolder;
   const removed = await removeMarkLine(markFileRef(open.owner, {inboxFolder}), open.mark.id);
   const icon = await changeMarkIcon({id: open.mark.id, path: open.absPath, page: open.mark.page}, change, currentPath);
   if (!icon.ok && icon.retry) {
@@ -273,7 +274,7 @@ export async function runPendingIconChanges(currentPath: string | null): Promise
     }
     if (left.length !== pending.length) await writePendingIconChanges(left);
   } catch (e) {
-    logWarn('marks: pending icon changes failed', e instanceof Error ? e.message : String(e));
+    logWarn('marks: pending icon changes failed', errorMessage(e));
   }
 }
 
@@ -284,7 +285,7 @@ export async function cleanMarkDataOrphans(): Promise<void> {
     const open = new Set(listOpenMarks({type: 'all'}).map(m => m.mark.id));
     await cleanOrphanedMarkData(open);
   } catch (e) {
-    logWarn('marks: orphan cleanup failed', e instanceof Error ? e.message : String(e));
+    logWarn('marks: orphan cleanup failed', errorMessage(e));
   }
 }
 

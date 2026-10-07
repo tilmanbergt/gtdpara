@@ -1,5 +1,5 @@
 // Bundles the user guide (docs/user/*.md) for the in-app help.
-// Design: docs/dev/technical-design-in-app-help.md §3.1. Pure: no file access here.
+// Design: docs/dev/history/technical-design-in-app-help.md §3.1. Pure: no file access here.
 
 /** First `# ` heading of a page, or the fallback. */
 export function pageTitle(markdown, fallback) {

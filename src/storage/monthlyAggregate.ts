@@ -152,12 +152,12 @@ function meetingsOnDayImpl(
   return out.sort(byDayOrder);
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see buildMonthlyAggregateImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see buildMonthlyAggregateImpl above for the actual logic. */
 export function buildMonthlyAggregate(...args: Parameters<typeof buildMonthlyAggregateImpl>): ReturnType<typeof buildMonthlyAggregateImpl> {
   return perfTime('agg:monthly', () => buildMonthlyAggregateImpl(...args));
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see meetingsOnDayImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see meetingsOnDayImpl above for the actual logic. */
 export function meetingsOnDay(...args: Parameters<typeof meetingsOnDayImpl>): ReturnType<typeof meetingsOnDayImpl> {
   return perfTime('agg:meetingsOnDay', () => meetingsOnDayImpl(...args));
 }

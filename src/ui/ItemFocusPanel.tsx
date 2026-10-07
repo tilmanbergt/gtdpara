@@ -1,64 +1,48 @@
 /**
- * Scope + Focus (Daily/Weekly focus checkboxes + the weekly-goal line) -
- * the Current tab's left pane, pinned to the very TOP of the column
- * (2026-09-13, Tilman: "move now the focus selection and display to the
- * top of that column, above the file panel"), above Files. Split out of
- * ui/ItemStatusPanel.tsx, which used to render the Focus section itself
- * (2026-09-09 through 2026-09-13) directly above Archive at the BOTTOM of
- * the column - once Focus needed a screen position on the opposite side
- * of Files from Status/Archive/Assign-to-Area, one component could no
- * longer render both, so this became its own file.
+ * Scope + Focus (Daily/Weekly/Monthly focus checkboxes + the goal lines) -
+ * the Current tab's left pane, pinned to the very TOP of the column, above
+ * Files. ui/ItemStatusPanel.tsx (Status/Archive/Assign-to-Area) sits on the
+ * other side of Files, so this is a separate component.
  *
  * Same "extract, don't lift" independent-load pattern ui/ItemStatusPanel.tsx's
- * own module doc comment documents (and screens/ItemDetail.tsx's own
- * `resourceFolderState` already independently duplicates much of the same
- * item state for its own unrelated purpose) - this component does its own
- * small `ensureItemCached` load rather than sharing state with
- * ItemStatusPanel, synchronized only through the shared cache +
- * write-through, same as every other section on this
- * screen. The one accepted consequence: changing Status in the (separate)
- * ItemStatusPanel at the bottom of the column - which itself clears both
- * focus flags when moving off Active - won't visibly greyout/uncheck the
- * Focus section here until the next refresh (manual 🔄, or this screen
- * remounting), same eventual-consistency window every other pair of
- * independently-loaded sections on this screen already has. Scope is
- * never affected by status either way (see below).
+ * module doc comment documents: this component does its own small
+ * `ensureItemCached` load rather than sharing state with ItemStatusPanel,
+ * synchronized only through the shared cache + write-through, same as every
+ * other section on this screen. The accepted consequence: changing Status in
+ * ItemStatusPanel - which clears the focus flags when moving off Active -
+ * won't visibly grey out/uncheck the Focus section here until the next
+ * refresh (manual 🔄, or this screen remounting), the same
+ * eventual-consistency window every other pair of independently-loaded
+ * sections on this screen has. Scope is never affected by status.
  *
- * Scope (docs/dev/technical-design-item-scope.md, 2026-09-14): a new "Scope"
- * section rendered ABOVE the existing "Focus" section, in the same
- * top-of-column block and the same load - added here rather than as a
- * new standalone component because it needs to sit immediately above
- * Focus (no positional conflict the way Focus vs. Status/Archive had),
- * so a fourth independently-loaded panel on this screen would just
- * duplicate this component's own load/error-state boilerplate for no
- * reason. A short (1-3 sentence, not length-limited) free-text
- * description of what this Project/Area is about, tap-to-edit like the
- * goal row below it, but - unlike Focus - never gated by item status:
- * Scope is descriptive metadata, not an actionable pick, so it stays
- * editable regardless of Active/On Hold/Done. Stored in the `## Scope`
- * file span (domain/markdown.ts's parseScopeSpan/writeScopeIntoContent),
- * which `ensureSkeleton` now scaffolds (empty) into every newly-created
- * Project/Area, specifically so it's already there to type into directly
- * from Obsidian.
+ * Scope (docs/dev/history/technical-design-item-scope.md): rendered ABOVE "Focus" in
+ * the same block and the same load, so a separate panel would only duplicate
+ * this component's load/error-state boilerplate. A short (1-3 sentence, not
+ * length-limited) free-text description of what this Project/Area is about,
+ * tap-to-edit like the goal rows, but - unlike Focus - never gated by item
+ * status: Scope is descriptive metadata, not an actionable pick. Stored in
+ * the `## Scope` file span (domain/markdown.ts's
+ * parseScopeSpan/writeScopeIntoContent), which `ensureSkeleton` scaffolds
+ * (empty) into every newly-created Project/Area, so it's already there to
+ * type into directly from Obsidian.
  *
- * Weekly goal (docs/dev/technical-design-item-goal-display.md, 2026-09-13):
- * below the two checkboxes, one line shows this item's most-recently-set
- * goal - the entry with the latest ISO week key in `weeklyGoals[]`. If that
- * week is the real current week, it's shown plain; otherwise it's labeled
- * "Last goal (Week NN): ..." and shown regardless of whether this item is
- * currently weekly-focused (goal-driven, not focus-driven, matching
- * storage/weeklyAggregate.ts's own findWeeklyGoalsForWeek/
+ * Weekly goal (docs/dev/history/technical-design-item-goal-display.md): below the
+ * checkboxes, one line shows this item's most-recently-set goal - the entry
+ * with the latest ISO week key in `weeklyGoals[]`. If that week is the real
+ * current week, it's shown plain; otherwise it's labeled "Last goal (Week
+ * NN): ..." and shown regardless of whether this item is currently
+ * weekly-focused (goal-driven, not focus-driven, matching
+ * storage/weeklyAggregate.ts's findWeeklyGoalsForWeek/
  * WeeklyGoalsHistoryPanel rule). Tapping it always edits *this week's* goal
- * (isoWeekKey(new Date()), never whichever other week's text happens to be
- * showing), with the draft pre-filled from whatever was displayed -
- * carrying an old goal's wording forward into this week is one edit. No
- * history list here at all, deliberately - the Week tab's ui/
- * WeeklyGoalsHistoryPanel.tsx remains the only place a goal's full history
- * is browsable.
+ * (isoWeekKey(new Date()), never whichever other week's text is showing),
+ * with the draft pre-filled from whatever was displayed - carrying an old
+ * goal's wording forward into this week is one edit. No history list here,
+ * deliberately - the Week tab's ui/WeeklyGoalsHistoryPanel.tsx is the only
+ * place a goal's full history is browsable.
  *
- * Monthly focus + monthly goal (2026-09-23, docs/dev/technical-design-monthly-
- * view.md §5.7): a third checkbox, and a second goal row (this month's goal)
- * below the week's. Each checkbox carries its D/W/M letter
+ * Monthly focus + monthly goal (docs/dev/history/technical-design-monthly-view.md
+ * §5.7): a third checkbox, and a second goal row (this month's goal) below
+ * the week's. Each checkbox carries its D/W/M letter
  * (ui/FocusBadges.tsx's FocusLetter), the same marks the Week/Month focus
  * cards use. Focus toggles go through storage/focusSlots.ts's
  * toggleItemFocus and goal saves through storage/periodGoals.ts's
@@ -82,6 +66,7 @@ import {FocusLetter} from './FocusBadges';
 import {ItemGoalRow, ItemScopeRow} from './ItemContextRows';
 import {FONT} from './theme';
 import {useErrorStatus} from './status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   kind: 'project' | 'area';
@@ -128,7 +113,7 @@ export default function ItemFocusPanel({
       if (item.loadError) throw new Error(item.loadError);
       setState({...item});
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('ItemFocusPanel: load failed', kind, path, message);
       setLoadError(message);
     }
@@ -136,7 +121,6 @@ export default function ItemFocusPanel({
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   /** The item as a write should see it: fresh from the cache, else this panel's copy. */
@@ -164,14 +148,14 @@ export default function ItemFocusPanel({
     setPending(scope);
     toggleFocus(scope, next)
       .catch(e => {
-        logError('ItemFocusPanel: toggle failed', e instanceof Error ? e.message : String(e));
-        setActionError(e instanceof Error ? e.message : String(e));
+        logError('ItemFocusPanel: toggle failed', errorMessage(e));
+        setActionError(errorMessage(e));
       })
       .finally(() => setPending(null));
   };
 
   /**
-   * Saves Scope (docs/dev/technical-design-item-scope.md). Save-only - Scope
+   * Saves Scope (docs/dev/history/technical-design-item-scope.md). Save-only - Scope
    * never touches frontmatter, so no limit check and no status gate: Scope
    * stays editable regardless of the item's status.
    */
@@ -183,7 +167,7 @@ export default function ItemFocusPanel({
     resync();
   };
 
-  /** Sets the CURRENT week's / month's goal (docs/dev/technical-design-item-goal-display.md) - storage/periodGoals.ts's saveItemGoal. */
+  /** Sets the CURRENT week's / month's goal (docs/dev/history/technical-design-item-goal-display.md) - storage/periodGoals.ts's saveItemGoal. */
   const handleSaveGoal = (scope: PeriodScope) => async (text: string) => {
     const item = current();
     if (!item) return;

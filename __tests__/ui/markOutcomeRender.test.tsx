@@ -1,4 +1,4 @@
-// docs/dev/technical-design-lasso-0.8.md §3.6: the small result screen of
+// docs/dev/history/technical-design-lasso-0.8.md §3.6: the small result screen of
 // "Mark for later", and index.js registering the Mark button.
 const mockButtons: Array<{type: number; id: number; showType: number}> = [];
 const mockListeners: Array<{onButtonPress: (e: {id?: number}) => void}> = [];

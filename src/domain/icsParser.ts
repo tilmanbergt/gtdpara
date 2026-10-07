@@ -1,10 +1,10 @@
 /**
  * ICS (RFC 5545) parsing + RRULE expansion for the Google Calendar feature
- * (docs/dev/technical-design-google-calendar.md §4). Ported and trimmed from the
- * sibling SNFolio project's src/domain/icsParser.ts (2026-09-03) rather than
- * adding an external ICS/RRULE library - that implementation is already
- * tested and running in production there, with zero dependencies. Trimmed
- * for this feature's much narrower need: VEVENT only (no VTODO), no
+ * (docs/dev/history/technical-design-google-calendar.md §4). Ported and trimmed from the
+ * sibling SNFolio project's src/domain/icsParser.ts rather than adding an
+ * external ICS/RRULE library - that implementation is tested and running in
+ * production there, with zero dependencies. Trimmed to this feature's
+ * narrower need: VEVENT only (no VTODO), no
  * attendees/description/location/priority - just enough to list upcoming
  * events and copy one as a one-off local Meeting. Pure TS, zero RN/SDK
  * imports (domain/ convention, see markdown.ts).

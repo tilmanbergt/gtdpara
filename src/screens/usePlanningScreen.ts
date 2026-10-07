@@ -1,7 +1,7 @@
 /**
  * Everything the Week and Month planning screens share that isn't layout
- * (docs/dev/technical-design-monthly-view.md §5.10) - extracted verbatim from
- * screens/WeekView.tsx so screens/MonthView.tsx doesn't carry a second copy:
+ * (docs/dev/history/technical-design-monthly-view.md §5.10), so screens/WeekView.tsx
+ * and screens/MonthView.tsx don't carry two copies:
  * loading settings/cache/Inbox and every
  * meeting action a planning screen offers (add, edit, cancel, quick-file,
  * prep/review tick, note, linked file, Month highlight + short form) plus
@@ -23,8 +23,7 @@ import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting} from '../domain/types';
 import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {FocusScope, toggleItemFocus} from '../storage/focusSlots';
-import {appendMeetingToTarget} from '../storage/inboxFiling';
-import {moveEntryWithNote} from '../storage/entryMove';
+import {itemTarget, moveMeeting} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {
   addMeetingToDestination,
@@ -47,7 +46,7 @@ import {MeetingRowLayout, MeetingRowProps, MeetingTrackingConfig} from '../ui/Me
 import {entryDate} from '../domain/meetingSpan';
 import {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {useCachedItems} from '../ui/useCachedItems';
-import {useEditFlush} from '../ui/useEditFlush';
+import {useEditTarget} from '../ui/useEditTarget';
 import {perfEnd, perfStart} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
@@ -79,9 +78,10 @@ export function usePlanningScreen({logTag}: Options) {
   const [loading, setLoading] = useState(true);
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  // Both go to the central status slot (docs/dev/technical-design-status-slot.md §7.4)
-  // - the Week/Month screens no longer render them inline.
+  // The meeting open in Quick Add's edit mode, by meetingKey (ui/useEditTarget.ts).
+  const {target: editingKey, start: startEdit, cancel: cancelEditTarget, set: setEditingKey, flushEditRef, afterSave} = useEditTarget<string>();
+  // Both go to the central status slot (docs/dev/history/technical-design-status-slot.md §7.4),
+  // not inline on the Week/Month screens.
   const widgetAction = useActionError('planning.widgetError', `${logTag}: widget action failed`);
   const meetingsAction = useActionError('planning.meetingsActionError', `${logTag}: meeting action failed`);
   const widgetError = widgetAction.error;
@@ -93,8 +93,8 @@ export function usePlanningScreen({logTag}: Options) {
       setLoading(true);
       setError(null);
       // Settings are applied together with Inbox/paths below (one render
-      // round instead of two - docs/dev/technical-design-render-perf-ab.md §3 B3);
-      // still applied on a later failure, as before.
+      // round instead of two - docs/dev/history/technical-design-render-perf-ab.md §3 B3),
+      // and also on a later failure.
       let loadedSettings: GtdParaSettings | null = null;
       try {
         loadedSettings = await loadSettings();
@@ -126,7 +126,7 @@ export function usePlanningScreen({logTag}: Options) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.2):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.2):
   // settings are this screen's own copy, so re-read them quietly - no
   // spinner, and state only changes (= re-render) if they actually differ.
   // The Inbox is the shared cache copy (refreshed when gtdpara is reopened).
@@ -148,7 +148,7 @@ export function usePlanningScreen({logTag}: Options) {
 
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
-  const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
+  const runWidgetAction = widgetAction.run;
 
   const runMeetingAction = meetingsAction.run;
 
@@ -173,14 +173,10 @@ export function usePlanningScreen({logTag}: Options) {
     log(`${logTag}: added meeting`, destinationLabel(destination));
   };
 
-  // Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, 2026-09-29):
-  // every change of the edit target first saves the current meeting's
-  // pending changes in Quick Add (only if something changed); a failed save
-  // keeps the edit where it is. The screen passes `flushEditRef` and
-  // `editingKey` to its QuickAddWidget.
-  const {flushEditRef, afterSave} = useEditFlush();
-  const startMeetingEdit = (entry: WeeklyMeetingEntry) => afterSave(() => setEditingKey(meetingKey(entry)));
-  const cancelEditTarget = () => setEditingKey(null);
+  // Save-then-switch: every change of the edit target first saves the
+  // current meeting's pending changes; a failed save keeps the edit where it
+  // is. The screen passes `flushEditRef` and `editingKey` to its QuickAddWidget.
+  const startMeetingEdit = (entry: WeeklyMeetingEntry) => startEdit(meetingKey(entry));
 
   const commitMeetingEdit = (entry: WeeklyMeetingEntry, fields: MeetingQuickAddFields, nextLinkedFile: string): Promise<boolean> =>
     runWidgetSave(async () => {
@@ -201,11 +197,10 @@ export function usePlanningScreen({logTag}: Options) {
     });
 
   /**
-   * Quick Add's onQuickFile in meeting-edit mode - "Save, but file
-   * elsewhere" (see WeekView's former handleQuickFileEdit doc comment, moved
-   * here unchanged): builds the updated meeting from the widget's composed
-   * payload, appends it to the target, then removes the original. Must
-   * reject (not swallow) on failure so the widget shows the error inline.
+   * Quick Add's onQuickFile in meeting-edit mode - "save, but file
+   * elsewhere": builds the updated meeting from the widget's composed
+   * payload and moves it. Must reject (not swallow) on failure so the
+   * widget shows the error inline.
    */
   const handleQuickFileEdit = async (
     entry: WeeklyMeetingEntry,
@@ -214,14 +209,11 @@ export function usePlanningScreen({logTag}: Options) {
   ): Promise<void> => {
     if (payload.kind !== 'meeting') return;
     const updated = applyMeetingEdit(entry.meeting, payload.fields, payload.linkedFile);
-    const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: entry.item.path, target}, moveUi, async next => {
-      await appendMeetingToTarget(target, next);
-      await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
-    });
+    const moved = await moveMeeting(entry.item, entry.meetingIndex, updated, itemTarget(target), moveUi);
     if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
   };
 
-  /** The row's prep/review checkpoint icon (docs/dev/technical-design-meeting-tracking.md). */
+  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md). */
   const handleToggleMeetingTracking = (entry: WeeklyMeetingEntry, kind: MeetingTrackingKind) =>
     runMeetingAction(async () => {
       await saveEntryMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));
@@ -250,7 +242,7 @@ export function usePlanningScreen({logTag}: Options) {
     );
   };
 
-  /** Flips a meeting's Month highlight (`#monthly`) in place - the Month day panel's "M" box (docs/dev/technical-design-monthly-view.md §5.9). */
+  /** Flips a meeting's Month highlight (`#monthly`) in place - the Month day panel's "M" box (docs/dev/history/technical-design-monthly-view.md §5.9). */
   const toggleHighlight = (entry: WeeklyMeetingEntry) =>
     runMeetingAction(async () => {
       await saveEntryMeetings(entry, meetings => {
@@ -283,11 +275,11 @@ export function usePlanningScreen({logTag}: Options) {
   );
 
   const trackingFor = (entry: WeeklyMeetingEntry): MeetingTrackingConfig => ({
-    rules: settings?.noteCreationDefinitions ?? [],
+    rules: settings?.tagRules ?? [],
     onToggle: kind => handleToggleMeetingTracking(entry, kind),
   });
 
-  // --- Day panel (docs/dev/technical-design-meeting-lists.md §2.8) -------------
+  // --- Day panel (docs/dev/history/technical-design-meeting-lists.md §2.8) -------------
   // Shared by Week, Month and Review's week ahead: which day's panel is open
   // on the right (null = the focus panel), plus the three ways to get there.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -313,7 +305,7 @@ export function usePlanningScreen({logTag}: Options) {
 
   /**
    * The planning day panel's row (2-line by default): M toggle, tracking,
-   * note, open linked file (no linking here - decided 2026-09-27), source.
+   * note, open linked file (no linking from here), source.
    * Spread onto <MeetingRow key=... {...dayRowProps(...)} />.
    */
   const dayRowProps = (
@@ -356,7 +348,7 @@ export function usePlanningScreen({logTag}: Options) {
     editingKey,
     widgetError,
     meetingsActionError,
-    // Stable identities (docs/dev/technical-design-render-perf-ab.md §3 B2) -
+    // Stable identities (docs/dev/history/technical-design-render-perf-ab.md §3 B2) -
     // these reach the React.memo'd QuickAddWidget/PeriodFocusPanel and are
     // only ever called from event handlers; each call runs the latest version.
     handleAddTask: stableAddTask,

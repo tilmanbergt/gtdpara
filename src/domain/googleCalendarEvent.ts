@@ -1,6 +1,6 @@
 /**
  * The trimmed event shape the Google Calendar feature needs for display and
- * copy (docs/dev/technical-design-google-calendar.md §2) - deliberately much
+ * copy (docs/dev/history/technical-design-google-calendar.md §2) - deliberately much
  * smaller than a full ICS VEVENT (no attendees/description/location/etc.),
  * since this feature only ever shows a title+date+time and, on request,
  * copies that into a one-off local Meeting (domain/types.ts). Pure data, no
@@ -22,7 +22,7 @@ export interface GoogleCalendarEvent {
   allDay: boolean;
   /**
    * HH:mm end of a timed event on its start day, '' when unknown or when it
-   * runs past midnight (docs/dev/technical-design-monthly-view.md step 10).
+   * runs past midnight (docs/dev/history/technical-design-monthly-view.md step 10).
    * Optional: events restored from the persisted cache written before this
    * field existed simply don't have it (treated as '').
    */

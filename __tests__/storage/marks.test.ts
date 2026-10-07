@@ -1,5 +1,5 @@
 /**
- * storage/marks.ts createMarkFromLasso (docs/dev/technical-design-lasso-0.8.md
+ * storage/marks.ts createMarkFromLasso (docs/dev/history/technical-design-lasso-0.8.md
  * §3.6): the `## Marks` line is the commit point; a failure there takes the
  * icon and the data back.
  */
@@ -69,7 +69,6 @@ jest.mock('../../src/storage/settingsStorage', () => ({
 jest.mock('../../src/storage/dataCache', () => ({
   getCachedData: () => null,
   findCachedItem: () => undefined,
-  resolveLivePaths: async (s: unknown) => jest.requireActual('../../src/domain/settings').resolvePaths(s),
 }));
 
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';

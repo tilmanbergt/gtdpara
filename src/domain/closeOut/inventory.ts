@@ -1,10 +1,10 @@
 /**
- * Close-out inventory (docs/dev/technical-design-project-close-out.md §5.2):
+ * Close-out inventory (docs/dev/history/technical-design-project-close-out.md §5.2):
  * turns the scan of a project folder (storage/closeOut/scan.ts) plus the
  * project's todos/meetings and the plan into the grouped contents model the
  * Contents step shows and the archive document is built from. Pure.
  *
- * Rules (decisions 5, 10, 11, 13 of docs/dev/spike-project-archive-pdf.md):
+ * Rules (decisions 5, 10, 11, 13 of docs/dev/history/spike-project-archive-pdf.md):
  * - Meetings (date order) and todos with a note are listed by the item, not
  *   by file; a shared note (Daily.note) contributes one entry per keyword
  *   page, plus "<file> - other pages" for pages no item claims.
@@ -20,6 +20,7 @@ import {Meeting, Task} from '../types';
 import {meetingDisplayTitle} from '../meetingTracking';
 import {PageKeyword, meetingPageKeyword, parseSharedNoteAnchor, todoPageKeyword} from '../sharedNotePages';
 import {CloseOutPlan, OutcomeDest} from './plan';
+import {formatDate} from '../dateFormat';
 
 export type FileType = 'note' | 'pdf' | 'image' | 'other';
 
@@ -235,7 +236,7 @@ export function buildContents(input: InventoryInput): ContentsModel {
     .map((m, i) => ({m, i}))
     .sort((a, b) => (a.m.date + a.m.time).localeCompare(b.m.date + b.m.time) || a.i - b.i)
     .forEach(({m, i}) => {
-      const title = `${m.date} · ${meetingDisplayTitle(m)}`;
+      const title = `${formatDate(m.date)} · ${meetingDisplayTitle(m)}`;
       const e = itemEntries('meetings', m.notePath, title, meetingPageKeyword(m), {kind: 'meeting', index: i}, m.date);
       if (e) meetingEntries.push(e);
     });
@@ -379,9 +380,4 @@ export function buildContents(input: InventoryInput): ContentsModel {
     outcomeCandidates: otherEntries,
     unreadable,
   };
-}
-
-/** Every entry, flat, in display order. */
-export function allEntries(model: ContentsModel): ContentEntry[] {
-  return model.groups.flatMap(g => g.entries);
 }

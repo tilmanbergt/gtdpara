@@ -1,6 +1,6 @@
 /**
  * The small screen "Mark for later" opens only when something went wrong
- * (docs/dev/technical-design-lasso-0.8.md §3.6, screen design 1d). Success
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.6, screen design 1d). Success
  * opens nothing. Shown by App.tsx while storage/marks.ts holds an outcome;
  * OK clears it and closes gtdpara again, back to the note.
  */
@@ -11,7 +11,8 @@ import {MarkOutcome, retryBookmark, setMarkOutcome} from '../storage/marks';
 import {logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 import PillButton from './PillButton';
-import {FONT, useThemeColors} from './theme';
+import {COLORS, FONT, useThemeColors} from './theme';
+import {errorMessage} from '../utils/errorMessage';
 
 function texts(outcome: MarkOutcome): {title: string; body: string} {
   switch (outcome.kind) {
@@ -38,7 +39,7 @@ export default function MarkOutcomeScreen({outcome}: {outcome: MarkOutcome}): Re
   const close = () => {
     setMarkOutcome(null);
     PluginManager.closePluginView().catch(e =>
-      logError('MarkOutcomeScreen: closePluginView failed', e instanceof Error ? e.message : String(e)),
+      logError('MarkOutcomeScreen: closePluginView failed', errorMessage(e)),
     );
   };
 
@@ -55,7 +56,7 @@ export default function MarkOutcomeScreen({outcome}: {outcome: MarkOutcome}): Re
   };
 
   return (
-    <View style={[styles.root, {backgroundColor: isDarkMode ? '#000000' : '#ffffff'}]}>
+    <View style={[styles.root, {backgroundColor: isDarkMode ? COLORS.textLight : COLORS.background}]}>
       <View style={[styles.box, {borderColor: textColor}]}>
         <Text style={[styles.title, {color: textColor}]}>{title}</Text>
         {body ? <Text style={[styles.body, {color: textColor}]}>{body}</Text> : null}

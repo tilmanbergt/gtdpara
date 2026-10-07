@@ -1,6 +1,6 @@
 /**
  * Loose types and small helpers for the element-level SDK calls the lasso
- * features use (docs/dev/technical-design-lasso-0.8.md §3.4, §3.8): reading
+ * features use (docs/dev/history/technical-design-lasso-0.8.md §3.4, §3.8): reading
  * a lasso's strokes, building stroke copies for recognition, and the mark
  * icons. The SDK hands out plain objects (sn-plugin-lib model/Element.ts);
  * only the fields read or written here are typed.
@@ -8,6 +8,7 @@
 import {PluginCommAPI} from 'sn-plugin-lib';
 import {logWarn} from '../utils/log';
 import {PxPoint, PxRect} from '../domain/marks';
+import {errorMessage} from '../utils/errorMessage';
 
 export const ELEMENT_TYPE_STROKE = 0;
 export const ELEMENT_TYPE_GEO = 700;
@@ -25,10 +26,6 @@ export interface SdkResponse<T> {
 
 export function errText(r: SdkResponse<unknown> | null | undefined, fallback: string): string {
   return r?.error ? `${r.error.code}: ${r.error.message}` : fallback;
-}
-
-export function errorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
 }
 
 /** The parts of the SDK's ElementDataAccessor used here. */

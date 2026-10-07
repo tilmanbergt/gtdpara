@@ -1,5 +1,5 @@
 /**
- * PDF export service (docs/dev/technical-design-project-close-out.md §3.3) -
+ * PDF export service (docs/dev/history/technical-design-project-close-out.md §3.3) -
  * turns a PdfDocument (domain/pdf/pdfDocument.ts) into a finished PDF file.
  * Generic: nothing here knows about projects or archives; the close-out
  * wizard is one caller.
@@ -16,11 +16,11 @@
  * native cancel while building). Rendered PNGs live in the plugin's PRIVATE
  * temp folder (`<private>/tmp/<jobId>/`, no permission needed, invisible to
  * the user) and are removed in `finally`, success or not
- * (docs/dev/technical-design-inkhub-submission.md §3.2). The output file
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.2). The output file
  * only ever appears complete: the native writer builds it in the private
- * temp folder and copies it to `outPath` at the end. (Device-tested
- * 2026-10-01: the host's page renderer, PluginFileAPI.generateNotePng,
- * writes into the private folder fine.)
+ * temp folder and copies it to `outPath` at the end. (Device-tested: the
+ * host's page renderer, PluginFileAPI.generateNotePng, writes into the
+ * private folder fine.)
  */
 import {PdfDocument, ResolvedImage} from '../domain/pdf/pdfDocument';
 import {layoutDocument} from '../domain/pdf/pdfLayout';
@@ -36,6 +36,7 @@ import {
 } from '../supernote/pdfNative';
 import {deleteTempTree, ensureFolderExists, getPrivateTempDir} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 export type PdfExportPhase = 'render' | 'layout' | 'build';
 
@@ -102,7 +103,7 @@ export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfEx
     try {
       options.onProgress?.(p);
     } catch (e) {
-      logError('pdfExport: onProgress threw', e instanceof Error ? e.message : String(e));
+      logError('pdfExport: onProgress threw', errorMessage(e));
     }
   };
   const checkCancelled = () => {
@@ -150,7 +151,7 @@ export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfEx
               ? {ok: true, layers: [src.path], ...fitIntoPage(info.width, info.height, doc.textPage)}
               : {ok: false, reason: 'file missing or not a readable image'};
         } catch (e) {
-          images[i] = {ok: false, reason: e instanceof Error ? e.message : String(e)};
+          images[i] = {ok: false, reason: errorMessage(e)};
         }
       }
       renderDone++;

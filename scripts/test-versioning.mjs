@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   bumpVersion,
   buildLabel,
+  compareVersions,
   computeVersionCode,
+  packagedVersionName,
   parseChangelog,
   releaseNotes,
   renderBuildInfoTs,
@@ -44,6 +46,29 @@ t('label', () => {
   assert.equal(buildLabel({version: '0.1.0', commit: 'abc1234', dirty: false, release: true}), '0.1.0');
   assert.equal(buildLabel({version: '0.1.0', commit: 'abc1234', dirty: false, release: false}), '0.1.0+dev.abc1234');
   assert.equal(buildLabel({version: '0.1.0', commit: 'abc1234', dirty: true, release: false}), '0.1.0+dev.abc1234-dirty');
+});
+
+t('label towards a next version', () => {
+  const base = {version: '0.8.0', commit: 'abc1234', dirty: false, release: false, nextVersion: '0.9.0'};
+  assert.equal(buildLabel(base), '0.9.0-alpha+abc1234');
+  assert.equal(buildLabel({...base, stage: 'beta'}), '0.9.0-beta+abc1234');
+  assert.equal(buildLabel({...base, dirty: true}), '0.9.0-alpha+abc1234.dirty');
+  // A release build ignores nextVersion; a nextVersion not above version is ignored.
+  assert.equal(buildLabel({...base, release: true}), '0.8.0');
+  assert.equal(buildLabel({...base, nextVersion: '0.8.0'}), '0.8.0+dev.abc1234');
+  assert.equal(buildLabel({...base, nextVersion: null}), '0.8.0+dev.abc1234');
+  assert.equal(packagedVersionName(base), '0.9.0-alpha');
+  assert.equal(packagedVersionName({...base, stage: 'beta'}), '0.9.0-beta');
+  assert.equal(packagedVersionName({...base, release: true}), '0.8.0');
+  assert.equal(packagedVersionName({...base, nextVersion: '0.7.0'}), '0.8.0');
+});
+
+t('compare versions', () => {
+  assert.equal(compareVersions('0.9.0', '0.8.0'), 1);
+  assert.equal(compareVersions('0.10.0', '0.9.0'), 1);
+  assert.equal(compareVersions('1.0.0', '1.0.0'), 0);
+  assert.equal(compareVersions('0.8.1', '0.9.0'), -1);
+  assert.throws(() => compareVersions('0.9', '0.8.0'));
 });
 
 const CL = [

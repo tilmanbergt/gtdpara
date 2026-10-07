@@ -1,14 +1,14 @@
 /**
  * Weekly Review step registry and per-step review tracking
- * (docs/dev/technical-design-review-hub.md). Pure logic - no RN imports, no I/O
+ * (docs/dev/history/technical-design-review-hub.md). Pure logic - no RN imports, no I/O
  * (design-overview.md §3). Persistence lives in storage/settingsStorage.ts
  * (`updateReviewSteps`); the screen that drives all of this is
  * screens/ReviewScreen.tsx, the hub UI is ui/ReviewHub.tsx.
  *
  * What is persisted (`GtdParaSettings.reviewSteps`): one small record per
- * step, keyed by a stable STRING id (never the step's position - the list of
- * steps has already grown once, and a persisted index would silently point at
- * the wrong step after an insertion):
+ * step, keyed by a stable STRING id (never the step's position - steps get
+ * inserted into the list, and a persisted index would silently point at the
+ * wrong step after an insertion):
  * - `reviewedAt`: the last time the user tapped "Reviewed" on the step.
  * - `counts`: the recap numbers of that step's last recorded visit.
  * - `emptyAt`: the last time the hub saw a *backlog* step with nothing in it.
@@ -19,16 +19,17 @@
  * recap) is derived on demand, never stored.
  */
 import {Features} from './features';
+import {formatWeekdayDate} from './dateFormat';
+import {todayIso} from './meetingTime';
 
 /**
- * Deliberately coarse counters for the recap - kept simple on purpose
- * (2026-09-02 feedback: "don't track what is hard to track or overcomplicates
- * things, this is not an essential feature"). Every counter is a plain
+ * Deliberately coarse counters for the recap - this is not an essential
+ * feature, so nothing hard to track is tracked. Every counter is a plain
  * running count bumped inline by whichever action fired, with no further
  * breakdown (e.g. `onHold` doesn't distinguish Projects from Areas), except
  * `projectsActivated`/`areasActivated`, which screens/ReviewScreen.tsx
  * computes once when a step is LEFT (from that step's frozen snapshot).
- * Moved here from domain/settings.ts (2026-09-20) so settings.ts can import
+ * Lives here rather than in domain/settings.ts so settings.ts can import
  * the record type below without an import cycle.
  */
 export interface ReviewSummaryCounts {
@@ -40,16 +41,16 @@ export interface ReviewSummaryCounts {
   onHold: number;
   markedDone: number;
   archived: number;
-  /** Renamed from `focusAdded` (2026-09-10, docs/dev/technical-design-daily-todo-filter.md) when the "Unfocused next items" review step introduced a second, daily-scoped focus-add action alongside this one - see dailyFocusAdded below. A saved blob from before the rename just reads this key as undefined, which every consumer here treats as 0 (this recap is deliberately coarse/non-audited). */
+  /** "Add to Weekly focus" (docs/dev/history/technical-design-daily-todo-filter.md) - kept separate from dailyFocusAdded below so the recap's line text stays accurate about which focus scope was touched. A saved blob that lacks this key reads it as undefined, which every consumer here treats as 0 (this recap is deliberately coarse/non-audited). */
   weeklyFocusAdded: number;
-  /** "Add to Daily focus" from the Unfocused-next-items review step (docs/dev/technical-design-daily-todo-filter.md) - kept separate from weeklyFocusAdded above so the recap's line text stays accurate about which focus scope was touched. */
+  /** "Add to Daily focus" from the Unfocused-next-items review step (docs/dev/history/technical-design-daily-todo-filter.md) - kept separate from weeklyFocusAdded above so the recap's line text stays accurate about which focus scope was touched. */
   dailyFocusAdded: number;
-  /** "Add to Monthly focus" (Unfocused next items) and monthly slots filled in Focus reset (docs/dev/technical-design-review-monthly-focus.md §3, 2026-09-28). Absent in stats saved before then - every reader uses `?? 0`. */
+  /** "Add to Monthly focus" (Unfocused next items) and monthly slots filled in Focus reset (docs/dev/history/technical-design-review-monthly-focus.md §3). May be absent in saved stats - every reader uses `?? 0`. */
   monthlyFocusAdded: number;
-  /** "Meetings to close out" step (docs/dev/technical-design-meeting-tracking.md): meetings ticked `#reviewed` during the visit. */
+  /** "Meetings to close out" step (docs/dev/history/technical-design-meeting-tracking.md): meetings ticked `#reviewed` during the visit. */
   meetingsClosedOut: number;
   /**
-   * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md
+   * Gmail inbox review step (docs/dev/history/technical-design-review-gmail-inbox.md
    * §3): Todos/Meetings created from an email during the visit. Kept
    * distinct from `tasksAdded` (which every other step's task creation also
    * bumps) so this step's own recap line reads "N items created from
@@ -131,15 +132,14 @@ export const REVIEW_STEPS: ReviewStepDef[] = [
   {id: 'onHold', title: 'On Hold reconsideration', kind: 'backlog'},
   {id: 'neglected', title: 'Neglected areas', kind: 'backlog'},
   {id: 'unfocusedNext', title: 'Unfocused next items', kind: 'backlog'},
-  // Title renamed from "Weekly focus reset" 2026-09-28 (docs/technical-
-  // design-review-monthly-focus.md §3) - the step now sets weekly AND
-  // monthly focus. The id stays 'weeklyFocus' on purpose: it is the
+  // The step sets weekly AND monthly focus (docs/technical-design-review-
+  // monthly-focus.md §3). The id stays 'weeklyFocus' on purpose: it is the
   // persisted key of this step's last-reviewed date and stats.
   {id: 'weeklyFocus', title: 'Focus reset', kind: 'ritual'},
 ];
 
 /**
- * The steps actually shown (docs/dev/technical-design-about-debug-experimental.md
+ * The steps actually shown (docs/dev/history/technical-design-about-debug-experimental.md
  * §3.2): 'gmailInbox' only while the experimental Gmail integration is on.
  * Everything that walks, counts or dates steps takes this list, so a hidden
  * step is never listed, never next/previous and never makes the review overdue.
@@ -188,7 +188,7 @@ function parseMs(iso: string | null | undefined): number | null {
   return Number.isNaN(ms) ? null : ms;
 }
 
-/** Missing or malformed counts as stale, same "treat unparseable like never" call the old isReviewOverdue made - this only ever drives a passive marker. */
+/** Missing or malformed counts as stale ("treat unparseable like never") - this only ever drives a passive marker. */
 export function isStaleTimestamp(iso: string | null | undefined, now: Date = new Date()): boolean {
   const ms = parseMs(iso);
   return ms === null || now.getTime() - ms > REVIEW_STALE_MS;
@@ -203,7 +203,7 @@ export function hasAnyCount(counts: Partial<ReviewSummaryCounts>): boolean {
 }
 
 /**
- * The persisted result of leaving a step (docs/dev/technical-design-review-hub.md
+ * The persisted result of leaving a step (docs/dev/history/technical-design-review-hub.md
  * §3.3). One rule: the step's stats are the last visit that either was
  * Reviewed or actually did something.
  * - reviewed: date = now, counts replaced by this visit's tally (even zeros).
@@ -228,8 +228,8 @@ export function applyStepVisit(
 }
 
 /**
- * Keeps `emptyAt` in step with what the hub currently sees (docs/technical-
- * design-review-hub.md §7). `emptyIds` are the steps whose live count is 0;
+ * Keeps `emptyAt` in step with what the hub currently sees (
+ * docs/dev/history/technical-design-review-hub.md §7). `emptyIds` are the steps whose live count is 0;
  * only backlog steps are ever stamped. An empty step gets `emptyAt = now`,
  * refreshed at most once per calendar day (so it is not rewritten on every
  * render); a step that is non-empty again loses it. Separate from
@@ -332,48 +332,9 @@ export function isReviewOverdue(steps: ReviewStepsMap, now: Date = new Date(), d
   return false;
 }
 
-/**
- * One-time move from the old single `lastReviewCompletedAt`/
- * `lastReviewSummary` pair (written by "Finish review") to per-step records.
- * Called from storage/settingsStorage.ts's loading path with the merged
- * settings AND the raw parsed blob (the legacy keys are gone from the typed
- * settings, but still present at runtime in what was stored).
- * - Nothing stored under either the new or the legacy keys (fresh install):
- *   no-op, same reference back.
- * - Legacy timestamp present: EVERY step currently in REVIEW_STEPS is seeded
- *   `{reviewedAt: legacy, counts: ZERO}` so an update doesn't alarm on every
- *   row. The legacy summary is dropped (it can't be attributed to steps).
- * - Legacy keys are stripped either way. Idempotent: once `reviewSteps` is
- *   stored and the legacy keys are gone, this is a no-op.
- */
-export function migrateReviewSteps<T extends {reviewSteps: ReviewStepsMap}>(merged: T, rawStored: unknown): T {
-  const raw = rawStored && typeof rawStored === 'object' ? (rawStored as Record<string, unknown>) : {};
-  const hasNew = raw.reviewSteps !== undefined;
-  const hasLegacy = 'lastReviewCompletedAt' in raw || 'lastReviewSummary' in raw;
-  // Without legacy keys there is nothing to migrate: a fresh install (nothing stored) and an already-migrated blob look the same here.
-  if (!hasLegacy) return merged;
+// ---- Text helpers shared by the hub and the end page ----
 
-  const next: Record<string, unknown> = {...(merged as unknown as Record<string, unknown>)};
-  delete next.lastReviewCompletedAt;
-  delete next.lastReviewSummary;
-  if (!hasNew) {
-    const legacy = raw.lastReviewCompletedAt;
-    const seeded: ReviewStepsMap = {};
-    if (typeof legacy === 'string' && parseMs(legacy) !== null) {
-      for (const def of REVIEW_STEPS) {
-        seeded[def.id] = {reviewedAt: legacy, counts: {...ZERO_REVIEW_SUMMARY}};
-      }
-    }
-    next.reviewSteps = seeded;
-  }
-  return next as unknown as T;
-}
-
-// ---- Text helpers shared by the hub and the end page (moved from screens/ReviewScreen.tsx) ----
-
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/** "today"/"yesterday"/"N days ago"/short date - hand-rolled (no Intl), same convention as domain/meetingTime.ts's own date math. */
+/** "today", "yesterday", "N days ago", then a weekday and date ("Mon 28.9."). */
 export function formatReviewedAt(iso: string, now: Date): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return 'unknown';
@@ -382,7 +343,7 @@ export function formatReviewedAt(iso: string, now: Date): string {
   if (dayDiff === 0) return 'today';
   if (dayDiff === 1) return 'yesterday';
   if (dayDiff > 1 && dayDiff < 14) return `${dayDiff} days ago`;
-  return `${WEEKDAY_LABELS[then.getDay()]} ${then.getMonth() + 1}/${then.getDate()}`;
+  return formatWeekdayDate(then, todayIso(now));
 }
 
 export function pluralize(n: number, noun: string): string {

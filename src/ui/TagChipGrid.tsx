@@ -1,5 +1,5 @@
 /**
- * Tag chips in wrapped rows, no paging (docs/dev/technical-design-lasso-0.8.md
+ * Tag chips in wrapped rows, no paging (docs/dev/history/technical-design-lasso-0.8.md
  * §3.9) - the capture panel has the room Quick Add's single paged row
  * (ui/TagChips.tsx) doesn't. A tap toggles the tag; "on" chips are filled.
  * Also used for the "File to" abbreviation chips. Labels longer than

@@ -1,148 +1,85 @@
 /**
- * Daily view (design-overview.md §5.2/§5.3): a two-column row - Calendar
- * (meetings dated today/tomorrow, grouped under "Today"/"Tomorrow" headers
- * rather than a repeated date) on the left, Open tasks (the daily focus
+ * Daily view (design-overview.md §2.7): a two-column row - Calendar
+ * (meetings dated today/tomorrow) on the left, Open tasks (the daily focus
  * filter rule, storage/dailyAggregate.ts: #next, due today-or-earlier, or
- * belonging to a daily-focus Project/Area) on the right - then a two-column
- * Focus row (Projects | Areas, storage/focusSlots.ts) at the bottom. Inbox
- * no longer has its own section here (2026-09-03, docs/dev/technical-design-
- * inbox-tab.md - moved to its own tab); its qualifying tasks/meetings now
- * flow into these same two columns instead - see the "Inbox" note further
- * down. The middle row's two columns page rather than scroll - originally a
- * fixed row-count per page (docs/dev/technical-design-pagination-edit-reuse.md
- * §2/§4, ui/pagination.ts's usePagination + ui/PageControls.tsx), now a
- * fixed-height box instead (docs/dev/technical-design-pagination-fixed-
- * height.md, ui/PagedSection.tsx - Open tasks in Batch 5, Calendar's own
- * Today/Tomorrow/Google tabs in Batch 6, both 2026-09-15). The Focus row
- * stays unpaginated on the assumption it stays short by nature (the
- * configured slot counts) - worth revisiting if that assumption ever stops
- * holding.
+ * belonging to a daily-focus Project/Area) on the right. The Focus panel
+ * (Projects | Areas, storage/focusSlots.ts) sits below Calendar in the left
+ * column. Both list columns page by height rather than scroll
+ * (docs/dev/history/technical-design-pagination-fixed-height.md, ui/PagedSection.tsx).
+ * The Focus panel is unpaginated - it stays short by nature (the configured
+ * slot counts).
  *
  * Reads straight from storage/dataCache.ts's in-memory cache rather than
  * scanning the filesystem itself - instant regardless of how many
  * Projects/Areas exist. If no cache has been built yet this falls back to
- * building one (rebuildCache), same as tapping 🔄 does explicitly.
+ * building one (rebuildCache).
  *
- * Meetings and Open-tasks rows now carry the same inline edit, cancel, and
- * note create/open actions as ProjectDataPanel's own Todos/Meetings
- * sections (tap the row text to edit, ✕ to soft-cancel, 📓/+📓 to open or
- * create a linked note) - tapping the row's item-name subtext is now the
- * "jump to that Project/Area" action instead, since tapping the main text
- * starts an edit. The one wrinkle versus ProjectDataPanel: a row here can
- * belong to a *different* Project/Area than the one next to it, so every
- * save (saveEntryTasks/saveEntryMeetings below) re-fetches that entry's own
- * source item from the cache by path before mutating it, rather than
- * assuming "the" item this screen was opened for. Meeting rows also carry
- * the prep/review checkpoint icon when the meeting's Tag Rule tracks it
- * (docs/dev/technical-design-meeting-tracking.md - `trackingFor` /
+ * Rows are the shared ui/TaskRow.tsx/ui/MeetingRow.tsx
+ * (docs/dev/history/technical-design-inbox-tab.md §1): tap the row text to edit, 📓/+📓
+ * to open or create a linked note; the source subtext / group header jumps
+ * to that Project/Area. A row here can belong to a *different* Project/Area
+ * than the one next to it, so every save (saveEntryTasks/saveEntryMeetings
+ * below) re-fetches that entry's own source item from the cache by path
+ * before mutating it. Meeting rows also carry the prep/review checkpoint icon
+ * when the meeting's Tag Rule tracks it
+ * (docs/dev/history/technical-design-meeting-tracking.md - `trackingFor` /
  * `handleToggleMeetingTracking` below; row sizing goes through
  * `meetingHeightFor` so the icon's width is always accounted for).
- * Presentation (the row
- * markup, the styles) is deliberately not shared with ProjectDataPanel,
- * matching this codebase's per-screen convention (design-overview.md §3) -
- * only logic that has to stay identical (Destination, validateMeetingFields)
- * is pulled into a shared domain/ module.
  *
- * Both columns' add/edit needs are now served by one shared ui/
- * QuickAddWidget.tsx instance (2026-09-09, docs/dev/technical-design-unified-
- * quickadd.md - replaces the old separate ui/TaskQuickAdd.tsx/ui/
- * MeetingQuickAdd.tsx pair), always `fixedDestination: {type: 'inbox'}`
- * (docs/dev/technical-design-filing-unification.md §6, 2026-09-07 filing
- * unification - previously an unrestricted Inbox/Project/Area picker).
- * "File it properly" now happens exclusively on the Inbox tab or Weekly
- * Review's Inbox-to-zero step - this screen only ever captures straight to
- * Inbox. A meeting added for a date other than today/tomorrow saves fine,
- * it just won't appear here until then, same as any other meeting.
+ * One shared ui/QuickAddWidget.tsx (docs/dev/technical-design-unified-
+ * quickadd.md) serves both columns' adds and edits, docked above the
+ * Open-tasks column on the right - outside the Calendar column, so it stays
+ * visible whichever Calendar tab is showing. Always
+ * `fixedDestination: {type: 'inbox'}`
+ * (docs/dev/history/technical-design-filing-unification.md §6): filing happens on the
+ * Inbox tab or Weekly Review's Inbox-to-zero step, this screen only captures
+ * to Inbox. A meeting added for a date other than today/tomorrow saves fine,
+ * it just won't appear here until then.
  *
- * One widget for two columns (2026-09-09): the widget sits above the
- * Open-tasks column, on the right side of the screen, and handles both
- * this screen's task-editing AND meeting-editing - the Calendar column
- * lost its own add-slot entirely. This screen docks the widget to the
- * right rather than following the unified-quickadd design's original "top
- * of the shared parent" placement rule (§3) literally, which here would
- * have put it inside the Calendar column, gated behind the Meetings/Google
- * MiniTabs (2026-09-09 layout revision, per direct feedback - "the widget
- * should sit above the tasks, docked right" is now the preferred default
- * for input/edit widgets generally; ProjectDataPanel.tsx/InboxScreen.tsx/
- * ReviewScreen.tsx still use the original top-of-shared-parent placement
- * from step 2 and haven't been revisited). Docking the widget outside the
- * Calendar column altogether also resolves the "editing a Todo silently
- * closes because a Meeting row was tapped" scenario the whole feature was
- * motivated by (see the design doc's §1(c)): the widget is no longer
- * gated behind the Meetings/Google MiniTabs, so it stays visible - and
- * reachable for a task edit triggered from the Open-tasks column - no
- * matter which Calendar sub-tab is showing, without needing the
- * tab-auto-switch this screen used before this revision.
+ * Inbox (docs/dev/history/technical-design-inbox-tab.md §3): Inbox.txt's tasks/meetings
+ * go through the same aggregate/filter rule as everything else
+ * (storage/dailyAggregate.ts's buildDailyAggregate takes the loaded Inbox
+ * alongside `items`), via a synthetic "Inbox" DailyItemRef that flows through
+ * the same grouping/source-subtext code Project/Area entries use. Inbox rows
+ * get full row parity - saveEntryTasks/saveEntryMeetings branch on
+ * `entry.item.kind === 'inbox'` to mutate Inbox.txt. Tapping an Inbox-sourced
+ * row's group header/source subtext switches to the Inbox tab
+ * (`onOpenInbox`), since there's no Project/Area to open.
  *
- * Inbox (2026-09-03, docs/dev/technical-design-inbox-tab.md §3 - supersedes the
- * older "Inbox embedded here, always shown in full" design): Inbox.txt no
- * longer has its own always-shown section on this screen. Its own tasks/
- * meetings are folded straight into the same aggregate/filter rule
- * everything else here uses (storage/dailyAggregate.ts's buildDailyAggregate
- * now takes the loaded Inbox tasks/meetings alongside `items`) - a task
- * shows if #next or due today-or-earlier, a meeting shows if dated today/
- * tomorrow, via a synthetic "Inbox" DailyItemRef that flows through the
- * exact same grouping/source-subtext code Project/Area entries already use.
- * Inbox rows get full row parity (edit/note-link/cancel) the same as any
- * other row here - see saveEntryTasks/saveEntryMeetings below, which branch
- * on `entry.item.kind === 'inbox'` to mutate Inbox.txt (via `inbox` state)
- * instead of a cached item. Filing an Inbox item elsewhere is NOT offered
- * here (this was never a filing surface) - that stays specific to the
- * dedicated Inbox tab (screens/InboxScreen.tsx) and Weekly Review's
- * Inbox-to-zero step. Tapping an Inbox-sourced row's group header/source
- * subtext switches to the Inbox tab (`onOpenInbox`) rather than calling
- * `onOpenItem`, since there's no Project/Area to open.
+ * Layout (technical-design-daily-compact-ui.md §1/§3/§4): no heading or
+ * reload button (reloading: Settings → Advanced → Reload all files). Open
+ * tasks are grouped by source Project/Area/Inbox
+ * (storage/dailyAggregate.ts's groupDailyTasksByItem), the group header being
+ * the "jump to that item" affordance. The quick-add sits above the content
+ * it adds to, so the on-screen keyboard doesn't cover it.
  *
- * 2026-09-03 Daily-cleanup pass (technical-design-daily-compact-ui.md
- * §1/§3/§4, Phases 1-4): this screen's own heading + 🔄 button are gone
- * (reloading: Settings → Advanced → Reload all files). The Open-tasks column is now
- * grouped by source Project/Area/Inbox (storage/dailyAggregate.ts's
- * groupDailyTasksByItem) rather than one flat list, with the group header
- * itself the "jump to that item" affordance. The Calendar column's
- * always-both-visible Today/Tomorrow sections became a `calendarDay` toggle
- * (§4) - only one day's meetings render at a time, and the quick-add's date
- * defaults to whichever day is selected. Both quick-add forms sit above the
- * content they add to (avoids the on-screen keyboard covering them on a
- * list of any real length - same fix as ProjectDataPanel's
- * TodosSection/MeetingsSection). Row markup itself (checkbox/edit/badges/
- * note-link/cancel for tasks, inline-edit/note-link/cancel for meetings) is
- * now the shared ui/TaskRow.tsx/ui/MeetingRow.tsx (docs/dev/technical-design-
- * inbox-tab.md §1) rather than a per-screen copy - the same components
- * ProjectDataPanel, ReviewScreen, and the new Inbox tab use.
- *
- * Google Calendar tab (docs/dev/technical-design-google-calendar.md §9,
- * restructured into a flat 3-tab strip in Batch 6, docs/dev/technical-design-
- * pagination-fixed-height.md §3.2): the Calendar column opens with a shared
- * <MiniTabs> (ui/MiniTabs.tsx) - "Today"/"Tomorrow" (each its own height-
- * paginated ui/PagedSection.tsx over that day's meetings, replacing the old
- * nested Meetings-tab Today/Tomorrow toggle) and "Google", the shared
- * ui/GoogleCalendarPanel.tsx capped to `maxDays={2}` (the same today/
- * tomorrow window the other two tabs show) with a default copy destination
- * of Inbox. All three tabs render at the same fixed total column height
- * (`CALENDAR_VIEWPORT_PX`/`CALENDAR_GOOGLE_VIEWPORT_PX` below) so switching
+ * Calendar tabs (docs/dev/history/technical-design-google-calendar.md §9,
+ * docs/dev/history/technical-design-pagination-fixed-height.md §3.2): one flat
+ * <MiniTabs> strip - "Today"/"Tomorrow" (each a height-paginated list of that
+ * day's meetings) and "Google", the shared ui/GoogleCalendarPanel.tsx capped
+ * to `maxDays={2}` with a default copy destination of Inbox. All three tabs
+ * measure the same box (PagedSection's self-measured viewport), so switching
  * tabs never reflows `DailyFocusPanel` underneath. `onOpenCalendarSettings`
  * is threaded down from App.tsx for the panel's empty-state "Open Calendar
  * Settings" link when no ICS URL is set yet.
  *
- * `#now` and focus mode (2026-09-11, docs/dev/technical-design-now-focus-mode.md,
+ * `#now` and focus mode (docs/dev/history/technical-design-now-focus-mode.md,
  * companion docs/dev/design-philosophy.md §4/§8): the `focusMode` prop switches
  * this same component into a one-column, no-TabBar layout - no separate
  * screen, no separate data load, same `load`/handleAddTask/handleAddMeeting/
- * saveEntryTasks this file already has. App.tsx renders this instance fresh
- * every time focus mode is (re-)entered (a different top-level element tree
- * than the normal 'tabs'-mode Daily instance), which is what lets three
- * pieces of local state below stay plain, unpersisted `useState` rather than
- * anything durable: `pickerMode` (has "Start focus session" been pressed
- * yet - see handleStartFocusSession), `focusEntryNowMs` (the 4-hour meeting
- * look-ahead window's "now", captured once at mount, never refreshed while
- * the screen stays open - §4/§6 of the design doc), and `justCompletedTasks`
- * (the just-finished `#now` cohort, kept around only so the "Congratulations"
- * screen still has something to show once buildNowEntries would otherwise
- * come back empty). The only durable state focus mode itself needs -
- * `GtdParaSettings.focusModeActive` - lives in App.tsx, not here; this
- * component doesn't read or write it at all. See saveEntryTasks's own doc
- * comment for the one correctness fix this feature needed (chained
- * Inbox-sourced writes within one bulk-clear).
+ * saveEntryTasks. App.tsx renders this instance fresh every time focus mode
+ * is (re-)entered (a different top-level element tree than the normal
+ * 'tabs'-mode Daily instance), which is what lets three pieces of local state
+ * below stay plain, unpersisted `useState`: `pickerMode` (has "Start focus
+ * session" been pressed yet - see handleStartFocusSession), `focusEntryNowMs`
+ * (the 4-hour meeting look-ahead window's "now", captured once at mount,
+ * never refreshed while the screen stays open - §4/§6 of the design doc), and
+ * `justCompletedTasks` (the just-finished `#now` cohort, kept so the
+ * "Congratulations" screen still has something to show once buildNowEntries
+ * comes back empty). The only durable state focus mode needs -
+ * `GtdParaSettings.focusModeActive` - lives in App.tsx; this component
+ * doesn't read or write it. See saveEntryTasks's doc comment for chained
+ * Inbox-sourced writes within one bulk-clear.
  */
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
@@ -176,8 +113,7 @@ import {
 } from '../storage/dailyAggregate';
 import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {focusBlockedReason, setItemFocus} from '../storage/focusSlots';
-import {appendMeetingToTarget, appendTaskToTarget} from '../storage/inboxFiling';
-import {moveEntryWithNote} from '../storage/entryMove';
+import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
 import {linkedFileStatus, openLinkedFile} from '../storage/linkedFiles';
@@ -189,26 +125,21 @@ import {FolderEntry} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import DailyFocusPanel from '../ui/DailyFocusPanel';
-import GoogleCalendarPanel, {
-  GOOGLE_COPY_FOOTER_BASELINE_PX,
-  GOOGLE_SUBHEADER_ROW_PX,
-} from '../ui/GoogleCalendarPanel';
+import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import {useFeatures} from '../ui/featureStore';
 import MeetingRow, {MeetingRowLayout, MeetingTrackingConfig} from '../ui/MeetingRow';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
-import {useEditFlush} from '../ui/useEditFlush';
+import {useEditTarget} from '../ui/useEditTarget';
 import {MiniTabDef} from '../ui/MiniTabs';
 import PagedSection from '../ui/PagedSection';
-import {PAGE_SIZE} from '../ui/pagination';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
 import {common} from '../ui/commonStyles';
 import LoadErrorNotice from '../ui/LoadErrorNotice';
-import {COLORS, FONT, SPACING, useThemeColors} from '../ui/theme';
+import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {ExitFocusModeIcon} from '../ui/icons';
-import {useErrorStatus} from '../ui/status/StatusProvider';
 import {perfEnd, perfStart, usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
@@ -218,9 +149,9 @@ import {useCachedInbox} from '../ui/useCachedInbox';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
-  /** Switches to the Inbox tab - used when an Inbox-sourced row's group header/source subtext is tapped (docs/dev/technical-design-inbox-tab.md §3), since there's no Project/Area to open for those. */
+  /** Switches to the Inbox tab - used when an Inbox-sourced row's group header/source subtext is tapped (docs/dev/history/technical-design-inbox-tab.md §3), since there's no Project/Area to open for those. */
   onOpenInbox?: () => void;
-  /** Switches to Settings' Calendar sub-tab (docs/dev/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
+  /** Switches to Settings' Calendar sub-tab (docs/dev/history/technical-design-google-calendar.md §9) - used by the Google mini-tab's empty state when no ICS URL is configured yet. */
   onOpenCalendarSettings?: () => void;
   /** Docs/technical-design-now-focus-mode.md §4: when true, this screen renders as focus mode's one-column, no-TabBar view instead of normal two-column Daily. App.tsx's `Mode: 'focus'` branch renders this same component with this prop on - see this file's own module doc comment. Absent/false is normal Daily, unchanged. */
   focusMode?: boolean;
@@ -234,7 +165,7 @@ const taskKey = (entry: DailyTaskEntry) => `${entry.item.path}#${entry.taskIndex
 const meetingKey = (entry: DailyMeetingEntry) => `${entry.item.path}#${entry.meetingIndex}`;
 
 // Both of this screen's own quick-adds (Open tasks, Calendar) always go to
-// Inbox now (docs/dev/technical-design-filing-unification.md §6) - "file it
+// Inbox (docs/dev/history/technical-design-filing-unification.md §6) - "file it
 // properly" happens on the Inbox tab / Weekly Review's Inbox-to-zero step
 // instead. Same local-constant convention screens/InboxScreen.tsx's own
 // FIXED_INBOX_DESTINATION uses.
@@ -243,141 +174,17 @@ const FIXED_INBOX_DESTINATION: Destination = {type: 'inbox'};
 // Same equal-two-column convention this screen's own Calendar/Open-tasks
 // split already uses (common.column/common.columnLeft, 16px gutter) -
 // docs/dev/design-device-rendering.md §5.1: (1372-16)/2 = 678 per column. Used
-// by ui/TaskRow.tsx's taskRowHeight()/taskRowLines() below (Batch 5,
-// 2026-09-15) now that the Open-tasks column is height-paginated instead
-// of row-count-paginated.
+// by ui/TaskRow.tsx's taskRowHeight()/taskRowLines() below for the
+// height-paginated Open-tasks column.
 const COLUMN_WIDTH_PX = 678;
-// Round 6 (2026-09-17) - reverted Round 5's local `TASK_ROW_SLOT_PX`
-// experiment entirely, back to plain `taskRowHeight()` (ui/TaskRow.tsx's
-// own shared, unmodified 20/22 constants - 42px/64px). Tilman noticed
-// screens/ProjectDataPanel.tsx's Todos section - the exact same TaskRow
-// component, same `taskRowHeight()`, `context='grouped'` instead of
-// `'flat'` - "looks just fine" using those original, untouched numbers.
-// That's real evidence the height lock and the 42/64 sizing both work
-// correctly when used the way ui/TaskRow.tsx's own design intends; Round
-// 5's bigger local slot was solving a problem that may never have been a
-// per-row-size problem to begin with. Matching this screen to the
-// known-working reference exactly, rather than maintaining a second,
-// screen-local sizing scheme - see ui/TaskRow.tsx's own Round-4-revert
-// comment for why the earlier chrome/line re-fit was abandoned, and
-// [[feature_pagination_fixed_height]] for the full round-by-round history.
+// Rows use plain `taskRowHeight()` (ui/TaskRow.tsx's shared 20/22
+// constants - 42px/64px), exactly like screens/ProjectDataPanel.tsx's Todos
+// section, rather than a screen-local sizing scheme
+// ([[feature_pagination_fixed_height]]).
 const GROUP_HEADER_ROW_PX = 57;
 
-// --- Open-tasks viewport budget (docs/dev/design-device-rendering.md §6) ---
-// Bugfix (2026-09-15): Batch 5's first cut preserved the OLD PAGE_SIZE.
-// column row-count budget (10 rows x 42px = 420) on the assumption this
-// column's real available height hadn't changed - wrong. That old 420px
-// figure was tuned against the OLD uniform-64px-row/PageControls layout's
-// own visual proportions, not against what's actually left in this column
-// once QuickAddWidget/the divider/PagedSection's own header row are
-// properly accounted for. Tilman's Batch 5 smoke test showed the box
-// stopping about halfway down the column with a large empty gap below it,
-// while still paginating to a second page - a classic "budget too small"
-// symptom, not a rendering bug. Recomputed from scratch instead, same
-// method ItemsList's own viewportHeight constants used (Batch 4).
-// Bugfix (2026-09-16, round 2): every term below was originally a "~"
-// estimate (FONT.small's real line-height is never set explicitly anywhere
-// in the app), with zero slack - built to land the box's bottom edge
-// exactly on the 1872px screen bottom. A first fix attempt (a flat 150px
-// guessed safety margin) was a placeholder pending real numbers. These ARE
-// the real numbers: Tilman's own bug-report screenshot turned out to be a
-// genuine 1:1, 1404x1872 on-device capture (confirmed by comparing its
-// pixel dimensions to the exact device resolution) - not a mockup - so
-// every fixed-chrome element above the task list could be measured
-// directly by pixel-scanning it for border lines, rather than guessed:
-//   - tab bar's own bottom border:                     y=123 (assumed 96)
-//   - QuickAddWidget card top border:                  y=206
-//   - QuickAddWidget card bottom border:                y=455 (card height
-//     249px real vs 162px assumed - the single biggest gap)
-//   - "Open tasks" header row's own bottom border
-//     (where the task-list viewport itself begins):     y=537 (assumed 348)
-// i.e. real content consumes 537px before the list even starts, not the
-// assumed 348px - a 189px gap, which is why the flat -150 guess in the
-// first fix attempt was close but not quite enough. Screen bottom is
-// confirmed physical (image height = device height exactly), so the real,
-// directly-measured maximum this column's viewport can safely be is
-// `1872 - 537 = 1335`; `OPEN_TASKS_VIEWPORT_PX` below uses 1320 (a small
-// ~15px cushion for antialiasing/measurement rounding, not another guess).
-// Each budget term is corrected to what it actually measures out to
-// (fixed, non-text values like DIVIDER_PX/MIDDLE_ROW_MARGIN_PX are left
-// alone - they aren't font-dependent and the measurement doesn't
-// contradict them); GROUP_HEADER_ROW_PX below (a separate constant, used
-// for pagination row-counting rather than this fixed total) is corrected
-// the same way, from the screenshot's own group-header rows.
-const GLOBAL_CHROME_PX = 123; // Measured: tab bar's own bottom border, full-width scan of the screenshot.
-const DISPLAY_ROW_PX = 79; // Measured (contextIndicatorRow, incl. the "Focus mode" pill - real ~47px tall alone, well over the "~26" guess).
-const MIDDLE_ROW_MARGIN_PX = 4; // styles.middleRow's own marginTop - a fixed value, not text-based, left as originally documented.
-const QUICK_ADD_WIDGET_PX = 249; // Measured: card top border y=206 to card bottom border y=455.
-const DIVIDER_PX = 1 + 12 * 2; // common.divider: height 1 + marginVertical (SPACING.md=12) x2 - fixed, not text-based, unchanged.
-const SECTION_HEADER_ROW_PX = 57; // Measured: PagedSection's own header row, from after the divider to its own bottom border. Still used by CALENDAR_VIEWPORT_PX below.
-
-// Kept but no longer passed to PagedSection (2026-09-17, [[feature_
-// pagination_fixed_height]]'s "runtime-measured viewport height" plan) -
-// the Open-tasks PagedSection below now omits `viewportHeight` entirely
-// and self-measures instead (ui/PagedSection.tsx). A real onLayout
-// measurement came back ~400px smaller than this constant's own total
-// (977px measured vs ~1377px assumed for header+viewport combined),
-// confirming this whole hand-summed-chrome approach had drifted
-// substantially from reality despite each individual term above being
-// pixel-measured against a real screenshot. Left defined, unused, as the
-// quickest possible rollback: pass `viewportHeight={OPEN_TASKS_VIEWPORT_PX}`
-// again to revert this one screen to the old fixed-budget behavior without
-// resurrecting a deleted constant.
-const OPEN_TASKS_VIEWPORT_PX =
-  1872 -
-  GLOBAL_CHROME_PX -
-  DISPLAY_ROW_PX -
-  MIDDLE_ROW_MARGIN_PX -
-  QUICK_ADD_WIDGET_PX -
-  DIVIDER_PX -
-  SECTION_HEADER_ROW_PX -
-  15; // small measurement-rounding cushion, not a repeat of the earlier flat guess // ≈ 1320
-
-// --- Calendar-column viewport budget (Batch 6, docs/dev/technical-design-
-// pagination-fixed-height.md §3.2) ---
-// The Calendar column's own 3-tab (Today/Tomorrow/Google) box has to render
-// at the exact same total height regardless of which tab is active, so
-// switching tabs never reflows DailyFocusPanel underneath it. Both tabs
-// share the same three terms below (chrome already subtracted for
-// OPEN_TASKS_VIEWPORT_PX above, plus this column's own tab strip and the
-// PagedSection/GoogleCalendarPanel header row they both render); the Google
-// tab additionally reserves its own subHeader + copy-footer rows (below)
-// out of the same shared total, rather than growing the column.
-const CALENDAR_TAB_ROW_PX = 44; // ui/MiniTabs.tsx's own already-measured mini-tab strip (design-device-rendering.md §5.3).
-// DailyFocusPanel sits directly below the Calendar box in this same column
-// (a sibling, not measured by this file) - estimated the same way
-// QUICK_ADD_WIDGET_PX above estimates its own sibling: common.spacer's
-// marginTop (SPACING.lg) above it, then its own MiniTabs strip (same figure
-// as CALENDAR_TAB_ROW_PX) plus PAGE_SIZE.dailyFocusPanel fixed-slot rows at
-// ~36px each (design-device-rendering.md §5.2's "Focus-panel slot row").
-const DAILY_FOCUS_PANEL_ROW_PX = 36;
-const DAILY_FOCUS_PANEL_TOTAL_PX =
-  SPACING.lg + CALENDAR_TAB_ROW_PX + PAGE_SIZE.dailyFocusPanel * DAILY_FOCUS_PANEL_ROW_PX; // 20+44+180 = 244
-// Kept but no longer passed to PagedSection/GoogleCalendarPanel (2026-09-17,
-// [[feature_pagination_fixed_height]]'s tabbed-pane follow-on) - both
-// Calendar-column tabs below now omit `viewportHeight` and self-measure
-// instead, same reasoning/rollback convention as OPEN_TASKS_VIEWPORT_PX
-// above (this formula has the identical hand-summed-sibling-chrome shape
-// that turned out ~400px off there). Left defined, unused, as the quickest
-// rollback: pass these two back into the Today/Tomorrow PagedSection and
-// GoogleCalendarPanel calls below to revert.
-const CALENDAR_VIEWPORT_PX =
-  1872 -
-  GLOBAL_CHROME_PX -
-  DISPLAY_ROW_PX -
-  MIDDLE_ROW_MARGIN_PX -
-  CALENDAR_TAB_ROW_PX -
-  DAILY_FOCUS_PANEL_TOTAL_PX -
-  SECTION_HEADER_ROW_PX; // ≈ 1423
-// Google tab's own subHeader (Refresh/Show-existing row) and fixed
-// copy-footer slot sit below its PagedSection's own viewport, inside the
-// same box the Today/Tomorrow tab fills with viewportHeight alone - see
-// ui/GoogleCalendarPanel.tsx's own exported GOOGLE_SUBHEADER_ROW_PX/
-// GOOGLE_COPY_FOOTER_BASELINE_PX doc comments for those two figures.
-const CALENDAR_GOOGLE_VIEWPORT_PX = CALENDAR_VIEWPORT_PX - GOOGLE_SUBHEADER_ROW_PX - GOOGLE_COPY_FOOTER_BASELINE_PX; // ≈ 1373
-
-/** Flattens grouped task entries into one paginated sequence (docs/technical-
- * design-pagination-edit-reuse.md §2/§4) - a group's header row is counted
+/** Flattens grouped task entries into one paginated sequence (
+ * docs/dev/history/technical-design-pagination-edit-reuse.md §2/§4) - a group's header row is counted
  * as content within that sequence, same as any other row. */
 type FlatTaskRow = {kind: 'header'; item: DailyItemRef} | {kind: 'entry'; entry: DailyTaskEntry};
 
@@ -390,12 +197,10 @@ function flattenTaskGroups(groups: DailyTaskGroup[]): FlatTaskRow[] {
   return rows;
 }
 
-// Unified 3-tab Calendar strip (Batch 6, docs/dev/technical-design-pagination-
-// fixed-height.md §3.2) - replaces the old two-level Meetings/Google
-// MiniTabs + Today/Tomorrow toggle nested inside "Meetings" with one flat
-// row of tabs, since a fixed-height PagedSection needs one single
-// `resetKey`-bearing tab value to page against, not a toggle nested inside
-// a tab.
+// Flat 3-tab Calendar strip (docs/dev/technical-design-pagination-
+// fixed-height.md §3.2) - one tab value rather than a toggle nested inside
+// a tab, since a fixed-height PagedSection needs one single
+// `resetKey`-bearing tab value to page against.
 type CalendarTab = 'today' | 'tomorrow' | 'google';
 const CALENDAR_TABS: MiniTabDef<CalendarTab>[] = [
   {key: 'today', label: 'Today'},
@@ -415,13 +220,13 @@ export default function DailyView({
   onEnterFocusMode,
 }: Props): React.JSX.Element {
   usePerfRender('DailyView');
-  const {isDarkMode, textColor, borderColor, placeholderColor} = useThemeColors();
+  const {textColor, borderColor, placeholderColor} = useThemeColors();
 
   // Live view of storage/dataCache.ts - re-renders (with a fresh array) on
   // every cache mutation (docs/dev/technical-design-cache-subscription-and-
-  // shared-add-path.md §A). `aggregate` is no longer state: it is derived
-  // from `items`/`inbox` on every render (see the const further below), so
-  // there is no manual "refresh after save" step left to forget.
+  // shared-add-path.md §A). `aggregate` is derived from `items`/`inbox` on
+  // every render (see the const further below), so there is no manual
+  // "refresh after save" step to forget.
   const items = useCachedItems();
   const confirmNoteCreate = useNoteCreateConfirm('DailyView.noteCreateConfirm');
   // Moving a todo/meeting with a note: confirm, the note moves along (technical-design-files-0.6.md §3.4).
@@ -440,73 +245,61 @@ export default function DailyView({
   // actually lands - see src/utils/screenRefresh.ts.
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  useErrorStatus('DailyView.actionError', actionError, () => setActionError(null));
-  // Calendar column's 3-tab state (Batch 6, docs/dev/technical-design-
-  // pagination-fixed-height.md §3.2) - collapses the old two-level
-  // calendarMainTab ('meetings'|'google') + calendarDay ('today'|'tomorrow')
-  // pair into one flat value, since PagedSection needs a single `resetKey`
-  // to page against per tab rather than a toggle nested inside a tab.
+  const toggleAction = useActionError('DailyView.actionError', 'DailyView: toggle failed');
+  // Calendar column's 3-tab state (docs/dev/technical-design-
+  // pagination-fixed-height.md §3.2) - one flat value, since PagedSection
+  // needs a single `resetKey` to page against per tab.
   const [calendarTab, setCalendarTab] = useState<CalendarTab>('today');
   // The Google tab only while the experimental Google Calendar integration
-  // is on (docs/dev/technical-design-about-debug-experimental.md §3.2);
+  // is on (docs/dev/history/technical-design-about-debug-experimental.md §3.2);
   // DayMeetingsPanel drops the tab when googlePanel is null.
   const features = useFeatures();
 
   // Context-tag filter (technical-design-context-tags.md §6) - session-only,
   // not persisted (resets to off on every reopen, same posture docs/
-  // technical-design-now-focus-mode.md §5 already uses for focus mode's own
-  // state), Daily-only for v1 (deliberately never threaded into
-  // focusMode's own rendering below - see that scope note in the design
-  // doc's §2/§10). Set by tapping a tag in a row's text (ui/TaskRow.tsx/
+  // technical-design-now-focus-mode.md §5 uses for focus mode's own
+  // state), Daily-only (deliberately never threaded into
+  // focusMode's own rendering below - see the design doc's §2/§10). Set by
+  // tapping a tag in a row's text (ui/TaskRow.tsx/
   // ui/MeetingRow.tsx's onToggleContext) or the indicator's own ✕; there's
   // no other way to set it (no picker) by design.
   const [dailyContext, setDailyContext] = useState<string | null>(null);
   const toggleContext = (tag: string) => setDailyContext(current => (current === tag ? null : tag));
 
-  // Which row (if any) is mid-edit, across BOTH columns (2026-09-09,
-  // docs/dev/technical-design-unified-quickadd.md §6/§8) - one shared
-  // QuickAddWidget instance now serves both the Open-tasks and Calendar
-  // columns, so there's one lifted edit-target state for the whole screen
-  // rather than a separate one per column, mirroring the
-  // `EditTarget`-shaped state ProjectDataPanel.tsx/InboxScreen.tsx already
-  // use. Row keys stay string-based (not the `{type, index}` shape those
-  // two screens use) since a row here can belong to a *different*
-  // Project/Area/Inbox than its neighbor - see taskKey/meetingKey above.
+  // Which row (if any) is mid-edit, across both columns: one Quick Add
+  // serves Open tasks and Calendar. Rows are keyed by string (taskKey/
+  // meetingKey above), since neighbouring rows can live in different files.
+  // Starting another edit saves this one first (ui/useEditTarget.ts).
   type DailyEditTarget = {type: 'task'; key: string} | {type: 'meeting'; key: string};
-  const [editTarget, setEditTarget] = useState<DailyEditTarget | null>(null);
-  // Shown as a warning in the central status slot (via QuickAddWidget) when a row tap is blocked
-  // because an edit is already open elsewhere on screen (design doc §6).
-  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+  const {target: editTarget, start: startEditTarget, cancel: cancelEditTarget, flushEditRef} = useEditTarget<DailyEditTarget>();
   const tasksAction = useActionError('DailyView.tasksActionError', 'DailyView: task action failed');
   const meetingsAction = useActionError('DailyView.meetingsActionError', 'DailyView: meeting action failed');
 
-  // Focus-mode-only local state (docs/dev/technical-design-now-focus-mode.md §5/
+  // Focus-mode-only local state (docs/dev/history/technical-design-now-focus-mode.md §5/
   // §6) - see this file's module doc comment for why plain unpersisted
   // useState is enough here ("sessions held lightly").
 
   // The Picker's own "has 'Start focus session' been pressed yet" flag
   // (state C vs A). Deliberately NOT derived from whether any task currently
   // carries #now: double-tapping a Picker candidate writes #now immediately
-  // (so more than one can be selected before committing - the corrected
-  // interaction model, see handleToggleNow/handleStartFocusSession below),
-  // and that live write must not itself flip the view over to the working
-  // state before the button is pressed. Initialized once per mount, after
-  // the initial load lands, to `true` (fresh Picker) only when no task is
-  // #now yet - resuming a session already in progress skips straight past
-  // the Picker instead (§5's "reopening always returns to the running
-  // session"). `pickerModeInitRef` guards this happening only once; nothing
-  // else ever flips it back to `true` (handleCreateNewSession doesn't need
-  // to - see focusState's own derivation below, which falls back to the
-  // Picker whenever nothing is #now regardless of this flag).
+  // (so more than one can be selected before committing - see
+  // handleToggleNow/handleStartFocusSession below), and that live write must
+  // not itself flip the view over to the working state before the button is
+  // pressed. Initialized once per mount, after the initial load lands, to
+  // `true` (fresh Picker) only when no task is #now yet - resuming a session
+  // already in progress skips straight past the Picker instead (§5's
+  // "reopening always returns to the running session"). `pickerModeInitRef`
+  // guards this happening only once; nothing else ever flips it back to
+  // `true` (handleCreateNewSession doesn't need to - see focusState's own
+  // derivation below, which falls back to the Picker whenever nothing is
+  // #now regardless of this flag).
   const pickerModeInitRef = useRef(false);
   const [pickerMode, setPickerMode] = useState(true);
-  // The 4-hour meeting look-ahead window's "now" (§4/§6's correction: this
-  // is computed once, when focus mode is entered, never refreshed while the
-  // screen stays open) - a lazy initializer captures it at this instance's
-  // first render, which is safe specifically because App.tsx remounts this
-  // component fresh every time focus mode is (re-)entered (module doc
-  // comment) - there's no later moment this value would need invalidating.
+  // The 4-hour meeting look-ahead window's "now" (§4/§6: computed once, when
+  // focus mode is entered, never refreshed while the screen stays open) - a
+  // lazy initializer captures it at this instance's first render, which is
+  // safe because App.tsx remounts this component fresh every time focus mode
+  // is (re-)entered (module doc comment).
   const [focusEntryNowMs] = useState(() => Date.now());
   // Snapshot of whichever tasks were #now at the instant the whole cohort
   // just cleared (§6 state B) - buildNowEntries would otherwise come back
@@ -521,8 +314,8 @@ export default function DailyView({
     setLoading(true);
     setError(null);
     // Settings are applied together with Inbox/paths below (one render
-    // round instead of two - docs/dev/technical-design-render-perf-ab.md §3 B3);
-    // still applied on a later failure, as before.
+      // round instead of two - docs/dev/history/technical-design-render-perf-ab.md §3 B3),
+      // and also on a later failure.
     let loadedSettings: GtdParaSettings | null = null;
     try {
       loadedSettings = await loadSettings();
@@ -554,7 +347,7 @@ export default function DailyView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Kept tab shown again (docs/dev/technical-design-keep-tabs-alive.md §5.2):
+  // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.2):
   // settings are this screen's own copy, so re-read them quietly - no
   // spinner, and state only changes (= re-render) if they actually differ.
   // The Inbox is the shared cache copy (refreshed when gtdpara is reopened).
@@ -574,7 +367,6 @@ export default function DailyView({
     })();
   });
 
-
   // pickerMode's one-time initializer (see its own declaration above) - runs
   // once the initial load lands (guarded by pickerModeInitRef, not by an
   // empty dep array, since `loading` starts true and this has to wait for it
@@ -590,7 +382,7 @@ export default function DailyView({
     setPickerMode(cohort.length === 0);
   }, [focusMode, loading, items, inbox, inboxPath]);
 
-  /** Jumps to that Project/Area's Current tab, or (2026-09-03, docs/dev/technical-design-inbox-tab.md §3) to the Inbox tab when `item` is the synthetic Inbox entry - there's no Project/Area to open for that one. */
+  /** Jumps to that Project/Area's Current tab, or (docs/dev/history/technical-design-inbox-tab.md §3) to the Inbox tab when `item` is the synthetic Inbox entry - there's no Project/Area to open for that one. */
   const openItem = (item: DailyItemRef) => {
     if (item.kind === 'inbox') {
       onOpenInbox?.();
@@ -607,9 +399,9 @@ export default function DailyView({
    * implementation is storage/itemMutations.ts's `mutateEntryTasks` (Inbox
    * branch, stale-index check and error wording included); this wrapper only
    * owns the screen-local Inbox state. Throws a user-facing message if the
-   * item or task index no longer matches what's cached.
+   * item or task index doesn't match what's cached.
    *
-   * `inboxOverride`/return value (2026-09-11, docs/dev/technical-design-now-
+   * `inboxOverride`/return value (docs/dev/technical-design-now-
    * focus-mode.md §5/§6's bulk `#now` clear): `setCachedInbox` is async, so
    * chaining several `await saveEntryTasks(...)` calls back-to-back for
    * Inbox-sourced entries within one function (as clearing a whole `#now`
@@ -642,54 +434,25 @@ export default function DailyView({
     if (nextInbox) setCachedInbox(nextInbox);
   };
 
-  // One-edit-at-a-time guard (design doc §6) - lives here, not in the
-  // widget, since the widget only ever sees whichever row it's handed and
-  // has no way to know about the other column. `blockedMessage` is cleared
-  // wherever an edit actually completes (cancelEditTarget wraps every
-  // Cancel/Save/Delete path below), and by a fresh startEditTarget call
-  // succeeding.
-  // Save-then-switch (docs/dev/technical-design-meeting-lists.md §10, 2026-09-29):
-  // tapping another row while editing first saves the current row's changes
-  // (if any), then switches - it used to be blocked with "Finish edit!".
-  const {flushEditRef, afterSave} = useEditFlush();
-  const startEditTarget = (target: DailyEditTarget) =>
-    afterSave(() => {
-      setEditTarget(target);
-      setBlockedMessage(null);
-    });
-  const cancelEditTarget = () => {
-    setEditTarget(null);
-    setBlockedMessage(null);
-  };
 
   // Errors from the shared widget's own add/edit/delete actions - kept
   // separate from tasksActionError/meetingsActionError below, which stay
-  // scoped to each column's row-level actions (note create/open) as
-  // before. Needed here (unlike Review's Inbox-to-zero step, which reuses
-  // its own single existing error slot) because tasksActionError/
-  // meetingsActionError are displayed in two different columns, while the
-  // widget itself lives in only one - the same reasoning ProjectDataPanel.tsx/
-  // InboxScreen.tsx already applied in step 2.
+  // scoped to each column's row-level actions (note create/open), because
+  // those two are displayed in two different columns while the widget
+  // itself lives in only one.
   const widgetAction = useActionError('DailyView.widgetError', 'DailyView: widget action failed');
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
-  const runWidgetAction = (fn: () => Promise<void>): Promise<void> => runWidgetSave(fn).then(() => undefined);
+  const runWidgetAction = widgetAction.run;
 
   const handleToggleDone = (entry: DailyTaskEntry) => {
-    setActionError(null);
-    (async () => {
-      try {
-        await saveEntryTasks(entry, tasks => {
-          tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !tasks[entry.taskIndex].done};
-          return tasks;
-        });
-        log('DailyView: toggled', entry.item.path, entry.taskIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('DailyView: toggle failed', message);
-        setActionError(message);
-      }
-    })();
+    toggleAction.run(async () => {
+      await saveEntryTasks(entry, tasks => {
+        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !tasks[entry.taskIndex].done};
+        return tasks;
+      });
+      log('DailyView: toggled', entry.item.path, entry.taskIndex);
+    }, 'DailyView: toggle failed');
   };
 
   /**
@@ -698,7 +461,7 @@ export default function DailyView({
    * same setNowTag-then-deriveTaskFields round-trip every other tag mutator
    * on this screen uses (see commitTaskEdit above). Wired both from normal
    * Daily's Open-tasks rows (renderTaskEntry below - marking #now doesn't
-   * require being in focus mode, docs/dev/technical-design-now-focus-mode.md §3)
+   * require being in focus mode, docs/dev/history/technical-design-now-focus-mode.md §3)
    * and from focus mode's own Picker (§6 state C, renderFocusTaskEntry
    * below) - the Picker's double-tap-to-select IS this same call, nothing
    * Picker-specific about it. A task turning done while carrying #now is
@@ -706,22 +469,15 @@ export default function DailyView({
    * flips the tag.
    */
   const handleToggleNow = (entry: DailyTaskEntry) => {
-    setActionError(null);
-    (async () => {
-      try {
-        await saveEntryTasks(entry, tasks => {
-          const task = tasks[entry.taskIndex];
-          const nextText = setNowTag(task.text, !task.now);
-          tasks[entry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
-          return tasks;
-        });
-        log('DailyView: toggled #now', entry.item.path, entry.taskIndex);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('DailyView: toggle #now failed', message);
-        setActionError(message);
-      }
-    })();
+    toggleAction.run(async () => {
+      await saveEntryTasks(entry, tasks => {
+        const task = tasks[entry.taskIndex];
+        const nextText = setNowTag(task.text, !task.now);
+        tasks[entry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
+        return tasks;
+      });
+      log('DailyView: toggled #now', entry.item.path, entry.taskIndex);
+    }, 'DailyView: toggle #now failed');
   };
 
   /**
@@ -741,58 +497,51 @@ export default function DailyView({
    * `inbox` React state doesn't update synchronously.
    */
   const handleFocusToggleDone = (entry: DailyTaskEntry) => {
-    setActionError(null);
-    (async () => {
-      try {
-        const wasDone = entry.task.done;
-        const doneResult = await saveEntryTasks(entry, tasks => {
-          tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !wasDone};
-          return tasks;
-        });
-        if (wasDone) return;
+    toggleAction.run(async () => {
+      const wasDone = entry.task.done;
+      const doneResult = await saveEntryTasks(entry, tasks => {
+        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !wasDone};
+        return tasks;
+      });
+      if (wasDone) return;
 
-        // Non-Inbox items are already synchronously fresh in the cache
-        // after the write above (storage/dataCache.ts's module-level
-        // cache); Inbox needs the just-mutated value threaded through
-        // explicitly rather than reading the (still-stale, setCachedInbox is
-        // async) `inbox` React state.
-        const inboxForCohort = entry.item.kind === 'inbox' ? doneResult ?? undefined : inbox ?? undefined;
-        const cache = getCachedData();
-        const cohort = buildNowEntries(
-          cache?.items ?? items,
-          inboxForCohort ? {tasks: inboxForCohort.tasks, meetings: inboxForCohort.meetings} : null,
-          inboxPath ?? '',
+      // Non-Inbox items are already synchronously fresh in the cache
+      // after the write above (storage/dataCache.ts's module-level
+      // cache); Inbox needs the just-mutated value threaded through
+      // explicitly rather than reading the (still-stale, setCachedInbox is
+      // async) `inbox` React state.
+      const inboxForCohort = entry.item.kind === 'inbox' ? doneResult ?? undefined : inbox ?? undefined;
+      const cache = getCachedData();
+      const cohort = buildNowEntries(
+        cache?.items ?? items,
+        inboxForCohort ? {tasks: inboxForCohort.tasks, meetings: inboxForCohort.meetings} : null,
+        inboxPath ?? '',
+      );
+      const stillOpen = cohort.filter(e => !e.task.done);
+      if (stillOpen.length > 0) return; // more #now tasks still open - no clear yet
+
+      // Every #now task is now done - snapshot first (so the
+      // Congratulations screen has something to render), then clear the
+      // whole cohort's #now tags together, sequentially, threading each
+      // write's result into the next (see this function's own doc
+      // comment).
+      setJustCompletedTasks(cohort);
+      let inboxState = inboxForCohort;
+      for (const doneEntry of cohort) {
+        const nextInbox = await saveEntryTasks(
+          doneEntry,
+          tasks => {
+            const task = tasks[doneEntry.taskIndex];
+            const nextText = setNowTag(task.text, false);
+            tasks[doneEntry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
+            return tasks;
+          },
+          inboxState,
         );
-        const stillOpen = cohort.filter(e => !e.task.done);
-        if (stillOpen.length > 0) return; // more #now tasks still open - no clear yet
-
-        // Every #now task is now done - snapshot first (so the
-        // Congratulations screen has something to render), then clear the
-        // whole cohort's #now tags together, sequentially, threading each
-        // write's result into the next (see this function's own doc
-        // comment).
-        setJustCompletedTasks(cohort);
-        let inboxState = inboxForCohort;
-        for (const doneEntry of cohort) {
-          const nextInbox = await saveEntryTasks(
-            doneEntry,
-            tasks => {
-              const task = tasks[doneEntry.taskIndex];
-              const nextText = setNowTag(task.text, false);
-              tasks[doneEntry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
-              return tasks;
-            },
-            inboxState,
-          );
-          if (nextInbox) inboxState = nextInbox;
-        }
-        log('DailyView: focus cohort cleared', cohort.length);
-      } catch (e) {
-        const message = errorMessage(e);
-        logError('DailyView: focus toggle done failed', message);
-        setActionError(message);
+        if (nextInbox) inboxState = nextInbox;
       }
-    })();
+      log('DailyView: focus cohort cleared', cohort.length);
+    }, 'DailyView: focus toggle done failed');
   };
 
   /** Picker's "Start focus session" button (§6 state C→A) - commits whatever's currently selected (already written live by handleToggleNow above) and switches the view. Nothing selected is simply left alone: focusState's own derivation below already falls back to rendering the Picker whenever nothing is #now, regardless of this flag, so there's nothing to specially guard against here (§6: "not specially prevented"). */
@@ -801,9 +550,8 @@ export default function DailyView({
   /** Congratulations screen's "Create new session" button (§6 state B→C) - clears the snapshot; focusState's derivation (nowCohort is already empty at this point, the clear having just happened) falls straight through to the Picker on the very next render, no further state change needed. */
   const handleCreateNewSession = () => setJustCompletedTasks(null);
 
-  // Now only backs this column's own row-level actions (note create/open) -
-  // edit/cancel moved to runWidgetAction above, since those are driven by
-  // the shared widget instead. async (returns the underlying promise) so
+  // Backs this column's own row-level actions (note create/open); edits go
+  // through runWidgetAction above. async (returns the underlying promise) so
   // callers with their own promise chains have a real promise to attach to
   // - same shape as ProjectDataPanel's runAction.
   const runTaskAction = tasksAction.run;
@@ -818,11 +566,9 @@ export default function DailyView({
    * setFlowStateTag/setDueTag calls its add mode uses), so this only needs
    * to re-derive tags/dueDate/flowState/waitingOn and write through, same
    * as ProjectDataPanel's TodosSection commitEdit. `nextLinkedFile` is
-   * assigned straight onto the field, same as every other commitEdit in
-   * this pass. Closes edit mode only on a successful save - runWidgetAction
-   * swallows errors internally, so chaining `.then(() => ...)` after it (as
-   * this used to) would close edit mode even on a failed save; same fix
-   * every other commitEdit in this pass got.
+   * assigned straight onto the field. Closes edit mode only on a successful
+   * save - runWidgetAction swallows errors internally, so chaining
+   * `.then(() => ...)` after it would close edit mode even on a failed save.
    */
   const commitTaskEdit = (entry: DailyTaskEntry, nextText: string, nextLinkedFile: string): Promise<boolean> => {
     const text = nextText.trim();
@@ -836,7 +582,7 @@ export default function DailyView({
     });
   };
 
-  /** The soft-delete ui/TaskRow.tsx's old ✕ used to trigger, now sourced from ui/QuickAddWidget.tsx's "Delete" button in edit mode instead (technical-design-linked-files.md §1/§7) - only ever called on the entry currently being edited (handleDeleteEditForWidget below), so closing edit mode on success here is safe. */
+  /** Soft-delete, triggered by ui/QuickAddWidget.tsx's "Delete" button in edit mode (technical-design-linked-files.md §1/§7) - only ever called on the entry currently being edited (handleDeleteEditForWidget below), so closing edit mode on success here is safe. */
   const handleCancelTask = (entry: DailyTaskEntry) => {
     Keyboard.dismiss();
     runWidgetAction(async () => {
@@ -849,15 +595,12 @@ export default function DailyView({
   };
 
   /**
-   * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md §6, Slice
-   * 3, 2026-09-22): replaces the old separate handleCreateTaskNote/
-   * handleOpenTaskNote pair with one call into `storage/
-   * meetingNoteContent.ts`'s `openOrCreateTodoNote`, which decides
-   * create-vs-open (and own-vs-shared-target) internally and already ends by
-   * opening the resolved page itself - this handler's only remaining job is
-   * persisting `notePath` when it changed. `null` for the related-items
-   * context, matching both old handlers here exactly (unlike this screen's
-   * meeting handler below, the Todo ones never passed `inbox` through).
+   * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md §6): one
+   * call into `storage/meetingNoteContent.ts`'s `openOrCreateTodoNote`, which
+   * decides create-vs-open (and own-vs-shared-target) internally and ends by
+   * opening the resolved page itself - this handler only persists `notePath`
+   * when it changed. `null` for the related-items context (unlike this
+   * screen's meeting handler below, the Todo one passes no `inbox`).
    */
   const handleTaskNote = (entry: DailyTaskEntry) => {
     Keyboard.dismiss();
@@ -875,8 +618,8 @@ export default function DailyView({
     });
   };
 
-  // Now only backs this column's own row-level actions (note create/open) -
-  // edit/cancel moved to runWidgetAction above. Same shape as runTaskAction.
+  // Backs this column's own row-level actions (note create/open); edits go
+  // through runWidgetAction above. Same shape as runTaskAction.
   const runMeetingAction = meetingsAction.run;
 
   const startMeetingEdit = (entry: DailyMeetingEntry) => {
@@ -920,34 +663,13 @@ export default function DailyView({
   };
 
   /**
-   * ui/QuickAddWidget.tsx's onQuickFile in edit mode (feature_abbrev_quick_
-   * file, 2026-09-17, 2026-09-18 bugfix, docs/dev/technical-design-abbrev-quick-
-   * file.md §5.2) - genuinely new plumbing, unlike Inbox/Current tab/
-   * Review's straight pass-through to an existing refile commit path: Daily
-   * has no "move to a different file" capability at all before this
-   * feature. `payload` is the widget's fully-composed, tag-stripped current
-   * edit-session text/fields (mirroring commitTaskEdit/commitMeetingEdit's
-   * own nextText/fields above) - this is "Save, but file elsewhere", not a
-   * plain move of the last-saved copy, so any other edit made during this
-   * session (including the abbreviation tag itself) rides along instead of
-   * being silently discarded (2026-09-18: the original version only took
-   * `target` and moved entry.task/entry.meeting as-is, which is also why the
-   * tag never actually disappeared). Builds the updated object the same way
-   * commitTaskEdit/commitMeetingEdit do (spread the stored item first so
-   * done/cancelled/notePath survive, then overlay the
-   * edited fields), then appends to the resolved target
-   * (appendTaskToTarget/appendMeetingToTarget - reused as-is from
-   * storage/inboxFiling.ts, source-agnostic), then removes the entry from
-   * wherever it actually lives via saveEntryTasks/saveEntryMeetings (already
-   * source-agnostic themselves - Inbox or any Project/Area, same branch
-   * their own Inbox/non-Inbox handling uses everywhere else in this file) -
-   * same append-then-remove order fileInboxTask/fileInboxMeeting use.
-   * Deliberately does NOT go through runWidgetAction (which swallows errors
-   * internally, same as runTaskAction/runMeetingAction) - onQuickFile's
-   * contract needs a real rejecting Promise so the widget's own
-   * handleQuickFile can show the failure inline. Closes edit mode
-   * (cancelEditTarget) only once both steps succeed, same "close only on
-   * success" rule every other commitEdit in this file follows.
+   * QuickAddWidget's onQuickFile in edit mode: "save, but file elsewhere".
+   * `payload` is the widget's current edit-session text/fields with the
+   * abbreviation tag stripped, so other edits made in this session move
+   * along (stored done/cancelled/notePath are kept). The entry may live in
+   * the Inbox or any Project/Area. Throws instead of using runWidgetAction,
+   * so the widget can show the failure inline; closes edit mode only after
+   * the move succeeded.
    */
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (editTarget?.type === 'task' && editingTaskEntry && payload.kind === 'task') {
@@ -958,23 +680,17 @@ export default function DailyView({
         ...deriveTaskFields(payload.text),
         linkedFile: payload.linkedFile,
       };
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: entry.item.path, target}, moveUi, async next => {
-        await appendTaskToTarget(target, next);
-        await saveEntryTasks(entry, tasks => tasks.filter((_, index) => index !== entry.taskIndex));
-      });
+      const moved = await moveTask(entry.item, entry.taskIndex, updated, itemTarget(target), moveUi);
       if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
     } else if (editTarget?.type === 'meeting' && editingMeetingEntry && payload.kind === 'meeting') {
       const entry = editingMeetingEntry;
       const updated: Meeting = applyMeetingEdit(entry.meeting, payload.fields, payload.linkedFile);
-      const moved = await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: entry.item.path, target}, moveUi, async next => {
-        await appendMeetingToTarget(target, next);
-        await saveEntryMeetings(entry, meetings => meetings.filter((_, index) => index !== entry.meetingIndex));
-      });
+      const moved = await moveMeeting(entry.item, entry.meetingIndex, updated, itemTarget(target), moveUi);
       if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
     }
   };
 
-  /** Meeting counterpart of handleTaskNote above - see its doc comment. Passes `inbox ? {tasks: inbox.tasks} : null`, matching both old handlers here exactly. */
+  /** Meeting counterpart of handleTaskNote above - see its doc comment. Passes `inbox ? {tasks: inbox.tasks} : null` as the related-items context. */
   const handleMeetingNote = (entry: DailyMeetingEntry) => {
     Keyboard.dismiss();
     runMeetingAction(async () => {
@@ -997,7 +713,7 @@ export default function DailyView({
 
   /**
    * The meeting row's prep/review checkpoint icon (ui/MeetingRow.tsx's
-   * `tracking`, docs/dev/technical-design-meeting-tracking.md) - flips
+   * `tracking`, docs/dev/history/technical-design-meeting-tracking.md) - flips
    * `#prepped`/`#reviewed` on the meeting's CURRENT copy inside the usual
    * saveEntryMeetings mutator (not on the render-time `entry.meeting`, which
    * may be a render behind), same write path as every other meeting edit
@@ -1046,13 +762,8 @@ export default function DailyView({
    * ProjectDataPanel's checkboxes use (storage/focusSlots.ts), so the two
    * surfaces never disagree about what's allowed.
    *
-   * `area` bugfix (2026-09-09, found incidentally while adding this file to
-   * a real tsc pass for the first time - unrelated to the quick-add work):
-   * this was omitting `item.area` from the object passed to setItemFocus,
-   * the same silent-wipe-a-Project's-Area-assignment bug technical-design-
-   * project-area-assignment.md already found and fixed in
-   * ProjectDataPanel.tsx (2026-09-07) - this screen's own copy of the same
-   * call just never got that fix.
+   * Passes `item.area` along to setItemFocus - leaving it out would silently
+   * wipe a Project's Area assignment (technical-design-project-area-assignment.md).
    */
   const handleToggleItemFocus = useCallback(
     async (item: CachedItem, value: boolean): Promise<void> => {
@@ -1080,14 +791,13 @@ export default function DailyView({
   const todayDate = todayIso();
   const tomorrowDate = isoDateOffset(1);
 
-  // The unfiltered aggregate, derived on every render (2026-09-20, docs/
-  // technical-design-cache-subscription-and-shared-add-path.md §A) - it used
-  // to be state that load()/refreshFromCache() had to remember to rebuild.
+  // The unfiltered aggregate, derived on every render (docs/
+  // technical-design-cache-subscription-and-shared-add-path.md §A).
   // buildDailyAggregate is a pure, synchronous transform over `items`/`inbox`
   // (storage/dailyAggregate.ts's own module doc comment), so recomputing is
   // cheap, and it can never be stale relative to the cache. `null` until
-  // load() has produced a inboxPath, same as the old state's null.
-  // Memoized on its real inputs (docs/dev/technical-design-render-perf-ab.md
+  // load() has produced a inboxPath.
+  // Memoized on its real inputs (docs/dev/history/technical-design-render-perf-ab.md
   // §3 B4) - `todayDate` is in the deps so a screen left open over midnight
   // still recomputes.
   const aggregate: DailyAggregate | null = useMemo(
@@ -1095,6 +805,7 @@ export default function DailyView({
       inboxPath !== null
         ? buildDailyAggregate(items, inbox ? {tasks: inbox.tasks, meetings: inbox.meetings} : null, inboxPath)
         : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- todayDate: recompute after midnight
     [items, inbox, inboxPath, todayDate],
   );
 
@@ -1102,7 +813,7 @@ export default function DailyView({
   // derivation with one extra argument, since `dailyContext` toggles from a
   // plain tag tap with no I/O to wait on. Deliberately never reaches
   // focusMode's own rendering (nowCohort/pickerCandidates/focusMeetings
-  // below don't use this) - Daily-only for v1, see the dailyContext state's
+  // below don't use this) - Daily-only, see the dailyContext state's
   // own doc comment.
   const displayAggregate: DailyAggregate = useMemo(
     () =>
@@ -1115,6 +826,7 @@ export default function DailyView({
             dailyContext,
           )
         : aggregate ?? EMPTY_DAILY_AGGREGATE,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- todayDate: recompute after midnight
     [dailyContext, items, inbox, inboxPath, aggregate, todayDate],
   );
 
@@ -1125,18 +837,14 @@ export default function DailyView({
   // Row markup itself is the shared ui/TaskRow.tsx (docs/dev/technical-design-
   // inbox-tab.md §1) - this screen just wires its own handlers into it,
   // same as ProjectDataPanel/ReviewScreen/InboxScreen do. No `onFile` here -
-  // Daily was never a filing surface (see the module doc comment).
+  // Daily is not a filing surface (see the module doc comment).
   //
-  // `heightPx` (Batch 5, 2026-09-15, docs/dev/technical-design-pagination-
-  // fixed-height.md §3.1): passed by renderFlatTaskRow below, computed via
-  // taskRowHeight() (Round 6, 2026-09-17 - back to this screen matching
-  // ProjectDataPanel's own, proven-working call exactly, see COLUMN_WIDTH_PX's
-  // own comment) the same way it's summed for PagedSection's
-  // own viewportHeight math, so the rendered row matches exactly what
-  // pagination assumed - same height/numberOfLines pairing ui/TaskRow.tsx's
-  // own doc comment documents. Left undefined for focus mode's
-  // renderFocusTaskEntry below (unpaginated, out of scope for this pass -
-  // see this file's module doc comment on focus mode's own ScrollView).
+  // `heightPx` (docs/dev/history/technical-design-pagination-fixed-height.md §3.1):
+  // passed by renderFlatTaskRow below, computed via taskRowHeight() the same
+  // way it's summed for PagedSection's own viewport math, so the rendered
+  // row matches exactly what pagination assumed - same height/numberOfLines
+  // pairing ui/TaskRow.tsx's own doc comment documents. Left undefined for
+  // focus mode's renderFocusTaskEntry below (unpaginated).
   const renderTaskEntry = (entry: DailyTaskEntry, heightPx?: number) => {
     const key = taskKey(entry);
     return (
@@ -1206,17 +914,9 @@ export default function DailyView({
    */
   const renderFlatTaskRow = (row: FlatTaskRow) => {
     if (row.kind === 'header') {
-      // Reverted 2026-09-16: an earlier attempt at this same bug wrapped
-      // this row in a height:GROUP_HEADER_ROW_PX/overflow:'hidden' box to
-      // force it to match its pagination-budgeted height exactly (mirroring
-      // TaskRow's own defensive pattern). Tilman's on-device check showed
-      // that just visibly clipped the header text itself - proof
-      // GROUP_HEADER_ROW_PX(34) under-estimates the real rendered height,
-      // not that clipping was the right mechanism - and it didn't fix the
-      // actual missing-tasks/no-pagination symptom either. Reverted to
-      // plain organic rendering; see OPEN_TASKS_VIEWPORT_PX's own comment
-      // for the real fix this time (shrinking the whole column's budget by
-      // a safety margin instead of chasing individual row estimates).
+      // Rendered at its natural height (no fixed-height box): clipping it to
+      // GROUP_HEADER_ROW_PX would cut the header text; PagedSection measures the
+      // real viewport instead.
       return (
         <Pressable key={`header-${row.item.path}`} onPress={() => openItem(row.item)} hitSlop={8}>
           <Text style={[common.subheading, styles.groupHeading, {color: textColor}]} numberOfLines={1}>
@@ -1232,37 +932,37 @@ export default function DailyView({
   // comment above. `showSource` is Daily-specific (a row here can belong to
   // a different Project/Area - or Inbox - than its neighbor, unlike
   // ProjectDataPanel/InboxScreen where every row belongs to the same one) -
-  // this is also how an Inbox-sourced meeting picks up its "Inbox" source
-  // tag and jump-to-Inbox-tab tap target, for free (docs/dev/technical-design-
+  // this is also how an Inbox-sourced meeting gets its "Inbox" source
+  // tag and jump-to-Inbox-tab tap target (docs/dev/technical-design-
   // inbox-tab.md §3 - `openItem` already branches on item.kind === 'inbox').
   // Shared by both normal Daily's Calendar column and focus mode's "Coming
   // up" list (§module doc comment) - contextTag/onToggleContext are gated
   // to `!focusMode` here rather than by having two render functions, since
-  // the context filter is explicitly Daily-only/never composes with focus
+  // the context filter is Daily-only and never composes with focus
   // mode (technical-design-context-tags.md §2/§10); `dailyContext` itself
   // can in practice never be non-null during a focus-mode mount anyway (see
   // that state's own doc comment), but this keeps the scope explicit rather
   // than relying on that being true.
-  // `heightPx` (Batch 6, docs/dev/technical-design-pagination-fixed-height.md
+  // `heightPx` (docs/dev/history/technical-design-pagination-fixed-height.md
   // §3.2): passed by the Calendar column's Today/Tomorrow PagedSection
   // below, computed via meetingEntryHeight() the same way it's summed for
   // that PagedSection's own rowHeight - same "pass both together" contract
-  // renderTaskEntry's own heightPx already follows. Left undefined for focus
-  // mode's "Coming up" list further down (unpaginated, stays single-line-
-  // via-MeetingRow's-own-default like before this batch).
+  // renderTaskEntry's own heightPx follows. Left undefined for focus
+  // mode's "Coming up" list further down (unpaginated, MeetingRow's own
+  // single-line default).
   // The row and the sizing helpers take this same object (ui/MeetingRow.tsx's
   // MeetingTrackingConfig), so height/lines always agree with the icon the
   // row renders.
   const trackingFor = (entry: DailyMeetingEntry): MeetingTrackingConfig => ({
-    rules: settings?.noteCreationDefinitions ?? [],
+    rules: settings?.tagRules ?? [],
     onToggle: kind => handleToggleMeetingTracking(entry, kind),
   });
 
   const renderMeetingEntry = (entry: DailyMeetingEntry, layout: MeetingRowLayout) => {
     const key = meetingKey(entry);
-    // The standard row (docs/dev/technical-design-meeting-lists.md §3): source,
+    // The standard row (docs/dev/history/technical-design-meeting-lists.md §3): source,
     // read-only M (2-line only), tracking, note, open linked file (no
-    // linking on Daily - decided 2026-09-27), Daily's context-tag filter.
+    // linking from Daily), Daily's context-tag filter.
     return (
       <MeetingRow
         key={`${key}@${entry.span?.date ?? ''}`}
@@ -1290,17 +990,15 @@ export default function DailyView({
   const taskRows = flattenTaskGroups(taskGroups);
   // A genuinely different list each time dailyContext changes (on vs off,
   // or one tag vs another) - not the same list mutating in place, so this
-  // resets to page 0 rather than preserving whatever page happened to be
-  // showing before (ui/pagination.ts's own resetKey convention).
+  // resets to page 0 rather than preserving the current page
+  // (ui/pagination.ts's own resetKey convention).
   const contextResetKey = dailyContext ?? '__off__';
 
-  // Both columns are height-paginated now (ui/PagedSection.tsx, computed
-  // inline in the render below) rather than via usePagination - no separate
-  // `meetingsPaged`/`tasksPaged` hook needed here any more (Open tasks:
-  // Batch 5, 2026-09-15; Calendar's Today/Tomorrow tabs: Batch 6).
+  // Both columns are height-paginated (ui/PagedSection.tsx, computed
+  // inline in the render below).
 
   // The task/meeting currently mid-edit, looked up fresh from the aggregate
-  // each render (docs/dev/technical-design-pagination-edit-reuse.md §5) - passed
+  // each render (docs/dev/history/technical-design-pagination-edit-reuse.md §5) - passed
   // into the shared QuickAddWidget's `editingTask`/`editingMeeting` props,
   // which render in its fixed slot instead of inline in the row.
   const editingTaskEntry =
@@ -1310,8 +1008,8 @@ export default function DailyView({
       ? (aggregate?.meetings ?? []).find(e => meetingKey(e) === editTarget.key) ?? null
       : null;
 
-  // ui/QuickAddWidget.tsx's `editingItemPath` (feature_abbrev_quick_file,
-  // 2026-09-17) - the entry being edited's REAL current location, `null` for
+  // ui/QuickAddWidget.tsx's `editingItemPath` (feature_abbrev_quick_file) -
+  // the entry being edited's REAL current location, `null` for
   // the synthetic Inbox item (Inbox never carries an abbreviation, so it can
   // never self-match anyway). Needed because this screen's own
   // `fixedDestination` below is always {type: 'inbox'} regardless of which
@@ -1347,7 +1045,7 @@ export default function DailyView({
     );
   };
 
-  // Focus-mode-only derived values (docs/dev/technical-design-now-focus-mode.md
+  // Focus-mode-only derived values (docs/dev/history/technical-design-now-focus-mode.md
   // §6) - all pure reads over data this screen already loaded, no new
   // storage query (see storage/dailyAggregate.ts's own doc comments on
   // buildNowEntries/buildFocusCandidateEntries). Left empty when `focusMode`
@@ -1425,7 +1123,7 @@ export default function DailyView({
                 add-only mode - focus mode's task rows never start an edit
                 (renderFocusTaskEntry's onStartEdit is a no-op), so
                 editingTask/editingMeeting are simply never set on this
-                instance (docs/dev/technical-design-now-focus-mode.md §7). Kept
+                instance (docs/dev/history/technical-design-now-focus-mode.md §7). Kept
                 first, same as normal Daily - design-philosophy.md §8's "the
                 one thing you might reach for at any point". */}
             <QuickAddWidget
@@ -1501,7 +1199,6 @@ export default function DailyView({
               </>
             )}
 
-
             <View style={styles.focusSpacer} />
 
             {/* Meetings anchored at the bottom (design-philosophy.md §8) -
@@ -1530,22 +1227,16 @@ export default function DailyView({
       {!loading && !error && aggregate && !focusMode && (
         <View style={common.content}>
           {/* Display-mode row (docs/dev/technical-design-pagination-fixed-
-              height.md §3.1, Batch 5, 2026-09-15) - Daily's own content
-              area, top-right, above the two-column body (deliberately not
-              the shared ui/TabBar.tsx, which renders on all seven tabs).
-              Merges two things that are both "a certain display mode of
-              daily page": the context-filter pill (technical-design-
-              context-tags.md §6 - inactive: a quiet outline "#", not
-              tappable, the only way to set a context is tapping a tag, see
-              dailyContext's own doc comment; active: a filled pill naming
-              the tag, with its own "✕" to clear) on the left, and the
-              "Focus mode" entry button (docs/dev/technical-design-now-focus-
-              mode.md §4.1) on the right - confirmed left-to-right order.
-              The button used to sit in the Open-tasks column's own
-              sectionTitleRow, next to an "Open tasks" label that's now
-              ui/PagedSection.tsx's own header instead (see that column's
-              render below) - removing that row entirely is what freed the
-              button to relocate here. */}
+             height.md §3.1) - Daily's own content area, top-right, above the
+             two-column body (deliberately not the shared ui/TabBar.tsx, which
+             renders on all seven tabs). Holds two "display modes" of the
+             daily page: the context-filter pill (technical-design-
+             context-tags.md §6 - inactive: a quiet outline "#", not
+             tappable, the only way to set a context is tapping a tag, see
+             dailyContext's own doc comment; active: a filled pill naming
+             the tag, with its own "✕" to clear) on the left, and the
+             "Focus mode" entry button (docs/dev/technical-design-now-focus-
+             mode.md §4.1) on the right. */}
           <View style={styles.contextIndicatorRow}>
             {dailyContext ? (
               <Pressable
@@ -1568,19 +1259,15 @@ export default function DailyView({
           </View>
           <View style={styles.middleRow}>
             <View style={[common.column, common.columnLeft]}>
-              {/* Standalone "Calendar" label removed (Batch 6, same call
-                  already made for Open tasks/Meetings/WeekView's Meetings
-                  column - PagedSection's/GoogleCalendarPanel's own header
-                  text says it instead, on the Today/Tomorrow tab's list
-                  itself). Flat 3-tab strip (docs/dev/technical-design-
-                  pagination-fixed-height.md §3.2) replaces the old nested
-                  Meetings/Google MiniTabs + Today/Tomorrow toggle - one
-                  `calendarTab` value both tabs' PagedSection/
-                  GoogleCalendarPanel can key their own paging off of. */}
-              {/* The shared day panel (docs/dev/technical-design-meeting-lists.md
-                  §4.1) - same component as the Week/Month day panels, with
-                  Daily's Today | Tomorrow | Google tabs and no Close. It
-                  self-measures inside `columnScroll`, like the old list. */}
+              {/* No standalone "Calendar" label - the tab's list header says it.
+                 Flat 3-tab strip (docs/dev/technical-design-
+                 pagination-fixed-height.md §3.2) - one `calendarTab` value
+                 the PagedSection/GoogleCalendarPanel key their own paging
+                 off of. */}
+              {/* The shared day panel (docs/dev/history/technical-design-meeting-lists.md
+                 §4.1) - same component as the Week/Month day panels, with
+                 Daily's Today | Tomorrow | Google tabs and no Close. It
+                 self-measures inside `columnScroll`. */}
               <View style={styles.columnScroll}>
                 <DayMeetingsPanel
                   date={calendarTab === 'tomorrow' ? tomorrowDate : todayDate}
@@ -1613,16 +1300,12 @@ export default function DailyView({
               </View>
 
               {/* Focus/Projects/Areas panel (technical-design-daily-focus-
-                  panel.md) - sits directly below Calendar in this same
-                  column rather than in its own full-width row below both
-                  columns, freeing Open tasks (right column) to use that
-                  freed row height instead. No separate section title here -
-                  the panel's own MiniTabs row ("Focus" being one of its
-                  three tabs) would read as a redundant duplicate heading.
-                  `common.spacer` (Batch 6 bugfix) replaces the old
-                  `styles.sectionSpacing` reference here - that style was
-                  never actually defined (a pre-existing no-op, flagged in
-                  Batch 5), so this spacer had silently never applied. */}
+                 panel.md) - sits directly below Calendar in this same
+                 column rather than in its own full-width row below both
+                 columns, so Open tasks (right column) gets that row height.
+                 No separate section title here - the panel's own MiniTabs
+                 row ("Focus" being one of its three tabs) would read as a
+                 redundant duplicate heading. */}
               <View style={common.spacer}>
                 {paths && (
                   <DailyFocusPanel
@@ -1643,21 +1326,16 @@ export default function DailyView({
             <View style={common.column}>
               <View style={styles.columnScroll}>
                 {/* Shared widget sits above this column's own list, on the
-                    right side of the screen (2026-09-09, docs/technical-
-                    design-unified-quickadd.md - relocated from inside the
-                    Calendar column's Meetings sub-tab, per the module doc
-                    comment's "One widget for two columns" note). It still
-                    handles both this column's task edits and the Calendar
-                    column's meeting edits (MeetingRow only renders inside
-                    the Meetings sub-tab, but the widget itself is no longer
-                    gated behind that sub-tab, so it stays visible and no
-                    tab-switch is needed either way). Date defaults to
-                    whichever day is currently selected in the Calendar
-                    column. Swaps into "editing" mode for
-                    editingTaskEntry/editingMeetingEntry (docs/technical-
-                    design-pagination-edit-reuse.md §5) instead of ui/
-                    TaskRow.tsx/ui/MeetingRow.tsx rendering their own inline
-                    form. */}
+                   right side of the screen (docs/technical-design-unified-
+                   quickadd.md; see the module doc comment). It handles both
+                   this column's task edits and the Calendar column's meeting
+                   edits, and is not gated behind any Calendar tab. Date
+                   defaults to whichever day is currently selected in the
+                   Calendar column. Swaps into "editing" mode for
+                   editingTaskEntry/editingMeetingEntry (
+                   docs/dev/history/technical-design-pagination-edit-reuse.md §5) instead of ui/
+                   TaskRow.tsx/ui/MeetingRow.tsx rendering their own inline
+                   form. */}
                 <QuickAddWidget
                   layoutKey="daily"
                   fixedDestination={FIXED_INBOX_DESTINATION}
@@ -1681,35 +1359,22 @@ export default function DailyView({
                   onQuickFile={editTarget ? stableQuickFileEdit : undefined}
                   editingItemPath={editingItemPath}
                   linkedFileMissing={linkedFileMissing}
-                  blockedMessage={blockedMessage ?? undefined}
                   textColor={textColor}
                   borderColor={borderColor}
                   placeholderColor={placeholderColor}
                 />
                 <View style={[common.divider, {backgroundColor: borderColor}]} />
 
-                {/* "Next todos" heading (renamed 2026-09-16, was "Open
-                    tasks") + arrows merge into one line here
-                    (docs/dev/technical-design-pagination-fixed-height.md §3.1,
-                    Batch 5) - replaces the removed sectionTitleRow's
-                    standalone label + the old row-count PageControls below
-                    the list. Group-header rows (FlatTaskRow's `{kind:
-                    'header'}`) stay counted as content for pagination/
-                    rowHeight purposes, same as before this batch - but
-                    isCountableRow below excludes them from the "+N"
-                    hidden-count label itself (2026-09-15 bugfix, see
-                    ui/PagedSection.tsx's own module doc comment). */}
-                {/* Stage 2 (2026-09-17, [[feature_pagination_fixed_height]]) -
-                    `viewportHeight` deliberately omitted: ui/PagedSection.tsx
-                    now self-measures via its own flex:1 + onLayout instead of
-                    OPEN_TASKS_VIEWPORT_PX's hand-summed chrome budget (kept,
-                    unused, a few lines above, as the fastest rollback path).
-                    `columnScroll` (this box's parent, common.column's own
-                    styles.columnScroll) is already flex:1, which is what
-                    PagedSection's own self-measuring mode needs from its
-                    caller. Watch `adb logcat -s ReactNativeJS:V | findstr
-                    GtdPara` for "PagedSection: self-measured viewport"
-                    (header: "Next todos") to see the real number each time. */}
+                {/* "Next todos" heading + arrows in one line
+                   (docs/dev/history/technical-design-pagination-fixed-height.md §3.1).
+                   Group-header rows (FlatTaskRow's `{kind: 'header'}`) count
+                   as content for pagination/rowHeight purposes, but
+                   isCountableRow below excludes them from the "+N"
+                   hidden-count label itself (see ui/PagedSection.tsx's own
+                   module doc comment). */}
+                {/* No `viewportHeight`: PagedSection measures itself (flex:1 + onLayout);
+                    its parent `columnScroll` is flex:1, which that needs. The measured
+                    height is logged as "PagedSection: self-measured viewport". */}
                 <PagedSection
                   header="Next todos"
                   rows={taskRows}
@@ -1721,7 +1386,6 @@ export default function DailyView({
                   textColor={textColor}
                   borderColor={borderColor}
                 />
-
 
                 {displayAggregate.failedItems.length > 0 && (
                   <Text style={[common.error, common.sectionSpacingSmall, {color: textColor}]}>
@@ -1767,14 +1431,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  // Focus mode (docs/dev/technical-design-now-focus-mode.md §6, design-
+  // Focus mode (docs/dev/history/technical-design-now-focus-mode.md §6, design-
   // philosophy.md §8) - one centered column, no TabBar, an exit mark
   // anchored to the whole screen's bottom-right corner. No marginTop here:
   // focusContent sits directly under `container` (paddingTop 16,
   // paddingHorizontal 16) with nothing above it in focus mode - unlike
   // normal Daily's `middleRow`, which follows a header row and so needs its
-  // own marginTop:4. Adding one here made the top margin 20px vs 16px on
-  // the sides (Tilman, 2026-09-11).
+  // own marginTop:4. One here would make the top margin 20px vs 16px on
+  // the sides.
   focusContent: {
     flex: 1,
     position: 'relative',
@@ -1837,10 +1501,8 @@ const styles = StyleSheet.create({
   groupHeading: {
     marginTop: 12,
   },
-  // Display-mode row (Batch 5) - context pill left, Focus mode button
-  // right (confirmed order, docs/dev/technical-design-pagination-fixed-
-  // height.md §3.1) - was `justifyContent: 'flex-end'` back when this row
-  // held only the pill.
+  // Display-mode row - context pill left, Focus mode button
+  // right (docs/dev/history/technical-design-pagination-fixed-height.md §3.1).
   contextIndicatorRow: {
     flexDirection: 'row',
     alignItems: 'center',

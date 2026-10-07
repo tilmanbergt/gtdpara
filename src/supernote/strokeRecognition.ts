@@ -16,13 +16,13 @@ import {shiftStrokes, StoredStroke} from '../domain/marks';
 import {log, logWarn} from '../utils/log';
 import {
   ELEMENT_TYPE_STROKE,
-  errorMessage,
   errText,
   fillAccessor,
   recycleElements,
   SdkElement,
   SdkResponse,
 } from './sdkElements';
+import {errorMessage} from '../utils/errorMessage';
 
 type Size = {width: number; height: number};
 

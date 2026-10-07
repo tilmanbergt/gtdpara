@@ -2,7 +2,7 @@
  * The app's one date text field (YYYY-MM-DD): a plain TextInput plus a small
  * button strip - -1 / Today / +1 / +7 - that appears above it while it has
  * focus, so a date can be moved a day or a week without retyping it
- * (docs/dev/technical-design-meeting-date-nudge-and-new-from-this.md §A). The
+ * (docs/dev/history/technical-design-meeting-date-nudge-and-new-from-this.md §A). The
  * arithmetic (what each button does to an empty, valid or half-typed value)
  * lives in domain/dateNudge.ts; this file is only the field and the strip.
  *
@@ -11,7 +11,7 @@
  * ("Set due date") - every date input in the app.
  *
  * The strip copies the mechanics of the Select All/Copy/Cut/Paste strip on
- * QuickAddWidget's/ClipboardTextInput's text fields (2026-09-11 bugfix, see
+ * QuickAddWidget's/ClipboardTextInput's text fields (see
  * domain/clipboardText.ts for why a custom strip exists at all on this
  * hardware):
  * - absolutely positioned (`bottom: '100%'`, right-aligned) so it hovers flush
@@ -22,9 +22,9 @@
  *   native-view-torn-out-from-under-the-gesture race (blur fires on
  *   touch-down; the already-claimed touch responder keeps receiving the rest
  *   of the gesture only as long as the view instance itself survives).
- * The two strips' styles are deliberately duplicated rather than shared: the
- * clipboard code is fresh off a device-verified bugfix and stays untouched
- * (tracked in docs/dev/technical-design-meeting-date-nudge-and-new-from-this.md's
+ * The two strips' styles are deliberately duplicated rather than shared, so
+ * the device-verified clipboard code stays untouched (tracked in
+ * docs/dev/history/technical-design-meeting-date-nudge-and-new-from-this.md's
  * follow-ups).
  *
  * Layout: `containerStyle` (margins/flex) goes on the wrapper, which is the

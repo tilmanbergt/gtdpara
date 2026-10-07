@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Summarizes utils/perf.ts trace files (docs/dev/technical-design-perf-tracing.md §8).
+ * Summarizes utils/perf.ts trace files (docs/dev/history/technical-design-perf-tracing.md §8).
  *
  *   node scripts/perf-report.js <folder-with-.jsonl-files> [--timeline]
  *

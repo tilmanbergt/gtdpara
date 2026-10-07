@@ -1,5 +1,5 @@
 /**
- * Close-out step 1 - Checklist (docs/dev/technical-design-project-close-out.md
+ * Close-out step 1 - Checklist (docs/dev/history/technical-design-project-close-out.md
  * §8.2, mockup artboard "1 · Checklist"). Shows area, done date and the
  * archive targets, then every readiness finding (domain/closeOut/
  * readiness.ts) with inline actions for the two blockers: open todos
@@ -23,6 +23,7 @@ import PillButton from '../PillButton';
 import StatusMarkRow from '../StatusMarkRow';
 import {co, ROW_H} from './closeOutStyles';
 import {openMarks} from '../marksNav';
+import {formatDate} from '../../domain/dateFormat';
 
 export interface ChecklistActions {
   closeTodo: (index: number, how: 'done' | 'cancelled') => void;
@@ -106,7 +107,7 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
   };
 
   return (
-    <View style={{flex: 1}}>
+    <View style={co.fill}>
       <View style={[co.box, {borderColor: textColor}]}>
         <View style={co.kvRow}>
           <Text style={[co.kvKey, {color: textColor}]}>Area</Text>
@@ -116,9 +117,9 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
         <View style={co.kvRow}>
           <Text style={[co.kvKey, {color: textColor}]}>Done on</Text>
           {editingDate ? (
-            <View style={[co.row, {flex: 1}]}>
+            <View style={[co.row, co.fill]}>
               <DateInput value={dateDraft} onChangeText={setDateDraft} placeholderColor={placeholderColor} textColor={textColor} borderColor={borderColor} />
-              <View style={{width: 8}} />
+              <View style={co.w8} />
               <PillButton
                 label="Save"
                 primary
@@ -135,7 +136,7 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
           ) : (
             <>
               <Text style={[co.kvValue, {color: textColor}]}>
-                {ctx.doneAt ?? 'not set'}
+                {ctx.doneAt ? formatDate(ctx.doneAt) : 'not set'}
                 <Text style={[co.small, co.muted]}>  — decides the archive year</Text>
               </Text>
               <PillButton
@@ -168,7 +169,7 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
       </View>
 
       {pickingArea ? (
-        <View style={{flex: 1}}>
+        <View style={co.fill}>
           <PagedSection
             header="Assign this project to an Area"
             rows={areas}
@@ -192,7 +193,7 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
           />
         </View>
       ) : (
-        <View style={{flex: 1}}>
+        <View style={co.fill}>
           <PagedSection
             header={`Readiness · ${readinessSummary(ctx.findings)}`}
             rows={rows}
@@ -205,7 +206,7 @@ export default function ChecklistStep({ctx, busy, actions, textColor, borderColo
                 </View>
               ) : (
                 <View key={`i-${r.finding.id}-${r.item.index ?? r.item.label}`} style={[co.itemRow, {borderBottomColor: borderColor}]}>
-                  <Text style={[co.body, {color: textColor, flex: 1}]} numberOfLines={2}>
+                  <Text style={[co.body, {color: textColor}, co.fill]} numberOfLines={2}>
                     {r.item.label}
                   </Text>
                   {renderItemActions(r.finding, r.item)}

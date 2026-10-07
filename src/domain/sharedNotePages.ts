@@ -1,20 +1,17 @@
 /**
- * Shared Note Pages (docs/dev/technical-design-shared-note-pages.md).
+ * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md).
  *
  * Pure domain layer for the "file this Todo/Meeting's note as a PAGE in one
  * shared `.note` per Project/Area, located by keyword" Tag Rule option
- * (`NoteCreationDefinition.noteTarget === 'shared'`, domain/noteTemplate.ts).
+ * (`TagRule.noteTarget === 'shared'`, domain/tagRules.ts).
  * Covers everything this feature needs that doesn't touch the device:
  * encoding/decoding the anchor stored in `Task.notePath`/`Meeting.notePath`,
  * deriving a page's keyword from the item it belongs to, and the pure array
  * math behind chronological page insertion. Zero RN/SDK imports (design-
  * overview.md §3) - the actual PluginFileAPI calls (insertNotePage/
  * insertKeyWord/getKeyWords/deleteKeyWord/...) live in the sibling
- * `storage/sharedNotePages.ts` (Slice 2), which calls into this file for
+ * `storage/sharedNotePages.ts`, which calls into this file for
  * every decision that doesn't need the device.
- *
- * Slice 1 of 4 (technical-design-shared-note-pages.md §12) - data model +
- * pure logic only. Nothing here is wired into note creation yet.
  */
 import {setFlowStateTag} from './flowState';
 import {RESERVED_BARE_TAGS, stripBareTags} from './flowState';
@@ -35,7 +32,7 @@ export interface SharedNoteAnchor {
 }
 
 /**
- * Page link (docs/dev/technical-design-lasso-0.8.md §3.7): `<note>#page=<n>`,
+ * Page link (docs/dev/history/technical-design-lasso-0.8.md §3.7): `<note>#page=<n>`,
  * n 1-based - a todo/meeting captured with "Link to this page" opens its
  * source note at that page. Told apart from a shared-note keyword anchor by
  * its exact `page=<digits>` form; parseSharedNoteAnchor never reads it as
@@ -65,8 +62,7 @@ export function stripPageAnchor(notePath: string): string {
  * `Meeting.notePath` - `"relativePath#keyword"` (design doc §2.2 example:
  * `"Meetings/Daily.note#2026-09-21 Daily"`). No escaping of `#` inside
  * `keyword` - see `parseSharedNoteAnchor`'s doc comment for why that's safe
- * despite that (design doc §10, risk #5 - the risk was real, but not the
- * one originally guessed at; see that comment for what actually happened).
+ * (design doc §10, risk #5).
  */
 export function buildSharedNoteAnchor(filePath: string, keyword: string): string {
   return `${filePath}#${keyword}`;
@@ -79,38 +75,18 @@ export function buildSharedNoteAnchor(filePath: string, keyword: string): string
  * `notePath` - see `resolveNotePath`/`resolveItemNoteAnchor`, both of which
  * do exactly that).
  *
- * Splits on the FIRST `#` ([[bugfix_shared_note_content_missing]], two
- * rounds of the same underlying issue):
+ * Splits on the FIRST `#`. A shared-target `keyword` is built straight from
+ * the item's title (§3), deliberately unsanitized so a tag like `#Daily`
+ * shows up in the on-page Supernote keyword - so the keyword contains `#` on
+ * nearly every real use (e.g. `"Meetings/Daily.note#2026-09-23 #Daily"`).
+ * Splitting on the last `#` would cut inside the keyword and corrupt both
+ * halves.
  *
- * 1. (2026-09-22) Originally split on the LAST `#`, reasoned to "degrade
- *    gracefully" if a title's own `#` collided with the separator - backwards:
- *    a Tag Rule that matches on `#Daily` normally matches items whose
- *    title/text also carries that exact tag, so a shared-target `keyword`
- *    (built straight from the item's title, §3, deliberately unsanitized so
- *    `#Daily` shows up in the real on-page Supernote keyword) contains `#` on
- *    essentially every real use of this feature, not as a rare edge case.
- *    Splitting on the last `#` found the `#` *inside* `keyword` instead of the
- *    true separator right after `filePath`, corrupting both halves (confirmed
- *    on-device: `"Meetings/Daily.note#2026-09-23 #Daily"` parsed to filePath
- *    `"Meetings/Daily.note#2026-09-23 "` / keyword `"Daily"`). Fixed by
- *    splitting on the first `#` instead - safe as long as `filePath` itself
- *    never contains one.
- * 2. (2026-09-23) That "filePath never contains #" assumption held for a
- *    shared anchor's filePath (built from a Tag Rule's file name) but NOT for
- *    an ordinary OWN-note `notePath`: `todoNoteBaseName`/`meetingNoteBaseName`
- *    (storage/noteLinks.ts) deliberately keep context tags like `#daily` in a
- *    note's file name, so a perfectly normal single-note Todo/Meeting could
- *    have a `#` in its stored `notePath` - and since `resolveNotePath`/
- *    `resolveItemNoteAnchor` run every `notePath` through this function
- *    unconditionally, that `#` got misread as the anchor separator, truncating
- *    the path (confirmed on-device: a Todo titled "...von #demand aufsetzen
- *    #daily" broke the exact same way, despite never being a shared target).
- *    Fixed at the source instead of here: `sanitizeFileNameComponent`
- *    (storage/noteLinks.ts) now strips `#` from every filename it builds -
- *    todo/meeting note names AND (a second, previously-unsanitized gap found
- *    at the same time) a shared rule's file name - so `filePath` is now
- *    actually guaranteed `#`-free on both sides, not just assumed so for one
- *    of them. `keyword` remains deliberately untouched either way.
+ * This relies on `filePath` never containing `#`:
+ * `sanitizeFileNameComponent` (storage/noteLinks.ts) strips `#` from every
+ * file name it builds - own todo/meeting note names (which would otherwise
+ * keep context tags like `#daily`) and a shared rule's file name alike.
+ * `keyword` stays untouched.
  */
 export function parseSharedNoteAnchor(notePath: string): SharedNoteAnchor | null {
   if (parsePageAnchor(notePath)) return null;
@@ -124,15 +100,13 @@ export function parseSharedNoteAnchor(notePath: string): SharedNoteAnchor | null
 
 /**
  * Joins `itemPath` + a relative note target the same way
- * `storage/noteLinks.ts`'s `resolveNotePath` always has: a target starting
+ * `storage/noteLinks.ts`'s `resolveNotePath` does: a target starting
  * with `/` is an absolute path (the lasso "link to source note" case) and
- * used as-is; anything else resolves relative to `itemPath`. Pulled out as
- * its own pure/sync helper (2026-09-23,
- * [[bugfix_shared_note_content_missing]] round 3) so `resolveNotePath`'s
- * now-async, device-checking resolution and `domain/integrityCheck.ts`'s
- * existence-check candidates (which can't do device I/O themselves - this
- * file stays zero-RN/SDK-import, design-overview.md §3) share the exact
- * same joining rule instead of two copies drifting apart.
+ * used as-is; anything else resolves relative to `itemPath`. A pure/sync
+ * helper so `resolveNotePath`'s async, device-checking resolution and
+ * `domain/integrityCheck.ts`'s existence-check candidates (which can't do
+ * device I/O themselves - this file stays zero-RN/SDK-import,
+ * design-overview.md §3) share one joining rule.
  */
 export function joinNotePath(itemPath: string, target: string): string {
   if (target.startsWith('/')) return target;
@@ -246,7 +220,7 @@ export function recreatedPageNoticeText(isoDate: string): string {
   return `Recreated ${isoDate}: page keyword not found`;
 }
 
-// ---- Shared file-name placeholders (docs/dev/technical-design-split-by-tag.md §3.3) ----
+// ---- Shared file-name placeholders (docs/dev/history/technical-design-split-by-tag.md §3.3) ----
 
 /** The placeholders a Tag Rule's "Shared file name" understands, in the order the Settings chips show them. */
 export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{subtag}', '{year}', '{quarter}', '{month}'];
@@ -256,7 +230,7 @@ export interface SharedFileNameInput {
   template: string;
   /** Fallback when the rendered name comes out empty. */
   ruleName: string;
-  /** `ruleSubtag(...)` (domain/noteTemplate.ts) - `''` when the item has no nested tag under the rule. */
+  /** `ruleSubtag(...)` (domain/tagRules.ts) - `''` when the item has no nested tag under the rule. */
   subtag: string;
   /** `YYYY-MM-DD` - a meeting's own date, today for a todo. */
   date: string;

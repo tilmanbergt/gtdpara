@@ -1,7 +1,7 @@
 /**
  * The screen side of storage/entryMove.ts's moveEntryWithNote: a status-slot
  * confirm (useStatusConfirm) and a success message that stays until ✕, the
- * screen is left or another move starts (docs/dev/technical-design-files-0.6.md §3.4).
+ * screen is left or another move starts (docs/dev/history/technical-design-files-0.6.md §3.4).
  */
 import {useCallback, useEffect, useMemo, useRef} from 'react';
 import {ConfirmText} from '../domain/fileChangeText';

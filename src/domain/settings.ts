@@ -5,7 +5,7 @@
  * storage/settingsStorage.ts.
  */
 import {INBOX_FILE_NAME} from './types';
-import {NoteCreationDefinition} from './noteTemplate';
+import {TagRule} from './tagRules';
 import {ReviewStepsMap} from './reviewSteps';
 
 export interface GtdParaSettings {
@@ -16,7 +16,7 @@ export interface GtdParaSettings {
   archiveFolder: string;
   /**
    * Name of the Inbox's own folder inside the Areas folder
-   * (docs/dev/technical-design-inbox-as-area.md). Holds Inbox.txt and the
+   * (docs/dev/history/technical-design-inbox-as-area.md). Holds Inbox.txt and the
    * Inbox's Todos/Meetings note folders. Never treated as an Area.
    */
   inboxFolder: string;
@@ -31,15 +31,12 @@ export interface GtdParaSettings {
   dailyFocusAreaCount: number;
   weeklyFocusProjectCount: number;
   weeklyFocusAreaCount: number;
-  /** Monthly focus slots (docs/dev/technical-design-monthly-view.md) - default 2 projects + 3 areas. */
+  /** Monthly focus slots (docs/dev/history/technical-design-monthly-view.md) - default 2 projects + 3 areas. */
   monthlyFocusProjectCount: number;
   monthlyFocusAreaCount: number;
   /**
    * Per-step review tracking for the Weekly Review (docs/dev/technical-design-
-   * review-hub.md, 2026-09-20; replaces the old single `lastReviewCompleted-
-   * At` + `lastReviewSummary` pair that "Finish review" wrote - see
-   * domain/reviewSteps.ts's migrateReviewSteps for the one-time move). One
-   * record per step id: when "Reviewed" was last tapped on it, the recap
+   * review-hub.md). One record per step id: when "Reviewed" was last tapped on it, the recap
    * counts of its last recorded visit, and (backlog steps only) when the hub
    * last saw it empty. Plugin meta, not PARA content (same reasoning as the
    * focus counts above) - a passive marker only (domain/reviewSteps.ts's
@@ -49,12 +46,11 @@ export interface GtdParaSettings {
    */
   reviewSteps: ReviewStepsMap;
   /**
-   * "Hide done tasks" toggle state, remembered across visits (2026-09-03
-   * Daily-cleanup pass) - independent per surface since a Project/Area's
-   * Todos list and Daily's Inbox are different contexts (a long-lived
-   * project accumulates done tasks fast; Inbox is meant to be triaged to
-   * empty quickly, so there's rarely anything to hide there). Both default
-   * to false (shown) - no behavior change until someone taps the toggle.
+   * "Hide done tasks" toggle state, remembered across visits - independent
+   * per surface since a Project/Area's Todos list and Daily's Inbox are
+   * different contexts (a long-lived project accumulates done tasks fast;
+   * Inbox is meant to be triaged to empty quickly, so there's rarely anything
+   * to hide there). Both default to false (shown).
    */
   hideDoneProjectTasks: boolean;
   hideDoneInboxTasks: boolean;
@@ -84,30 +80,25 @@ export interface GtdParaSettings {
    */
   focusModeActive: boolean;
   /**
-   * The user-editable catalog of note creation definitions (docs/technical-
-   * design-note-templates.md) - context + optional tag match + background +
-   * an ordered set of content pieces, resolved by domain/noteTemplate.ts's
+   * The user-editable catalog of note creation definitions (
+   * docs/dev/history/technical-design-note-templates.md) - context + optional tag match + background +
+   * an ordered set of content pieces, resolved by domain/tagRules.ts's
    * resolveNoteTemplate. Plugin config, not PARA content, same reasoning as
-   * every other field here. Phase 1 (2026-09-18) added this field, inert
-   * until Phase 2 wired Meeting-note creation through it and Phase 3 (same
-   * day) wired Todo-note creation through it too - both resolve against
-   * this list at note-creation/refresh time now (storage/
+   * every other field here. Meeting- and Todo-note creation resolve against
+   * this list at note-creation/refresh time (storage/
    * meetingNoteContent.ts's refreshMeetingNoteBlock/refreshTodoNoteBlock).
-   * Each definition's own `template` field also fully replaced the old
-   * global `meetingNoteTemplate` setting in Phase 3 (removed from this
-   * interface) - background selection is per-definition now, not global.
+   * Each definition carries its own background `template` - there is no
+   * global note background setting.
    */
-  noteCreationDefinitions: NoteCreationDefinition[];
+  tagRules: TagRule[];
   /**
-   * Simple incrementing counter used as the next `NoteCreationDefinition.id`
-   * (domain/noteTemplate.ts's `createEmptyDefinition`) - chosen over a UUID
-   * as the simpler option (Tilman, 2026-09-18: "id as counter is fine").
-   * Definition export/import was flagged as a plausible future idea this
-   * doesn't need to accommodate now.
+   * Simple incrementing counter used as the next `TagRule.id`
+   * (domain/tagRules.ts's `createEmptyTagRule`) - simpler than a UUID and
+   * enough here.
    */
-  nextNoteDefinitionId: number;
+  nextTagRuleId: number;
   /**
-   * Gmail inbox review step (docs/dev/technical-design-review-gmail-inbox.md
+   * Gmail inbox review step (docs/dev/history/technical-design-review-gmail-inbox.md
    * §2) - the account this plugin reads via IMAP. '' means "not configured",
    * same convention as googleCalendarIcsUrl above: the Gmail step then shows
    * a "set up in Settings" hint instead of trying to fetch. Plugin meta, not
@@ -143,21 +134,21 @@ export interface GtdParaSettings {
    */
   gmailHideHandled: boolean;
   /**
-   * Performance tracing on/off (docs/dev/technical-design-perf-tracing.md §6) -
+   * Performance tracing on/off (docs/dev/history/technical-design-perf-tracing.md §6) -
    * when on, utils/perf.ts writes one small JSONL file per tab switch / cold
    * start / reopen to the debug log folder's perf/ subfolder. Default off;
    * a diagnostic switch, not a user feature.
    */
   perfTracing: boolean;
   /**
-   * "Keep tabs in memory" (docs/dev/technical-design-keep-tabs-alive.md §3.1):
+   * "Keep tabs in memory" (docs/dev/history/technical-design-keep-tabs-alive.md §3.1):
    * Daily, Week, Month, Current, Projects and Areas stay mounted (hidden)
    * after their first visit, so switching back needs no rebuild. Default
    * on; the switch is a safety net during the test phase.
    */
   keepTabsAlive: boolean;
   /**
-   * Experimental switches (docs/dev/technical-design-about-debug-experimental.md
+   * Experimental switches (docs/dev/history/technical-design-about-debug-experimental.md
    * §3.1): the Google Calendar and Gmail integrations are only shown when on.
    * Off hides their entry points; their configuration above stays stored.
    * Read them through domain/features.ts's featuresOf.
@@ -172,7 +163,7 @@ export interface GtdParaSettings {
    */
   lastSeenVersion: string;
   /**
-   * Which profile is active (docs/dev/technical-design-profiles-demo-space.md) -
+   * Which profile is active (docs/dev/history/technical-design-profiles-demo-space.md) -
    * the file name of its JSON in EXPORT/gtdpara/profiles, without ".json".
    * Device-wide; 'production' is the default profile.
    */
@@ -197,8 +188,8 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   hideDoneInboxTasks: false,
   googleCalendarIcsUrl: '',
   focusModeActive: false,
-  noteCreationDefinitions: [],
-  nextNoteDefinitionId: 1,
+  tagRules: [],
+  nextTagRuleId: 1,
   gmailEmail: '',
   gmailAppPassword: '',
   gmailImapHost: 'imap.gmail.com',
@@ -220,15 +211,34 @@ export interface ResolvedParaPaths {
   archive: string;
   /**
    * The Inbox's own folder (`<areas>/<inboxFolder>`) - the Inbox's item path:
-   * Inbox.txt and its Todos/Meetings note folders live here. Address the
-   * Inbox through the CACHE's paths (storage/dataCache.ts), which hold the
-   * effective location - see technical-design-inbox-as-area.md §3.3.
+   * Inbox.txt and its Todos/Meetings note folders live here.
    */
   inboxFolder: string;
   /** The untriaged-capture file, `<inboxFolder>/Inbox.txt`. */
   inbox: string;
-  /** Where the Inbox lived up to 0.1.0 (the base root). Only the migration and the Integrity Check read this. */
-  legacyInboxFolder: string;
+}
+
+/** Keys Tag Rules were stored under up to 0.8 (as "note creation definitions"). */
+const LEGACY_TAG_RULE_KEYS: Array<[legacy: string, current: 'tagRules' | 'nextTagRuleId']> = [
+  ['noteCreationDefinitions', 'tagRules'],
+  ['nextNoteDefinitionId', 'nextTagRuleId'],
+];
+
+/**
+ * A stored settings blob or profile file with the Tag Rule keys of 0.8 and
+ * earlier renamed to the current ones. A current key already present wins;
+ * the legacy key is dropped either way. Returns the same object when there is
+ * nothing to rename.
+ */
+export function renameLegacyTagRuleKeys(raw: Record<string, unknown>): Record<string, unknown> {
+  if (!LEGACY_TAG_RULE_KEYS.some(([legacy]) => legacy in raw)) return raw;
+  const next = {...raw};
+  for (const [legacy, current] of LEGACY_TAG_RULE_KEYS) {
+    if (!(legacy in next)) continue;
+    if (!(current in next)) next[current] = next[legacy];
+    delete next[legacy];
+  }
+  return next;
 }
 
 function joinPath(base: string, segment: string): string {
@@ -255,17 +265,10 @@ export function resolvePaths(settings: GtdParaSettings): ResolvedParaPaths {
     archive: joinPath(base, settings.archiveFolder || DEFAULT_SETTINGS.archiveFolder),
     inboxFolder,
     inbox: joinPath(inboxFolder, INBOX_FILE_NAME),
-    legacyInboxFolder: base,
   };
 }
 
-/** The same paths with the Inbox at `inboxFolder` - how the cache publishes the effective Inbox location (technical-design-inbox-as-area.md §3.3). */
-export function withInboxFolder(paths: ResolvedParaPaths, inboxFolder: string): ResolvedParaPaths {
-  const folder = inboxFolder.replace(/\/+$/, '');
-  return {...paths, inboxFolder: folder, inbox: joinPath(folder, INBOX_FILE_NAME)};
-}
-
-/** Whether `folderPath` is the configured Inbox folder (exact match, trailing slashes ignored). Used to keep it out of every Area listing. */
+/** Whether `folderPath` is the configured Inbox folder (exact match, trailing slashes ignored). Keeps it out of every Area listing. */
 export function isInboxFolder(paths: ResolvedParaPaths, folderPath: string): boolean {
   if (paths.inboxFolder === paths.base) return false; // legacy location: the base root is never an Area folder
   return folderPath.replace(/\/+$/, '') === paths.inboxFolder;
@@ -312,7 +315,7 @@ export function findEnclosingItem(
   ];
   // The Inbox folder sits inside Areas but is never an Area
   // (technical-design-inbox-as-area.md §3.1) - a note in it has no
-  // enclosing Project/Area, the same as a note in the old root Inbox.
+  // enclosing Project/Area.
   if (isUnderInboxFolder(paths, filePath)) return null;
   for (const {kind, root} of roots) {
     const prefix = `${root.replace(/\/+$/, '')}/`;

@@ -1,34 +1,25 @@
 /**
  * Predicts how many lines a piece of text will wrap to at a given width -
- * used by row-height helpers (ui/TaskRow.tsx's `taskRowHeight`, and a
- * future ui/FileBrowserPane.tsx equivalent) so a fixed-height paginated
- * section (ui/PagedSection.tsx) can reserve a row's real rendered height
- * up front, without a measure-then-reflow render pass (docs/technical-
- * design-pagination-fixed-height.md §2 - this replaces the `minHeight`-
- * based row-height story from docs/dev/technical-design-pagination-edit-
- * reuse.md §3, which reserved space for a fixed *maximum* line count
- * regardless of content, rather than predicting the real one).
+ * used by row-height helpers (ui/TaskRow.tsx's `taskRowHeight`) so a
+ * fixed-height paginated section (ui/PagedSection.tsx) can reserve a row's
+ * real rendered height up front, without a measure-then-reflow render pass
+ * (docs/dev/history/technical-design-pagination-fixed-height.md §2).
  *
- * Failure modes are self-contained by design, not a defect to eliminate:
- * over-predicting leaves a harmless blank gap at the bottom of that one
- * row; under-predicting lets the caller's own `numberOfLines` cap truncate
- * with an ellipsis at exactly the height that was reserved, rather than
- * spilling into the row below it (Tilman: "accept an empty line or a cut
- * of text in rare cases"). Real text also wraps at word boundaries, which
- * this width-ratio estimate doesn't model - the practical effect is a
- * slight bias toward over-predicting (a raw width/available-width ratio
- * usually underestimates how early a real line breaks), which is the
- * safer of the two failure modes here, not something to correct away.
+ * Failure modes are self-contained by design: over-predicting leaves a
+ * harmless blank gap at the bottom of that one row; under-predicting lets
+ * the caller's own `numberOfLines` cap truncate with an ellipsis at exactly
+ * the reserved height, rather than spilling into the row below. Both are
+ * acceptable in rare cases. Real text wraps at word boundaries, which this
+ * width-ratio estimate doesn't model; the effect is a slight bias toward
+ * over-predicting, which is the safer of the two failure modes.
  *
- * Deliberately pluggable at the whole-algorithm level, not just tunable
- * constants within one algorithm (Tilman: "design so this whole
- * calibration can be easily exchanged later - not only on character, but
- * on whole text level"). The interface below takes only plain primitives
- * and returns an integer, so a future implementation (a lookup table
- * calibrated against real on-device screenshots, a canvas-measurement
- * build step, or anything else) can replace `CharClassLineEstimator`
- * without any caller changing - swap it by reassigning
- * `activeLineEstimator` below, the single point every caller reads from.
+ * Pluggable at the whole-algorithm level, not just by tuning constants.
+ * The interface below takes only plain primitives and returns an integer, so
+ * another implementation (a lookup table calibrated against on-device
+ * screenshots, a canvas-measurement build step, ...) can replace
+ * `CharClassLineEstimator` without any caller changing - swap it by
+ * reassigning `activeLineEstimator` below, the single point every caller
+ * reads from.
  */
 
 export interface TextLineEstimator {
@@ -51,7 +42,7 @@ const NARROW_WIDTH_EM = 0.32;
 const AVERAGE_WIDTH_EM = 0.55;
 const WIDE_WIDTH_EM = 0.78;
 
-/** Also used by ui/tagChipLayout.ts to budget QuickAddWidget's Row 3 tag chips by width (2026-09-29). */
+/** Also used by ui/tagChipLayout.ts to budget QuickAddWidget's Row 3 tag chips by width. */
 export function estimateTextWidthPx(text: string, fontSizePx: number): number {
   let widthEm = 0;
   for (const ch of text) {
@@ -62,19 +53,13 @@ export function estimateTextWidthPx(text: string, fontSizePx: number): number {
   return widthEm * fontSizePx;
 }
 
-// Batch 2 recalibration (2026-09-15): Tilman's first real-device smoke test
-// of ui/TaskRow.tsx's/ui/MeetingRow.tsx's new multi-line rows found titles
-// that this module predicted as fitting on one line actually needing two on
-// the real Supernote font - i.e. the character-width buckets above, "hand-
-// tuned starting point" per this file's own doc comment, ran narrower than
-// the real glyphs. Rather than re-guess those three constants a second time
-// with no more real measurement to go on than the first guess had, this
-// applies a single blanket margin to the available width before the ratio
-// is taken - it makes every prediction lean further toward "needs one more
-// line," which this file's own doc comment already names as the safe
-// direction to err in. One knob, easy to retune from the next smoke test:
-// lower it further if long titles still don't wrap, raise it back toward
-// 1.0 if short titles start wrapping when they shouldn't.
+// The character-width buckets above run narrower than the real Supernote
+// glyphs, so titles predicted to fit on one line can need two. Rather than
+// re-guess those three constants without real measurements, this applies one
+// blanket margin to the available width, so every prediction leans toward
+// "needs one more line" - the safe direction to err in. Lower it if long
+// titles still don't wrap; raise it toward 1.0 if short titles wrap when they
+// shouldn't.
 const AVAILABLE_WIDTH_SAFETY_MARGIN = 0.8;
 
 export class CharClassLineEstimator implements TextLineEstimator {

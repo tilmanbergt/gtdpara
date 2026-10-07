@@ -1,15 +1,11 @@
 /**
  * A plain single-line text field with the same custom Select All/Copy/Cut/
- * Paste overlay ui/QuickAddWidget.tsx's task-text/meeting-title fields got
- * on 2026-09-11 (see domain/clipboardText.ts for why a custom overlay
- * exists at all on this hardware, and for the pure selection-splicing
- * helpers this component is built on). Factored out as its own component so
- * any *new* plain text field that needs the same copy/paste affordance -
- * starting with ItemsList.tsx's Create Project/Area name field - can reuse
- * it directly, rather than re-deriving the selection-tracking/overlay dance
- * inline. QuickAddWidget's own task/meeting fields are deliberately left as
- * they are (not rebuilt on top of this component) - that code is fresh off
- * a real bugfix and works; refactoring it wasn't in scope here.
+ * Paste overlay as ui/QuickAddWidget.tsx's task-text/meeting-title fields
+ * (see domain/clipboardText.ts for why a custom overlay exists at all on
+ * this hardware, and for the pure selection-splicing helpers this component
+ * is built on). Used by plain text fields that need the copy/paste
+ * affordance, e.g. ItemsList.tsx's Create Project/Area name field.
+ * QuickAddWidget's own task/meeting fields are not built on this component.
  *
  * Same mechanics as QuickAddWidget's fields: the field's own selection is
  * tracked in a ref (`lastSelectionRef`), never React state - see
@@ -24,23 +20,18 @@
  *
  * The overlay pops up *above* the field (`bottom: '100%'`, right-aligned) -
  * matching QuickAddWidget's own fields, which sit at the very top of their
- * screen (above both sections/panes) exactly like this component's first
- * intended use (ItemsList's Create row, above the Projects/Areas list) - so
- * the same positioning is a proven fit for "a field at the top of the
- * screen", not just copied for convenience.
+ * screen, like ItemsList's Create row above the Projects/Areas list.
  *
- * `multiline` (added 2026-09-14, docs/dev/technical-design-item-scope.md): an
- * optional taller, top-aligned, wrapping mode for a field like Scope's
- * 1-3 sentence text, which reads and edits poorly as one long
- * horizontally-scrolling line. Purely additive - every existing call site
- * omits the prop and keeps today's single-line behavior unchanged. The
- * overlay's own positioning (`bottom: '100%'`) needs no change either way,
- * since it's already anchored to the field's top regardless of height.
+ * `multiline` (docs/dev/history/technical-design-item-scope.md): an optional taller,
+ * top-aligned, wrapping mode for a field like Scope's 1-3 sentence text,
+ * which reads and edits poorly as one long horizontally-scrolling line.
+ * The overlay's positioning (`bottom: '100%'`) works either way, since it's
+ * anchored to the field's top regardless of height.
  *
- * `handleRef` (added 2026-10-02, docs/dev/technical-design-split-by-tag.md
- * §3.6): an optional handle with `insertAtCursor(word)`, so buttons outside
- * the field (the Tag Rules placeholder chips) can insert at the last cursor
- * position - through the same tracked selection Paste uses.
+ * `handleRef` (docs/dev/history/technical-design-split-by-tag.md §3.6): an optional
+ * handle with `insertAtCursor(word)`, so buttons outside the field (the Tag
+ * Rules placeholder chips) can insert at the last cursor position - through
+ * the same tracked selection Paste uses.
  */
 import React, {useImperativeHandle, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
@@ -59,7 +50,7 @@ interface Props {
   borderColor: string;
   /** Default true. Set false while an async action using this field's value is in flight, same convention as the rest of the app disabling its primary action button. */
   editable?: boolean;
-  /** Default false (single line, current behavior). true renders a taller, top-aligned, wrapping box - e.g. for Scope's 1-3 sentence text - while keeping the same Select All/Copy/Cut/Paste overlay. */
+  /** Default false (single line). true renders a taller, top-aligned, wrapping box - e.g. for Scope's 1-3 sentence text - while keeping the same Select All/Copy/Cut/Paste overlay. */
   multiline?: boolean;
   /** Optional handle for inserting text from outside the field - see the module doc comment. */
   handleRef?: React.Ref<ClipboardTextInputHandle>;
@@ -89,8 +80,8 @@ export default function ClipboardTextInput({
 
   // No setState here on purpose - see domain/clipboardText.ts's `Selection`
   // doc comment (onSelectionChange fires on nearly every cursor/selection
-  // movement; a setState-driven re-render on every one of those is what
-  // broke native text selection on Android in the first place).
+  // movement, and a setState-driven re-render on every one of those breaks
+  // native text selection on Android).
   const onSelectionChange = (selection: Selection) => {
     lastSelectionRef.current = selection;
     if (selectionOverride) setSelectionOverride(null);

@@ -1,7 +1,7 @@
 /**
  * Builds the textbox `Element` the note-writing code inserts with
  * insertElements. The one place that spells out the createElement(ELEMENT_TYPE_TEXT)
- * + `textBox` literal (docs/dev/technical-design-gmail-email-note.md 3.6) - used by
+ * + `textBox` literal (docs/dev/history/technical-design-gmail-email-note.md 3.6) - used by
  * storage/textNote.ts from the start; storage/meetingNoteContent.ts's two copies
  * are to be migrated later (Phase 3, behaviour-identical).
  */

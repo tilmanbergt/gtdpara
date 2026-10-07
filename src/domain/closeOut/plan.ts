@@ -1,25 +1,25 @@
 /**
  * The close-out plan - a project's in-progress close-out decisions,
  * persisted as a human-readable `## Close-out` section in its project.txt
- * (docs/dev/technical-design-project-close-out.md §4.2). Pure: parse, serialize
+ * (docs/dev/history/technical-design-project-close-out.md §4.2). Pure: parse, serialize
  * and small immutable edits; storage/closeOut/planStore.ts does the I/O.
  *
  * Only DEVIATIONS from the defaults are stored (a file added after a
  * decision still gets its default treatment). Example:
  *
- *   ## Close-out
- *   - step: outcomes
- *   - exclude: Todos/Order wood.note
- *   - move: Sketches.note => area:Workbench
- *   - move: werkplan-basteltisch.pdf => resources:Woodworking/Plans
- *   - moved-todo: Return leftover screws => area:Home & Workshop
- *   - moved-meeting: 2026-10-08 Follow-up call => inbox
- *   - pdf: Workbench build.pdf | 2026-09-28T10:02 | 34 | checked
- *   - journal: move-outcomes done 2026-09-28T10:15
+ *   `## Close-out`
+ *   `- step: outcomes`
+ *   `- exclude: Todos/Order wood.note`
+ *   `- move: Sketches.note => area:Workbench`
+ *   `- move: werkplan-basteltisch.pdf => resources:Woodworking/Plans`
+ *   `- moved-todo: Return leftover screws => area:Home & Workshop`
+ *   `- moved-meeting: 2026-10-08 Follow-up call => inbox`
+ *   `- pdf: Workbench build.pdf | 2026-09-28T10:02 | 34 | checked`
+ *   `- journal: move-outcomes done 2026-09-28T10:15`
  *
  * Lines this parser doesn't understand are kept verbatim (extraLines).
  */
-import {readSectionLines, removeSection, writeSectionLines} from '../markdown';
+import {readSectionLines, writeSectionLines} from '../markdown';
 
 export const CLOSE_OUT_HEADING = '## Close-out';
 
@@ -191,14 +191,9 @@ export function writePlanIntoContent(content: string, plan: CloseOutPlan): strin
   return writeSectionLines(content, CLOSE_OUT_HEADING, serializePlan(plan));
 }
 
-/** Removes the whole section ("Start over"). */
-export function removePlanFromContent(content: string): string {
-  return removeSection(content, CLOSE_OUT_HEADING);
-}
-
 // ---- small immutable edits (each one also invalidates a PDF check where the PDF's content changes) ----
 
-/** Contents or outcomes changed: an existing PDF no longer matches, so it must be checked (or recreated) again. */
+/** Contents or outcomes changed: an existing PDF does not match any more, so it must be checked (or recreated) again. */
 function uncheck(plan: CloseOutPlan): CloseOutPlan {
   return plan.pdf && plan.pdf.checked ? {...plan, pdf: {...plan.pdf, checked: false}} : plan;
 }
@@ -248,7 +243,7 @@ export function archiveStarted(plan: CloseOutPlan): boolean {
 /**
  * An archive run that started but never reached its last op (`stamp`) - the
  * project may be half moved (Integrity Check "closeOutInterrupted",
- * docs/dev/technical-design-files-0.6.md §3.6). Opening its close-out resumes it.
+ * docs/dev/history/technical-design-files-0.6.md §3.6). Opening its close-out resumes it.
  */
 export function closeOutInterrupted(plan: CloseOutPlan): boolean {
   return archiveStarted(plan) && !isJournalDone(plan, 'stamp');

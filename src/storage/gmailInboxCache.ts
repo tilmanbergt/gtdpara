@@ -1,16 +1,14 @@
 /**
  * In-memory Gmail inbox cache for the Weekly Review "Gmail inbox" step
- * (docs/dev/technical-design-review-gmail-inbox.md §5) - mirrors storage/
- * folderIndex.ts's own proven pattern (a module-level variable, explicit
- * refresh only, no background polling): a plugin running on an e-ink device
- * has no business quietly polling an IMAP server on a timer, so this cache
- * is populated only when the user taps the step's own Refresh/Load button
- * (2026-09-21: entering the step no longer fetches by itself - a failed fetch
- * used to be retried in a tight loop that also wiped its own error message;
- * see screens/ReviewScreen.tsx's renderGmailInbox) and stays exactly as it
- * was until the next explicit refresh, same "frozen for the visit" posture
- * screens/ReviewScreen.tsx's own snapshot state already uses for
- * Stalled/Neglected/etc.
+ * (docs/dev/history/technical-design-review-gmail-inbox.md §5) - mirrors storage/
+ * folderIndex.ts's pattern (a module-level variable, explicit refresh only,
+ * no background polling): a plugin on an e-ink device has no business
+ * quietly polling an IMAP server on a timer. The cache is populated only when
+ * the user taps the step's own Refresh/Load button - entering the step does
+ * not fetch, so a failed fetch can't retry in a loop and wipe its own error
+ * message (see screens/ReviewScreen.tsx's renderGmailInbox) - and stays as
+ * it is until the next explicit refresh, the same "frozen for the visit"
+ * posture ReviewScreen's snapshot state uses for Stalled/Neglected/etc.
  *
  * Deliberately NOT a wrapper that re-fetches automatically - every function
  * here does exactly the one IMAP round-trip its name says and nothing more
@@ -33,6 +31,7 @@ import {
   listInboxMessages,
 } from './gmailImapNative';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 /** Most recent messages fetched per refresh - a fixed, generous cap rather than paging, same reasoning as the rest of this step (a Weekly Review inbox triage is not expected to run against thousands of unread emails at once). */
 export const GMAIL_INBOX_FETCH_LIMIT = 30;
@@ -41,7 +40,7 @@ export interface GmailCacheMessage extends GmailMessageSummary {
   /**
    * `'unfetched'` until the message's detail panel is opened (fetchGmailBody
    * below); `'unsupported'` when the native side found neither a usable
-   * plain-text nor HTML part (docs/dev/technical-design-review-gmail-inbox.md
+   * plain-text nor HTML part (docs/dev/history/technical-design-review-gmail-inbox.md
    * §6) - both are plain data states, not error conditions, so callers don't
    * need to special-case a rejected promise just to notice them.
    */
@@ -83,7 +82,7 @@ export function isGmailConfigured(settings: GtdParaSettings): boolean {
 /**
  * Re-fetches the message list from the server and replaces the cache
  * wholesale - every message starts back at `bodyText: 'unfetched'` even if
- * it was previously opened this session, since a fresh list is a fresh set
+ * it was already opened this session, since a fresh list is a fresh set
  * of GmailMessageSummary objects with no way to carry that over cheaply, and
  * re-fetching a body lazily on next open is a small enough cost given how
  * infrequently this runs (step entry / manual 🔄 only).
@@ -107,8 +106,8 @@ export async function refreshGmailInbox(settings: GtdParaSettings): Promise<Gmai
 
 /**
  * Lazily fetches and caches one message's body the first time its detail
- * panel is opened. A message no longer present in the cache (e.g. archived
- * from another client between refreshes) is a no-op - the caller's own
+ * panel is opened. A message missing from the cache (e.g. archived from
+ * another client between refreshes) is a no-op - the caller's own
  * `getCachedGmailInbox()` read afterwards simply won't find it either.
  */
 export async function fetchGmailBody(settings: GtdParaSettings, uid: string): Promise<string | 'unsupported'> {
@@ -137,7 +136,7 @@ export function removeCachedGmailMessage(uid: string): RemovedGmailMessage | nul
   return {message, index};
 }
 
-/** Undoes removeCachedGmailMessage - re-inserted at its original index (2026-09-28: "wieder in die Liste setzen" should mean where it was), clamped to the current length. */
+/** Undoes removeCachedGmailMessage - re-inserted at its original index, clamped to the current length. */
 export function restoreCachedGmailMessage(removed: RemovedGmailMessage): void {
   if (!cached) return;
   if (cached.some(m => m.uid === removed.message.uid)) return;
@@ -146,8 +145,8 @@ export function restoreCachedGmailMessage(removed: RemovedGmailMessage): void {
 }
 
 /**
- * Archives still running in the background (2026-09-28, docs/technical-
- * design-review-monthly-focus.md §4.3). A manual refresh while one of these
+ * Archives still running in the background (
+ * docs/dev/history/technical-design-review-monthly-focus.md §4.3). A manual refresh while one of these
  * is queued/in flight would otherwise re-list a message the server hasn't
  * archived yet - refreshGmailInbox filters them out.
  */
@@ -160,10 +159,10 @@ let archiveQueue: Promise<void> = Promise.resolve();
  * deletion) and removes it from the cache. Optimistic-then-rollback: the
  * message is removed from the cache SYNCHRONOUSLY, before this returns its
  * promise, so the caller can re-read getCachedGmailInbox() immediately and
- * treat it as gone (2026-09-28: the email disappears right after the tap,
- * archiving runs in the background). The IMAP call itself is queued behind
- * any archive still running. If it fails, the message is restored to the
- * cache at its old position before the rejection reaches the caller.
+ * treat it as gone (the email disappears right after the tap, archiving
+ * runs in the background). The IMAP call itself is queued behind any archive
+ * still running. If it fails, the message is restored to the cache at its
+ * old position before the rejection reaches the caller.
  */
 export function archiveGmailMessage(settings: GtdParaSettings, uid: string): Promise<void> {
   const removed = removeCachedGmailMessage(uid);
@@ -175,7 +174,7 @@ export function archiveGmailMessage(settings: GtdParaSettings, uid: string): Pro
       log('gmailInboxCache: archived', uid);
     } catch (e) {
       if (removed) restoreCachedGmailMessage(removed);
-      logError('gmailInboxCache: archive failed', uid, e instanceof Error ? e.message : String(e));
+      logError('gmailInboxCache: archive failed', uid, errorMessage(e));
       throw e;
     } finally {
       pendingArchiveUids.delete(uid);

@@ -1,24 +1,22 @@
 /**
  * JS surface of gtdpara's own PDF writer (android/.../PdfModule.kt, native
  * name "GtdParaPdf") plus thin wrappers around the sn-plugin-lib calls that
- * feed it note-page images - docs/dev/technical-design-project-close-out.md
+ * feed it note-page images - docs/dev/history/technical-design-project-close-out.md
  * §2.1/§3. Generic on purpose: nothing here knows about projects, archives
  * or close-out (storage/pdfExport.ts is the one client that turns a document
- * model into a finished PDF; see there).
+ * model into a finished PDF; see there). Builds have job ids, progress
+ * events and cancel.
  *
  * The SDK wrappers return a raw {ok, result, error, ms} record instead of
  * throwing: a page that fails to render must become a placeholder page in
  * the export, not abort a 300-page run.
- *
- * Replaces the spike's supernote/archivePdf.ts (2026-09-28): same writer,
- * plus job ids, progress events and cancel; the spike-only calls
- * (template/mark rendering, batch PDF rasterizing) are gone.
  */
 import {DeviceEventEmitter, NativeModules} from 'react-native';
 import {PluginFileAPI} from 'sn-plugin-lib';
 import {PdfSpec} from '../domain/pdf/pdfSpec';
 import {ensureFileReadPermission, ensureFileWritePermission} from './pluginPermissions';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 // ---- sn-plugin-lib wrappers ----
 
@@ -41,7 +39,7 @@ async function call<T>(name: string, fn: () => Promise<unknown>): Promise<ApiCal
     if (!ok) logError(`${name}: failed`, error);
     return {ok, result: ok ? ((raw?.result ?? null) as T | null) : null, error, ms};
   } catch (e) {
-    const error = e instanceof Error ? e.message : String(e);
+    const error = errorMessage(e);
     logError(`${name}: threw`, error);
     return {ok: false, result: null, error, ms: Date.now() - start};
   }
@@ -56,9 +54,9 @@ async function requireWrite(): Promise<void> {
 }
 
 /**
- * Renders one note page to a PNG. Spike result (2026-09-28): `type` 1 (white
- * background) already contains the page's background template - no separate
- * template call or layering is needed. `times` 1 = native resolution.
+ * Renders one note page to a PNG. `type` 1 (white background) already
+ * contains the page's background template (tested on the device) - no
+ * separate template call or layering is needed. `times` 1 = native resolution.
  */
 export async function generateNotePng(notePath: string, page: number, pngPath: string, times: 1 | 2 = 1): Promise<ApiCall<boolean>> {
   await requireWrite();
@@ -89,7 +87,7 @@ export async function getPathEncryptionStatus(path: string): Promise<ApiCall<unk
 }
 
 /**
- * Pixels per inch for a note's origin device, used to give PDF pages their
+ * Pixels per inch for a note's origin device; gives PDF pages their
  * real physical size (points = px * 72 / ppi). The A5 and A5X are 226 ppi;
  * the A6, A6X, Nomad and Manta are ~300 ppi. Unknown types fall back to 226.
  */

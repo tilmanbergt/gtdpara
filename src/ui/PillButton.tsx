@@ -1,6 +1,6 @@
 /**
- * The app's rounded action button as a shared component (docs/technical-
- * design-project-close-out.md §8.1). Same look as the `pill` style several
+ * The app's rounded action button as a shared component (
+ * docs/dev/history/technical-design-project-close-out.md §8.1). Same look as the `pill` style several
  * screens declare locally (ReviewScreen's styles.pill: 1px border, radius
  * 14, small bold label) - new code uses this instead of copying it again.
  *

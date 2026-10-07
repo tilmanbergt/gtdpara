@@ -1,11 +1,9 @@
 /**
- * itemEntryRow — shared "one row = one Project/Area" sizing/display helpers,
- * extracted from screens/ItemsList.tsx (2026-09-16, docs/
- * technical-design-review-master-detail.md §Component inventory) so the
- * Review screen's new master-detail left lists (Stalled projects, Neglected
- * areas, Done awaiting review, On Hold reconsideration) can render their own
- * item rows with byte-for-byte the same sizing/display logic ItemsList.tsx
- * uses, rather than a second hand-maintained copy drifting out of sync.
+ * itemEntryRow — shared "one row = one Project/Area" sizing/display helpers
+ * (docs/dev/history/technical-design-review-master-detail.md §Component inventory), used
+ * by screens/ItemsList.tsx and the Review screen's master-detail left lists
+ * (Stalled projects, Neglected areas, Done awaiting review, On Hold
+ * reconsideration) so both use the same sizing/display logic.
  *
  * `COLUMN_WIDTH_PX` (678) is the app's established equal-two-column figure
  * (docs/dev/design-device-rendering.md §5.1: 1372px usable width, 16px gutter,

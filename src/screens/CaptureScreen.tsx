@@ -1,5 +1,5 @@
 /**
- * Capture and marks processing - one screen (docs/dev/technical-design-lasso-0.8.md
+ * Capture and marks processing - one screen (docs/dev/history/technical-design-lasso-0.8.md
  * §3.7, screen designs A-C).
  *
  * Opened two ways (App.tsx, `mode === 'capture'`):
@@ -56,6 +56,7 @@ import {useCachedInbox} from '../ui/useCachedInbox';
 import {useCachedItems} from '../ui/useCachedItems';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
+import {errorMessage} from '../utils/errorMessage';
 
 export type CaptureReturnTo = MarksReturnTo;
 
@@ -134,7 +135,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
         try {
           lassoPicture = await saveLassoPreview(`${await getPrivateTempDir()}/lasso-${Date.now()}.png`);
         } catch (e) {
-          log('CaptureScreen: no lasso picture', e instanceof Error ? e.message : String(e));
+          log('CaptureScreen: no lasso picture', errorMessage(e));
         }
       }
       const currentNotePath = lasso?.path ?? (await getCurrentNotePath());
@@ -146,7 +147,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
       try {
         dataDir = await getPrivateDataDir();
       } catch (e) {
-        log('CaptureScreen: no private data folder', e instanceof Error ? e.message : String(e));
+        log('CaptureScreen: no private data folder', errorMessage(e));
       }
       setLoaded({paths: cache.paths, currentNotePath, lasso, lassoPicture, lassoDestination, dataDir});
       const shownMs = Date.now() - t0;
@@ -171,7 +172,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
         );
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('CaptureScreen: load failed', message);
       setLoadError(message);
     }
@@ -336,7 +337,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
           setInfo(`Saved. The bookmark in ${fileNameOf(open.absPath)} p${open.mark.page + 1} stays as it is (${r.iconDetail}).`);
         }
       } catch (e) {
-        setError(`Saved, but the mark could not be removed from its list: ${e instanceof Error ? e.message : String(e)}`);
+        setError(`Saved, but the mark could not be removed from its list: ${errorMessage(e)}`);
       } finally {
         setBusy(false);
       }
@@ -348,7 +349,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
     // The lasso: it goes once the first item is saved.
     if (lassoSaved === 0) {
       await setLassoBoxState(2).catch(e =>
-        logError('CaptureScreen: removing the lasso failed', e instanceof Error ? e.message : String(e)),
+        logError('CaptureScreen: removing the lasso failed', errorMessage(e)),
       );
     }
     setLassoSaved(n => n + 1);
@@ -373,7 +374,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
     try {
       await openPath(selectedMark.absPath, selectedMark.mark.page);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     }
   };
   const runDiscard = async (open: OpenMark) => {
@@ -389,7 +390,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
           : `Discarded. The bookmark in ${fileNameOf(open.absPath)} p${open.mark.page + 1} stays (${r.iconDetail}).`,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
       advancingRef.current = false;
       return;
     } finally {

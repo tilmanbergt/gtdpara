@@ -1,15 +1,13 @@
 /**
  * Subscribes a screen to storage/dataCache.ts and returns the cached
  * Projects/Areas (docs/dev/technical-design-cache-subscription-and-shared-add-
- * path.md §A, 2026-09-20).
+ * path.md §A).
  *
  * Why this exists: every write-through helper in dataCache.ts (`updateItem
  * Meetings`, `ensureItemCached`'s push, ...) mutates the cache IN PLACE, so
- * the old screen pattern `setItems(cache.items)` handed React the very same
- * array it already held - a no-op state update, no re-render. Week view
- * therefore did not show a meeting filed to a Project/Area until something
- * unrelated re-rendered it (Inbox adds happened to work only because they
- * also `setInbox(newObject)`). Now the cache announces every change
+ * `setItems(cache.items)` would hand React the very same array it already
+ * holds - a no-op state update, no re-render (e.g. Week view would not show
+ * a meeting filed to a Project/Area). The cache announces every change
  * (`subscribeCache`) and this hook (a) re-renders the calling component and
  * (b) returns a NEW array identity per change, so `useEffect`/`useCallback`
  * dependency arrays keyed on `items` stay honest even though the item
@@ -19,7 +17,7 @@
  * does not depend on which React version the plugin host ships.
  *
  * Returns `[]` (a stable empty array) while no cache exists yet - screens
- * still run their own `load()` for the first build, exactly as before.
+ * run their own `load()` for the first build.
  */
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {CachedItem, getCacheVersion, getCachedData, subscribeCache} from '../storage/dataCache';
@@ -31,7 +29,7 @@ export function useCachedItems(): CachedItem[] {
   const [, setTick] = useState(0);
   const version = getCacheVersion();
   const cache = getCachedData();
-  // Kept tabs (docs/dev/technical-design-keep-tabs-alive.md §5.1): while this
+  // Kept tabs (docs/dev/history/technical-design-keep-tabs-alive.md §5.1): while this
   // component's tab is hidden, cache changes don't re-render it; when it is
   // shown again it re-renders once, and only if the cache changed meanwhile.
   const activity = useScreenActivity();
@@ -56,5 +54,6 @@ export function useCachedItems(): CachedItem[] {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- version: the cache object is updated in place
   return useMemo(() => (cache ? cache.items.slice() : NO_ITEMS), [cache, version]);
 }

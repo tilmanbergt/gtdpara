@@ -1,7 +1,6 @@
 /**
- * D / W / M focus-level badges (docs/dev/technical-design-monthly-view.md §5.3) -
- * Tilman, 2026-09-23: "there should be clear way to distinguish daily,
- * weekly, monthly focus". Shows one small letter box per level the item is
+ * D / W / M focus-level badges (docs/dev/history/technical-design-monthly-view.md §5.3), so
+ * daily, weekly and monthly focus are clearly told apart. Shows one small letter box per level the item is
  * focused at; the level of the current view (`active`) is filled, the others
  * outlined. Grayscale-safe (letters, not colors) for the e-ink screen.
  */

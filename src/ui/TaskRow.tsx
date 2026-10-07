@@ -1,52 +1,41 @@
 /**
  * One task row - checkbox, tap-to-edit, labels after the title
  * (ui/TaskLabels.tsx, domain/taskLabels.ts), note-link (📓/+📓), a linked-file clip, and an optional "File" action.
- * Consolidates the three near-duplicate row implementations this codebase
- * had grown (screens/DailyView.tsx's Open-tasks rows, screens/
- * ProjectDataPanel.tsx's TodosSection rows, screens/ReviewScreen.tsx's
- * Inbox-to-zero cards) into one, per docs/dev/technical-design-inbox-tab.md §1 -
- * the moment a fourth surface (the Inbox tab, screens/InboxScreen.tsx)
- * needed the union of what all three already did (edit + note-link + File),
- * duplicating a fourth time stopped making sense. Same "extract once a
- * second caller needs the same shape" bar this codebase has used for every
- * other shared component (ui/TaskQuickAdd.tsx, ui/TaskLabels.tsx, etc.).
+ * The single task row shared by Daily's Open-tasks, ProjectDataPanel's Todos,
+ * Review's Inbox-to-zero and the Inbox tab (docs/dev/history/technical-design-inbox-tab.md §1).
  *
- * Editing (docs/dev/technical-design-pagination-edit-reuse.md §5): this row no
- * longer renders its own edit form (ui/TaskEditCard.tsx is gone). `isEditing`
- * now only highlights the row - the caller renders ui/TaskQuickAdd.tsx in its
- * `editingTask` mode, in its own fixed slot elsewhere on screen, to actually
- * edit the task. This keeps every row a constant height whether or not it's
- * the one being edited (no reflow of the rows below it), and keeps the edit
- * form in one predictable on-screen place regardless of which row it's for.
+ * Editing (docs/dev/history/technical-design-pagination-edit-reuse.md §5): this row
+ * renders no edit form of its own. `isEditing` only highlights the row - the
+ * caller renders ui/TaskQuickAdd.tsx in its `editingTask` mode, in its own
+ * fixed slot elsewhere on screen, to actually edit the task. This keeps every
+ * row a constant height whether or not it's the one being edited (no reflow
+ * of the rows below it), and keeps the edit form in one predictable on-screen
+ * place regardless of which row it's for.
  *
- * Filing/refiling (docs/dev/technical-design-filing-unification.md §4 introduced
- * a row-level `onArmFile` "File" action here; storage/inboxFiling.ts's own
- * module doc comment, 2026-09-09, retires it) no longer has any row-level
- * affordance at all - it's reached exclusively through QuickAddWidget's
- * "Refile" button in edit mode now, on every screen with a Files pane
- * (Inbox tab, Review's Inbox-to-zero step, and now Current tab too, not just
- * Inbox-sourced rows). This row has nothing to wire for it.
+ * Filing/refiling has no row-level affordance: it's reached through
+ * QuickAddWidget's "Refile" button in edit mode, on every screen with a Files
+ * pane (storage/inboxFiling.ts's module doc comment). This row has nothing to
+ * wire for it.
  *
- * The old `✕` (soft-delete) slot is gone entirely (technical-design-linked-
- * files.md §6) - removal now only happens from inside edit mode (ui/
- * TaskQuickAdd.tsx's "Delete" button). What used to be that slot is now a
- * linked-file clip: filled when `task.linkedFile` is set (tap opens it),
- * "+"-prefixed when it's empty and `onArmLink` was passed (tap arms the
- * caller's Files pane), or nothing at all when it's empty and no
- * `onArmLink` was passed (read-only surfaces like Daily).
+ * There is no row-level delete (technical-design-linked-files.md §6) - removal
+ * happens from inside edit mode (ui/TaskQuickAdd.tsx's "Delete" button). The
+ * trailing slot is a linked-file clip: filled when `task.linkedFile` is set
+ * (tap opens it), "+"-prefixed when it's empty and `onArmLink` was passed
+ * (tap arms the caller's Files pane), or nothing at all when it's empty and
+ * no `onArmLink` was passed (read-only surfaces like Daily).
  *
- * Parent owns all UI state now (via onToggleDone/onArmFile/onCreateNote/
+ * Parent owns all UI state (via onToggleDone/onArmFile/onCreateNote/
  * onOpenNote/onOpenLinkedFile/onArmLink) - the same split every save
  * callback in this codebase uses. `isEditing`/`isArming` are passed in
  * rather than owned here since only one row across the whole screen can be
  * mid-edit or armed at a time - the caller (which owns one shared
  * `editTarget`/`armTarget`, see the tech design doc §8) decides.
  *
- * Tappable inline tags (technical-design-context-tags.md §7, 2026-09-11):
+ * Tappable inline tags (technical-design-context-tags.md §7):
  * `contextTag`/`onToggleContext` are optional and only passed by Daily's own
- * instances (screens/DailyView.tsx) - their absence elsewhere renders every
- * `#tag` in the row's text as plain, unstyled text, same as before this
- * feature. When passed, `displayTaskText`'s output is split into segments
+ * instances (screens/DailyView.tsx) - without them every `#tag` in the row's
+ * text renders as plain, unstyled text. When passed, `displayTaskText`'s
+ * output is split into segments
  * (domain/markdown.ts's `splitTextWithTags`) and each context tag (reserved
  * flow-state/due/#now words excluded via `isContextTag` - see that
  * function's doc comment on why a stray `#someday` surviving display-
@@ -57,7 +46,7 @@
  * carrying its own onPress, same mechanism the `#next`/`#now` label's
  * double-tap (ui/TaskLabels.tsx) relies on.
  *
- * Title and labels are ONE <Text> (docs/dev/technical-design-waiting-for-0.7.md
+ * Title and labels are ONE <Text> (docs/dev/history/technical-design-waiting-for-0.7.md
  * §3.3): what's drawn (title, then labels as nested spans) and the height a
  * caller reserves both come from ui/taskRowLayout.ts's `taskRowLayout`, so a
  * label can't wrap onto a line the row doesn't have.
@@ -78,16 +67,16 @@ import {perfCount} from '../utils/perf';
 export type TaskBadgeContext = TaskLabelContext;
 
 /**
- * Row-height prediction (docs/dev/technical-design-pagination-fixed-height.md
+ * Row-height prediction (docs/dev/history/technical-design-pagination-fixed-height.md
  * §2.2) - a caller building a ui/PagedSection.tsx computes `taskRowHeight`
  * per task to sum toward its viewport, then passes the SAME task/
  * columnWidthPx/context here as this row's `height`/`numberOfLines` props, so
  * the reserved height and the text clamp always agree. The line count comes
- * from ui/taskRowLayout.ts and covers the title AND its labels (0.7.0); a row
+ * from ui/taskRowLayout.ts and covers the title AND its labels; a row
  * never shows more than 2 lines.
  */
-// Chrome/line split: see the 2026-09-16 revert note in git history - the
-// original 20/22 (42 px one line, 64 px two lines) are the measured-good values.
+// Chrome/line split: 20/22 (42 px one line, 64 px two lines) are the
+// device-measured values.
 export const TASK_ROW_CHROME_PX = 20;
 export const TASK_ROW_LINE_HEIGHT_PX = 22;
 
@@ -125,9 +114,8 @@ function renderTaggableText(
 
 interface Props {
   task: Task;
-  /** Highlights this row (no longer swaps it for an inline form - see the
-   * module doc comment). The real edit form lives elsewhere on screen, in
-   * ui/TaskQuickAdd.tsx's `editingTask` mode. */
+  /** Highlights this row (see the module doc comment). The real edit form
+   * lives elsewhere on screen, in ui/TaskQuickAdd.tsx's `editingTask` mode. */
   isEditing: boolean;
   /** Highlights this row while it's the one armed for linking - same visual treatment as isEditing. */
   isArming?: boolean;
@@ -140,20 +128,19 @@ interface Props {
   onOpenLinkedFile?: (linkedFile: string) => void;
   /** Only passed by callers that support starting a link from this row (Current tab, Inbox) - its absence (Daily, Review) is what makes the clip read-only there. */
   onArmLink?: () => void;
-  /** Double-tapping the `#next`/`#now` label flips #now (ui/TaskLabels.tsx, docs/dev/technical-design-now-focus-mode.md §3). Only passed where that's meaningful (Daily, both normal and focus mode); without it the label doesn't react to touch. */
+  /** Double-tapping the `#next`/`#now` label flips #now (ui/TaskLabels.tsx, docs/dev/history/technical-design-now-focus-mode.md §3). Only passed where that's meaningful (Daily, both normal and focus mode); without it the label doesn't react to touch. */
   onToggleNow?: () => void;
   /** The active Daily context filter tag, if any - a matching tag segment renders filled/selected. Only meaningful together with onToggleContext (see the module doc comment); pass null (not omit) when Daily's context is off but rows should still render tags as tappable-but-unselected. */
   contextTag?: string | null;
-  /** Set only by Daily's own instances - present, every context tag in this row's text becomes its own tap target that calls this instead of onStartEdit; absent, tags render as plain text (today's behavior). */
+  /** Set only by Daily's own instances - present, every context tag in this row's text becomes its own tap target that calls this instead of onStartEdit; absent, tags render as plain text. */
   onToggleContext?: (tag: string) => void;
   context: TaskBadgeContext;
   /** Computed via `taskRowHeight()`/`taskRowLines()` above by a caller
    * building a ui/PagedSection.tsx - overrides this row's default
    * `minHeight`/`numberOfLines={2}` so the rendered row matches exactly
    * what pagination summed. Pass both together (never just one) with the
-   * same task/columnWidthPx/context used to compute them; omitted by
-   * every caller as of this change (still `usePagination`-based), which
-   * keeps today's `minHeight: 64`/`numberOfLines={2}` behavior exactly. */
+   * same task/columnWidthPx/context they were computed for; when omitted the
+   * row uses `minHeight: 64`/`numberOfLines={2}`. */
   height?: number;
   numberOfLines?: number;
   /** Width the caller computed `height` for - the title is shortened to fit the labels at this width. Defaults to the usual two-column width. */
@@ -197,21 +184,15 @@ export default function TaskRow({
       <View
         style={[
           styles.row,
-          // Bottom border only, so the editing bar below stays black (2026-09-29).
+          // Bottom border only, so the editing bar below stays black.
           {borderBottomColor: borderColor},
           (isEditing || isArming) && styles.rowEditing,
-          // Also overrides styles.row's own `minHeight: 64` floor (2026-09-15
-          // bugfix) - minHeight and height are independent Yoga constraints,
-          // so passing height alone left a 1-line-predicted row (its
-          // taskRowHeight() is 42, well under 64) silently pinned back up to
-          // 64 by that floor, which PagedSection's own viewport math doesn't
-          // know about (it budgets by taskRowHeight()'s real 42, not 64).
-          // Tilman's report of a truncated row's checkbox/text sitting
-          // "raised" with a same-height-as-normal blank gap under it was this
-          // floor forcing a bigger box than the row actually needed, not a
-          // rendering defect in the text itself - see numberOfLines' own
-          // "rare, accepted" truncation note above, which this floor was
-          // quietly doubling the visual size of.
+          // Also overrides styles.row's own `minHeight: 64` floor -
+          // minHeight and height are independent Yoga constraints, so
+          // height alone would leave a 1-line row (taskRowHeight() 42)
+          // pinned up to 64, which PagedSection's viewport math (it budgets
+          // by taskRowHeight()) doesn't know about - the row would sit
+          // "raised" with a blank gap under it.
           height != null && {height, minHeight: height},
         ]}>
         <Pressable onPress={onToggleDone} hitSlop={8}>
@@ -255,8 +236,8 @@ export default function TaskRow({
  * A task shown for reading only: checkbox state, text and badges, nothing
  * tappable (no edit, no tick-off, no note or file icons). Used where a
  * list is an overview rather than a place to work on tasks - the "All
- * tasks" list on Review's Done/On Hold detail page (2026-09-30: it used
- * TaskRow without actions, so the row looked tappable but did nothing).
+ * tasks" list on Review's Done/On Hold detail page (a TaskRow without
+ * actions would look tappable but do nothing).
  */
 export function ReadOnlyTaskRow({
   task,
@@ -289,38 +270,28 @@ const styles = StyleSheet.create({
   wrap: {},
   row: {
     flexDirection: 'row',
-    // Top-aligned, not centered (2026-09-15 bugfix, Tilman: "I would expect
-    // for 2 line entries that everything is top aligned, but the text
-    // extends to one more line") - with per-row variable heights (Batch 2),
-    // centering a shorter real content block inside a taller reserved box
-    // (an over-predicted 2-line reservation whose real content is 1 line, or
-    // the stale-minHeight case the `height` prop's own comment above
-    // documents) reads as content floating in the middle of the row instead
-    // of sitting at its top; top-aligning puts any leftover space at the
-    // bottom instead, which ui/textLineEstimator.ts's own doc comment
-    // already calls the harmless direction for a misprediction to fail in.
+    // Top-aligned, not centered - with per-row variable heights, centering
+    // a shorter real content block inside a taller reserved box (an
+    // over-predicted 2-line reservation whose real content is 1 line)
+    // reads as content floating in the middle of the row; top-aligning
+    // puts any leftover space at the bottom, which ui/textLineEstimator.ts's
+    // own doc comment calls the harmless direction for a misprediction.
     alignItems: 'flex-start',
     borderBottomWidth: 1,
     paddingVertical: 7,
     // Reserves space for up to 2 lines of text + badges regardless of
     // content length, so every row in a paginated page is the same height
-    // (docs/dev/technical-design-pagination-edit-reuse.md §3). Only the floor
-    // for callers that don't pass an explicit `height` (Daily, Review, and
-    // every other caller still on the old fixed-`minHeight` story) - a
-    // Batch 2 caller's explicit `height` prop above overrides this via its
-    // own paired `minHeight`, see that prop's doc comment.
+    // (docs/dev/history/technical-design-pagination-edit-reuse.md §3). Only the floor
+    // for callers that don't pass an explicit `height` - an explicit
+    // `height` prop overrides this via its own paired `minHeight`, see
+    // that prop's doc comment.
     minHeight: 64,
-    // Defensive (2026-09-15, same DailyView Batch 5 bugfix as
-    // TRAILING_ICON_ALLOWANCE_PX in ui/taskRowLayout.ts): without this, a row whose real
-    // content is still somehow taller than its reserved height (a
-    // misprediction the width-reservation fix above doesn't fully rule
-    // out) renders its overflow at default 'visible', bleeding down into
-    // the next sibling row's space instead of clipping in place - the
-    // "clips cleanly in place" failure mode ui/textLineEstimator.ts's own
-    // doc comment already assumes is what happens, but nothing here
-    // actually enforced it. This makes any future misprediction degrade
-    // safely (an ellipsis-truncated line) instead of visually overlapping
-    // an unrelated row.
+    // Defensive (see also TRAILING_ICON_ALLOWANCE_PX in
+    // ui/taskRowLayout.ts): a row whose real content is still taller than
+    // its reserved height (a misprediction) would otherwise render its
+    // overflow at default 'visible', bleeding into the next row's space.
+    // Clipping makes a misprediction degrade safely (an ellipsis-truncated
+    // line) instead of overlapping an unrelated row.
     overflow: 'hidden',
   },
   rowEditing: {
@@ -337,11 +308,11 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontSize: FONT.medium,
-    // Descender-clipping fix (2026-09-17, [[feature_pagination_fixed_height]])
-    // - same fix confirmed on screens/ItemsList.tsx's own row Text: Android's
-    // default `includeFontPadding` reserves space above cap-height without a
-    // matching reservation below the baseline, so a fixed-height, top-aligned
-    // row (this one) clips descenders ("g"/"y") at its own bottom edge.
+    // Android's default `includeFontPadding` reserves space above cap-height
+    // without a matching reservation below the baseline, so a fixed-height,
+    // top-aligned row (this one) would clip descenders ("g"/"y") at its own
+    // bottom edge ([[feature_pagination_fixed_height]]; same on
+    // screens/ItemsList.tsx's row Text).
     includeFontPadding: false,
   },
   rowTextDone: {

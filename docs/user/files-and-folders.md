@@ -22,7 +22,7 @@ The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in
 
 The Inbox has its own folder inside the Areas folder, so the `Note` folder holds only your PARA folders. gtdpara doesn't treat it as an area: it isn't listed on the Areas tab or in focus and refile. You can change its name in Settings, see [Settings](settings.md).
 
-Up to version 0.1.0 the Inbox lived directly in `Note` (`Inbox.txt` plus `Todos` and `Meetings` folders). The first start of a newer version moves these into the Inbox folder once and says so. If an area with the same name already exists, nothing is moved, the Inbox keeps working from `Note`, and you're asked to choose another name for the Inbox folder.
+Up to version 0.1.0 the Inbox lived directly in `Note` (`Inbox.txt` plus `Todos` and `Meetings` folders). Versions 0.2 to 0.8 moved these into the Inbox folder on their first start; from 0.9.0 on gtdpara no longer does. If you still have them in `Note`, move them into the Inbox folder by hand; **Run Integrity Check** in Settings → Advanced points them out.
 
 ## Inside project.txt
 
@@ -59,6 +59,7 @@ Turn the back garden into a vegetable garden before winter.
 
 - `- [ ]` is an open todo, `- [x]` a done one, `- [-]` a cancelled one.
 - A meeting line is date, then time (`10:00`, `10:00-11:00`) or length (`1d`, `2d`), then the title.
+- On screen, dates are shown as day and month (`4.10.`, with the year when it isn't this year) and times in 24 hours (`9:30`); in the files they stay `2026-10-04` and `09:30`.
 - A linked note appears at the end of a line as `→ [[Meetings/…]]`, a linked file as `+[[…]]`. A link to a page, from a lasso capture, ends in `#page=3`.
 - A `## Marks` section lists open lasso marks, one per line, see [Lasso](lasso.md).
 - Lines gtdpara doesn't understand are kept as they are.

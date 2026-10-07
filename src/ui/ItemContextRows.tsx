@@ -1,18 +1,13 @@
 /**
- * ItemContextRows — ItemScopeRow + ItemGoalRow, extracted from
- * ui/ItemFocusPanel.tsx (2026-09-16, docs/
- * technical-design-review-master-detail.md §Component inventory) so
- * Review's new master-detail detail panels (Stalled projects, Neglected
- * areas, Done awaiting review, On Hold reconsideration) can show Scope and
- * the latest weekly goal with byte-for-byte the same visual/UX logic
- * (including the tap-to-edit convention) that ItemFocusPanel.tsx's Current
- * tab already uses - rather than a second, drifting copy.
+ * ItemContextRows — ItemScopeRow + ItemGoalRow (docs/
+ * technical-design-review-master-detail.md §Component inventory), shared by
+ * ui/ItemFocusPanel.tsx's Current tab and Review's master-detail detail
+ * panels (Stalled projects, Neglected areas, Done awaiting review, On Hold
+ * reconsideration), so both show Scope and the latest weekly goal with the
+ * same visual/UX logic (including the tap-to-edit convention).
  *
- * Both rows were already fully decoupled from ItemFocusPanel's own state -
- * `disabled` (ItemGoalRow only) is a plain prop the caller computes, not
- * anything read internally - so this extraction is verbatim with no prop
- * shape changes. ItemFocusPanel.tsx now imports these from here instead of
- * defining them locally.
+ * Neither row reads any caller state - `disabled` (ItemGoalRow only) is a
+ * plain prop the caller computes.
  */
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text} from 'react-native';
@@ -30,7 +25,7 @@ import {FONT} from './theme';
  * when empty, the dim "+ Add a scope" prompt - both tappable to enter edit
  * mode. Never `disabled` by status, unlike ItemGoalRow - there's no such
  * prop here at all. Editing: ui/InlineTextEditor.tsx (shared with both goal
- * rows since 2026-09-29) in its multiline mode.
+ * rows) in its multiline mode.
  */
 export function ItemScopeRow({
   scope,
@@ -80,7 +75,7 @@ export function ItemScopeRow({
  * no entries at all, a dim "+ Add a goal for this week" prompt - either
  * tappable to enter edit mode when not `disabled`. Editing:
  * ui/InlineTextEditor.tsx, shared with ItemScopeRow and
- * ui/PeriodFocusPanel.tsx's GoalRow since 2026-09-29.
+ * ui/PeriodFocusPanel.tsx's GoalRow.
  *
  * `disabled` is always externally supplied by the caller (ItemFocusPanel
  * passes `state.status !== 'active'`; Review's ui/ItemContextBlock.tsx
@@ -89,12 +84,10 @@ export function ItemScopeRow({
  * section is) - nothing here is coupled to any particular screen's status
  * rules.
  *
- * `currentWeekKey` (2026-09-16, docs/dev/technical-design-review-master-
- * detail.md §4.2) drives both "is this the current week" (unchanged) and
- * the "N weeks ago" phrase on an older goal, via the new
- * `domain/weekDate.ts` `weeksBetween` helper. Optional, defaulting to
- * `isoWeekKey(new Date())` - ItemFocusPanel's existing call site needs no
- * change at all (same value it would compute itself); Review's
+ * `currentWeekKey` (docs/dev/technical-design-review-master-
+ * detail.md §4.2) drives both "is this the current week" and the "N weeks
+ * ago" phrase on an older goal, via `domain/weekDate.ts`'s `weeksBetween`.
+ * Optional, defaulting to `isoWeekKey(new Date())`; Review's
  * `ItemContextBlock` passes one `currentWeekKey` it computed once for the
  * whole step, so every card in the same review moment agrees on "now".
  */
@@ -110,7 +103,7 @@ export function ItemGoalRow({
 }: {
   /** This item's goals for `scope`, as `{key, text}` - storage/periodGoals.ts's `goalsOf`. */
   goals: PeriodGoal[];
-  /** Week or month (docs/dev/technical-design-monthly-view.md §5.6) - drives the current key, labels and "N weeks/months ago". */
+  /** Week or month (docs/dev/history/technical-design-monthly-view.md §5.6) - drives the current key, labels and "N weeks/months ago". */
   scope?: PeriodScope;
   disabled: boolean;
   onSaveGoal: (text: string) => Promise<void>;

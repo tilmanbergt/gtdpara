@@ -1,6 +1,6 @@
 /**
  * Read-only goal history for a past/future period whose focus can't be
- * edited (docs/dev/technical-design-monthly-view.md §5.5) - ui/
+ * edited (docs/dev/history/technical-design-monthly-view.md §5.5) - ui/
  * WeeklyGoalsHistoryPanel.tsx generalized by `scope`. Goal-driven, not
  * focus-driven: lists exactly the items that had a goal recorded for the
  * displayed period (storage/periodGoals.ts's findGoalsForPeriod), regardless

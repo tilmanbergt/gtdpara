@@ -1,6 +1,6 @@
 /**
  * Saving a Gmail attachment to disk so it can become a Task/Meeting's
- * `linkedFile` (docs/dev/technical-design-review-gmail-inbox.md §8) - parallel
+ * `linkedFile` (docs/dev/history/technical-design-review-gmail-inbox.md §8) - parallel
  * to storage/noteLinks.ts (creates a new .note) and storage/linkedFiles.ts
  * (points at an existing file), but for a *third* source: bytes fetched over
  * IMAP that don't exist as a file anywhere yet, so this module's job is
@@ -25,7 +25,7 @@ import {log} from '../utils/log';
 import {collisionFreeName} from './fileNaming';
 
 export const GMAIL_ATTACHMENTS_SUBFOLDER = 'Gmail attachments';
-/** Where "Link email as note" (storage/gmailEmailNote.ts, docs/dev/technical-design-gmail-email-note.md) writes an email's text as a .note - separate from GMAIL_ATTACHMENTS_SUBFOLDER since the two are conceptually different linked files (the email's own text vs. something it carried). */
+/** Where "Link email as note" (storage/gmailEmailNote.ts, docs/dev/history/technical-design-gmail-email-note.md) writes an email's text as a .note - separate from GMAIL_ATTACHMENTS_SUBFOLDER since the two are conceptually different linked files (the email's own text vs. something it carried). */
 export const GMAIL_EMAILS_SUBFOLDER = 'Gmail';
 
 /** Picks a collision-free `<stem>[ (2)][ext]` filename inside an already-existing `folderPath`, the same convention storage/noteLinks.ts's createLinkedNote uses for note filenames (shared loop: storage/fileNaming.ts). */
@@ -34,7 +34,7 @@ function collisionFreeFileName(folderPath: string, stem: string, ext: string): P
 }
 
 /**
- * MIME allow-list (Tilman, docs/dev/technical-design-review-gmail-inbox.md §8) -
+ * MIME allow-list (Tilman, docs/dev/history/technical-design-review-gmail-inbox.md §8) -
  * only types this device can actually open via PluginFileAPI.openFile are
  * offered as a one-tap "Save" action; anything else still lists in the
  * message's attachment row (so nothing is silently hidden) but greyed out

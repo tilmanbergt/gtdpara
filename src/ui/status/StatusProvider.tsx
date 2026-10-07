@@ -1,6 +1,6 @@
 /**
  * Central status slot - state + publishing hooks
- * (docs/dev/technical-design-status-slot.md §3/§4).
+ * (docs/dev/history/technical-design-status-slot.md §3/§4).
  *
  * Two contexts: `ApiContext` is stable (publishers never re-render because
  * of other messages), `ListContext` carries the sorted message list and is
@@ -88,13 +88,13 @@ export function useStatusApi(): StatusApi {
  * publisher instance - use `'<screen>.<purpose>'`, plus an instance suffix
  * for components that can be mounted more than once.
  *
- * Kept tabs (docs/dev/technical-design-keep-tabs-alive.md §4.2): while the
+ * Kept tabs (docs/dev/history/technical-design-keep-tabs-alive.md §4.2): while the
  * publisher's screen is hidden, its screen-scoped message is withdrawn and
  * held back (shown again if still set when the screen is shown). At the
  * moment the screen is hidden, the message's `onCancel` is called (every
- * armed pick publishes one - so picks end on leaving the tab, as they did
- * when the screen unmounted), otherwise its `onDismiss` (errors clear, as
- * before). Outside a kept tab the screen always counts as active.
+ * armed pick publishes one - so picks end on leaving the tab), otherwise
+ * its `onDismiss` (errors clear). Outside a kept tab the screen always
+ * counts as active.
  */
 export function useStatus(id: string, msg: StatusMessage | null): void {
   const api = useContext(ApiContext);
@@ -141,7 +141,7 @@ export function useStatus(id: string, msg: StatusMessage | null): void {
   }, [api, id, contentKey]);
 
   // Kept tab hidden: withdraw, and end picks (onCancel) / dismiss errors
-  // (onDismiss) as unmount did. Shown: re-publish whatever is still set.
+  // (onDismiss), same as on unmount. Shown: re-publish whatever is still set.
   // Imperative on purpose - hiding a tab must not re-render its publishers.
   useEffect(
     () =>
@@ -168,11 +168,12 @@ export function useStatus(id: string, msg: StatusMessage | null): void {
 let nextStatusInstance = 0;
 
 /**
- * Shorthand for the most common case: an existing `error` string state
- * that used to render as an inline "⚠ …" line (docs/dev/technical-design-
- * status-slot.md §7.4). Publishes it as an 'error' with ✕ (= `onDismiss`,
- * normally `() => setError(null)`). `name` is made unique per component
- * instance, so the same component can be mounted more than once.
+ * Shorthand for the most common case: an existing `error` string state,
+ * shown in the status slot instead of an inline "⚠ …" line
+ * (docs/dev/history/technical-design-status-slot.md §7.4). Publishes it as an
+ * 'error' with ✕ (= `onDismiss`, normally `() => setError(null)`). `name` is
+ * made unique per component instance, so the same component can be mounted
+ * more than once.
  */
 export function useErrorStatus(name: string, error: string | null | undefined, onDismiss?: () => void): void {
   const id = useRef(`${name}.${++nextStatusInstance}`).current;

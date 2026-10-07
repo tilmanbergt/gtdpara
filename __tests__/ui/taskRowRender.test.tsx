@@ -1,4 +1,4 @@
-// docs/dev/technical-design-waiting-for-0.7.md §3.3: title and labels render as one text,
+// docs/dev/history/technical-design-waiting-for-0.7.md §3.3: title and labels render as one text,
 // and the #next label's double-tap flips #now.
 jest.mock('react-native-svg', () => {
   const ReactLib = require('react');

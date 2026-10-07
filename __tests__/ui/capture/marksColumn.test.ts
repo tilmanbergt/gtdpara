@@ -9,9 +9,9 @@ const open = {
 
 describe('marks column meta line', () => {
   it('always shows page, date and time, then the status', () => {
-    expect(markMeta(open, undefined)).toBe('p2 · 5.10. 10:42 · not recognized');
-    expect(markMeta(open, {state: 'recognizing', text: ''})).toBe('p2 · 5.10. 10:42 · recognizing…');
-    expect(markMeta(open, {state: 'done', text: 'x'})).toBe('p2 · 5.10. 10:42 · recognized');
+    expect(markMeta(open, undefined, '2026-10-06')).toBe('p2 · 5.10. 10:42 · not recognized');
+    expect(markMeta(open, {state: 'recognizing', text: ''}, '2026-10-06')).toBe('p2 · 5.10. 10:42 · recognizing…');
+    expect(markMeta(open, {state: 'done', text: 'x'}, '2026-10-06')).toBe('p2 · 5.10. 10:42 · recognized');
   });
   it('names empty, failed and missing', () => {
     expect(markStatus({state: 'empty', text: ''})).toBe('no text');

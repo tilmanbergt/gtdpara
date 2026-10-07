@@ -1,5 +1,5 @@
 /**
- * Profile files on the device (docs/dev/technical-design-profiles-demo-space.md
+ * Profile files on the device (docs/dev/history/technical-design-profiles-demo-space.md
  * §3.1-3.2): EXPORT/gtdpara/profiles/<id>.json. The active settings stay in
  * AsyncStorage as before; the files are snapshots that a switch writes (the
  * profile being left) and reads (the profile being entered). Secrets are
@@ -21,6 +21,7 @@ import {BUILD_INFO} from '../generated/buildInfo';
 import {ensureFolderExists, listFolderEntries, PROFILES_FOLDER_PATH, readTextFile, writeTextFile} from '../supernote/fileSystem';
 import {log} from '../utils/log';
 import {loadSettings, saveSettings} from './settingsStorage';
+import {errorMessage} from '../utils/errorMessage';
 
 const SECRETS_KEY = 'gtdpara:profileSecrets:v1';
 
@@ -71,7 +72,7 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
       const parsed = parseProfile(text ?? '', id);
       infos.push({id, name: parsed.name, savedAt: parsed.savedAt});
     } catch (e) {
-      infos.push({id, name: id, savedAt: null, error: e instanceof Error ? e.message : String(e)});
+      infos.push({id, name: id, savedAt: null, error: errorMessage(e)});
     }
   }
   return infos.sort((a, b) =>

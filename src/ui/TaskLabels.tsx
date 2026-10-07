@@ -9,7 +9,7 @@
  * Fixed text, no tap-to-reveal. Set apart from the title by a smaller,
  * bolder font, not by color (grayscale rule). Only the `#next`/`#now` label
  * reacts to touch, and only when `onToggleNow` is passed: two taps within
- * DOUBLE_TAP_MS flip `#now` (docs/dev/technical-design-now-focus-mode.md §3).
+ * DOUBLE_TAP_MS flip `#now` (docs/dev/history/technical-design-now-focus-mode.md §3).
  * A single tap on it does nothing. Taps on other labels go to the row
  * (start editing), since they have no onPress of their own.
  */

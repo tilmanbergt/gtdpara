@@ -1,5 +1,5 @@
 /**
- * refreshCache (docs/dev/technical-design-files-0.6.md §3.2): only files whose
+ * refreshCache (docs/dev/history/technical-design-files-0.6.md §3.2): only files whose
  * stamp changed are read again, subscribers are notified only on a real
  * change, and a missing cache / changed folders / missing native stat fall
  * back to a full rebuild.
@@ -33,11 +33,6 @@ jest.mock('../../src/supernote/fileSystem', () => ({
           return {path, exists: !!file, lastModified: file?.lastModified ?? 0, size: file?.size ?? -1};
         })
       : null,
-}));
-jest.mock('../../src/storage/inboxMigration', () => ({
-  migrateInboxIfNeeded: async () => ({kind: 'none'}),
-  effectiveInboxFolderFor: async (paths: {inboxFolder: string}) => paths.inboxFolder,
-  hiddenAreaFolderFor: (paths: {inboxFolder: string}) => paths.inboxFolder,
 }));
 
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';

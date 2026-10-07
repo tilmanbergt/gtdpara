@@ -1,4 +1,4 @@
-// docs/dev/technical-design-files-0.6.md §3.4: confirm + success message for moving an entry with its note.
+// docs/dev/history/technical-design-files-0.6.md §3.4: confirm + success message for moving an entry with its note.
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {EntryMoveUi} from '../../src/storage/entryMove';

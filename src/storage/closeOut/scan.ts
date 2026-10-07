@@ -1,5 +1,5 @@
 /**
- * Scans a project for the close-out (docs/dev/technical-design-project-close-out.md
+ * Scans a project for the close-out (docs/dev/history/technical-design-project-close-out.md
  * §5.2): every file in its folder (recursive), note page counts, the keyword
  * pages of the shared notes its todos/meetings point into, and the files
  * its todos/meetings link to OUTSIDE the folder. Device I/O only - all
@@ -15,6 +15,7 @@ import {GMAIL_ATTACHMENTS_SUBFOLDER, GMAIL_EMAILS_SUBFOLDER} from '../gmailAttac
 import {resolveLinkedFilePath} from '../linkedFiles';
 import {readAllKeywords} from '../sharedNotePages';
 import {log, logError} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 const MAX_DEPTH = 6;
 
@@ -74,7 +75,7 @@ export async function scanProject(item: ScanItem, paths: ResolvedParaPaths, onPr
       onProgress?.(`Reading pages of ${rel}`);
       sharedKeywords[rel] = (await readAllKeywords(`${root}/${rel}`)).keywords;
     } catch (e) {
-      logError('closeOut scan: keywords failed', rel, e instanceof Error ? e.message : String(e));
+      logError('closeOut scan: keywords failed', rel, errorMessage(e));
     }
   }
 

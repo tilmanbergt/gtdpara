@@ -1,5 +1,5 @@
 /**
- * Lightweight performance tracing (docs/dev/technical-design-perf-tracing.md).
+ * Lightweight performance tracing (docs/dev/history/technical-design-perf-tracing.md).
  *
  * Measurement only - records how long a tab switch / cold start / reopen
  * takes and where the time goes, then writes ONE small JSONL file per trace
@@ -25,6 +25,7 @@
  */
 import {useEffect, useLayoutEffect} from 'react';
 import {InteractionManager} from 'react-native';
+import {errorMessage} from './errorMessage';
 
 export type PerfTraceKind = 'cold' | 'reopen' | 'tab' | 'nav';
 type Meta = Record<string, unknown>;
@@ -99,10 +100,6 @@ export function perfEnable(on: boolean): void {
   scheduleFlush();
 }
 
-export function perfIsEnabled(): boolean {
-  return enabled === true;
-}
-
 /** Wires the file writer + stats provider (App.tsx, once at startup). */
 export function perfConfigure(next: PerfConfig): void {
   config = next;
@@ -136,7 +133,7 @@ export function perfBegin(kind: PerfTraceKind, label: string, meta?: Meta): void
 }
 
 /**
- * Frame probe (docs/dev/technical-design-perf-tracing.md §13): while a trace is
+ * Frame probe (docs/dev/history/technical-design-perf-tracing.md §13): while a trace is
  * open, one requestAnimationFrame callback per frame. A gap between two
  * frames longer than FRAME_GAP_MS means frames were not being produced -
  * the JS thread was busy, or (when no JS event falls inside the gap) the
@@ -197,17 +194,6 @@ export function perfTime<T>(label: string, fn: () => T, meta?: Meta): T {
   const token = now();
   try {
     return fn();
-  } finally {
-    perfEnd(label, token, meta);
-  }
-}
-
-/** Times an async function (until its promise settles). */
-export async function perfAsync<T>(label: string, fn: () => Promise<T>, meta?: Meta): Promise<T> {
-  if (!current) return fn();
-  const token = now();
-  try {
-    return await fn();
   } finally {
     perfEnd(label, token, meta);
   }
@@ -278,7 +264,7 @@ function endTrace(trace: Trace, t: number, interrupted: boolean): void {
     try {
       trace.stats = config.collectStats();
     } catch (e) {
-      trace.stats = {error: e instanceof Error ? e.message : String(e)};
+      trace.stats = {error: errorMessage(e)};
     }
   }
   pending.push(trace);
@@ -304,7 +290,7 @@ async function flush(): Promise<void> {
       try {
         await config.writeFile(fileNameOf(trace), serialize(trace));
       } catch (e) {
-        config.onError?.(e instanceof Error ? e.message : String(e));
+        config.onError?.(errorMessage(e));
       }
     }
   } finally {

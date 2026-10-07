@@ -11,13 +11,13 @@ import TabBar, {AppTab} from './src/ui/TabBar';
 import {getKeptTabsGeneration, setKeepTabsAlive, useKeepTabsAlive} from './src/ui/keepAliveStore';
 import KeptTab from './src/ui/KeptTab';
 import ItemsList from './src/screens/ItemsList';
-import Settings, {SettingsTab} from './src/screens/Settings';
+import Settings, {SettingsTab} from './src/screens/settings/Settings';
 import ItemDetail from './src/screens/ItemDetail';
 import DailyView from './src/screens/DailyView';
 import WeekView from './src/screens/WeekView';
 import MonthView from './src/screens/MonthView';
 import InboxScreen from './src/screens/InboxScreen';
-import ReviewScreen from './src/screens/ReviewScreen';
+import ReviewScreen from './src/screens/review/ReviewScreen';
 import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
 import {setOpenMarksHandler} from './src/ui/marksNav';
@@ -38,8 +38,7 @@ import {useStatus} from './src/ui/status/StatusProvider';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
 import {decideLanding} from './src/domain/returnContext';
-import {clearCachedData, refreshCache, subscribeCache} from './src/storage/dataCache';
-import {InboxMigrationNotice, takeInboxMigrationNotice} from './src/storage/inboxMigration';
+import {clearCachedData, refreshCache} from './src/storage/dataCache';
 import {clearCachedGmailInbox} from './src/storage/gmailInboxCache';
 import {setActiveProfileId} from './src/storage/profileKeys';
 import {switchProfile} from './src/storage/profiles';
@@ -62,8 +61,9 @@ import {perfBegin, perfConfigure, perfEnable, perfMark, usePerfRender} from './s
 import {collectPerfStats} from './src/storage/perfStats';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from './src/utils/screenRefresh';
 import {FONT, useThemeColors} from './src/ui/theme';
+import {errorMessage} from './src/utils/errorMessage';
 
-// Performance tracing (docs/dev/technical-design-perf-tracing.md). Wired once at
+// Performance tracing (docs/dev/history/technical-design-perf-tracing.md). Wired once at
 // module load: the cold-start trace starts here, as early as App's own code
 // runs, and is buffered until reorient() knows whether tracing is on
 // (settings.perfTracing) - perfEnable(false) then simply drops it.
@@ -74,7 +74,7 @@ perfConfigure({
 });
 perfBegin('cold', 'app');
 
-// Optional debug-log file (docs/dev/technical-design-about-debug-experimental.md
+// Optional debug-log file (docs/dev/history/technical-design-about-debug-experimental.md
 // §3.3): the writer is injected here so utils/log.ts stays import-free; the
 // file sink itself is only switched on by settings.debugLogging (reorient()).
 configureLogFileSink(
@@ -83,16 +83,16 @@ configureLogFileSink(
 );
 
 // Tabs whose screens stay mounted (hidden) after their first visit while
-// "Keep tabs in memory" is on (docs/dev/technical-design-keep-tabs-alive.md
+// "Keep tabs in memory" is on (docs/dev/history/technical-design-keep-tabs-alive.md
 // §2 D1). Inbox, Review and Settings keep the mount-while-visible behavior.
 const KEPT_TABS: AppTab[] = ['daily', 'week', 'month', 'current', 'projects', 'areas'];
 
 // The Project/Area currently shown on the "Current" tab - set whenever one
 // is opened (from Projects/Areas/Daily, from a Lasso-capture save, or by
 // reorient() below), and left alone by everything else, including tab
-// switches. There is no back stack any more: navigation is purely "which
-// tab is active" (`activeTab`) plus "what does the Current tab show right
-// now" (`currentItem`), and the two are independent - switching to another
+// switches. There is no back stack: navigation is purely "which tab is
+// active" (`activeTab`) plus "what does the Current tab show right now"
+// (`currentItem`), and the two are independent - switching to another
 // tab and back to "Current" still shows the same item.
 interface CurrentItem {
   kind: 'project' | 'area';
@@ -104,15 +104,13 @@ interface CurrentItem {
 // full-screen Lasso-capture overlay, showing the tab shell, or showing
 // Daily's focus mode. Deliberately separate from `activeTab`/`currentItem`
 // (which persist regardless of mode) - both the capture overlay and focus
-// mode sit on top of the tab shell rather than being one of its tabs, same
-// as the old {kind: 'capture'} screen used to stand apart from
-// {kind: 'home'|'daily'|'item'|'settings'}. 'focus' (docs/dev/technical-design-
-// now-focus-mode.md §4) reuses that exact "full-screen, no TabBar" shape -
-// same DailyView instance as 'tabs'-mode Daily, just rendered with its
+// mode sit on top of the tab shell rather than being one of its tabs.
+// 'focus' (docs/dev/history/technical-design-now-focus-mode.md §4) is the same
+// DailyView instance as 'tabs'-mode Daily, just rendered with its
 // focusMode prop on instead of a separate screen component.
 type Mode = 'loading' | 'capture' | 'tabs' | 'focus';
 
-// The central status slot (docs/dev/technical-design-status-slot.md) needs its
+// The central status slot (docs/dev/history/technical-design-status-slot.md) needs its
 // provider above every mode, so App itself is only the provider + the
 // always-mounted StaleBuildBanner publisher; the real shell is AppShell.
 // Keep this `export default` - index.js is untyped JS, so tsc can't catch
@@ -126,12 +124,12 @@ export default function App(): React.JSX.Element {
   );
 }
 
-// Switching profiles (docs/dev/technical-design-profiles-demo-space.md §3.4)
+// Switching profiles (docs/dev/history/technical-design-profiles-demo-space.md §3.4)
 // remounts the whole shell via this key, so no kept-alive tab, draft or
 // screen state from the previous data set survives; the normal start path
 // (reorient) then runs against the new profile's settings.
 //
-// "Mark for later" (docs/dev/technical-design-lasso-0.8.md §3.6) runs from
+// "Mark for later" (docs/dev/history/technical-design-lasso-0.8.md §3.6) runs from
 // index.js without this view; when it needs to say something it stores an
 // outcome and opens the view - drawn here on top of whatever the shell shows,
 // so the shell (and its kept tabs) stays as it was.
@@ -152,7 +150,7 @@ function AppRoot(): React.JSX.Element {
 
 function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.JSX.Element {
   usePerfRender('AppShell');
-  const {isDarkMode, textColor} = useThemeColors();
+  const {textColor} = useThemeColors();
 
   const [mode, setMode] = useState<Mode>('loading');
   // Explicit e-ink refresh once the initial reorient() below actually lands
@@ -162,7 +160,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   useEinkRefreshOnLoad(mode === 'loading');
   const [activeTab, setActiveTab] = useState<AppTab>('projects');
   const [currentItem, setCurrentItem] = useState<CurrentItem | null>(null);
-  // The open project close-out (docs/dev/technical-design-project-close-out.md
+  // The open project close-out (docs/dev/history/technical-design-project-close-out.md
   // §8.3): while set, the Review tab shows the close-out wizard instead of
   // ReviewScreen. Kept when switching tabs, so coming back to Review (or
   // back from checking the PDF) continues the same close-out.
@@ -197,7 +195,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // effect isn't needed (a tab switch away always unmounts it first).
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('folders');
 
-  // In-app help (docs/dev/technical-design-in-app-help.md §3.3): the page
+  // In-app help (docs/dev/history/technical-design-in-app-help.md §3.3): the page
   // shown in the overlay, or null while it's closed. The last page read per
   // tab is remembered for this session only.
   const [helpPage, setHelpPage] = useState<string | null>(null);
@@ -212,22 +210,22 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setHelpPage(null);
   }, [activeTab]);
   // Leftovers of an interrupted PDF export live only in the plugin's private
-  // temp folder (docs/dev/technical-design-inkhub-submission.md §3.2) - clear
+  // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - clear
   // them once per start. Best-effort: older native builds lack the call.
   useEffect(() => {
     getPrivateTempDir()
       .then(dir => deleteTempTree(dir))
-      .catch(e => log('App: private temp clean-up skipped', e instanceof Error ? e.message : String(e)));
+      .catch(e => log('App: private temp clean-up skipped', errorMessage(e)));
   }, []);
 
   // Re-checks the current note's Project/Area and jumps straight there - on
   // initial mount, AND every time our own sidebar button is pressed again.
   // The Activity/JS instance stays alive while the plugin is hidden (the
   // user switched to a different note without tapping the "✕" close
-  // button), so a mount-only effect only ever ran this once and left the
-  // plugin stuck showing whatever it had open before - it never noticed a
-  // different note was now current. registerButtonListener's event fires on
-  // every press, whether that press launches a fresh instance or brings an
+  // button), so a mount-only effect would run this only once and leave the
+  // plugin showing whatever it had open before, never noticing a different
+  // note is now current. registerButtonListener's event fires on every
+  // press, whether that press launches a fresh instance or brings an
   // already-running one back to the foreground, which is exactly the signal
   // needed here. The button that opens this plugin only appears while a
   // NOTE/DOC is open, so there's always *a* current note; the only question
@@ -235,15 +233,15 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // nested, e.g. its own Meetings/Todos subfolder - findEnclosingItem walks
   // up to the top-level item either way). A hit switches to the "Current"
   // tab and updates `currentItem`; a miss switches to the "Daily" tab
-  // instead (the closest still-useful landing spot now that there's no
-  // "Home" tab) without touching whatever `currentItem` already held.
-  // Exception (docs/dev/technical-design-return-to-origin.md): if the note open
+  // instead (the closest useful landing spot, as there's no "Home" tab)
+  // without touching whatever `currentItem` already held.
+  // Exception (docs/dev/history/technical-design-return-to-origin.md): if the note open
   // now is the one this plugin itself last opened (openPath), neither jump
   // happens - the plugin resumes exactly where it was left.
   //
   // Same spot also kicks off a background cache refresh (design-overview.md
-  // §2.3; since 0.6.0 only files changed on disk are read again, the first
-  // open builds the cache in full) - fire-and-forget, not
+  // §2.3; only files changed on disk are read again, the first open builds
+  // the cache in full) - fire-and-forget, not
   // awaited, so a slow scan never delays landing on a tab. By the time the
   // user actually taps into something, storage/dataCache.ts is usually
   // already warm; if it isn't yet, each screen's own cache-miss fallback
@@ -267,43 +265,25 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // Bumped on every Lasso-button press and used as CaptureScreen's `key`
   // below, forcing a full unmount+remount on each press rather than
-  // re-rendering the same instance. Without this, a *second* capture while
-  // the app's JS instance is still alive from the first one (Save & Close
-  // and Cancel both leave `mode` as 'capture' - closePluginView() only
-  // hides the native view, per this file's own note above about the
-  // instance staying alive) re-sets mode to the exact same 'capture' value.
-  // React re-renders CaptureScreen in place rather than remounting it, so
-  // its mount-only `useEffect(load, [load])` never re-fires - `load` is a
-  // stable useCallback identity, so nothing tells it a *new* lasso
-  // selection is waiting to be read. The text field then just keeps
-  // showing whatever the previous capture left in it (its old recognized
-  // text, or whatever was typed/cleared before saving) instead of the new
-  // selection's recognition - this is what surfaced on-device as
-  // "recognition did not appear in text field" on a second capture. Forcing
-  // a remount via `key` resets every piece of CaptureScreen's local state
+  // re-rendering the same instance. A *second* capture while the app's JS
+  // instance is still alive from the first one (Save & Close and Cancel
+  // both leave `mode` as 'capture' - closePluginView() only hides the
+  // native view) would otherwise re-render CaptureScreen in place: its
+  // mount-only `useEffect(load, [load])` never re-fires (`load` is a stable
+  // useCallback), so the text field would keep showing the previous
+  // capture's text instead of the new selection's recognition. Forcing a
+  // remount via `key` resets every piece of CaptureScreen's local state
   // (text, kind, destination, linkToSource, warnings) and re-runs `load()`
   // against whatever is actually lassoed right now.
   //
-  // Real useState, not useRef (docs/dev/technical-design-filing-unification.md
-  // §9 - fixes a since-found regression in the mechanism described above):
-  // a plain ref mutation doesn't itself trigger a re-render, so the fix
-  // relied entirely on the *following* `setMode('capture')` call to force
-  // one. That's fine on the very first capture (mode is genuinely
-  // transitioning away from 'loading'/'tabs'), but on a *second* Lasso press
-  // after Cancel/Save & Close - both of which leave `mode` already at
-  // 'capture', per the note above - `setMode('capture')` is a same-value
-  // call, and React's Object.is bailout on identical primitive state means
-  // it re-renders nothing at all: the `key={captureNonce}` JSX line below
-  // never re-evaluates, and the stale CaptureScreen instance (old
-  // recognized text, old kind, old destination) stays mounted exactly as it
-  // was. This is the precise mechanism behind the reported "recognizes
-  // correctly the first time, then always shows the previous capture's text
-  // after that" regression. `setCaptureNonce(n => n + 1)`'s functional
-  // updater always produces a genuinely new value regardless of what `mode`
-  // does, so the remount no longer depends on `setMode`'s own bailout
-  // behavior.
+  // Real useState, not useRef (docs/dev/history/technical-design-filing-unification.md
+  // §9): a ref mutation doesn't trigger a re-render, and when `mode` is
+  // already 'capture', `setMode('capture')` is a same-value call that React
+  // bails out of (Object.is), so the `key={captureNonce}` JSX line would
+  // never re-evaluate. `setCaptureNonce(n => n + 1)` always produces a new
+  // value, so the remount doesn't depend on `setMode`.
   const [captureNonce, setCaptureNonce] = useState(0);
-  // What the capture screen shows (docs/dev/technical-design-lasso-0.8.md §3.7):
+  // What the capture screen shows (docs/dev/history/technical-design-lasso-0.8.md §3.7):
   // the lasso (lasso button) or open marks (a "marks to process" card).
   const [captureRequest, setCaptureRequest] = useState<CaptureRequest>({source: 'lasso'});
 
@@ -318,12 +298,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   useEffect(() => {
     let cancelled = false;
     // Which build is running - first thing to look for in a log
-    // (docs/dev/technical-design-versioning-release.md 3.4).
+    // (docs/dev/history/technical-design-versioning-release.md 3.4).
     log('App: gtdpara', BUILD_INFO.label, 'build', BUILD_INFO.versionCode, 'built', BUILD_INFO.builtAt);
 
     // Every file the plugin opens itself goes through fileSystem.ts's
     // openPath, which tells this observer right before the host call
-    // (docs/dev/technical-design-return-to-origin.md §6) - that's what lets
+    // (docs/dev/history/technical-design-return-to-origin.md §6) - that's what lets
     // reorient() below recognize "the open note is the one we sent the user
     // to". Returns recordPluginOpen's undo function so a failed open leaves
     // any earlier record intact.
@@ -333,7 +313,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       try {
         const [loadedSettings, currentPath] = await Promise.all([loadSettings(), getCurrentNotePath()]);
         perfEnable(loadedSettings.perfTracing === true);
-        // Experimental switches + debug-log file (docs/dev/technical-design-about-debug-experimental.md).
+        // Experimental switches + debug-log file (docs/dev/history/technical-design-about-debug-experimental.md).
         setFeatures(featuresOf(loadedSettings));
         setActiveProfileId(loadedSettings.activeProfileId);
         setFileLogging(loadedSettings.debugLogging === true);
@@ -350,11 +330,11 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         setSettings(loadedSettings);
         // Only files changed outside gtdpara are read again (technical-design-files-0.6.md §3.2).
         refreshCache(loadedSettings).catch(e =>
-          logError('App: background cache refresh failed', e instanceof Error ? e.message : String(e)),
+          logError('App: background cache refresh failed', errorMessage(e)),
         );
 
         // Where to land is one pure decision (domain/returnContext.ts's
-        // decideLanding, docs/dev/technical-design-return-to-origin.md), in this
+        // decideLanding, docs/dev/history/technical-design-return-to-origin.md), in this
         // priority: focus mode > resume > the note's Project/Area > Daily.
         const returnRecord = getReturnRecord();
         const landing = decideLanding({
@@ -374,8 +354,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           'recorded=' + String(returnRecord?.path ?? null),
         );
 
-        // Focus mode overrides the normal reorient entirely (docs/technical-
-        // design-now-focus-mode.md §4): while it's on, reopening the plugin
+        // Focus mode overrides the normal reorient entirely (
+        // docs/dev/history/technical-design-now-focus-mode.md §4): while it's on, reopening the plugin
         // must always land back on it, never on the current note's
         // Project/Area - "sessions are held lightly", but staying put is the
         // one thing this flag guarantees. The return record is left alone.
@@ -411,7 +391,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           return;
         }
 
-        // A record that no longer matches (a different note is open, or it
+        // A record that doesn't match (a different note is open, or it
         // expired) means the user moved on - drop it, so returning to the
         // old note by hand later can't resurrect it.
         if (landing.clearRecord) clearReturnRecord();
@@ -427,7 +407,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         hasLandedRef.current = true;
         setMode('tabs');
       } catch (e) {
-        log('App: reorient failed', e instanceof Error ? e.message : String(e));
+        log('App: reorient failed', errorMessage(e));
         // A failed *first* attempt still needs to leave loading somehow;
         // a failed later attempt (already showing something) is left alone
         // rather than yanking the user back to Daily on a transient error.
@@ -484,7 +464,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     };
   }, []);
 
-  // ---- Keep tabs alive (docs/dev/technical-design-keep-tabs-alive.md) ----
+  // ---- Keep tabs alive (docs/dev/history/technical-design-keep-tabs-alive.md) ----
   const keepTabsAlive = useKeepTabsAlive();
   const features = useFeatures();
   // Stable identities for App callbacks passed to kept screens (they are
@@ -551,7 +531,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         <DailyView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onEnterFocusMode={stableNav.onEnterFocusMode}
         />
@@ -560,19 +540,19 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         <WeekView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
       month: (
         <MonthView
           onOpenItem={stableOpenItem}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
-      // Keyed by path: opening a different item gives a fresh screen, as it
-      // always did when arriving from another tab.
+      // Keyed by path: opening a different item gives a fresh screen, the same
+      // as arriving from another tab.
       current: currentItem ? (
         <ItemDetail
           key={currentItem.path}
@@ -580,7 +560,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           name={currentItem.name}
           path={currentItem.path}
           onArchived={stableNav.handleArchived}
-         
+
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onOpenItem={stableOpenItem}
           onStartCloseOut={stableNav.startCloseOutFull}
@@ -596,7 +576,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     [currentItem, stableOpenItem, stableNav, textColor],
   );
 
-  // "Updated to x.y.z" notice (docs/dev/technical-design-about-debug-experimental.md
+  // "Updated to x.y.z" notice (docs/dev/history/technical-design-about-debug-experimental.md
   // §3.6, P3). Only a tap on "What's new" or ✕ stores lastSeenVersion - not
   // merely showing it - because after an update the first start is often cut
   // short by the stale-build restart (StaleBuildBanner, which also wins the
@@ -607,7 +587,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setWhatsNewAcknowledged(true);
     patchSettings({lastSeenVersion: BUILD_INFO.version})
       .then(setSettings)
-      .catch(e => logError('App: storing lastSeenVersion failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('App: storing lastSeenVersion failed', errorMessage(e)));
   };
   const openSettingsAbout = () => {
     setSettingsTab('about');
@@ -620,7 +600,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setMode('tabs');
   };
 
-  // Profile switch (docs/dev/technical-design-profiles-demo-space.md §3.2-3.4):
+  // Profile switch (docs/dev/history/technical-design-profiles-demo-space.md §3.2-3.4):
   // save + load the profile files, drop every in-memory copy of the old data
   // set, then remount the shell (AppRoot's key). Quick Add edits were already
   // saved when the user left their tab for Settings.
@@ -634,21 +614,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     log('App: switched to profile', next.activeProfileId);
     onProfileSwitched();
   };
-  // One-time Inbox move (docs/dev/technical-design-inbox-as-area.md §3.3):
-  // the cache rebuild runs it, and its outcome is shown here once.
-  const [inboxNotice, setInboxNotice] = useState<InboxMigrationNotice | null>(null);
-  useEffect(() => {
-    const check = () => {
-      const notice = takeInboxMigrationNotice();
-      if (notice) setInboxNotice(notice);
-    };
-    check(); // a rebuild may have finished before this subscribed
-    return subscribeCache(check);
-  }, []);
-  useStatus(
-    'app.inboxMigration',
-    inboxNotice ? {kind: inboxNotice.kind, scope: 'global', text: inboxNotice.text, onDismiss: () => setInboxNotice(null)} : null,
-  );
   const showWhatsNew =
     settings !== null && !whatsNewAcknowledged && shouldShowWhatsNew(settings.lastSeenVersion, BUILD_INFO);
   useStatus(
@@ -683,7 +648,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // Shared by Projects/Areas/Daily's "open this Project/Area" action,
   // CaptureScreen's "Save & View", screens/ReviewScreen.tsx's own cards, and
-  // (2026-09-09) every Files pane's Browse tab (screens/InboxScreen.tsx,
+  // every Files pane's Browse tab (screens/InboxScreen.tsx,
   // screens/ItemDetail.tsx) - all just want to land on the "Current" tab
   // showing this item.
   const openItem = (kind: 'project' | 'area', entry: FolderEntry) => {
@@ -700,7 +665,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // Daily's "Focus mode" button (focusMode=false) calls this to switch into
-  // focus mode (docs/dev/technical-design-now-focus-mode.md §4.1). Entering
+  // focus mode (docs/dev/history/technical-design-now-focus-mode.md §4.1). Entering
   // never itself marks anything #now - if some tasks already carry it from
   // earlier, the filtered view already reflects that the instant it renders;
   // otherwise focus mode's own Picker state is what's shown. Persists the
@@ -710,14 +675,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     const next = {...settings, focusModeActive: true};
     setSettings(next);
     saveSettings(next).catch(e =>
-      logError('App: saving focusModeActive=true failed', e instanceof Error ? e.message : String(e)),
+      logError('App: saving focusModeActive=true failed', errorMessage(e)),
     );
     setMode('focus');
   };
 
   // Focus mode's own exit mark calls this (§4.2). Always ends the session
-  // outright - it does not itself clear any #now tags (docs/technical-
-  // design-now-focus-mode.md §5 - the flag plus whatever's still #now *is*
+  // outright - it does not itself clear any #now tags (
+  // docs/dev/history/technical-design-now-focus-mode.md §5 - the flag plus whatever's still #now *is*
   // the entire state; nothing else needs resetting). Lands back on normal
   // Daily specifically, not just "whatever tabs mode was" - activeTab was
   // never touched while in 'focus' mode, but setting it explicitly here is
@@ -727,7 +692,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
       const next = {...settings, focusModeActive: false};
       setSettings(next);
       saveSettings(next).catch(e =>
-        logError('App: saving focusModeActive=false failed', e instanceof Error ? e.message : String(e)),
+        logError('App: saving focusModeActive=false failed', errorMessage(e)),
       );
     }
     setActiveTab('daily');
@@ -736,7 +701,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // DailyView's/WeekView's Inbox-sourced rows use this to jump here (their
   // group header/source subtext) instead of onOpenItem, since there's no
-  // Project/Area to open for those (docs/dev/technical-design-inbox-tab.md §3).
+  // Project/Area to open for those (docs/dev/history/technical-design-inbox-tab.md §3).
   const openInbox = () => {
     setActiveTab('inbox');
     setMode('tabs');
@@ -800,8 +765,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // ItemStatusPanel's Archive action (via ItemDetail) calls this once the
-  // item's folder has actually moved - `currentItem.path` no longer points
-  // at anything under Projects/Areas, so there's nothing left to show on
+  // item's folder has actually moved - `currentItem.path` then points at
+  // nothing under Projects/Areas, so there's nothing left to show on
   // the "Current" tab. Lands back on whichever list (Projects/Areas) this
   // item came from, same as closing out of it normally would.
   const handleArchived = (kind: 'project' | 'area') => {
@@ -815,10 +780,10 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   const refreshSettings = () => {
     loadSettings()
       .then(setSettings)
-      .catch(e => logError('App: refreshSettings failed', e instanceof Error ? e.message : String(e)));
+      .catch(e => logError('App: refreshSettings failed', errorMessage(e)));
   };
 
-  // Marks processing (docs/dev/technical-design-lasso-0.8.md §3.7, §3.10): the
+  // Marks processing (docs/dev/history/technical-design-lasso-0.8.md §3.7, §3.10): the
   // capture screen with the marks of `scope`; Close goes back to the tabs as
   // they were (Inbox, Current, Review or the close-out wizard).
   const openMarks = (scope: MarkScope, returnTo: CaptureReturnTo) => {
@@ -849,12 +814,11 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     );
   }
 
-  // Focus mode (docs/dev/technical-design-now-focus-mode.md §4): the exact same
+  // Focus mode (docs/dev/history/technical-design-now-focus-mode.md §4): the exact same
   // DailyView instance 'tabs' mode's Daily tab renders below, just with
   // focusMode on - no separate screen component, no separate data load.
-  // Rendered here, before the TabBar-wrapped 'tabs' branch, the same way
-  // 'capture' above always was - "full-screen, no TabBar" is a shape this
-  // app already had.
+  // Rendered here, before the TabBar-wrapped 'tabs' branch, like 'capture'
+  // above - full-screen, no TabBar.
   if (mode === 'focus') {
     // The status slot sits at the very top of focus mode (D4) - it's
     // normally empty there.
@@ -881,7 +845,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     <>
       {activeTab === 'inbox' && (
         <InboxScreen
-         
+
           onOpenCalendarSettings={openSettingsCalendar}
           onOpenItem={stableOpenItem}
         />
@@ -893,13 +857,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
             projectPath={closeOut.path}
             mode={closeOut.mode}
             onExit={handleCloseOutExit}
-           
+
           />
         ) : (
           <ReviewScreen
             onOpenItem={stableOpenItem}
             onReviewRecorded={refreshSettings}
-           
+
             onOpenCalendarSettings={openSettingsCalendar}
             onStartCloseOut={openCloseOut}
           />
@@ -924,7 +888,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         helpOpen={helpPage !== null}
         onHelpPress={toggleHelp}
       />
-      {/* Central status slot (docs/dev/technical-design-status-slot.md): a fixed
+      {/* Central status slot (docs/dev/history/technical-design-status-slot.md): a fixed
           strip right under the TabBar, then the active tab's body. */}
       <StatusFrame>
         <View style={styles.body}>
@@ -940,28 +904,28 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
               {nonKeptBody}
             </>
           ) : (
-            // "Keep tabs in memory" off: exactly the previous behavior - the
-            // active tab's screen is mounted, every other one unmounted.
+            // "Keep tabs in memory" off: only the active tab's screen is mounted,
+            // every other one is unmounted.
             <>
               {activeTab === 'projects' && (
                 <ItemsList
                   kind="project"
                   onOpenItem={stableOpenItem}
-                 
+
                 />
               )}
               {activeTab === 'areas' && (
                 <ItemsList
                   kind="area"
                   onOpenItem={stableOpenItem}
-                 
+
                 />
               )}
               {activeTab === 'daily' && (
                 <DailyView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-                 
+
                   onOpenCalendarSettings={openSettingsCalendar}
                   onEnterFocusMode={onEnterFocusMode}
                 />
@@ -970,14 +934,14 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                 <WeekView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-                 
+
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
               {activeTab === 'month' && (
                 <MonthView
                   onOpenItem={stableOpenItem}
-                 
+
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
@@ -988,7 +952,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                     name={currentItem.name}
                     path={currentItem.path}
                     onArchived={handleArchived}
-                   
+
                     onOpenCalendarSettings={openSettingsCalendar}
                     onOpenItem={stableOpenItem}
                     onStartCloseOut={path => openCloseOut(path, 'full')}

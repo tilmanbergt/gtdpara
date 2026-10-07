@@ -1,5 +1,5 @@
 /**
- * Settings → Advanced → Profiles (docs/dev/technical-design-profiles-demo-space.md §3.6):
+ * Settings → Advanced → Profiles (docs/dev/history/technical-design-profiles-demo-space.md §3.6):
  * the profile files in EXPORT/gtdpara/profiles, Save for the active one,
  * Switch (after a confirm in the status slot) for the others, and
  * "Create demo space". The actual switch - reset caches, remount the app -
@@ -15,6 +15,7 @@ import PillButton from '../../ui/PillButton';
 import {useStatus} from '../../ui/status/StatusProvider';
 import {FONT, SPACING} from '../../ui/theme';
 import {logError} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
 
 interface Props {
   activeProfileId: string;
@@ -27,7 +28,7 @@ interface Props {
 type Message = {kind: 'success' | 'error'; text: string} | null;
 
 function errorText(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  return errorMessage(e);
 }
 
 export default function ProfilesSection({activeProfileId, onSwitchProfile, textColor, borderColor}: Props): React.JSX.Element {

@@ -2,7 +2,7 @@
  * User-facing texts that announce file changes - before (in a confirmation)
  * and after (in the status slot). One place, so every move, overwrite and
  * delete is described the same way everywhere
- * (docs/dev/technical-design-inkhub-submission.md §3.4 and §3.8).
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.4 and §3.8).
  *
  * Pure: paths come in already shortened for display (e.g. "Note/2 Areas/Health").
  */
@@ -29,7 +29,7 @@ export function replacePdfConfirmText(fileDisplay: string): string {
   return `Replace ${fileDisplay}? The existing PDF is overwritten with the new one.`;
 }
 
-/** What the status-slot confirm shows before a note is created, recreated or linked (docs/dev/technical-design-split-by-tag.md §3.5). */
+/** What the status-slot confirm shows before a note is created, recreated or linked (docs/dev/history/technical-design-split-by-tag.md §3.5). */
 export interface NoteCreationConfirmText {
   /** One line in the slot (tail-truncated there). */
   text: string;
@@ -92,7 +92,7 @@ export interface ConfirmText {
 
 /**
  * Confirm before a todo/meeting with a note moves to another Project, Area or
- * the Inbox (docs/dev/technical-design-files-0.6.md §3.4). `what` is "todo" or
+ * the Inbox (docs/dev/history/technical-design-files-0.6.md §3.4). `what` is "todo" or
  * "meeting", `title` its text, `targetName` where it goes. For an own note,
  * `noteFile` is its file name and `fromDisplay`/`toDisplay` the folders; for
  * a shared page, `noteFile` is the shared note's name and `fromDisplay` its

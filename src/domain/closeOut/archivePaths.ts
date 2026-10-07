@@ -1,6 +1,6 @@
 /**
- * Where things go in the Archive (docs/dev/technical-design-project-close-out.md
- * §5.1, decisions 19-21 and 23 of docs/dev/spike-project-archive-pdf.md):
+ * Where things go in the Archive (docs/dev/history/technical-design-project-close-out.md
+ * §5.1, decisions 19-21 and 23 of docs/dev/history/spike-project-archive-pdf.md):
  *
  *   Archive/<year>/<Area>/<Project>/      project folder, project with an Area
  *   Archive/<year>/<Area>/<Project>.pdf   its archive PDF - next to the folder

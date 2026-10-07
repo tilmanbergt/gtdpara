@@ -1,6 +1,6 @@
 /**
- * The Google Calendar feature's fetch + cache (docs/technical-
- * design-google-calendar.md §5) - deliberately kept entirely separate from
+ * The Google Calendar feature's fetch + cache (
+ * docs/dev/history/technical-design-google-calendar.md §5) - deliberately kept entirely separate from
  * storage/dataCache.ts's DataCache/CachedItem, never merged into it. This is
  * the app's first network-touching module; everything else in storage/ is
  * local-file I/O only (design-overview.md §3's "files are the single
@@ -15,18 +15,18 @@
  * same instinct as dataCache.ts's single shared cache, just for a different
  * kind of data.
  *
- * Persistence (2026-09-11, Tilman's request): the last successful fetch is
- * also mirrored to AsyncStorage (same mechanism as storage/settingsStorage.ts
- * - plugin-internal, disposable, not part of the PARA vault, not something
- * the user browses to) so it survives a plugin/app restart. Only successful
- * fetches are persisted - an error never overwrites good data on disk, same
- * "stale but shown" principle `doRefresh` already applies to the in-memory
- * `cached` variable. `hydrateFromDisk` runs once at module load and fills in
- * `cached` if nothing's there yet; `whenGoogleCalendarCacheHydrated()` lets a
- * panel await that one-time read before its first render so cold-opening the
- * app shows last-known events immediately, with no network call and without
- * touching the explicit-tap-only rule for *fetching* (2026-09-07 decision) -
- * a disk read isn't a fetch.
+ * Persistence: the last successful fetch is also mirrored to AsyncStorage
+ * (same mechanism as storage/settingsStorage.ts - plugin-internal,
+ * disposable, not part of the PARA vault, not something the user browses
+ * to) so it survives a plugin/app restart. Only successful fetches are
+ * persisted - an error never overwrites good data on disk, same "stale but
+ * shown" principle `doRefresh` applies to the in-memory `cached` variable.
+ * `hydrateFromDisk` runs once at module load and fills in `cached` if
+ * nothing's there yet; `whenGoogleCalendarCacheHydrated()` lets a panel
+ * await that one-time read before its first render so cold-opening the app
+ * shows last-known events immediately, with no network call and without
+ * touching the explicit-tap-only rule for *fetching* - a disk read isn't a
+ * fetch.
  */
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,6 +41,7 @@ import {ensureInternetPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {CachedItem} from './dataCache';
 import {onActiveProfileChange, profileScopedKey} from './profileKeys';
+import {errorMessage} from '../utils/errorMessage';
 
 const PERSIST_KEY = 'gtdpara:googleCalendarCache:v1';
 
@@ -51,7 +52,7 @@ interface PersistedGoogleCalendarCache {
 }
 
 export interface GoogleCalendarCacheState {
-  /** When `events` were last fetched SUCCESSFULLY - a failed refresh keeps the previous value (null = never fetched), so "Refresh (last …)" never claims a failed attempt as an update (docs/dev/technical-design-status-slot.md §7.5). */
+  /** When `events` were last fetched SUCCESSFULLY - a failed refresh keeps the previous value (null = never fetched), so "Refresh (last …)" never claims a failed attempt as an update (docs/dev/history/technical-design-status-slot.md §7.5). */
   fetchedAt: number | null;
   /** Today .. +30 days, sorted ascending - see refreshGoogleCalendar. Callers narrow this down to their own display window (2/7/30 days) themselves; the fetch itself always covers the full 30 days regardless of who's asking (decided). */
   events: GoogleCalendarEvent[];
@@ -76,18 +77,18 @@ export function getGoogleCalendarCache(): GoogleCalendarCacheState | null {
   return cached;
 }
 
-/** Nothing in this feature calls this today (kept for completeness/testing, same as before) - now also clears the persisted copy, so it'd be a real reset if something ever wires it up. */
+/** Nothing in this feature calls this (kept for completeness/testing) - also clears the persisted copy, so it is a real reset if something wires it up. */
 export function clearGoogleCalendarCache(): void {
   cached = null;
   AsyncStorage.removeItem(profileScopedKey(PERSIST_KEY)).catch(e => {
-    logError('clearGoogleCalendarCache: failed to clear persisted cache', e instanceof Error ? e.message : String(e));
+    logError('clearGoogleCalendarCache: failed to clear persisted cache', errorMessage(e));
   });
 }
 
 /** Fire-and-forget write of a successful fetch's result - never persists an error state (see this file's top doc comment). Failures are logged, not thrown - persistence is a nice-to-have, never something a refresh should fail over. */
 function persistToDisk(state: PersistedGoogleCalendarCache): void {
   AsyncStorage.setItem(profileScopedKey(PERSIST_KEY), JSON.stringify(state)).catch(e => {
-    logError('persistToDisk: failed to persist Google Calendar cache', e instanceof Error ? e.message : String(e));
+    logError('persistToDisk: failed to persist Google Calendar cache', errorMessage(e));
   });
 }
 
@@ -108,13 +109,13 @@ async function hydrateFromDisk(): Promise<void> {
     cached = {fetchedAt: parsed.fetchedAt, events: parsed.events};
     log('hydrateFromDisk: restored persisted Google Calendar cache', `${parsed.events.length} events`);
   } catch (e) {
-    logError('hydrateFromDisk: failed to restore persisted cache', e instanceof Error ? e.message : String(e));
+    logError('hydrateFromDisk: failed to restore persisted cache', errorMessage(e));
   }
 }
 
 let hydrationPromise: Promise<void> = hydrateFromDisk();
 
-// One cache per profile (docs/dev/technical-design-profiles-demo-space.md §3.3):
+// One cache per profile (docs/dev/history/technical-design-profiles-demo-space.md §3.3):
 // on a switch, forget the in-memory events and load the new profile's copy.
 onActiveProfileChange(() => {
   cached = null;
@@ -139,16 +140,13 @@ export function getGoogleCalendarLoadingState(): GoogleCalendarLoadingState {
  * refreshGoogleCalendar - lets every mounted panel reflect the one real
  * shared fetch instead of each tracking its own local `loading` flag.
  *
- * 2026-09-07 fix: previously each panel's own `loading` state reset to
- * false on mount and its effect re-triggered a fetch whenever
- * getGoogleCalendarCache() was still null - which is true for the entire
- * duration of an in-flight fetch, not just "never fetched". Switching a
- * screen's MiniTabs away from Google Calendar and back before the first
- * fetch resolved (or opening the tab on a second screen while one was
- * already running) therefore fired a redundant second concurrent fetch.
- * Now the cache module is the single source of truth for loading state and
+ * The cache module is the single source of truth for loading state and
  * de-dupes the fetch itself (see refreshGoogleCalendar); panels just
- * subscribe and reflect it.
+ * subscribe. A per-panel `loading` flag would reset on mount, and since
+ * getGoogleCalendarCache() is still null for the whole duration of an
+ * in-flight first fetch, switching a screen's MiniTabs away and back (or
+ * opening the tab on a second screen) would fire a redundant concurrent
+ * fetch.
  */
 export function subscribeGoogleCalendarLoading(
   listener: (state: GoogleCalendarLoadingState) => void,
@@ -210,7 +208,7 @@ function todayKey(now: Date): string {
  *
  * De-duped: a refresh already in flight is returned as-is rather than
  * starting a second concurrent fetch - see subscribeGoogleCalendarLoading's
- * doc comment for why this matters (2026-09-07 fix).
+ * doc comment for why this matters.
  */
 export function refreshGoogleCalendar(icsUrl: string): Promise<GoogleCalendarCacheState> {
   if (inFlight) return inFlight;
@@ -266,14 +264,14 @@ async function doRefresh(icsUrl: string): Promise<GoogleCalendarCacheState> {
     log('refreshGoogleCalendar: done', `${events.length} events`);
     return cached;
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = errorMessage(e);
     logError('refreshGoogleCalendar: error', message);
     cached = {fetchedAt: previousFetchedAt, events: previousEvents, error: message};
     return cached;
   }
 }
 
-// --- Dedup (docs/dev/technical-design-google-calendar.md §6) ---
+// --- Dedup (docs/dev/history/technical-design-google-calendar.md §6) ---
 
 function localMeetingKey(m: Pick<Meeting, 'title' | 'date' | 'time'>): string {
   return `${m.title.trim().toLowerCase()}|${m.date}|${m.time}`;

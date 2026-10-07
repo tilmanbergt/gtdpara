@@ -1,5 +1,5 @@
 /**
- * The one rule for file and folder names gtdpara creates (docs/dev/technical-design-cleanup-0.5.md
+ * The one rule for file and folder names gtdpara creates (docs/dev/history/technical-design-cleanup-0.5.md
  * S3a). Pure, no RN/SDK imports.
  *
  * Replaced characters:
@@ -7,19 +7,17 @@
  *   the Supernote or on the computers the files sync to.
  * - `#`: reserved by domain/sharedNotePages.ts's anchor encoding
  *   (`"relativePath#keyword"`) to mark where a shared-note anchor's file path
- *   ends - a `#` in an own note's name was misread as that separator (fixed
- *   2026-09-23). It also breaks Obsidian links.
+ *   ends, so a `#` in an own note's name would be misread as that separator.
+ *   It also breaks Obsidian links.
  * - `[ ] ^`: break Obsidian's `[[link]]` targets (`|` is already above), so
  *   files synced into an Obsidian vault stay linkable.
  *
- * Only affects names created from now on; existing files keep theirs.
+ * Applies to names gtdpara creates; existing files keep their names.
  */
 
+// eslint-disable-next-line no-control-regex -- control characters are exactly what is not allowed
 const INVALID_FILE_NAME_CHAR = /[\\/:*?"<>|#[\]^\u0000-\u001f]/;
 const INVALID_FILE_NAME_CHARS = new RegExp(INVALID_FILE_NAME_CHAR.source, 'g');
-
-/** The characters of the rule above as shown in messages and help: `\ / : * ? " < > | # [ ] ^`. */
-export const INVALID_FILE_NAME_CHARS_LABEL = '\\ / : * ? " < > | # [ ] ^';
 
 /**
  * Replaces every character of the rule with a space, collapses whitespace and

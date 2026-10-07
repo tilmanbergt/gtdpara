@@ -1,6 +1,6 @@
 /**
  * JS side of the native `GtdParaRuntime` module (GtdParaRuntimeModule.kt /
- * PluginRuntimeGuard.kt) - docs/dev/technical-design-host-update-crash.md.
+ * PluginRuntimeGuard.kt) - docs/dev/history/technical-design-host-update-crash.md.
  *
  * The Supernote host installs a new gtdpara build into the already running
  * host process, next to the old one; that process then tends to crash a minute
@@ -10,6 +10,7 @@
  */
 import {NativeModules} from 'react-native';
 import {log, logError} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
 
 const {GtdParaRuntime} = NativeModules;
 
@@ -26,7 +27,7 @@ export interface RuntimeDiagnostics {
   /** Builds that registered in this process so far, oldest first ("build@loader@loadedAtMs"). */
   registry: string[];
   scanError: string | null;
-  /** Device facts (added 2026-09-30; absent on older native builds). */
+  /** Device facts (absent on older native builds). */
   model?: string;
   manufacturer?: string;
   /** Android Build.DISPLAY - on the Supernote usually the firmware version string. */
@@ -54,7 +55,7 @@ export async function getRuntimeDiagnostics(): Promise<RuntimeDiagnostics | null
     });
     return d;
   } catch (e) {
-    logError('pluginRuntime: getRuntimeDiagnostics failed', e instanceof Error ? e.message : String(e));
+    logError('pluginRuntime: getRuntimeDiagnostics failed', errorMessage(e));
     return null;
   }
 }
@@ -69,6 +70,6 @@ export async function restartPluginHost(reason: string): Promise<void> {
     log('pluginRuntime: restarting plugin host', reason);
     await GtdParaRuntime.restartPluginHost(reason);
   } catch (e) {
-    logError('pluginRuntime: restartPluginHost failed', e instanceof Error ? e.message : String(e));
+    logError('pluginRuntime: restartPluginHost failed', errorMessage(e));
   }
 }

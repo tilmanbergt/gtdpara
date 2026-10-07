@@ -1,6 +1,6 @@
 /**
  * Writes a multi-page .note whose pages each carry one textbox of already
- * paginated text (docs/dev/technical-design-gmail-email-note.md 3.4). Generic - not
+ * paginated text (docs/dev/history/technical-design-gmail-email-note.md 3.4). Generic - not
  * email-specific - so meeting minutes or other long text can reuse it. Pagination
  * itself (domain/textPagination.ts) and measurement (supernote/textboxMetrics.ts)
  * happen BEFORE this is called; everything left to fail here is host API calls.
@@ -10,7 +10,7 @@
  * because it edits the note that is open; the note written here is not open
  * (same reason storage/meetingNoteContent.ts avoids PluginNoteAPI).
  */
-import {DEFAULT_PIECE_FONT_SIZE, NOTE_PAGE_HEIGHT_PX, NOTE_PAGE_WIDTH_PX} from '../domain/noteTemplate';
+import {DEFAULT_PIECE_FONT_SIZE, NOTE_PAGE_HEIGHT_PX, NOTE_PAGE_WIDTH_PX} from '../domain/tagRules';
 import {TextPage} from '../domain/textPagination';
 import {createNote, insertElements, insertNotePage} from '../supernote/fileSystem';
 import {buildTextboxElement} from '../supernote/noteElements';

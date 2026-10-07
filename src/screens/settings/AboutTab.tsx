@@ -1,5 +1,5 @@
 /**
- * Settings → About (docs/dev/technical-design-about-debug-experimental.md §3.5):
+ * Settings → About (docs/dev/history/technical-design-about-debug-experimental.md §3.5):
  * left - version/build/device, Debug logging switch, Export debug bundle;
  * right - "What's new" from the bundled CHANGELOG, paged, no scrolling.
  */
@@ -18,7 +18,14 @@ import PillButton from '../../ui/PillButton';
 import {useStatus} from '../../ui/status/StatusProvider';
 import {FONT, SPACING} from '../../ui/theme';
 import {LOG_FILE_NAME} from '../../utils/logSink';
+
+/** The Unreleased changelog section's heading: the release it is for, when the build knows it. */
+function unreleasedHeader(): string {
+  return BUILD_INFO.nextVersion ? `${BUILD_INFO.nextVersion} (in progress)` : 'Not yet released';
+}
 import {logError} from '../../utils/log';
+import {errorMessage} from '../../utils/errorMessage';
+import {formatDate} from '../../domain/dateFormat';
 
 const PROJECT_URL = 'github.com/tilmanbergt/gtdpara';
 
@@ -49,7 +56,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
   }, []);
 
   const releaseTabs: MiniTabDef<string>[] = useMemo(
-    () => CHANGELOG.map(r => ({key: r.version, label: r.version === 'Unreleased' ? 'Unreleased' : r.version})),
+    () => CHANGELOG.map(r => ({key: r.version, label: r.version === 'Unreleased' ? (BUILD_INFO.nextVersion ?? 'Unreleased') : r.version})),
     [],
   );
   const [selectedVersion, setSelectedVersion] = useState<string>(CHANGELOG[0]?.version ?? '');
@@ -64,7 +71,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
       const name = path.slice(path.lastIndexOf('/') + 1);
       setResult({kind: 'success', text: `Saved ${shortFolder(DEBUG_LOG_FOLDER_PATH)}/${name} - check it before sharing.`});
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       logError('AboutTab: export debug bundle failed', message);
       setResult({kind: 'error', text: `Export failed: ${message}`});
     } finally {
@@ -145,7 +152,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
             )}
             <MarkdownPager
               markdown={selected.markdown}
-              header={selected.version === 'Unreleased' ? 'Not yet released' : `${selected.version}${selected.date ? ` · ${selected.date}` : ''}`}
+              header={selected.version === 'Unreleased' ? unreleasedHeader() : `${selected.version}${selected.date ? ` · ${formatDate(selected.date)}` : ''}`}
               resetKey={selected.version}
               emptyHint="No notes for this version."
               textColor={textColor}

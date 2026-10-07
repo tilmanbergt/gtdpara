@@ -2,92 +2,58 @@
  * The shared Google Calendar mini-view (docs/dev/technical-design-google-
  * calendar.md §8) - embedded identically as tab 2 of a MiniTabs switcher in
  * DailyView/ProjectDataPanel/InboxScreen/ReviewScreen's Week-ahead step, one
- * component rather than four bespoke UIs (this app's established shared-
- * component pattern - ui/TaskRow.tsx, ui/MeetingRow.tsx, ui/FileToPicker.tsx
- * all went this route once 2+ callers needed the identical shape).
+ * shared component rather than four bespoke UIs.
  *
  * The fetch always covers today..+30 days (storage/googleCalendarCache.ts);
  * this component only narrows that down for *display* via `maxDays` - the
  * shared cache itself is never re-fetched with a different window per
- * caller.
+ * caller. `dateRange` (docs/dev/history/technical-design-weekly-view.md §5) is an
+ * optional inclusive `{start, end}` window for screens/WeekView.tsx's Google
+ * mini-tab, since `maxDays` can only express "today .. +N days". When given,
+ * it wins over `maxDays`; a caller passes exactly one of the two.
  *
- * `dateRange` (docs/dev/technical-design-weekly-view.md §5, 2026-09-13): an
- * additive, optional `{start, end}` (inclusive YYYY-MM-DD) window, for
- * screens/WeekView.tsx's own Google mini-tab - `maxDays` alone can only ever
- * express "today .. +N days", which can't express "next week" (an arbitrary
- * start point, not always today). When `dateRange` is provided it wins over
- * `maxDays` entirely for the display-window calculation; every existing
- * caller (Daily/Project/Inbox/Review, none of which pass it) is completely
- * unaffected - `maxDays` keeps meaning exactly what it always has for them.
- * `maxDays` itself becomes optional (rather than requiring a placeholder
- * value from callers that now pass `dateRange` instead) since the two are
- * mutually exclusive in practice - a caller passes exactly one.
- *
- * Refresh UX (2026-09-07 requirements pass, prompted by Tilman reporting the
- * refresh as slow/opaque/unclear-if-interruptible):
- * - No auto-fetch on mount anymore - a refresh (including the very first
- *   one this session) only ever happens on an explicit tap, so it's always
- *   a deliberate choice, never a surprise side effect of opening a tab.
+ * Refresh UX:
+ * - No auto-fetch on mount - a refresh only happens on an explicit tap, so
+ *   it's always a deliberate choice, never a side effect of opening a tab.
  * - Loading/elapsed-time state is read from the shared cache module
  *   (getGoogleCalendarLoadingState/subscribeGoogleCalendarLoading) rather
  *   than a local `loading` flag, so switching tabs away and back mid-fetch
- *   (which unmounts/remounts this component - see the callers' MiniTabs)
- *   shows the real "still refreshing, Ns" state instead of resetting to
- *   idle and firing a redundant second fetch (that de-dupe itself lives in
- *   googleCalendarCache.ts's refreshGoogleCalendar).
- * - The spinner and an elapsed-seconds counter now show for every refresh,
- *   not just the first one ever (previously suppressed once there was
- *   stale data to show, which made a refresh nearly invisible).
+ *   (which unmounts/remounts this component) shows the real "still
+ *   refreshing, Ns" state instead of resetting to idle and firing a second
+ *   fetch (the de-dupe lives in googleCalendarCache.ts's refreshGoogleCalendar).
+ * - The spinner and an elapsed-seconds counter show for every refresh, so a
+ *   refresh is visible even when stale data is already listed.
  *
- * "Hide existing" toggle (2026-09-07, same feedback round): a small text
- * toggle next to Refresh, filtering out already-copied (checkmarked) events
- * from the list - defaults to hiding (decided) so the list opens showing
- * just what's left to copy. Local state, resets to the default on every
- * mount rather than being shared/persisted like loading state above
- * (decided: not worth the extra shared-module plumbing for this one).
+ * "Hide existing" toggle: a small text toggle next to Refresh that filters
+ * out already-copied (checkmarked) events. Defaults to hiding, so the list
+ * opens showing just what's left to copy. Local state, reset on every mount.
  *
- * Fixed-height restructure (docs/dev/technical-design-pagination-fixed-
- * height.md §3.3, Batch 6, 2026-09-15): the old standalone `headerRow`
- * (Refresh/toggle on the left, a date-range + "updated Xd ago" hint on the
- * right) plus `PageControls` below the list become one `ui/PagedSection.tsx`
- * instance - `header` is the resolved range via `formatDateRangeHeader`
- * (replacing the old hint text), `subHeader` is the Refresh(+"last updated"
- * folded into its own label)/Show-existing row (replacing the old
- * `headerLeft`). Every caller now passes a pixel `viewportHeight` instead of
- * a row-count `pageSize` - see each call site's own comment for how its
- * budget was derived.
+ * Layout (docs/dev/history/technical-design-pagination-fixed-height.md §3.3): the
+ * list is one `ui/PagedSection.tsx` - `header` is the resolved range via
+ * `formatDateRangeHeader`, `subHeader` is the Refresh (with "last updated"
+ * in its label)/Show-existing row. Callers pass a pixel `viewportHeight`.
  *
- * Tap-to-copy no longer expands inline under the tapped row (2026-09-15,
- * Tilman: "fixed slot... probably best on the bottom") - `PagedSection`'s
- * box is a fixed-height, `overflow:'hidden'` viewport, and the old inline
- * expand (a `DestinationPicker` + Copy button growing that one row on the
- * spot) would risk getting clipped whenever it didn't fit the remaining
- * budgeted space on a page. Tapping a row now just selects it
- * (`expandedUid`, unchanged) and a single footer block below the whole
- * `PagedSection` shows the picker/Copy button for whichever event is
- * selected - same idea as `QuickAddWidget`'s own fixed slot elsewhere in the
- * app. The footer's own baseline (idle) height is one small hint line,
- * always present so the footer's position never moves; the picker/button
- * that replace it once something's selected are allowed to grow the
- * component past that baseline transiently (including `DestinationPicker`'s
- * own unbounded-height open dropdown) - the exact same transient-growth
- * behavior `QuickAddWidget`'s identical `DestinationPicker` usage already
- * has elsewhere, not a new exception carved out for this component.
+ * Tapping a row selects it (`expandedUid`), and a single fixed footer below
+ * the `PagedSection` shows the picker/Copy button for the selected event.
+ * The footer is not inline under the row because `PagedSection`'s box is a
+ * fixed-height, `overflow:'hidden'` viewport that would clip it. The
+ * footer's idle height is one small hint line, always present so its
+ * position never moves; the picker/button may grow the component past that
+ * baseline transiently (including `DestinationPicker`'s open dropdown), the
+ * same as `QuickAddWidget`'s identical `DestinationPicker` usage.
  *
- * Self-measuring, tabbed-pane follow-on (2026-09-17, [[feature_pagination_
- * fixed_height]]): `viewportHeight` is now optional, for a caller that's
- * the sole occupant of a bounded flex:1 box (e.g. one of DailyView's three
- * Calendar-column MiniTabs). This component's own outer `<View>` and its
- * internal `PagedSection`'s own viewport both then self-measure via flex:1,
- * with the `subHeader` row and the copy-footer as ordinary natural-height
- * siblings around them - the same composition-over-arithmetic idea ui/
- * PagedSection.tsx's own doc comment describes, just one level up. Every
- * caller still passing an explicit number is completely unaffected.
+ * `viewportHeight` is optional, for a caller where this is the sole occupant
+ * of a bounded flex:1 box (e.g. one of DailyView's Calendar-column
+ * MiniTabs). The outer `<View>` and the internal `PagedSection` then
+ * self-measure via flex:1, with the `subHeader` row and the copy-footer as
+ * natural-height siblings - the same composition-over-arithmetic idea
+ * ui/PagedSection.tsx's doc comment describes.
  */
 import React, {useEffect, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 import {Destination} from '../domain/destination';
-import {formatDateRangeHeader, isoDateOffset} from '../domain/meetingTime';
+import {formatDateRange} from '../domain/dateFormat';
+import {isoDateOffset, todayIso} from '../domain/meetingTime';
 import {meetingTimeCell, MeetingTimeMode} from '../domain/meetingDisplay';
 import {Meeting} from '../domain/types';
 import {GoogleCalendarEvent} from '../domain/googleCalendarEvent';
@@ -113,59 +79,41 @@ import MarkWrap from './status/StatusMark';
 import {usePerfRender} from '../utils/perf';
 
 /** Single-line event row - the same 37 dp as a 1-line meeting row
- * (docs/dev/technical-design-meeting-lists.md §2.3, step 8): paddingVertical 7 x 2
+ * (docs/dev/history/technical-design-meeting-lists.md §2.3, step 8): paddingVertical 7 x 2
  * + one 22 dp line, the same time column width and wording
  * (domain/meetingDisplay.ts's meetingTimeCell), so the Google tab and the
  * Meetings tab next to it read as the same list. */
 export const GOOGLE_EVENT_ROW_PX = MEETING_ROW_HEIGHT.oneLine;
 /** The `subHeader` row's own height (Refresh/Show-existing line, `FONT.small`
  * text ~18 + a small `marginBottom` 6) - exported so a caller composing a
- * multi-tab column that must keep the same total height across tabs (only
- * screens/DailyView.tsx's Calendar column does this today) can subtract it
- * from its own per-tab budget the same way it already does for `PagedSection`'s
- * own header row. Every other caller ignores this - GoogleCalendarPanel
- * already accounts for its own subHeader when sizing itself, so a caller
- * that only ever shows this component (no sibling tab to keep in lockstep
- * with) never needs to look at this constant at all. */
+ * multi-tab column that must keep the same total height across tabs
+ * (screens/DailyView.tsx's Calendar column) can subtract it from its own
+ * per-tab budget, as it does for `PagedSection`'s header row. Other callers
+ * can ignore it - this component already accounts for its own subHeader. */
 export const GOOGLE_SUBHEADER_ROW_PX = 24;
 /** The copy-footer's own baseline (idle, nothing selected) height - one
- * small hint line (`FONT.small` ~18 + `marginTop` 8). See this file's own
- * module doc comment for why only the *baseline* is budgeted here, not the
- * expanded picker+button state - that growth is transient, same as
- * `QuickAddWidget`'s identical `DestinationPicker` usage elsewhere. Exported
- * for the same reason, and to the same one caller, as
- * `GOOGLE_SUBHEADER_ROW_PX` above. */
+ * small hint line (`FONT.small` ~18 + `marginTop` 8). Only the baseline is
+ * budgeted; the expanded picker+button state is transient (see the module
+ * doc comment). Exported for the same caller as `GOOGLE_SUBHEADER_ROW_PX`. */
 export const GOOGLE_COPY_FOOTER_BASELINE_PX = 26;
 
 interface Props {
-  /** When true, a copied event becomes a Month highlight (`#monthly`) right away - the Month view's Google tabs (docs/dev/technical-design-monthly-view.md, 2026-09-23 follow-up). */
+  /** When true, a copied event becomes a Month highlight (`#monthly`) right away - the Month view's Google tabs (docs/dev/history/technical-design-monthly-view.md). */
   copyAsHighlight?: boolean;
   /** How many of the shared 30-day cache's events to actually show, counting from today: 2 (Daily), 7 (Review), 30 (Project/Area/Inbox). Ignored when `dateRange` is provided - see this file's module doc comment. */
   maxDays?: number;
-  /** An explicit, inclusive YYYY-MM-DD display window - screens/WeekView.tsx's own Google mini-tab (docs/dev/technical-design-weekly-view.md §5), which needs an arbitrary start point `maxDays` can't express. Wins over `maxDays` when both would otherwise apply; every other caller omits this and keeps using `maxDays` unchanged. */
+  /** An explicit, inclusive YYYY-MM-DD display window - screens/WeekView.tsx's own Google mini-tab (docs/dev/history/technical-design-weekly-view.md §5), which needs an arbitrary start point `maxDays` can't express. Wins over `maxDays`; every other caller omits this. */
   dateRange?: {start: string; end: string};
-  /** Fixed pixel height for this screen's own event-list box (docs/technical-
-   * design-pagination-fixed-height.md §3.3, Batch 6) - replaces the old
-   * row-count `pageSize` now that the list pages via `ui/PagedSection.tsx`.
-   * Still independently tunable per caller, same reasoning `pageSize` always
-   * had (ui/pagination.ts's `PAGE_SIZE.googleCalendar*` comments): this one
-   * component is reused across screens whose available space/density
-   * differ.
+  /** Fixed pixel height for the event-list box (
+   * docs/dev/history/technical-design-pagination-fixed-height.md §3.3). Tunable per caller, since this
+   * component is reused across screens whose available space differs.
    *
-   * Optional (2026-09-17, [[feature_pagination_fixed_height]]'s tabbed-pane
-   * follow-on to the self-measured-viewport-height work) - omit it when this
-   * component is the sole occupant of a bounded flex:1 box (e.g. screens/
-   * DailyView.tsx's Calendar column, one of three MiniTabs occupants of the
-   * same `columnScroll` box). This component's own root then becomes
-   * `flex:1` and the `viewportHeight` it forwards to its internal
-   * `PagedSection` stays `undefined`, so THAT self-measures too, inside this
-   * component's own flex column, below the natural-height `subHeader` and
-   * above the natural-height copy-footer - composition, not arithmetic;
-   * `GOOGLE_SUBHEADER_ROW_PX`/`GOOGLE_COPY_FOOTER_BASELINE_PX` below become
-   * unnecessary for a caller that self-measures this way (still needed by
-   * any caller that keeps passing an explicit number). Every existing
-   * caller (ProjectDataPanel/InboxScreen/ReviewScreen/WeekView) keeps
-   * passing a number and is completely unaffected. */
+   * Omit it when this component is the sole occupant of a bounded flex:1 box
+   * (e.g. screens/DailyView.tsx's Calendar column). The root then becomes
+   * `flex:1` and the internal `PagedSection` self-measures too, between the
+   * natural-height `subHeader` and copy-footer - composition, not arithmetic.
+   * `GOOGLE_SUBHEADER_ROW_PX`/`GOOGLE_COPY_FOOTER_BASELINE_PX` are then not
+   * needed. */
   viewportHeight?: number;
   defaultDestination: Destination;
   /** For dedup against Project/Area meetings and as DestinationPicker's candidate list. */
@@ -179,16 +127,9 @@ interface Props {
   placeholderColor: string;
 }
 
-function withinWindow(event: GoogleCalendarEvent, maxDays: number, todayStr: string): boolean {
-  // Cheap string comparison works because both are YYYY-MM-DD and the cache
-  // is already filtered to >= today - just need an upper bound here.
-  const limit = new Date();
-  limit.setDate(limit.getDate() + maxDays - 1);
-  const y = limit.getFullYear();
-  const m = String(limit.getMonth() + 1).padStart(2, '0');
-  const d = String(limit.getDate()).padStart(2, '0');
-  const limitStr = `${y}-${m}-${d}`;
-  return event.date >= todayStr && event.date <= limitStr;
+function withinWindow(event: GoogleCalendarEvent, maxDays: number, today: string): boolean {
+  // Both are YYYY-MM-DD, so plain string comparison orders them.
+  return event.date >= today && event.date <= isoDateOffset(maxDays - 1);
 }
 
 /** `dateRange`'s own window check (see this file's module doc comment) - a plain inclusive-range comparison, no "today" involved at all, unlike withinWindow above which always counts from today. */
@@ -196,17 +137,9 @@ function withinDateRange(event: GoogleCalendarEvent, range: {start: string; end:
   return event.date >= range.start && event.date <= range.end;
 }
 
-function todayStr(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-/** Compact "how long ago" for the persisted-cache hint (2026-09-11) - lets
- * the user tell a freshly-fetched list apart from one restored from a
- * previous session without needing an exact timestamp. */
+/** Compact "how long ago" for the persisted-cache hint - lets the user tell
+ * a freshly-fetched list apart from one restored from a previous session
+ * without needing an exact timestamp. */
 function formatFetchedAt(fetchedAt: number): string {
   const minutes = Math.floor((Date.now() - fetchedAt) / 60000);
   if (minutes < 1) return 'just now';
@@ -235,8 +168,8 @@ export default function GoogleCalendarPanel({
   const [events, setEvents] = useState<GoogleCalendarEvent[]>(() => getGoogleCalendarCache()?.events ?? []);
   const [error, setError] = useState<string | undefined>(() => getGoogleCalendarCache()?.error);
   // A failed refresh -> central status slot + ⚠ on the Refresh link; the
-  // events from the last successful fetch stay listed (docs/technical-
-  // design-status-slot.md §7.5).
+  // events from the last successful fetch stay listed (
+  // docs/dev/history/technical-design-status-slot.md §7.5).
   useErrorStatus('calendar.refresh', error ? `Google Calendar refresh failed: ${error}` : null, () => setError(undefined));
   // Distinct from `events.length === 0` - that's also true before anything
   // has ever been fetched this session, and the two need different copy
@@ -248,20 +181,18 @@ export default function GoogleCalendarPanel({
   // When the shown events were actually fetched - null until hasLoaded, from
   // either a same-session fetch or a restored persisted cache. Drives the
   // "updated Ns/m/h/d ago" hint so a restored-from-disk list reads visibly
-  // different from a just-refreshed one (2026-09-11).
+  // different from a just-refreshed one.
   const [fetchedAt, setFetchedAt] = useState<number | null>(() => getGoogleCalendarCache()?.fetchedAt ?? null);
   const [loading, setLoadingFlag] = useState(() => getGoogleCalendarLoadingState().loading);
   // Explicit e-ink refresh once a fetch actually lands - see
-  // src/utils/screenRefresh.ts. The ICS fetch/parse this tracks is exactly
-  // the kind of "bigger file operation or calculation" the refresh issue
-  // was reported against.
+  // src/utils/screenRefresh.ts. The ICS fetch/parse is a large enough
+  // operation that the e-ink screen would otherwise not redraw.
   useEinkRefreshOnLoad(loading);
   const [startedAt, setStartedAt] = useState<number | null>(() => getGoogleCalendarLoadingState().startedAt);
-  // Hides already-copied (checkmarked) events (2026-09-07 feedback). Local
-  // to this mount, not shared/persisted like the loading state above -
-  // decided: resetting to the default each time you open the tab is fine,
-  // simpler than threading it through the shared cache module too. Defaults
-  // to hiding (decided) so the list opens showing just what's left to copy.
+  // Hides already-copied (checkmarked) events. Local to this mount, not
+  // shared/persisted like the loading state above - resetting to the default
+  // each time the tab opens is fine and simpler. Defaults to hiding so the
+  // list opens showing just what's left to copy.
   const [hideExisting, setHideExisting] = useState(true);
   const [, forceTick] = useState(0);
   const [inboxMeetings, setInboxMeetings] = useState<Meeting[]>([]);
@@ -290,14 +221,12 @@ export default function GoogleCalendarPanel({
     syncFromCache();
   }, [icsUrl, syncFromCache]);
 
-  // Restores a persisted cache from a previous session (2026-09-11) - a pure
-  // disk read, not a fetch, so it doesn't touch the explicit-tap-only rule
-  // below. Usually resolves near-instantly (hydration runs once at module
-  // load, well before most panels mount), but this covers the case where a
-  // panel is the very first thing to mount. If a real fetch already landed
-  // in the meantime, syncFromCache just reflects that instead - the cache
-  // module itself decides who wins (see whenGoogleCalendarCacheHydrated's
-  // doc comment).
+  // Restores a persisted cache from a previous session - a pure disk read,
+  // not a fetch, so it doesn't touch the explicit-tap-only rule below.
+  // Usually resolves near-instantly (hydration runs once at module load),
+  // but this covers a panel that is the very first thing to mount. If a real
+  // fetch already landed in the meantime, syncFromCache just reflects that -
+  // the cache module decides who wins (see whenGoogleCalendarCacheHydrated).
   useEffect(() => {
     let cancelled = false;
     whenGoogleCalendarCacheHydrated().then(() => {
@@ -345,32 +274,26 @@ export default function GoogleCalendarPanel({
   // below) since none of it is a hook and it's cheap even when icsUrl is
   // unset - keeps the `!icsUrl` early return simple.
   const copiedKeys = new Set([...alreadyCopiedKeys(items, inboxMeetings), ...justCopiedKeys]);
-  // Paginated (docs/dev/technical-design-pagination-edit-reuse.md §2/§4) - this
+  // Paginated (docs/dev/history/technical-design-pagination-edit-reuse.md §2/§4) - this
   // panel is shared across Daily, Review's week-ahead, Project/Area/Inbox's
-  // own Calendar tab, and now Week (docs/dev/technical-design-weekly-view.md §5),
-  // so with no pagination a wide-enough window could scroll indefinitely.
+  // own Calendar tab and Week (docs/dev/history/technical-design-weekly-view.md §5),
+  // so without pagination a wide window could scroll indefinitely.
   // Computed/called unconditionally, before the `!icsUrl` early return below,
   // since hooks can't follow a conditional return. `dateRange` wins over
   // `maxDays` when provided - see this file's module doc comment.
   const windowed = dateRange
     ? events.filter(e => withinDateRange(e, dateRange))
-    : events.filter(e => withinWindow(e, maxDays ?? 30, todayStr()));
-  // "Hide existing" (2026-09-07 feedback) filters out events that already
-  // have a checkmark - i.e. already copied to a local Meeting - leaving
-  // just what's left to copy. Filtered before pagination so page counts
-  // reflect what's actually shown.
+    : events.filter(e => withinWindow(e, maxDays ?? 30, todayIso()));
+  // "Hide existing" filters out events that already have a checkmark - i.e.
+  // already copied to a local Meeting - leaving just what's left to copy.
+  // Filtered before pagination so page counts reflect what's actually shown.
   const visible = hideExisting ? windowed.filter(e => !copiedKeys.has(googleEventKey(e))) : windowed;
-  // The resolved display range, for the header (formatDateRangeHeader) -
-  // the same values the old right-aligned hint text already computed (see
-  // withinWindow's identical `limit` calc above), just reformatted and
-  // promoted into PagedSection's own header instead of a trailing hint.
-  const rangeStart = dateRange?.start ?? todayStr();
+  // The shown range, for the header.
+  const rangeStart = dateRange?.start ?? todayIso();
   const rangeEnd = dateRange?.end ?? isoDateOffset((maxDays ?? 30) - 1);
   // Searched from the full `events` list, not `visible` - so the copy
-  // footer stays showing the selected event even if `hideExisting` toggles
-  // it out of the row list while it's selected (a small robustness
-  // improvement over the old inline-expand, which would have simply hidden
-  // the whole expand block in that case since the row itself disappeared).
+  // footer keeps showing the selected event even if `hideExisting` toggles
+  // it out of the row list while it's selected.
   const expandedEvent = expandedUid ? events.find(e => e.uid === expandedUid) ?? null : null;
 
   if (!icsUrl) {
@@ -439,7 +362,7 @@ export default function GoogleCalendarPanel({
   return (
     <View style={selfMeasuring ? styles.selfMeasuringRoot : undefined}>
       <PagedSection
-        header={formatDateRangeHeader(rangeStart, rangeEnd)}
+        header={formatDateRange(rangeStart, rangeEnd, todayIso())}
         subHeader={
           <View style={styles.headerLeft}>
             <MarkWrap mark={error && !loading ? 'warning' : null} textColor={textColor}>
@@ -454,9 +377,7 @@ export default function GoogleCalendarPanel({
               </Pressable>
             </MarkWrap>
             {/* Toggle label reads as the action tapping it takes next (like
-                a "Show more"/"Show less" button), not the current state -
-                2026-09-07 feedback: hides already-copied (checkmarked)
-                events. */}
+                a "Show more"/"Show less" button), not the current state. */}
             <Pressable onPress={() => setHideExisting(h => !h)} hitSlop={8} style={styles.toggleButton}>
               <Text style={[styles.link, styles.toggleText]}>
                 {hideExisting ? 'Show existing' : 'Hide existing'}
@@ -487,11 +408,9 @@ export default function GoogleCalendarPanel({
         textColor={textColor}
         borderColor={borderColor}
       />
-      {/* Fixed copy-footer (2026-09-15, Tilman: "fixed slot... probably best
-          on the bottom") - see this file's own module doc comment for why
-          this replaced the old inline per-row expand. Always mounted so its
-          position never moves; shows just a hint line when idle, swaps to
-          the picker+Copy button for whichever event is selected. */}
+      {/* Fixed copy-footer - see this file's module doc comment. Always
+          mounted so its position never moves; shows just a hint line when
+          idle, swaps to the picker+Copy button for the selected event. */}
       <View style={styles.copyFooter}>
         {expandedEvent && !copiedKeys.has(googleEventKey(expandedEvent)) ? (
           <>
@@ -591,7 +510,7 @@ const styles = StyleSheet.create({
   },
   // The row currently shown in the copy footer below - a plain weight bump
   // (grayscale-safe, ui/theme.ts's own "weight/fill/border, never hue"
-  // convention) since the footer no longer sits right under this row.
+  // convention) since the footer does not sit right under this row.
   titleSelected: {
     fontWeight: '700',
   },

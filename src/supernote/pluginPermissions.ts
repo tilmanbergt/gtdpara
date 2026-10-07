@@ -1,6 +1,7 @@
 import {PluginManager} from 'sn-plugin-lib';
 import {log, logError} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
+import {errorMessage} from '../utils/errorMessage';
 
 export const FILE_READ_PERMISSION = 'plugin.permission.FILE:READ';
 export const FILE_WRITE_PERMISSION = 'plugin.permission.FILE:WRITE';
@@ -89,7 +90,7 @@ export async function ensurePluginPermission(
       logError(
         'ensurePluginPermission: error',
         permission,
-        e instanceof Error ? e.message : String(e),
+        errorMessage(e),
       );
       return false;
     }
@@ -120,7 +121,7 @@ export function ensureFileWritePermission(): Promise<boolean> {
 
 /**
  * FILE:DELETE, requested only AFTER the user confirmed a delete in the UI
- * (docs/dev/technical-design-inkhub-submission.md §3.4) - so `description`
+ * (docs/dev/history/technical-design-inkhub-submission.md §3.4) - so `description`
  * names exactly what is about to be deleted, e.g. "Delete the empty folder
  * 2 Areas/Health after moving it to the Archive." Never requested eagerly.
  */

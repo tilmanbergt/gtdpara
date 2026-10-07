@@ -16,6 +16,7 @@
  * shows from the title, so nothing appears twice. `task.text` itself is never
  * changed - this is display only.
  */
+import {formatDate} from './dateFormat';
 import {setFlowStateTag, setNowTag, titleCaseSlug} from './flowState';
 import {setDueTag} from './markdown';
 import {Task} from './types';
@@ -31,20 +32,6 @@ export interface TaskLabel {
 
 /** Longest waiting name shown in a label before it is shortened with "…". */
 export const WAITING_NAME_MAX_CHARS = 20;
-
-/**
- * `2026-10-05` -> `5.10.` (day.month., no leading zeros); a date in another
- * year than `today` gets the year: `5.1.2027`. Anything that isn't an ISO
- * date comes back unchanged.
- */
-export function shortDate(iso: string, today: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return iso;
-  const day = Number(m[3]);
-  const month = Number(m[2]);
-  const sameYear = today.slice(0, 4) === m[1];
-  return sameYear ? `${day}.${month}.` : `${day}.${month}.${m[1]}`;
-}
 
 function waitingLabel(task: Task): string {
   if (!task.waitingOn) return '#w/f';
@@ -71,8 +58,8 @@ export function taskLabels(task: Task, context: TaskLabelContext, today: string,
     const overdue = task.dueDate < today;
     labels.push(
       overdue
-        ? {kind: 'overdue', text: `#due ${shortDate(task.dueDate, today)} !`}
-        : {kind: 'due', text: `#due ${shortDate(task.dueDate, today)}`},
+        ? {kind: 'overdue', text: `#due ${formatDate(task.dueDate, today)} !`}
+        : {kind: 'due', text: `#due ${formatDate(task.dueDate, today)}`},
     );
   }
   return labels;

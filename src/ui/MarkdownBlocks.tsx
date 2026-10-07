@@ -1,6 +1,6 @@
 /**
  * Renders the markdown subset of domain/markdownBlocks.ts, paged without
- * scrolling (docs/dev/technical-design-about-debug-experimental.md §3.5).
+ * scrolling (docs/dev/history/technical-design-about-debug-experimental.md §3.5).
  * Used by Settings → About's "What's new"; meant to be reused by the in-app
  * Help later.
  *

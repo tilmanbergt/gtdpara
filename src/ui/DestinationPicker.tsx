@@ -1,15 +1,11 @@
 /**
  * The "where should this go" destination picker for Task/Meeting quick-add
  * flows - Inbox, or any cached Active Project/Area (domain/destination.ts's
- * destinationCandidates: focused items float to the top). Extracted out of
- * DailyView.tsx (2026-09-02) so ui/TaskQuickAdd.tsx - shared by Daily view
- * and the new Weekly Review flow's look-ahead step - can use the exact same
- * picker rather than a third hand-copy. This is the first genuinely shared
- * *presentation* component in the codebase: until now design-overview.md §3
- * deliberately kept presentation per-screen, sharing only logic like
- * domain/destination.ts itself. CaptureScreen.tsx still keeps its own
- * separate copy of this same picker - not switched over here, since nothing
- * about this feature touched that screen.
+ * destinationCandidates: focused items float to the top). Shared by
+ * DailyView.tsx and ui/TaskQuickAdd.tsx (Daily view and the Weekly Review
+ * look-ahead step) so they use the same picker. Unlike most presentation in
+ * the codebase, which stays per-screen (design-overview.md §3), this one is
+ * shared. CaptureScreen.tsx keeps its own separate copy of this picker.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';

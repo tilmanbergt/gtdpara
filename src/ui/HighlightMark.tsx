@@ -1,8 +1,7 @@
 /**
  * The small "M" box that marks a meeting as a Month highlight (`#monthly`,
- * docs/dev/technical-design-monthly-view.md §5.1/§5.2). ONE component so the
- * three places it appears always look alike (Tilman, 2026-09-23: "use same
- * small M as on the meeting widget"):
+ * docs/dev/history/technical-design-monthly-view.md §5.1/§5.2). ONE component so the
+ * places it appears always look alike:
  * - `variant="row"`: a small filled, non-tappable mark in front of a meeting
  *   row's time in every meeting list (ui/MeetingRow.tsx).
  * - `variant="toggle"`: the tappable box left of Quick Add's `+ Add`/`Save`
@@ -23,9 +22,6 @@ interface Props {
   size?: 'normal' | 'large';
   textColor: string;
 }
-
-/** Width a row mark takes, including its right margin - MeetingRow's title-width allowance for highlighted rows. */
-export const HIGHLIGHT_MARK_ROW_WIDTH_PX = 24;
 
 function inverse(color: string): string {
   const c = color.toLowerCase();

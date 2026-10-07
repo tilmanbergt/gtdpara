@@ -1,24 +1,16 @@
 /**
  * InlineTextEditor — the one shared "edit mode" of every tap-to-edit text
  * row: a ClipboardTextInput with Save/Cancel beside it, plus an error line
- * below. Extracted 2026-09-29 from three near-identical copies
- * (ui/PeriodFocusPanel.tsx's GoalRow, ui/ItemContextRows.tsx's ItemGoalRow
- * and ItemScopeRow).
+ * below. Used by ui/PeriodFocusPanel.tsx's GoalRow and ui/ItemContextRows.tsx's
+ * ItemGoalRow and ItemScopeRow.
  *
- * Why it exists (bugfix 2026-09-29, "Save button overlaid by Scope text"):
- * ItemScopeRow was the only copy that stacked the input ABOVE its
- * Save/Cancel row, inside a plain column View. ClipboardTextInput's root is
- * `flex: 1` (right for its intended use as the growing child of a ROW), but
- * in a column with auto height `flex: 1` means flexBasis 0 on the vertical
- * axis, so the wrapper collapsed to ~0 height and the (auto-growing)
- * multiline TextInput overflowed it - drawing its text over the Save/Cancel
- * row laid out right below the collapsed wrapper. The goal rows never hit
- * this because they always put the input in a row (`flex: 1` = fill width).
- *
- * So this component always uses the goal rows' proven row layout: input
- * grows horizontally, Save/Cancel sit to its right. With `multiline` the
- * row is top-aligned so the buttons stay at the first line of the taller
- * box instead of centering against it.
+ * Layout: the input always sits in a row - it grows horizontally and
+ * Save/Cancel sit to its right. ClipboardTextInput's root is `flex: 1`, which
+ * fills the width in a row; in a column with auto height `flex: 1` means
+ * flexBasis 0 vertically, so the wrapper would collapse to ~0 height and a
+ * multiline input would draw its text over the buttons below it. With
+ * `multiline` the row is top-aligned so the buttons stay at the first line of
+ * the taller box instead of centering against it.
  *
  * State: owns `draft`/`saving`/`error`. `draft` seeds from `initialText` on
  * mount only - the caller mounts this component when entering edit mode and
@@ -31,6 +23,7 @@ import {logError} from '../utils/log';
 import ClipboardTextInput from './ClipboardTextInput';
 import {FONT} from './theme';
 import {useErrorStatus} from './status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 export default function InlineTextEditor({
   initialText,
@@ -71,7 +64,7 @@ export default function InlineTextEditor({
         onClose();
       })
       .catch(e => {
-        const msg = e instanceof Error ? e.message : String(e);
+        const msg = errorMessage(e);
         logError(logLabel, msg);
         setError(msg);
         setSaving(false);

@@ -1,6 +1,6 @@
 /**
  * Removes secrets and personal addresses from text that leaves the device in
- * a debug bundle (docs/dev/technical-design-about-debug-experimental.md §3.4).
+ * a debug bundle (docs/dev/history/technical-design-about-debug-experimental.md §3.4).
  * Pure; unit-tested in __tests__/domain/redact.test.ts.
  *
  * File paths stay as they are on purpose (needed for debugging); the export

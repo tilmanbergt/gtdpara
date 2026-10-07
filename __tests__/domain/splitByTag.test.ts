@@ -3,7 +3,7 @@ import {noteCreationConfirmText} from '../../src/domain/fileChangeText';
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
 import {renderSharedFileName} from '../../src/domain/sharedNotePages';
 
-// docs/dev/technical-design-split-by-tag.md §3.3, §3.5, §3.6
+// docs/dev/history/technical-design-split-by-tag.md §3.3, §3.5, §3.6
 
 describe('renderSharedFileName', () => {
   const base = {template: 'Coaching {subtag} {year}', ruleName: 'Coaching', subtag: 'sabina', date: '2026-10-02'};

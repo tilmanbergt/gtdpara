@@ -1,5 +1,5 @@
 /**
- * The project close-out wizard (docs/dev/technical-design-project-close-out.md
+ * The project close-out wizard (docs/dev/history/technical-design-project-close-out.md
  * §8; mockups: Claude Design canvas "gtdpara Project Close-out Wizard").
  * Full close-out: Checklist → Contents → Outcomes → PDF → Archive. Quick
  * archive: Checklist → Archive (no PDF, no outcome moves).
@@ -40,7 +40,8 @@ import {archiveOpsFor, runCloseOutArchive} from '../storage/closeOut/execute';
 import {CloseOutPdfJob, startCloseOutPdf} from '../storage/closeOut/pdf';
 import {loadPlan, savePlan} from '../storage/closeOut/planStore';
 import {findCachedItem} from '../storage/dataCache';
-import {cancelMeeting, closeTask, moveMeetingTo, moveTaskTo, MoveTarget} from '../storage/itemMove';
+import {cancelMeeting, closeTask} from '../storage/itemMove';
+import {moveMeeting, moveTask, MoveTarget} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {PdfExportCancelled} from '../storage/pdfExport';
 import {loadSettings} from '../storage/settingsStorage';
@@ -59,6 +60,7 @@ import WizardFrame from '../ui/wizard/WizardFrame';
 import {logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
+import {errorMessage} from '../utils/errorMessage';
 
 interface Props {
   projectPath: string;
@@ -85,7 +87,7 @@ const IDLE_ARCHIVE: ArchiveRunState = {running: false, steps: null, ok: null, er
 const PROGRESS_PAINT_MS = 1000;
 
 function message(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  return errorMessage(e);
 }
 
 export default function CloseOutWizard({projectPath, mode: requestedMode, onExit}: Props): React.JSX.Element {
@@ -99,7 +101,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
   useErrorStatus('CloseOutWizard.actionError', actionError, () => setActionError(null));
   const [pdfRun, setPdfRun] = useState<PdfRunState>(IDLE_PDF);
   const [archiveRun, setArchiveRun] = useState<ArchiveRunState>(IDLE_ARCHIVE);
-  // Run errors -> central status slot (docs/dev/technical-design-status-slot.md §7.4).
+  // Run errors -> central status slot (docs/dev/history/technical-design-status-slot.md §7.4).
   useErrorStatus('closeOut.pdf', pdfRun.error, () => setPdfRun(prev => ({...prev, error: null})));
   useErrorStatus('closeOut.archive', archiveRun.error, () => setArchiveRun(prev => ({...prev, error: null})));
   const settingsRef = useRef<GtdParaSettings | null>(null);
@@ -206,7 +208,9 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       moveTodo: (index, to) =>
         run(async () => {
           if (!ctx) return;
-          const task = await moveTaskTo(projectPath, index, moveTarget(to), ctx.paths, moveUi);
+          const stored = findCachedItem(projectPath)?.tasks[index];
+          if (!stored) throw new Error('That todo changed on disk - Settings → Advanced → Reload all files.');
+          const task = await moveTask({kind: 'project', path: projectPath}, index, stored, moveTarget(to), moveUi);
           if (!task) return; // cancelled in the note confirm
           await updatePlan(p => withMovedItem(p, {kind: 'todo', label: task.text, to: to === 'area' && ctx.item.area ? `area:${ctx.item.area}` : 'inbox'}));
         }),
@@ -214,7 +218,9 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
       moveMeeting: (index, to) =>
         run(async () => {
           if (!ctx) return;
-          const meeting = await moveMeetingTo(projectPath, index, moveTarget(to), ctx.paths, moveUi);
+          const stored = findCachedItem(projectPath)?.meetings[index];
+          if (!stored) throw new Error('That meeting changed on disk - Settings → Advanced → Reload all files.');
+          const meeting = await moveMeeting({kind: 'project', path: projectPath}, index, stored, moveTarget(to), moveUi);
           if (!meeting) return; // cancelled in the note confirm
           await updatePlan(p => withMovedItem(p, {kind: 'meeting', label: `${meeting.date} ${meeting.title}`, to: to === 'area' && ctx.item.area ? `area:${ctx.item.area}` : 'inbox'}));
         }),
@@ -240,7 +246,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
 
   // ---- step 4: PDF ----
   // Replacing an existing PDF is announced and confirmed first
-  // (docs/dev/technical-design-inkhub-submission.md §3.4/§3.8).
+  // (docs/dev/history/technical-design-inkhub-submission.md §3.4/§3.8).
   const [replaceConfirm, setReplaceConfirm] = useState<string | null>(null);
   useStatus(
     'CloseOutWizard.replacePdf',

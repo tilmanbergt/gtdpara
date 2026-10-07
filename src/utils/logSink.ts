@@ -1,5 +1,5 @@
 /**
- * Where log lines go besides logcat (docs/dev/technical-design-about-debug-experimental.md §3.3):
+ * Where log lines go besides logcat (docs/dev/history/technical-design-about-debug-experimental.md §3.3):
  *
  * 1. Always: an in-memory ring buffer of the last MAX_LINES lines, used by
  *    the debug bundle (storage/debugBundle.ts). Cheap: one formatted string

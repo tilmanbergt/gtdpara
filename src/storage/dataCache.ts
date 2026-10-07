@@ -1,13 +1,10 @@
 /**
- * The disposable cross-project cache (design-overview.md §4) - now covering
- * both halves the design doc describes: which Project/Area folders exist
- * (previously storage/folderIndex.ts, now folded in here), AND each one's
- * own parsed Tasks/Meetings (previously read fresh, per item, every time a
- * screen opened it - the part that "will get slow" as the number of
- * Projects/Areas grows, since Home and Daily each read every file on every
- * open).
+ * The disposable cross-project cache (design-overview.md §2.3), covering both
+ * halves the design doc describes: which Project/Area folders exist, AND
+ * each one's own parsed Tasks/Meetings - so Home and Daily don't read every
+ * file on every open, which gets slow as the number of Projects/Areas grows.
  *
- * Kept current the two ways the design doc calls for:
+ * Kept current in these ways:
  *
  * 1. A full rebuild (rebuildCache) - rereads every project.txt/area.txt
  *    from scratch. On demand via Settings → Advanced → "Reload all files",
@@ -20,37 +17,34 @@
  *    re-opening the same item later) sees the change immediately without
  *    needing a rebuild.
  *
- * 3. Change notification (subscribeCache/getCacheVersion, 2026-09-20,
- *    docs/dev/technical-design-cache-subscription-and-shared-add-path.md §A) -
+ * 3. Change notification (subscribeCache/getCacheVersion,
+ *    docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md §A) -
  *    write-through mutates cache items IN PLACE (the very same array and item
  *    objects a screen already holds), so a screen's `setItems(cache.items)`
- *    was a same-reference no-op and React never re-rendered (Week view did
- *    not show meetings filed to a Project/Area until something else
- *    re-rendered it). Every mutation below now bumps a version and notifies
- *    subscribers; ui/useCachedItems.ts turns that into a re-render plus a
- *    fresh array identity per change, so no screen has to remember a manual
- *    refresh step.
+ *    alone would be a same-reference no-op and React would not re-render.
+ *    Every mutation below bumps a version and notifies subscribers;
+ *    ui/useCachedItems.ts turns that into a re-render plus a fresh array
+ *    identity per change, so no screen has to remember a manual refresh step.
  *
- * 4. Incremental refresh (refreshCache, 0.6.0, docs/dev/technical-design-
- *    files-0.6.md §3.2) - what App.tsx runs on every open now: lists the
+ * 4. Incremental refresh (refreshCache, docs/dev/technical-design-
+ *    files-0.6.md §3.2) - what App.tsx runs on every open: lists the
  *    Project/Area folders, stats every data file plus Inbox.txt in one
  *    native call, and re-reads only files whose stamp (exists, modified
  *    time, size) differs from the one recorded when they were read. Notifies
  *    only when something really changed. "Reload all files" stays a full
  *    rebuild.
  *
- * Still fully disposable: rebuildCache always reproduces the cache
- * correctly from the files, which remain the only real data - this is a
- * responsiveness layer on top, never a second source of truth. A single
- * item that isn't in the cache yet (ensureItemCached) is loaded on demand
- * rather than forcing a full rebuild just to open one Project/Area.
+ * Fully disposable: rebuildCache always reproduces the cache correctly from
+ * the files, which remain the only real data - this is a responsiveness
+ * layer on top, never a second source of truth. A single item that isn't in
+ * the cache yet (ensureItemCached) is loaded on demand rather than forcing a
+ * full rebuild just to open one Project/Area.
  *
- * Resources/Archive stay unscanned, same as the folder-index-only version
- * before it - they're hidden from Home for now (a prior, explicit decision,
- * not an oversight of this change).
+ * Resources/Archive stay unscanned - they're hidden from Home (a deliberate
+ * decision).
  */
 import {ExistingAbbrev, generateDefaultAbbrev} from '../domain/abbrev';
-import {GtdParaSettings, ResolvedParaPaths, resolvePaths, withInboxFolder} from '../domain/settings';
+import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {FrontMatterFields} from '../domain/markdown';
 import {ItemStatus, Mark, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
 import {FileStat, listFolderEntries, statFiles} from '../supernote/fileSystem';
@@ -58,7 +52,7 @@ import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {perfEnd, perfMark, perfStart} from '../utils/perf';
 import {dataFilePath, loadProjectFile, parseProjectFileContent, ProjectFileState, saveFrontMatter} from './projectFile';
-import {effectiveInboxFolderFor, hiddenAreaFolderFor, migrateInboxIfNeeded} from './inboxMigration';
+import {errorMessage} from '../utils/errorMessage';
 
 export interface CachedItem {
   kind: 'project' | 'area';
@@ -69,15 +63,15 @@ export interface CachedItem {
   meetings: Meeting[];
   taskExtraLines: string[];
   meetingExtraLines: string[];
-  /** From the `## Scope` span (docs/dev/technical-design-item-scope.md) - see storage/projectFile.ts's ProjectFileState doc comment. '' until a scope is set, even though the heading itself is scaffolded from item creation. */
+  /** From the `## Scope` span (docs/dev/history/technical-design-item-scope.md) - see storage/projectFile.ts's ProjectFileState doc comment. '' until a scope is set, even though the heading itself is scaffolded from item creation. */
   scope: string;
-  /** From the `## Weekly Goals` span (docs/dev/technical-design-weekly-goals.md) - see storage/projectFile.ts's ProjectFileState doc comment. */
+  /** From the `## Weekly Goals` span (docs/dev/history/technical-design-weekly-goals.md) - see storage/projectFile.ts's ProjectFileState doc comment. */
   weeklyGoals: WeeklyGoal[];
   weeklyGoalsExtraLines: string[];
-  /** From the `## Monthly Goals` span (docs/dev/technical-design-monthly-view.md §2.2). */
+  /** From the `## Monthly Goals` span (docs/dev/history/technical-design-monthly-view.md §2.2). */
   monthlyGoals: MonthlyGoal[];
   monthlyGoalsExtraLines: string[];
-  /** From the `## Marks` span (docs/dev/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines whose note lives in this item's folder. */
+  /** From the `## Marks` span (docs/dev/history/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines whose note lives in this item's folder. */
   marks: Mark[];
   marksExtraLines: string[];
   /** From the frontmatter block - see domain/markdown.ts's parseFrontMatter, storage/focusSlots.ts and storage/statusControl.ts. */
@@ -89,7 +83,7 @@ export interface CachedItem {
   defaultResourceFolder: string | null;
   /** The Area this Project supports, by bare folder name, or null - Projects only, always null for Areas (technical-design-project-area-assignment.md §2). */
   area: string | null;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), or null - filled in for every item by the one-time migration `doRebuildCache` runs below, so in practice this is only ever null for an item this session hasn't rebuilt the cache since the feature shipped, or one whose migration write failed and will retry on the next rebuild. */
+  /** This item's short abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md), or null - filled in for every item by the one-time migration `doRebuildCache` runs below, so in practice this is only null for an item not yet seen by a rebuild, or one whose migration write failed and will retry on the next rebuild. */
   abbrev: string | null;
   frontMatterExtraLines: string[];
   /** Set when this item's own file failed to load during the last rebuild - the item still shows (the folder itself was found fine) but with empty tasks/meetings until a rebuild succeeds. */
@@ -133,7 +127,7 @@ async function statStamps(paths: string[]): Promise<Map<string, FileStamp> | nul
     if (!stats) return null;
     return new Map(stats.map(stat => [stat.path, stampOf(stat)]));
   } catch (e) {
-    logError('dataCache: statFiles failed', e instanceof Error ? e.message : String(e));
+    logError('dataCache: statFiles failed', errorMessage(e));
     return null;
   }
 }
@@ -173,7 +167,7 @@ export function clearCachedData(): void {
   notifyCacheChanged();
 }
 
-// ---- The Inbox (docs/dev/technical-design-files-0.6.md §3.3) ----
+// ---- The Inbox (docs/dev/history/technical-design-files-0.6.md §3.3) ----
 // Inbox.txt lives outside `items` (it is no Project/Area), but every screen
 // shares this one copy: a screen's `setInbox(...)` writes here, and every
 // screen showing the Inbox re-renders from it (ui/useCachedInbox.ts). Its own
@@ -217,7 +211,7 @@ export async function reloadCachedInbox(inboxFolder: string): Promise<void> {
   try {
     setCachedInbox(await loadProjectFile('inbox', inboxFolder));
   } catch (e) {
-    logError('dataCache: Inbox reload failed', e instanceof Error ? e.message : String(e));
+    logError('dataCache: Inbox reload failed', errorMessage(e));
   }
 }
 
@@ -226,8 +220,6 @@ export function findCachedItem(path: string): CachedItem | undefined {
 }
 
 const SCAN_TIMEOUT_MS = 20000;
-/** The one-time Inbox move (technical-design-inbox-as-area.md §3.3) moves folders and rewrites links in every Project/Area file - more than one listing. */
-const INBOX_MIGRATION_TIMEOUT_MS = 60000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -252,7 +244,7 @@ async function loadOneItem(kind: 'project' | 'area', name: string, path: string)
     const file = await loadProjectFile(kind, path);
     return {kind, name, path, ...file};
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = errorMessage(e);
     logError('dataCache: item load failed', path, message);
     return {
       kind,
@@ -284,18 +276,17 @@ async function loadOneItem(kind: 'project' | 'area', name: string, path: string)
 }
 
 /**
- * ONE-TIME MIGRATION (2026-09-14, docs/dev/technical-design-project-area-
+ * ONE-TIME MIGRATION (docs/dev/technical-design-project-area-
  * abbreviations.md) - fills in a generated `abbrev` for every item that
  * doesn't have one yet, every time the cache does a full rebuild (which
- * already runs automatically on every plugin open/foreground - App.tsx's
- * `reorient` - so real items pick one up on their own shortly after this
- * ships, no separate action needed). Idempotent: only touches items with
- * `abbrev === null`, so running it again after everything already has one
- * is a fast no-op scan. Tilman's call (2026-09-14 chat) was "one time pass
- * ... then we can remove that again": once every real Project/Area has
- * picked one up (spot-check, or a rebuild with nothing left to fill),
- * DELETE this function and its one call site in doRebuildCache below - the
- * `abbrev` field stays, this is just the backfill for items that predate it.
+ * runs automatically on plugin open/foreground - App.tsx's `reorient` - so
+ * real items pick one up on their own, no separate action needed).
+ * Idempotent: only touches items with `abbrev === null`, so running it again
+ * after everything has one is a fast no-op scan. Meant as a one-time pass:
+ * once every real Project/Area has picked one up (spot-check, or a rebuild
+ * with nothing left to fill), DELETE this function and its one call site in
+ * doRebuildCache below - the `abbrev` field stays, this is just the backfill
+ * for items that predate it.
  *
  * Processes items in the order doRebuildCache already produced them
  * (folder-scan order), reserving each freshly generated value into
@@ -323,7 +314,7 @@ async function migrateMissingAbbrevs(items: CachedItem[]): Promise<void> {
       item.rawContent = rawContent;
       item.abbrev = generated;
     } catch (e) {
-      logError('migrateMissingAbbrevs: failed for', item.path, e instanceof Error ? e.message : String(e));
+      logError('migrateMissingAbbrevs: failed for', item.path, errorMessage(e));
       // Left null - picked up again on the next rebuild.
     }
   }
@@ -362,7 +353,7 @@ export async function assignDefaultAbbrevIfMissing(item: CachedItem): Promise<vo
     item.abbrev = generated;
     notifyCacheChanged();
   } catch (e) {
-    logError('assignDefaultAbbrevIfMissing: failed for', item.path, e instanceof Error ? e.message : String(e));
+    logError('assignDefaultAbbrevIfMissing: failed for', item.path, errorMessage(e));
     // Left null - migrateMissingAbbrevs picks it up on the next rebuild.
   }
 }
@@ -373,23 +364,17 @@ export async function assignDefaultAbbrevIfMissing(item: CachedItem): Promise<vo
  * - a partial failure on one item doesn't fail the rebuild, it's recorded
  * on that item's `loadError` instead (see loadOneItem).
  *
- * De-duped (2026-09-11, Tilman: entering Review right after opening the
- * plugin felt like "overload" and slowed things down): App.tsx's `reorient`
- * already kicks off a background rebuild on every plugin open/foreground,
- * and separately, most screens' own `load()` falls back to `await
- * rebuildCache(...)` themselves when they find no cache yet
- * (DailyView/InboxScreen/ReviewScreen/CaptureScreen) - landing on any of
- * those screens before reorient's own background rebuild finishes used to
- * fire a second, fully redundant full-vault scan racing the first one, each
- * paying the same disk-I/O cost independently. A caller that arrives while
- * one's already running now gets that same in-flight promise back instead
- * of starting its own - same pattern as storage/googleCalendarCache.ts's
- * `refreshGoogleCalendar` / supernote/pluginPermissions.ts's `pending` map.
- * A `settings` argument arriving while another call's rebuild is already in
- * flight is silently ignored in favor of whichever settings started that
- * rebuild - accepted the same way in those other two call sites, since two
- * rebuild requests landing within milliseconds of each other essentially
- * never disagree on settings in practice.
+ * De-duped: App.tsx's `reorient` kicks off a background rebuild on every
+ * plugin open/foreground, and most screens' own `load()` falls back to
+ * `await rebuildCache(...)` when they find no cache yet (DailyView/
+ * InboxScreen/ReviewScreen/CaptureScreen). A caller that arrives while a
+ * rebuild is already running gets that same in-flight promise back instead
+ * of starting a second, redundant full-vault scan - same pattern as
+ * storage/googleCalendarCache.ts's `refreshGoogleCalendar` /
+ * supernote/pluginPermissions.ts's `pending` map. A `settings` argument
+ * arriving while another call's rebuild is in flight is ignored in favor of
+ * whichever settings started that rebuild - two rebuild requests landing
+ * within milliseconds of each other essentially never disagree on settings.
  */
 export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   if (rebuildInFlight) {
@@ -406,21 +391,6 @@ export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   return rebuildInFlight;
 }
 
-/**
- * `resolvePaths(settings)` with the Inbox at its EFFECTIVE location
- * (docs/dev/technical-design-inbox-as-area.md §3.3) - for storage code that
- * starts from settings rather than from the cache. Reuses the cache's answer
- * when it was built for the same folders, otherwise checks the disk.
- */
-export async function resolveLivePaths(settings: GtdParaSettings): Promise<ResolvedParaPaths> {
-  const configured = resolvePaths(settings);
-  const fromCache = cached?.paths;
-  if (fromCache && fromCache.base === configured.base && fromCache.areas === configured.areas) {
-    return withInboxFolder(configured, fromCache.inboxFolder === fromCache.base ? configured.base : configured.inboxFolder);
-  }
-  return withInboxFolder(configured, await effectiveInboxFolderFor(configured));
-}
-
 interface FolderItem {
   kind: 'project' | 'area';
   name: string;
@@ -428,7 +398,7 @@ interface FolderItem {
 }
 
 /** Lists the Projects and Areas folders (2 calls) - the item folders the cache holds. */
-async function scanItemFolders(paths: ResolvedParaPaths, hiddenAreaFolder: string | null): Promise<FolderItem[]> {
+async function scanItemFolders(paths: ResolvedParaPaths): Promise<FolderItem[]> {
   const [projectEntries, areaEntries] = await Promise.all([
     withTimeout(listFolderEntries(paths.projects), SCAN_TIMEOUT_MS, `scanning projects (${paths.projects})`),
     withTimeout(listFolderEntries(paths.areas), SCAN_TIMEOUT_MS, `scanning areas (${paths.areas})`),
@@ -436,8 +406,8 @@ async function scanItemFolders(paths: ResolvedParaPaths, hiddenAreaFolder: strin
   return [
     ...projectEntries.filter(e => e.isFolder).map(e => ({kind: 'project' as const, name: e.name, path: e.path})),
     ...areaEntries
-      // The Inbox folder lives under Areas but is never an Area (§3.2).
-      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== hiddenAreaFolder)
+      // The Inbox folder lives under Areas but is never an Area.
+      .filter(e => e.isFolder && e.path.replace(/\/+$/, '') !== paths.inboxFolder)
       .map(e => ({kind: 'area' as const, name: e.name, path: e.path})),
   ];
 }
@@ -450,21 +420,8 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
     throw new Error('File read permission was not granted.');
   }
 
-  // Inbox as a folder under Areas (docs/dev/technical-design-inbox-as-area.md
-  // §3.3): run the one-time move first, then publish where the Inbox really
-  // is - every screen addresses the Inbox through these cached paths.
-  const configuredPaths = resolvePaths(settings);
-  // Timed out like the scans below, so a stuck listing can't hang the
-  // rebuild; a move still running then simply finishes in the background.
-  await withTimeout(migrateInboxIfNeeded(configuredPaths), INBOX_MIGRATION_TIMEOUT_MS, 'moving the Inbox').catch(e =>
-    logError('rebuildCache: Inbox move did not finish', e instanceof Error ? e.message : String(e)),
-  );
-  const inboxFolder = await withTimeout(effectiveInboxFolderFor(configuredPaths), SCAN_TIMEOUT_MS, 'locating the Inbox').catch(e => {
-    logError('rebuildCache: locating the Inbox failed', e instanceof Error ? e.message : String(e));
-    return configuredPaths.inboxFolder;
-  });
-  const paths = withInboxFolder(configuredPaths, inboxFolder);
-  const folderItems = await scanItemFolders(paths, hiddenAreaFolderFor(configuredPaths));
+  const paths = resolvePaths(settings);
+  const folderItems = await scanItemFolders(paths);
 
   // Stamps first, then the reads: a file changed in between just gets read
   // again on the next refresh (technical-design-files-0.6.md §3.2).
@@ -492,7 +449,7 @@ async function doRebuildCache(settings: GtdParaSettings): Promise<DataCache> {
 }
 
 /**
- * Incremental refresh (docs/dev/technical-design-files-0.6.md §3.2) - what
+ * Incremental refresh (docs/dev/history/technical-design-files-0.6.md §3.2) - what
  * App.tsx runs on every plugin open. Re-reads only the data files that
  * changed on disk since they were read (Obsidian, sync, a file copied in),
  * picks up added and removed Project/Area folders, and the Inbox. Falls back
@@ -525,7 +482,6 @@ function samePaths(cachedPaths: ResolvedParaPaths, configured: ResolvedParaPaths
     cachedPaths.base === configured.base &&
     cachedPaths.projects === configured.projects &&
     cachedPaths.areas === configured.areas &&
-    // Differs while an old root Inbox hasn't moved yet: the full rebuild retries the move.
     cachedPaths.inboxFolder === configured.inboxFolder
   );
 }
@@ -541,7 +497,7 @@ async function doRefreshCache(settings: GtdParaSettings): Promise<DataCache> {
     throw new Error('File read permission was not granted.');
   }
   const paths = current.paths;
-  const folderItems = await scanItemFolders(paths, hiddenAreaFolderFor(configuredPaths));
+  const folderItems = await scanItemFolders(paths);
   const dataFiles = folderItems.map(f => dataFilePath(f.kind, f.path));
   const stamps = await statStamps([...dataFiles, paths.inbox]);
   if (!stamps) {
@@ -563,7 +519,7 @@ async function doRefreshCache(settings: GtdParaSettings): Promise<DataCache> {
     Promise.all(toRead.map(({folder}) => loadOneItem(folder.kind, folder.name, folder.path))),
     inboxStampChanged
       ? loadProjectFile('inbox', paths.inboxFolder).catch(e => {
-          logError('refreshCache: Inbox read failed', e instanceof Error ? e.message : String(e));
+          logError('refreshCache: Inbox read failed', errorMessage(e));
           return null;
         })
       : Promise.resolve(null),
@@ -723,8 +679,8 @@ export function updateItemMonthlyGoals(
 
 /**
  * Write-through for a save that changed ONLY a section no cached field is
- * parsed from (the close-out plan's `## Close-out` section - docs/technical-
- * design-project-close-out.md §4.2). Every other save builds on
+ * parsed from (the close-out plan's `## Close-out` section -
+ * docs/dev/history/technical-design-project-close-out.md §4.2). Every other save builds on
  * `item.rawContent`, so skipping this would make the next task/meeting save
  * silently write the old section back.
  */
@@ -772,7 +728,7 @@ export type FrontMatterSource = Pick<
 
 /**
  * An item's current frontmatter as one `FrontMatterFields` object
- * (docs/dev/technical-design-monthly-view.md §2.1) - the ONE place that knows
+ * (docs/dev/history/technical-design-monthly-view.md §2.1) - the ONE place that knows
  * which flat item fields make up the frontmatter. Every save builds
  * `{...frontMatterOf(item), <changed field>}`, so a field a call site
  * doesn't touch is always carried through unchanged.
@@ -809,8 +765,8 @@ export function updateItemFrontMatter(path: string, rawContent: string, fm: Fron
 
 /**
  * Drops `path` from the cache entirely - used after storage/archive.ts
- * moves an item's folder out of Projects/Areas, since it's no longer under
- * either root and every other write-through here assumes the item stays
+ * moves an item's folder out of Projects/Areas, since it then sits under
+ * neither root and every other write-through here assumes the item stays
  * put. No-op if there's no cache yet or the item isn't in it.
  */
 export function removeCachedItem(path: string): void {

@@ -16,19 +16,18 @@
  * because for Todo's Row 3 the page number *also* decides whether
  * FlowStateChips shows at all - page 0 keeps the flow chips and a narrow tag
  * capacity, page 1+ drops them for a wide one (technical-design-context-
- * tags.md §8's "the flow-state tags should also be swapped out" correction).
- * QuickAddWidget needs to know the current page to make that call, so page
- * state lives there, reset (back to 0) whenever the create/edit target
- * changes - alongside its existing wasEditingRef transition effect.
+ * tags.md §8). QuickAddWidget needs to know the current page to make that
+ * call, so page state lives there, reset (back to 0) whenever the
+ * create/edit target changes - alongside its wasEditingRef transition
+ * effect.
  *
- * `page0Width`/`laterWidth` (bugfix 2026-09-29, replaces the old fixed
- * `page0Capacity`/`laterCapacity` chip counts, which let long/pinned tags
- * overflow the card and cover the attachment ✕ - see ui/tagChipLayout.ts):
- * the pixel budget for page 0 and for every later page, measured by the
- * caller. Todo's page 0 is narrower (flow chips share the row); Meeting's
- * page 0 loses the time field's width; Note passes the same value for both.
- * Pages are packed by estimated chip width, pinned tags included, and
- * labels over 8 characters are shortened with "…".
+ * `page0Width`/`laterWidth` (see ui/tagChipLayout.ts): the pixel budget for
+ * page 0 and for every later page, measured by the caller. Todo's page 0 is
+ * narrower (flow chips share the row); Meeting's page 0 loses the time
+ * field's width; Note passes the same value for both. Pages are packed by
+ * estimated chip width, pinned tags included, and labels over 8 characters
+ * are shortened with "…", so long/pinned tags can't overflow the card and
+ * cover the attachment ✕.
  */
 import React, {useEffect} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -43,19 +42,17 @@ interface Props {
   /** From storage/tagUsage.ts's getRecentTags, most-recent-first. */
   recentTags: string[];
   /**
-   * Lowercased abbreviations of every Active-or-On-Hold Project/Area
-   * (feature: uppercase tag display, 2026-09-18, chat decision) - a chip
-   * whose tag is in this set renders uppercase (`#ATR`) instead of as-typed
-   * (`#atr`), so a recognized Project/Area tag is "immediately visible as
-   * such" in the tag list, same treatment for both pinned and suggested
-   * chips. Display-only: the tag string passed to `onInsertTag`/
-   * `onRemoveTag`, and the value matched against `text`, are untouched -
-   * abbreviations stay case-insensitive everywhere else, same as always.
-   * Computed by the caller (`ui/QuickAddWidget.tsx`, from the same cached-
-   * items read `domain/abbrev.ts`'s `resolveAbbrevFileTarget` already uses)
-   * rather than here, so this component doesn't need its own `storage/`
-   * dependency or `ItemStatus` import for what's otherwise a pure display
-   * primitive.
+   * Lowercased abbreviations of every Active-or-On-Hold Project/Area - a
+   * chip whose tag is in this set renders uppercase (`#ATR`) instead of
+   * as-typed (`#atr`), so a recognized Project/Area tag is immediately
+   * visible as such in the tag list, for both pinned and suggested chips.
+   * Display-only: the tag string passed to `onInsertTag`/`onRemoveTag`, and
+   * the value matched against `text`, are untouched - abbreviations stay
+   * case-insensitive everywhere else. Computed by the caller
+   * (`ui/QuickAddWidget.tsx`, from the same cached-items read
+   * `domain/abbrev.ts`'s `resolveAbbrevFileTarget` uses) rather than here,
+   * so this component doesn't need its own `storage/` dependency or
+   * `ItemStatus` import for what's otherwise a pure display primitive.
    */
   recognizedTags: Set<string>;
   page: number;
@@ -145,9 +142,9 @@ const styles = StyleSheet.create({
     flexWrap: 'nowrap',
     alignItems: 'center',
     flexShrink: 1,
-    // Safety net (bugfix 2026-09-29): if a width estimate ever runs short,
-    // the last chip is cut at this edge instead of painting over the
-    // attachment cluster or past the card.
+    // Safety net: if a width estimate ever runs short, the last chip is cut
+    // at this edge instead of painting over the attachment cluster or past
+    // the card.
     overflow: 'hidden',
   },
   chip: {

@@ -1,9 +1,9 @@
 /**
- * Moving a todo or meeting together with its note (docs/dev/technical-design-
- * files-0.6.md §3.4). Every place that moves an entry to another Project,
- * Area or the Inbox (Inbox filing, quick-file on edit, Current's Refile,
- * close-out's checklist) runs its own append-then-remove write inside
- * `moveEntryWithNote`, which first takes care of the note:
+ * Moving a todo or meeting to another Project, Area or the Inbox, together
+ * with its note (docs/dev/history/technical-design-files-0.6.md §3.4). Every move in
+ * the app (Inbox filing, quick-file on edit, Current's Refile, Daily/Week
+ * refile, close-out's checklist) calls `moveTask`/`moveMeeting`, which run
+ * the write inside `moveEntryWithNote`. That first takes care of the note:
  *
  * 1. Plan (domain/noteRelocation.ts): none / missing / own / shared.
  * 2. Confirm in the status slot, only when a note file is affected (own note
@@ -24,11 +24,23 @@
 import {ConfirmText, noteMoveConfirmText, noteMoveDoneText} from '../domain/fileChangeText';
 import {planNoteRelocation, relocatedNotePath} from '../domain/noteRelocation';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
-import {Meeting, Task} from '../domain/types';
+import {Destination} from '../domain/destination';
+import {GtdParaKind, Meeting, Task} from '../domain/types';
 import {displayPath, ensureFolderExists, moveFile} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
+import {getCachedData, getCachedInbox, setCachedInbox} from './dataCache';
 import {collisionFreeName} from './fileNaming';
+import {
+  addMeetingToDestination,
+  addTaskToDestination,
+  InboxContext,
+  MutationResult,
+  mutateEntryMeetings,
+  mutateEntryTasks,
+} from './itemMutations';
 import {classifyNotePath} from './noteLinks';
+import {loadProjectFile} from './projectFile';
+import {errorMessage} from '../utils/errorMessage';
 
 /** The screen side of a move: a status-slot confirm and a success message (ui/useEntryMoveUi.ts). */
 export interface EntryMoveUi {
@@ -118,9 +130,95 @@ export async function moveEntryWithNote<T extends Task | Meeting>(
   try {
     await write({...entry, notePath: relocatedNotePath(plan, newName)});
   } catch (e) {
-    logError('moveEntryWithNote: data write failed after the note moved', to, e instanceof Error ? e.message : String(e));
+    logError('moveEntryWithNote: data write failed after the note moved', to, errorMessage(e));
     throw e;
   }
   ui.done(noteMoveDoneText(title, target.name));
   return true;
+}
+
+/** Where a moved entry lives now: a Project/Area folder, or the Inbox folder (kind `inbox`). */
+export interface EntrySource {
+  kind: GtdParaKind;
+  path: string;
+}
+
+/** Where it goes: the Inbox, or a Project/Area. */
+export type MoveTarget = Destination;
+
+/** A Project/Area pick (filing picker, abbreviation quick-file) as a MoveTarget. */
+export function itemTarget(t: {kind: 'project' | 'area'; name: string; path: string}): MoveTarget {
+  return {type: 'item', kind: t.kind, name: t.name, path: t.path};
+}
+
+const NOT_LOADED = 'Files not loaded yet - Settings → Advanced → Reload all files.';
+
+function inboxFolder(): string {
+  const folder = getCachedData()?.paths.inboxFolder;
+  if (!folder) throw new Error(NOT_LOADED);
+  return folder;
+}
+
+/** The shared Inbox for a write, loaded first when no screen has read it yet. */
+async function inboxContext(): Promise<InboxContext> {
+  const inboxPath = inboxFolder();
+  let inbox = getCachedInbox();
+  if (!inbox) {
+    inbox = await loadProjectFile('inbox', inboxPath);
+    setCachedInbox(inbox);
+  }
+  return {inbox, inboxPath};
+}
+
+function applyInbox(result: MutationResult): void {
+  if (result.nextInbox) setCachedInbox(result.nextInbox);
+}
+
+function targetFolder(target: MoveTarget): {path: string; name: string} {
+  return target.type === 'inbox' ? {path: inboxFolder(), name: 'Inbox'} : {path: target.path, name: target.name};
+}
+
+/**
+ * Moves the task at `index` in `source` to `target`, stored as `updated`
+ * (the row's task, or its edited version for "save, but file elsewhere").
+ * Appends to the target first, then removes from the source: a failure in
+ * between leaves a duplicate, never a loss. Files, the shared cache and the
+ * shared Inbox are all updated, so screens just re-render. Returns the task
+ * as written to the target, or null when the user cancelled the note confirm.
+ */
+export async function moveTask(source: EntrySource, index: number, updated: Task, target: MoveTarget, ui: EntryMoveUi): Promise<Task | null> {
+  let written: Task | null = null;
+  await moveEntryWithNote({entry: updated, entryKind: 'task', sourceFolder: source.path, target: targetFolder(target)}, ui, async moved => {
+    applyInbox(await addTaskToDestination(moved, target, await inboxContext()));
+    applyInbox(
+      await mutateEntryTasks({item: source, taskIndex: index, task: updated}, tasks => tasks.filter((_, i) => i !== index), await inboxContext()),
+    );
+    written = moved;
+  });
+  if (written) log('moveTask:', source.path, index, '->', targetFolder(target).name);
+  return written;
+}
+
+/** Meeting counterpart of moveTask. */
+export async function moveMeeting(
+  source: EntrySource,
+  index: number,
+  updated: Meeting,
+  target: MoveTarget,
+  ui: EntryMoveUi,
+): Promise<Meeting | null> {
+  let written: Meeting | null = null;
+  await moveEntryWithNote({entry: updated, entryKind: 'meeting', sourceFolder: source.path, target: targetFolder(target)}, ui, async moved => {
+    applyInbox(await addMeetingToDestination(moved, target, await inboxContext()));
+    applyInbox(
+      await mutateEntryMeetings(
+        {item: source, meetingIndex: index, meeting: updated},
+        meetings => meetings.filter((_, i) => i !== index),
+        await inboxContext(),
+      ),
+    );
+    written = moved;
+  });
+  if (written) log('moveMeeting:', source.path, index, '->', targetFolder(target).name);
+  return written;
 }

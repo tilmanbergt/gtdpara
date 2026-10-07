@@ -1,96 +1,58 @@
 /**
  * Cross-project aggregation for the Daily view (design-overview.md §5.2).
  *
- * Previously this did its own full scan-and-read of every Project/Area on
- * every open (the thing that "will get slow" as the number of them grows).
- * Now it's a pure, synchronous transform over whatever storage/dataCache.ts
- * already has loaded in memory - no filesystem I/O here at all, so this is
- * effectively instant regardless of how many Projects/Areas exist. Getting
- * the cache warm (and keeping it warm) is dataCache.ts's job, not this
- * file's.
+ * A pure, synchronous transform over whatever storage/dataCache.ts already
+ * has loaded in memory - no filesystem I/O here, so this stays fast however
+ * many Projects/Areas exist. Keeping the cache warm is dataCache.ts's job.
  *
- * Scope (narrowed 2026-09-10, docs/dev/technical-design-daily-todo-filter.md;
- * widened again 2026-09-16, Tilman feedback): an open (not done, not
- * cancelled) task shows here if its due date is today, tomorrow, or earlier
- * (overdue included - `dueDate <= tomorrowDate` covers all three in one
- * comparison, since any earlier date is also `<= tomorrowDate`), OR it's
- * tagged #next AND it belongs to a Project/Area currently in *daily,
- * weekly or monthly* focus (`domain/destination.ts`'s `isFocused` - the same "focused
- * floats to top" check groupDailyTasksByItem below already uses) - #next
- * alone is no longer enough, and being unfocused entirely is no longer
- * enough either; only the combination of both qualifies a task through this
- * leg. This is a deliberate narrowing from the original focus feature's rule
- * (§5's history): back then, ANY open task belonging to a focused Project/
- * Area showed here regardless of its own tags, which meant a busy focused
- * project could flood Daily. Now focus only ever surfaces that item's #next
- * task(s), not everything it has open. A task tagged Someday or Maybe
- * (technical-design-tags.md §3) is excluded outright, even if it would
- * otherwise qualify by due date or focus membership. A Waiting For task has
- * its own rule instead (docs/dev/technical-design-waiting-for-0.7.md W1):
- * it shows when it has no date or its date is today or earlier - from any
- * Project, Area or the Inbox, focused or not - and stays hidden while its
- * date is still in the future (domain/flowState.ts's
- * isWaitingForShownOnDaily). Weekly focus was originally excluded from this leg entirely
- * ("reserved for a future week view") - widened 2026-09-16 once Tilman
- * pointed out that a weekly-focused item's #next task wasn't actually
- * surfaced anywhere else either: `storage/weeklyAggregate.ts`'s Week-view
- * focus cards only ever show a *count* of open #next tasks, never the tasks
- * themselves, so a weekly-focused-only item's next action was invisible
- * everywhere, not just "handled elsewhere." Monthly focus joined the same
- * leg 2026-09-28 (docs/dev/technical-design-review-monthly-focus.md §1) for the
- * same reason - `isFocused` now covers all three levels. Meetings are unaffected by any
- * of this: still filtered to today or tomorrow, not cancelled, soonest
- * first, same as before.
+ * Scope (docs/dev/history/technical-design-daily-todo-filter.md): an open (not done,
+ * not cancelled) task shows here if its due date is today, tomorrow, or
+ * earlier (`dueDate <= tomorrowDate` covers all three), OR it's tagged #next
+ * AND it belongs to a Project/Area currently in daily, weekly or monthly
+ * focus (`domain/destination.ts`'s `isFocused`). Focus alone does not
+ * qualify a task - only its #next task(s) - so a busy focused project can't
+ * flood Daily. Weekly and monthly focus count because nothing else shows a
+ * weekly/monthly-focused item's #next tasks: the Week view's focus cards
+ * only show a count (docs/dev/history/technical-design-review-monthly-focus.md §1).
+ * A task tagged Someday or Maybe (technical-design-tags.md §3) is excluded
+ * outright. A Waiting For task has its own rule
+ * (docs/dev/history/technical-design-waiting-for-0.7.md W1): it shows when it has no
+ * date or its date is today or earlier - from any Project, Area or the
+ * Inbox, focused or not - and stays hidden while its date is still in the
+ * future (domain/flowState.ts's isWaitingForShownOnDaily). Meetings: today
+ * or tomorrow, not cancelled, soonest first.
  *
- * A #next task that falls out of Daily under this rule (its item isn't
- * daily- or weekly-focused, and it isn't due soon either) doesn't just
- * vanish unaccounted-for: storage/reviewAggregate.ts's `unfocusedNextItems`
- * bucket surfaces exactly these items on a dedicated Weekly Review step,
- * with a one-tap "Add to Daily/Weekly focus" action and per-task Someday/
- * Maybe/Done/Cancel/Set-due-date actions - see that file's own doc comment.
+ * A #next task that falls out of Daily under this rule is not lost:
+ * storage/reviewAggregate.ts's `unfocusedNextItems` bucket surfaces these
+ * items on a dedicated Weekly Review step, with focus and per-task actions.
  *
- * Inbox (docs/dev/technical-design-inbox-tab.md §3, 2026-09-03): Inbox.txt's own
- * tasks/meetings are folded into this same aggregate rather than being
- * DailyView's own always-shown, unfiltered section as before - a synthetic
- * `DailyItemRef` (INBOX_ITEM below) stands in for "the Project/Area this
- * came from" so Inbox entries can flow through the exact same
- * grouping/labeling code (groupDailyTasksByItem, the Calendar column's
- * source subtext) that Project/Area entries already use, for free. Inbox has
- * no Project/Area to be "in daily focus" for, so the 2026-09-10 narrowing
- * above doesn't reach it the same way: an Inbox #next task keeps showing
- * unconditionally, same as before this change - only its due-date leg widens
- * to match (`<= tomorrowDate`). The alternative (dropping Inbox #next
- * visibility entirely, since it can never satisfy an "and it's focused" leg
- * that doesn't apply to it) would just make Inbox #next tasks invisible on
- * Daily until triaged out, which reads as an accidental regression rather
- * than an intended one - decided explicitly, not an oversight. Inbox
- * meetings use the identical today/tomorrow rule, unchanged.
+ * Inbox (docs/dev/history/technical-design-inbox-tab.md §3): Inbox.txt's own
+ * tasks/meetings are folded into this same aggregate - a synthetic
+ * `DailyItemRef` (INBOX_ITEM below) stands in for "the Project/Area this came
+ * from", so Inbox entries flow through the same grouping/labeling code
+ * (groupDailyTasksByItem, the Calendar column's source subtext). Inbox can
+ * never be focused, so an Inbox #next task always shows (otherwise it would
+ * be invisible on Daily until triaged - a deliberate choice); its due-date
+ * leg is the same `<= tomorrowDate`. Inbox meetings use the same
+ * today/tomorrow rule.
  *
- * Context tags (technical-design-context-tags.md §6, 2026-09-11): the
- * optional `contextTag` param below is a *hard* filter, not an additive one
- * - when set, every rule above is replaced (not widened) for that call:
- * only tasks/meetings whose `tags` include it show at all. Among those
- * matches, every open task qualifies whatever its flow state or date
- * (Waiting For with a future date and Someday included) - only Maybe never
- * qualifies, tag match or not. Meetings keep their existing today/tomorrow/not-
- * cancelled checks unchanged, just ANDed with the tag match.
+ * Context tags (technical-design-context-tags.md §6): the optional
+ * `contextTag` param below is a *hard* filter - when set, every rule above is
+ * replaced for that call: only tasks/meetings whose `tags` include it show.
+ * Among those matches, every open task qualifies whatever its flow state or
+ * date (Waiting For with a future date and Someday included) - only Maybe
+ * never qualifies. Meetings keep their today/tomorrow/not-cancelled checks,
+ * ANDed with the tag match.
  *
- * Project/Area-aware (docs/dev/technical-design-project-area-abbreviations.md,
- * 2026-09-14, Tilman: "if the daily tag filter is used: it should identify
- * if a tag refers to an area or project and then show all tasks and
- * meetings of that project / area (independent of the actual tag being
- * present)"): before filtering, `contextTag` is resolved against `items`'
- * own abbrevs (domain/abbrev.ts's resolveAbbrevPath, case-insensitive, same
- * uniqueness the abbrev feature enforces at save time). When it resolves,
- * the tag-match condition above becomes a union, not a replacement - a
- * task/meeting counts if it carries the literal tag OR belongs to that
- * resolved item, so every task and meeting under a Project/Area's `#AT`
- * filter shows even if none of them happen to be tagged `#AT` themselves.
- * When `contextTag` matches no item's abbrev (an ordinary flow-state/
- * context tag, or simply no match), this degrades to the tag-only behavior
- * above, unchanged. Never reaches the synthetic Inbox item - Inbox has no
- * abbrev, so `contextItemPath` (a real Project/Area's path) can never equal
- * `inboxPath`.
+ * Project/Area-aware (docs/dev/history/technical-design-project-area-abbreviations.md):
+ * before filtering, `contextTag` is resolved against `items`' own abbrevs
+ * (domain/abbrev.ts's resolveAbbrevPath, case-insensitive). When it
+ * resolves, the tag-match condition becomes a union - a task/meeting counts
+ * if it carries the literal tag OR belongs to that resolved item, so every
+ * task and meeting of a Project/Area shows under its `#AT` filter even when
+ * not tagged `#AT` itself. When `contextTag` matches no abbrev, the tag-only
+ * behavior above applies. Never reaches the synthetic Inbox item - Inbox has
+ * no abbrev, so `contextItemPath` can never equal `inboxPath`.
  */
 import {entriesInRange, entryDate, MeetingSpanDay} from '../domain/meetingSpan';
 import {resolveAbbrevPath} from '../domain/abbrev';
@@ -105,15 +67,15 @@ export interface DailyItemRef {
   kind: GtdParaKind;
   name: string;
   path: string;
-  /** Carried through from CachedItem (2026-09-03 Daily-cleanup pass) so groupDailyTasksByItem below can sort focused items first without a second cache lookup - always derivable purely from CachedItem, same "cache always reproducible" rule as everything else here (design-overview.md §3). Always false for the synthetic Inbox item below - Inbox can't be daily/weekly-focused. */
+  /** Carried through from CachedItem so groupDailyTasksByItem below can sort focused items first without a second cache lookup - always derivable purely from CachedItem, same "cache always reproducible" rule as everything else here (design-overview.md §3). Always false for the synthetic Inbox item below - Inbox can't be daily/weekly-focused. */
   dailyFocus: boolean;
   weeklyFocus: boolean;
   monthlyFocus: boolean;
-  /** This item's short abbreviation (docs/dev/technical-design-project-area-abbreviations.md), carried through the same way `dailyFocus`/`weeklyFocus` are - what the Calendar column's trailing badge (ui/MeetingRow.tsx) displays instead of the full name. Always null for the synthetic Inbox item below - Inbox isn't a Project/Area and has no abbrev of its own. */
+  /** This item's short abbreviation (docs/dev/history/technical-design-project-area-abbreviations.md), carried through the same way `dailyFocus`/`weeklyFocus` are - what the Calendar column's trailing badge (ui/MeetingRow.tsx) displays instead of the full name. Always null for the synthetic Inbox item below - Inbox isn't a Project/Area and has no abbrev of its own. */
   abbrev: string | null;
 }
 
-/** The synthetic "source item" Inbox tasks/meetings carry - see the module doc comment's "Inbox" note. `path` is `inboxPath` itself, the same address storage/projectFile.ts's loadProjectFile('inbox', inboxPath) already uses. Exported (2026-09-11) for docs/dev/technical-design-now-focus-mode.md's buildNowEntries below, which needs the same synthetic ref. */
+/** The synthetic "source item" Inbox tasks/meetings carry - see the module doc comment's "Inbox" note. `path` is `inboxPath` itself, the same address storage/projectFile.ts's loadProjectFile('inbox', inboxPath) uses. Exported for docs/dev/history/technical-design-now-focus-mode.md's buildNowEntries below, which needs the same synthetic ref. */
 export function inboxItemRef(inboxPath: string): DailyItemRef {
   return {kind: 'inbox', name: 'Inbox', path: inboxPath, dailyFocus: false, weeklyFocus: false, monthlyFocus: false, abbrev: null};
 }
@@ -148,7 +110,7 @@ export interface DailyInboxInput {
   meetings: Meeting[];
 }
 
-/** Pure in-memory aggregation over already-cached items plus (2026-09-03) Inbox.txt's own tasks/meetings - see the module doc comment. `inboxPath` addresses the synthetic Inbox item (inboxItemRef above); ignored when `inbox` is null. */
+/** Pure in-memory aggregation over already-cached items plus Inbox.txt's own tasks/meetings - see the module doc comment. `inboxPath` addresses the synthetic Inbox item (inboxItemRef above); ignored when `inbox` is null. */
 function buildDailyAggregateImpl(
   items: CachedItem[],
   inbox: DailyInboxInput | null,
@@ -231,9 +193,9 @@ function buildDailyAggregateImpl(
         if (isWaitingForShownOnDaily(task, todayDate)) tasks.push({item, taskIndex, task});
         return;
       }
-      // #next stays unconditional here (no daily-focus leg to combine it
-      // with - see the module doc comment's "Inbox" note); due-date leg
-      // widened to match the main loop above.
+      // #next stays unconditional here (no focus leg to combine it with - see
+      // the module doc comment's "Inbox" note); same due-date leg as the main
+      // loop above.
       const isNext = task.flowState === 'next';
       const isDueSoonOrOverdue = task.dueDate !== null && task.dueDate <= tomorrowDate;
       if (isNext || isDueSoonOrOverdue) {
@@ -259,7 +221,7 @@ export function dailyEntryDate(entry: DailyMeetingEntry): string {
 
 /**
  * Every task currently carrying #now, across every item plus Inbox -
- * docs/dev/technical-design-now-focus-mode.md §6's state A ("Working the set").
+ * docs/dev/history/technical-design-now-focus-mode.md §6's state A ("Working the set").
  * Deliberately NOT built on top of buildDailyAggregate's own `tasks` array:
  * that one excludes done tasks outright (the normal Daily-view rule), but
  * focus mode needs a #now task to keep showing, checked, right up until the
@@ -302,17 +264,13 @@ function buildNowEntriesImpl(
 }
 
 /**
- * Focus mode's Picker state (docs/dev/technical-design-now-focus-mode.md §6,
+ * Focus mode's Picker state (docs/dev/history/technical-design-now-focus-mode.md §6,
  * state C) - every not-done, not-cancelled Next task belonging to a
- * currently daily-, weekly- or monthly-focused Project/Area (`domain/destination.ts`'s
- * `isFocused` - widened 2026-09-16, Tilman feedback, to match
- * dailyAggregate.ts's own now-widened #next leg above and
- * reviewAggregate.ts's `unfocusedNextItems` criterion, so all three agree on
- * what counts as "focused enough" for a #next task; originally this only
- * read the `dailyFocus` flag). No new query - just a different filter over
- * the same already-cached `items`. Inbox is deliberately excluded - it can
- * never be focused (daily or weekly), and the Picker's own framing ("this
- * week's focused Projects/Areas") doesn't reach it.
+ * currently daily-, weekly- or monthly-focused Project/Area
+ * (`domain/destination.ts`'s `isFocused`), the same "focused" test as the
+ * #next leg above and reviewAggregate.ts's `unfocusedNextItems`, so all
+ * three agree. No new query - just a different filter over the same
+ * already-cached `items`. Inbox is excluded - it can never be focused.
  */
 function buildFocusCandidateEntriesImpl(items: CachedItem[]): DailyTaskEntry[] {
   const entries: DailyTaskEntry[] = [];
@@ -342,17 +300,14 @@ export interface DailyTaskGroup {
 
 /**
  * Groups an already-built DailyAggregate's tasks by source Project/Area
- * (technical-design-daily-compact-ui.md §3, 2026-09-03 Daily-cleanup pass).
- * Group order: the Inbox group (docs/dev/technical-design-inbox-tab.md §3) always
- * sorts first when present - not-yet-triaged items get visual priority over
- * even a focused Project/Area, a proposed default rather than an explicitly
- * confirmed one, easy to flip if it reads wrong once seen. After that:
- * daily/weekly-focused items first (domain/destination.ts's isFocused, same
- * convention as ItemsList.tsx/destinationCandidates), then whatever order
- * entries arrived in (Array.prototype.sort is stable, so a plain
- * compare-by-focused over the already-built entries is enough). Within a
- * group, task order is the order buildDailyAggregate produced (file order),
- * except that Waiting For todos move to the end of their group.
+ * (technical-design-daily-compact-ui.md §3). Group order: the Inbox group
+ * (docs/dev/history/technical-design-inbox-tab.md §3) always sorts first when
+ * present - not-yet-triaged items get visual priority over even a focused
+ * Project/Area. After that: daily/weekly-focused items first
+ * (domain/destination.ts's isFocused), then arrival order
+ * (Array.prototype.sort is stable). Within a group, task order is the order
+ * buildDailyAggregate produced (file order), except that Waiting For todos
+ * move to the end of their group.
  */
 function groupDailyTasksByItemImpl(entries: DailyTaskEntry[]): DailyTaskGroup[] {
   const byPath = new Map<string, DailyTaskGroup>();
@@ -376,22 +331,22 @@ function groupDailyTasksByItemImpl(entries: DailyTaskEntry[]): DailyTaskGroup[] 
   });
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see buildDailyAggregateImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see buildDailyAggregateImpl above for the actual logic. */
 export function buildDailyAggregate(...args: Parameters<typeof buildDailyAggregateImpl>): ReturnType<typeof buildDailyAggregateImpl> {
   return perfTime('agg:daily', () => buildDailyAggregateImpl(...args));
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see buildNowEntriesImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see buildNowEntriesImpl above for the actual logic. */
 export function buildNowEntries(...args: Parameters<typeof buildNowEntriesImpl>): ReturnType<typeof buildNowEntriesImpl> {
   return perfTime('agg:nowEntries', () => buildNowEntriesImpl(...args));
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see buildFocusCandidateEntriesImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see buildFocusCandidateEntriesImpl above for the actual logic. */
 export function buildFocusCandidateEntries(...args: Parameters<typeof buildFocusCandidateEntriesImpl>): ReturnType<typeof buildFocusCandidateEntriesImpl> {
   return perfTime('agg:focusCandidates', () => buildFocusCandidateEntriesImpl(...args));
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see groupDailyTasksByItemImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see groupDailyTasksByItemImpl above for the actual logic. */
 export function groupDailyTasksByItem(...args: Parameters<typeof groupDailyTasksByItemImpl>): ReturnType<typeof groupDailyTasksByItemImpl> {
   return perfTime('agg:groupDailyTasks', () => groupDailyTasksByItemImpl(...args));
 }

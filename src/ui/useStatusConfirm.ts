@@ -1,7 +1,7 @@
 /**
- * A confirm in the status slot (docs/dev/technical-design-status-slot.md),
+ * A confirm in the status slot (docs/dev/history/technical-design-status-slot.md),
  * as a Promise: resolves `true` on the confirm button, `false` on ✕.
- * Generalized from useNoteCreateConfirm (docs/dev/technical-design-files-0.6.md
+ * Generalized from useNoteCreateConfirm (docs/dev/history/technical-design-files-0.6.md
  * §3.4), which now wraps it.
  *
  * Only one confirm per hook at a time: a second request while one is showing

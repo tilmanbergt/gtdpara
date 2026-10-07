@@ -31,7 +31,7 @@ type FocusCountSetting =
   | 'monthlyFocusAreaCount';
 
 /**
- * One row of config per focus level (docs/dev/technical-design-monthly-view.md
+ * One row of config per focus level (docs/dev/history/technical-design-monthly-view.md
  * §4.1) - the frontmatter flag, the two Settings slot counts, and the label
  * used in messages. Adding a level is one more row here, not another
  * branch in every function below.
@@ -49,11 +49,6 @@ export const FOCUS_SCOPES: Record<
 export function focusLimit(kind: FocusKind, scope: FocusScope, settings: GtdParaSettings): number {
   const cfg = FOCUS_SCOPES[scope];
   return settings[kind === 'project' ? cfg.project : cfg.area];
-}
-
-/** Whether `item` currently has `scope` focus. */
-export function hasFocus(item: Pick<CachedItem, FocusField>, scope: FocusScope): boolean {
-  return item[FOCUS_SCOPES[scope].field];
 }
 
 /** How many `kind` items currently have `scope` focus set. */
@@ -100,7 +95,7 @@ export function focusBlockedReason(
  * the module doc comment, or use `toggleItemFocus` below, which does.
  *
  * Every other frontmatter field is carried through unchanged via
- * `frontMatterOf` (docs/dev/technical-design-monthly-view.md §2.1).
+ * `frontMatterOf` (docs/dev/history/technical-design-monthly-view.md §2.1).
  */
 export async function setItemFocus(
   item: Pick<CachedItem, 'kind' | 'path' | 'rawContent'> & FrontMatterSource,

@@ -1,5 +1,5 @@
 /**
- * The shared day panel (docs/dev/technical-design-meeting-lists.md §2.6) - one
+ * The shared day panel (docs/dev/history/technical-design-meeting-lists.md §2.6) - one
  * day's meetings as the standard MeetingList, with a Google mini-tab, used by
  * Daily (tabs Today | Tomorrow | Google), and by Week and Month (tabs
  * Meetings (n) | Google plus a Close button). Replaces ui/MonthDayPanel.tsx.
@@ -11,7 +11,8 @@
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {formatFullDate} from '../domain/meetingTime';
+import {formatDayHeader} from '../domain/dateFormat';
+import {todayIso} from '../domain/meetingTime';
 import MeetingList from './MeetingList';
 import {MeetingRowLayout} from './MeetingRow';
 import MiniTabs, {MiniTabDef} from './MiniTabs';
@@ -82,7 +83,7 @@ export default function DayMeetingsPanel<T, K extends string>({
           <MeetingList
             listId="dayPanel"
             defaultLayout="twoLine"
-            header={`${formatFullDate(date)} · ${count} meeting${count === 1 ? '' : 's'}`}
+            header={`${formatDayHeader(date, todayIso())} · ${count} meeting${count === 1 ? '' : 's'}`}
             rows={entries}
             renderRow={renderRow}
             resetKey={`${date}|${listResetKey ?? ''}`}

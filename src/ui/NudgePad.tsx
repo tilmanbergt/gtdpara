@@ -1,24 +1,18 @@
 /**
  * The single shared position/font control for a note-creation definition's
- * pieces (docs/dev/technical-design-note-templates.md §6) - Tilman's UI-draft
- * feedback round 2: "the arrows and font controls should be present only
- * once just below the preview. And then selecting a piece either on the
- * preview or in the list below makes this the one that is displayed and can
- * be adjusted." One instance per edit form, acting on whichever piece
- * `selectedPiece` currently points at - not repeated per piece row.
+ * pieces (docs/dev/history/technical-design-note-templates.md §6): shown once below
+ * the preview, acting on whichever piece `selectedPiece` points at
+ * (selected on the preview or in the list below) - not repeated per piece row.
  *
- * Kept dumb/reusable (plain callbacks in, no domain/noteTemplate.ts import)
- * rather than baked into screens/Settings.tsx, since the deferred "linked-
- * file link" piece (design doc §4) would plausibly want the same controls
- * later.
+ * Kept dumb/reusable (plain callbacks in, no domain/tagRules.ts import)
+ * rather than baked into screens/Settings.tsx, so other piece kinds (design
+ * doc §4) can use the same controls.
  *
- * Max-width ± control (2026-09-23, docs/dev/technical-design-textbox-metrics.md -
- * Tilman: "add a width parameter to the tag rules screen that defines the
- * maximum width for text pieces ... +25 -25 buttons to adjust"): same shape
- * as the Font ± control right above it, fixed ±25 step, independent of the
+ * Max-width ± control (docs/dev/history/technical-design-textbox-metrics.md): same
+ * shape as the Font ± control above it, fixed ±25 step, independent of the
  * x/y STEPS toggle. screens/Settings.tsx resolves `piece.maxWidthPx` via
- * domain/noteTemplate.ts's `pieceMaxWidthPx` before passing it down here, so
- * this component still never imports that domain module itself.
+ * domain/tagRules.ts's `pieceMaxWidthPx` before passing it down here, so
+ * this component never imports that domain module itself.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -31,11 +25,10 @@ interface SelectedPiece {
   step: number;
   /**
    * Resolved max width (device px) for this piece - always a concrete
-   * number here even though domain/noteTemplate.ts's NotePiece.maxWidthPx
+   * number here even though domain/tagRules.ts's NotePiece.maxWidthPx
    * itself is optional (screens/Settings.tsx resolves it via
    * `pieceMaxWidthPx` before handing the piece to this component, same as
-   * every other field here). 2026-09-23,
-   * docs/dev/technical-design-textbox-metrics.md.
+   * every other field here). docs/dev/history/technical-design-textbox-metrics.md.
    */
   maxWidthPx: number;
 }
@@ -46,7 +39,7 @@ interface Props {
   onNudge: (dx: number, dy: number) => void;
   onStepChange: (step: number) => void;
   onFontDelta: (delta: number) => void;
-  /** ±25 fixed step (Tilman, 2026-09-23: "+25 -25 buttons to adjust") - independent of the x/y STEPS toggle above; there's no separate step-size choice for width. */
+  /** ±25 fixed step - independent of the x/y STEPS toggle above; there's no separate step-size choice for width. */
   onMaxWidthDelta: (delta: number) => void;
   textColor: string;
   borderColor: string;

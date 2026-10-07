@@ -23,11 +23,13 @@ Build the plugin package:
 ./buildPlugin.ps1
 ```
 
-The script first stamps the build info (`scripts/gen-bundled-content.mjs --build`: version from
-`package.json`, build number, git commit, changelog → `src/generated/`, not committed), then
+The script first stamps the build info (`scripts/gen-bundled-content.mjs --build`: version and
+`nextVersion` from `package.json`, stage (`-Stage alpha|beta`), build number, git commit, changelog →
+`src/generated/`, not committed), then
 bundles the JavaScript (`npx react-native bundle`), compiles the native Android modules
 (`gradlew buildCustomApkDebug`), and packs everything into `build/outputs/gtdpara.snplg`, plus a
-copy named after the build label, e.g. `gtdpara-0.1.0+dev.a1b2c3d.snplg`.
+copy named after the build label, e.g. `gtdpara-0.9.0-alpha+a1b2c3d.snplg` (labels:
+`RELEASING.md` §4).
 
 The build number (`versionCode`) is the number of minutes since 2026-01-01 UTC, so every build
 counts as a new version for the Supernote host (see `technical-design-host-update-crash.md`). It
@@ -44,9 +46,11 @@ Releases: see `RELEASING.md`.
 
 ## Checking your changes
 
-- Type check: `npx tsc --noEmit`
-- Release/versioning scripts: `npm run test:scripts`
-- Tests: `npm test` (Jest). A useful smoke test mounts `<App />` with `react-test-renderer`.
+- Everything at once: `npm run check` (add `-- --quick` to skip Jest). It runs, in order:
+  `npx tsc --noEmit`, ESLint, `npm test` (Jest), `npm run test:scripts` and
+  `npm run code-health` (the rules are in `scripts/lib/codeHealth.mjs`; long existing files are
+  listed in `scripts/code-health-baseline.json` and may only shrink).
+- A useful smoke test mounts `<App />` with `react-test-renderer`.
   `tsc` alone cannot catch a broken default export of `App.tsx`, because `index.js` isn't type
   checked. See `design-overview.md` for the mocks this needs (`sn-plugin-lib`, AsyncStorage,
   Clipboard).
@@ -78,7 +82,9 @@ that don't exist, so `npm test` catches most slips.
 | `src/domain/` | Pure TypeScript logic: parsing, dates, tags, rules. **No React Native or `sn-plugin-lib` imports**, so it stays testable with plain Node. |
 | `src/storage/` | Reading/writing project files, cache, settings, integrations (I/O) |
 | `src/supernote/` | Thin wrappers around `sn-plugin-lib` and the native modules |
-| `src/screens/` | One component per tab/screen (Daily, Week, Month, Review, Settings, …) |
+| `src/screens/` | One component per tab/screen (Daily, Week, Month, Inbox, Current, …) |
+| `src/screens/review/` | Weekly Review: the shell (`ReviewScreen.tsx`: hub, navigation, visit record), shared data (`useReviewData.ts`, `useFrozenStepList.ts`, `reviewVisit.ts`) and one component per step in `steps/` |
+| `src/screens/settings/` | Settings: the shell (`Settings.tsx`), the Save-draft (`useSettingsDraft.ts`) and its tabs (`DraftTabs.tsx`), Advanced/About/Profiles, and Tag Rules in `tagRules/` (list, rule form, background, Add piece) |
 | `src/ui/` | Shared components (QuickAddWidget, PagedSection, MeetingRow, …) and styles |
 | `src/utils/` | Logging, performance tracing, e-ink refresh helpers |
 | `android/…/eu/embodyagile/gtdpara/` | Native modules: file access, Gmail IMAP, PDF, text measurement, runtime guard |
@@ -94,9 +100,10 @@ no history and no open work:
 - `design-philosophy.md`: the values behind the design and how they show up in it.
 - `design-device-rendering.md`: screen facts, row heights and space budgets for the A5 X.
 - `RELEASING.md`: git, build and release workflow.
+- `inkhub-listing.md`: the field values for the InkHub store listing.
 - this `README.md`.
 
-**Historical documents** record how something was decided and built. They are written once,
+**Historical documents** live in `docs/dev/history/`. They record how something was decided and built. They are written once,
 get an "As built" section when the feature ships, and are not updated afterwards - if they
 disagree with a living document, the living document is right:
 

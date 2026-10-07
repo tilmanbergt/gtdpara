@@ -14,20 +14,18 @@
  *   storage/dailyAggregate.ts's `DailyItemRef`/`inboxItemRef` for the
  *   "source item" shape (WeekView.tsx's WeeklyMeetingsColumn wants the exact
  *   same source-subtext/jump-to-item behavior DailyView's Calendar column
- *   already has - no reason to reinvent that shape).
+ *   has).
  * - `focusCards` - one entry per currently *weekly*-focused Project/Area
  *   (storage/focusSlots.ts's `weeklyFocus` flag), carrying just the counts
  *   ui/WeeklyFocusPanel.tsx's WeeklyFocusCard needs: open #next tasks, open
- *   #someday tasks (chat decision: Next and Someday only - Waiting For/Maybe
- *   don't get their own count here), and how many of that item's own
- *   meetings fall within the same week range. Deliberately not filtered by
- *   done/cancelled for the meeting count the same way tasks are - a
- *   cancelled meeting is excluded (matches every other meeting count in this
- *   codebase), but the count itself isn't "open work remaining", just "how
- *   busy is this item this week".
+ *   #someday tasks (Next and Someday only - Waiting For/Maybe don't get
+ *   their own count here), and how many of that item's own meetings fall
+ *   within the same week range. A cancelled meeting is excluded (like every
+ *   other meeting count in this codebase), but the meeting count isn't
+ *   "open work remaining", just "how busy is this item this week".
  *
- * A third piece, `historicalGoals` (V2, docs/dev/technical-design-weekly-goals.md),
- * added alongside `weekKey`: unlike `focusCards`, this is goal-driven rather
+ * A third piece, `historicalGoals` (docs/dev/history/technical-design-weekly-goals.md),
+ * is driven by `weekKey`: unlike `focusCards`, it's goal-driven rather
  * than focus-driven - every item (any kind, regardless of its *current*
  * weeklyFocus flag) that has a `## Weekly Goals` entry matching `weekKey`
  * specifically. Always computed (cheap - a filter over already-cached items,
@@ -50,15 +48,15 @@ export interface WeeklyMeetingEntry {
   /**
    * Set only for a multi-day meeting (`3d`): which covered day this entry
    * stands for. Such a meeting yields one entry per covered day in range
-   * (docs/dev/technical-design-monthly-view.md, 2026-09-23 follow-up), each
-   * listed under `span.date` with continuation arrows.
+   * (docs/dev/history/technical-design-monthly-view.md), each listed under
+   * `span.date` with continuation arrows.
    */
   span?: MeetingSpanDay;
 }
 
 export {entryDate} from '../domain/meetingSpan';
 
-/** Kept as a name for the weekly callers - the card shape is shared with the Month view since docs/dev/technical-design-monthly-view.md §4.3. */
+/** Kept as a name for the weekly callers - the card shape is shared with the Month view since docs/dev/history/technical-design-monthly-view.md §4.3. */
 export type WeeklyFocusCardData = PeriodFocusCardData;
 
 /** One item that had a goal recorded for a specific week - see storage/periodGoals.ts's findGoalsForPeriod. */
@@ -122,15 +120,15 @@ function buildWeeklyAggregateImpl(
   });
 
   // Cache order (folder scan order) is preserved for focusCards, matching
-  // ui/DailyFocusPanel.tsx's own FixedSlotSection `items.filter(...)` order
-  // today - no further sort needed since every entry here is already a
+  // ui/DailyFocusPanel.tsx's own FixedSlotSection `items.filter(...)` order -
+  // no further sort needed since every entry here is already a
   // weekly-focused item by construction.
 
   const focusCards = buildPeriodFocusCards(items, {scope: 'weekly', key: weekKey, start: weekStart, end: weekEnd});
   return {meetings, focusCards, historicalGoals: findWeeklyGoalsForWeek(items, weekKey)};
 }
 
-/** Perf-traced entry point (docs/dev/technical-design-perf-tracing.md) - see buildWeeklyAggregateImpl above for the actual logic. */
+/** Perf-traced entry point (docs/dev/history/technical-design-perf-tracing.md) - see buildWeeklyAggregateImpl above for the actual logic. */
 export function buildWeeklyAggregate(...args: Parameters<typeof buildWeeklyAggregateImpl>): ReturnType<typeof buildWeeklyAggregateImpl> {
   return perfTime('agg:weekly', () => buildWeeklyAggregateImpl(...args));
 }

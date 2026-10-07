@@ -1,5 +1,5 @@
 /**
- * Adds and removes `## Marks` lines (docs/dev/technical-design-lasso-0.8.md
+ * Adds and removes `## Marks` lines (docs/dev/history/technical-design-lasso-0.8.md
  * §3.6). Every change:
  *
  * - runs on one serial queue, so two quick marks (or a save and a discard)
@@ -20,6 +20,7 @@ import {readTextFile, writeTextFile} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
 import {applyInboxRawContent, applyItemRawContent} from './dataCache';
 import {dataFilePath} from './projectFile';
+import {errorMessage} from '../utils/errorMessage';
 
 /** The data file a mark line lives in. `folder` is the item folder, or the Inbox folder. */
 export interface MarkFileRef {
@@ -84,7 +85,7 @@ export function addMarkLine(ref: MarkFileRef, mark: Mark): Promise<void> {
       await writeAndApply(ref, next);
       log('markStore: mark added', ref.kind, mark.id);
     } catch (e) {
-      logError('markStore: adding mark failed', ref.kind, mark.id, e instanceof Error ? e.message : String(e));
+      logError('markStore: adding mark failed', ref.kind, mark.id, errorMessage(e));
       throw e;
     }
   });
@@ -108,7 +109,7 @@ export function removeMarkLine(ref: MarkFileRef, id: string): Promise<boolean> {
       log('markStore: mark removed', ref.kind, id);
       return true;
     } catch (e) {
-      logError('markStore: removing mark failed', ref.kind, id, e instanceof Error ? e.message : String(e));
+      logError('markStore: removing mark failed', ref.kind, id, errorMessage(e));
       throw e;
     }
   });
@@ -130,7 +131,7 @@ export function marksForMovedFolder(marks: Mark[], fromFolder: string, targetFol
 }
 
 /**
- * Archive (docs/dev/technical-design-lasso-0.8.md §3.10): moves the open
+ * Archive (docs/dev/history/technical-design-lasso-0.8.md §3.10): moves the open
  * marks of the item in `itemFolder` into Inbox.txt - Inbox first, then the
  * item's `## Marks` lines are cleared - before its folder moves to
  * `targetFolder`. An archived item leaves the lists, so its marks would

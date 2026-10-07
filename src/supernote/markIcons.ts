@@ -4,7 +4,7 @@
  * area, carrying `userData = gtdpara:mark:<id>`; after saving it becomes a
  * check mark (same element, new points, `:done`); Discard removes it.
  *
- * Rules from the spike (docs/dev/spike-lasso-marks.md §8):
+ * Rules from the spike (the lasso spike, docs/dev/history/technical-design-lasso-0.8.md):
  * - inserted with insertPageElements (insertGeometry can't carry userData),
  *   one retry on error 105, then saveCurrentNote (unsaved icons were lost
  *   when the note closed);
@@ -29,13 +29,13 @@ import {log, logWarn} from '../utils/log';
 import {ensureFileReadPermission, ensureFileWritePermission} from './pluginPermissions';
 import {
   ELEMENT_TYPE_GEO,
-  errorMessage,
   errText,
   recycleElements,
   SdkElement,
   SdkResponse,
   sleep,
 } from './sdkElements';
+import {errorMessage} from '../utils/errorMessage';
 
 const ICON_PEN = {penColor: 0x00, penType: 10, penWidth: 200};
 /** How many pages to look through when the icon isn't on its stored page (pages may have moved). */
