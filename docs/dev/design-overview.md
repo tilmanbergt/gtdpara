@@ -227,7 +227,7 @@ repeated known key or one without a value is kept as an unknown field. Dates are
   abbreviation.
 - **due date** is the `[due:: YYYY-MM-DD]` field, not a tag (`setDueInLine` on a composed line,
   `withTaskDue` on a Task); for a Waiting For task it is the follow-up date. An older
-  `#due:YYYY-MM-DD` tag is still read and is removed when the due date is next set.
+  `#due:YYYY-MM-DD` tag is still read; a Quick Add edit or `withTaskDue` removes it.
 - **bare state tags** (`RESERVED_BARE_TAGS`): `#now` (focus mode), `#prepped`/`#reviewed`
   (meeting tracking, §2.6), `#monthly` (Month highlight, §2.7).
 - **context tags**: everything else (`isContextTag`), including nested tags `#coaching/sabina`
