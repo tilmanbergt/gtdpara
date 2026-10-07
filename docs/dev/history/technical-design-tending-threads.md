@@ -672,8 +672,10 @@ code-health baseline and must not grow: the provenance line and seed logic go in
 
 ## 7. Open points
 
-- Whether the Tasks plugin accepts our field order (T0). If not, `meeting` moves after the Tasks
-  fields or becomes a tag-free text marker; the rest of the design is unaffected.
+- T0 passed (Obsidian Tasks with "Task Format: Dataview"): the full line, and variants with
+  `[created::]`, `[meeting::]`, `→ [[note]]` or `#wf/…` before `[due::]`, all show their due date.
+  With the default emoji format Tasks ignores the fields, so the help page for Obsidian tells
+  users to switch that setting.
 - How Supernote Cloud Sync handles the rename (`.txt` deleted + `.md` created in the vault, or a
   leftover `.txt`). Tested in the demo space before converting real data; the release notes say
   what to expect.
