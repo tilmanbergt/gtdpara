@@ -36,7 +36,7 @@ Tap a nested tag in a todo or meeting, on any screen: Daily, Week, Month, Inbox,
 
 ## The place it covers
 
-The overview belongs to the project or area of the row you tapped. It shows that area together with the projects assigned to it; a project with an assigned area shows its whole area. A project without an area and the Inbox each stand on their own. So `#retro/alpha` in one area is a different thread from `#retro/alpha` in another. The header shows the tag and where you are, for example `#retro/alpha in Coaching`.
+The overview belongs to the project or area of the row you tapped. It shows that area together with the projects assigned to it; a project with an assigned area shows its whole area. A project without an area and the Inbox each stand on their own. So `#retro/alpha` in one area is a different thread from `#retro/alpha` in another. A todo counts where it is filed: one agreed in a meeting but sent to the Inbox shows in the meeting's thread once you file it into that project or area. The header shows the tag and where you are, for example `#retro/alpha in Coaching`.
 
 ## Thread or all of the counterpart
 

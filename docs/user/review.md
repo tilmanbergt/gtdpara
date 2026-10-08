@@ -15,7 +15,7 @@ Tap a step to open it. Inside a step:
 ## The steps
 
 - **Week ahead**: this week's meetings and focus; from Friday to Sunday the coming week
-- **Meetings to close out**: past meetings (last 7 days) whose review is still open. A todo you add there records the meeting it came from and gets the meeting's thread tag (the grey line in Quick Add, see [Threads](threads.md))
+- **Meetings to close out**: past meetings (last 7 days) whose review is still open. A todo you add there records the meeting it came from, so it shows under **I owe** in that meeting's thread (the grey line in Quick Add, see [Threads](threads.md))
 - **Gmail inbox**: only with the experimental Gmail integration, see [integrations](integrations.md)
 - **Inbox to zero**: file or finish everything in the Inbox. Open lasso marks count too; the card **n marks to process** opens them, see [Lasso](lasso.md)
 - **Stalled projects**: active projects without any open todo you can act on. Someday and Maybe todos don't count (Waiting for does); you can promote one of them to Next with one tap.

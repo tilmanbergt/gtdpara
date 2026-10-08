@@ -48,7 +48,8 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
 - **Inbox + lasso capture** from handwriting, or **Mark for later** in one tap and process the marks later
 - **Weekly Review** hub with one clear step at a time
 - **Threads**: tap a nested tag like `#retro/alpha` for everything around a person, team or meeting
-  series - next meetings, what you owe, what you wait for, what was agreed in past meetings
+  series - next meetings, what you owe, what you wait for, what is relevant, what was agreed in
+  past meetings and what got done since
 - Works with **Obsidian** (Tasks and Dataview) through the Supernote Cloud Sync plugin
 - **Note templates** (Tag Rules): new notes come with a background and pre-filled context; shared
   notes can be split by tag, nested tag and date, e.g. one file per coaching client and year
