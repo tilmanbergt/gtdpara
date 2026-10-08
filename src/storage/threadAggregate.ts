@@ -87,14 +87,16 @@ export interface ThreadInboxInput {
   meetings: Meeting[];
 }
 
-interface Source {
+/** One Project/Area or the Inbox with its lists. */
+export interface ThreadSource {
   ref: ThreadItemRef;
   tasks: Task[];
   meetings: Meeting[];
 }
 
-function sourcesOf(items: readonly CachedItem[], inbox: ThreadInboxInput | null): Source[] {
-  const sources: Source[] = items
+/** Every Project/Area that loaded, then the Inbox. */
+export function threadSourcesOf(items: readonly CachedItem[], inbox: ThreadInboxInput | null): ThreadSource[] {
+  const sources: ThreadSource[] = items
     .filter(item => !item.loadError)
     .map(item => ({
       ref: {kind: item.kind, name: item.name, path: item.path, abbrev: item.abbrev},
@@ -112,7 +114,7 @@ function startKey(m: Meeting): string {
 }
 
 /** The item holding the thread's latest meeting - the owner when none was given. */
-function fallbackOwner(sources: readonly Source[], thread: ThreadRef): ThreadItemRef | null {
+function fallbackOwner(sources: readonly ThreadSource[], thread: ThreadRef): ThreadItemRef | null {
   let best: {ref: ThreadItemRef; key: string} | null = null;
   for (const source of sources) {
     for (const m of source.meetings) {
@@ -139,7 +141,7 @@ export function buildThreadOverview(
   if (!thread) return null;
   const today = todayIso(now);
   const nowMs = now.getTime();
-  const all = sourcesOf(items, inbox);
+  const all = threadSourcesOf(items, inbox);
 
   const ownerRef = ownerPath
     ? all.find(s => s.ref.path === ownerPath)?.ref ?? null

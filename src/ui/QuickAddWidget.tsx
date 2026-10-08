@@ -148,6 +148,8 @@ import {usePerfRender} from '../utils/perf';
 import {useAbbrevItems} from './useAbbrevItems';
 import {useOnScreenHide} from './screenActivity';
 import {common} from './commonStyles';
+import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
+import ProvenanceLine, {QuickAddProvenance} from './quickAdd/ProvenanceLine';
 import {errorMessage} from '../utils/errorMessage';
 
 /** The fields of a meeting being added or edited; other files import this type from here. */
@@ -414,21 +416,16 @@ interface Props {
   noteFolderPath?: string | null;
 
   /**
-   * One-shot "put this text into the create draft" request (Gmail inbox
-   * review: selected email text -> Todo/Meeting, see
-   * docs/dev/history/technical-design-gmail-body-select.md). Acts exactly when `nonce`
-   * changes (a fresh `{...}` object with the SAME nonce does nothing, so a
-   * caller can hold it in state without it re-firing on every re-render):
-   * switches to the Todo or Meeting tab and APPENDS `text` to that draft's
-   * task text / meeting title, separated by one space when the field already
-   * has content (several passages can be collected into one item).
-   * Line breaks and repeated whitespace in `text` are collapsed to single
-   * spaces first (a Todo/Meeting title is one line). Ignored while an edit
-   * is open (the tabs are locked then) and for `kind: 'meeting'` on a
-   * `taskOnly` widget. Never touches date/time/flow state, never focuses
-   * a field (no soft keyboard pop-up on e-ink).
+   * Appends text to the Todo or Meeting create draft and shows that tab, once
+   * per nonce (ui/quickAdd/useDraftRequests.ts) - Gmail inbox review's
+   * selected email text. Line breaks collapse to spaces; never touches
+   * date/time/flow state or focuses a field (no soft keyboard on e-ink).
    */
-  prefill?: {kind: 'task' | 'meeting'; text: string; nonce: number} | null;
+  prefill?: DraftPrefill | null;
+  /** "+ Next <type>": replaces the Meeting draft and shows the Meeting tab, once per nonce (ui/quickAdd/useDraftRequests.ts). */
+  meetingSeed?: MeetingSeed | null;
+  /** Create mode, Todo tab: one grey line saying what the screen adds to the new todo, with ✕ (ui/quickAdd/ProvenanceLine.tsx). */
+  provenance?: QuickAddProvenance | null;
 
   /** Task input only; defaults to "New task" everywhere. */
   placeholder?: string;
@@ -467,6 +464,8 @@ function QuickAddWidget({
   onAddNote,
   noteFolderPath = null,
   prefill,
+  meetingSeed,
+  provenance,
   placeholder = 'New task',
   textColor,
   borderColor,
@@ -689,37 +688,36 @@ function QuickAddWidget({
     lastTargetKeyRef.current = isEditingNow ? editTargetKey : undefined;
   }, [editingTask, editingMeeting, editTargetKey]);
 
-  // Applies a caller's one-shot `prefill` request (see the prop's doc
-  // comment). Keyed on the nonce only - `prefill` itself may be a fresh
-  // object on every parent render. `handledPrefillNonceRef` additionally
-  // guards against a remount/StrictMode double-run applying the same request
-  // twice (which would append the text twice).
-  const handledPrefillNonceRef = useRef<number | null>(prefill ? prefill.nonce : null);
-  useEffect(() => {
-    if (!prefill || prefill.nonce === handledPrefillNonceRef.current) return;
-    handledPrefillNonceRef.current = prefill.nonce;
-    if (isEditing) return;
-    const addition = prefill.text.replace(/\s+/g, ' ').trim();
-    if (!addition) return;
-    const appendTo = (current: string): string => (current.trim() ? `${current.replace(/\s+$/, '')} ${addition}` : addition);
-    if (prefill.kind === 'task') {
+  // Puts `draft` into the Meeting create draft and shows the Meeting tab
+  // ("New from this", "+ Next", a meeting prefill).
+  const showMeetingDraft = (draft: MeetingDraft, copyNote: string | null) => {
+    setMeetingDraft(draft);
+    meetingLastSelectionRef.current = null;
+    setMeetingTagPage(0);
+    setMeetingJustAdded(null);
+    setMeetingAddedWhen(null);
+    setMeetingCopyNote(copyNote);
+    setError(null);
+    setActiveType('meeting');
+  };
+  useDraftRequests(prefill, meetingSeed, editFields !== null, {
+    text: (kind, addition) => {
+      const appendTo = (current: string): string => (current.trim() ? `${current.replace(/\s+$/, '')} ${addition}` : addition);
+      if (kind === 'meeting') {
+        if (!taskOnly) showMeetingDraft({...meetingDraft, title: stripSpaceAfterHash(appendTo(meetingDraft.title))}, null);
+        return;
+      }
       setTaskDraft(d => ({...d, text: stripSpaceAfterHash(appendTo(d.text))}));
       taskLastSelectionRef.current = null;
       setTaskJustAdded(null);
       setTaskTagPage(0);
       setActiveType('task');
-    } else if (!taskOnly) {
-      setMeetingDraft(d => ({...d, title: stripSpaceAfterHash(appendTo(d.title))}));
-      meetingLastSelectionRef.current = null;
-      setMeetingJustAdded(null);
-      setMeetingAddedWhen(null);
-      setMeetingCopyNote(null);
-      setMeetingTagPage(0);
-      setActiveType('meeting');
-    }
-    setError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefill?.nonce]);
+      setError(null);
+    },
+    seed: fields => {
+      if (!taskOnly) showMeetingDraft({title: fields.title, date: fields.date, time: formatMeetingWhen(fields), monthly: false}, null);
+    },
+  });
 
   // Focusing the right field on edit-start has to be its own effect, keyed
   // off `editFields` (state) rather than done inline in the seeding effect
@@ -1038,14 +1036,10 @@ function QuickAddWidget({
       draftTitle = insertTagAtPosition(displayTitle, origin.abbrev, null).text;
     }
     // M is not carried over - highlights are hand-picked per meeting.
-    setMeetingDraft({title: draftTitle, date: fields.date, time: fields.time, monthly: false});
-    meetingLastSelectionRef.current = null;
-    setMeetingTagPage(0);
-    setMeetingJustAdded(null);
-    setMeetingAddedWhen(null);
-    setMeetingCopyNote(`Copied "${truncateItemName(displayTitle, 16)}" - adjust, then Add`);
-    setError(null);
-    setActiveType('meeting');
+    showMeetingDraft(
+      {title: draftTitle, date: fields.date, time: fields.time, monthly: false},
+      `Copied "${truncateItemName(displayTitle, 16)}" - adjust, then Add`,
+    );
     onCancelEdit();
   };
 
@@ -2141,6 +2135,7 @@ function QuickAddWidget({
       {taskRow3}
       {meetingRow3}
       {noteRow3}
+      {provenance && displayType === 'task' && !isEditing ? <ProvenanceLine provenance={provenance} textColor={textColor} /> : null}
       {row4}
       {captureBelow}
     </View>
