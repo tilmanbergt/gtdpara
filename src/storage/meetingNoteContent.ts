@@ -70,6 +70,7 @@ import {
   resolvedSharedFileName,
   resolveNoteTemplate,
   ruleSubtag,
+  ruleTypeTag,
 } from '../domain/tagRules';
 import {NoteCreationPlan} from '../domain/noteCreationPlan';
 import {
@@ -672,6 +673,7 @@ async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
     renderSharedFileName({
       template: resolvedSharedFileName(definition),
       ruleName: definition.name,
+      tag: ruleTypeTag(tags, definition.tags),
       subtag: ruleSubtag(tags, definition.tags),
       date: params.fileDate,
     }),
