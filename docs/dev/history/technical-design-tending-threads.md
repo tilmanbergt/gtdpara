@@ -2,8 +2,8 @@
 
 Status: **design approved (all decisions in §4).** Requirements were clarified in conversation (October
 2026); the UX draft is a design canvas outside the repository. 0.10.0 is implemented on
-`feature/plain-files` (steps 1–3 of §3.1, As built §8); 0.11.0 on `feature/threads` (As built §9);
-0.12.0 is not started.
+`feature/plain-files` (steps 1–3 of §3.1, As built §8) and released; 0.11.0 on `feature/threads`
+(As built §9) and released; 0.12.0 is not started.
 
 **Revision (device test of 0.10.0):** the data files stay `.txt`. Supernote Cloud accepts `.md`
 files uploaded by the device and lets Obsidian download them, but refuses `.md` uploads from
@@ -21,6 +21,16 @@ with Sven). `#owe/<counterpart>` records a promise made outside a meeting. Looki
 "Since <date>" row for todos done since the latest past meeting. §1.2, §1.4, §1.5, §3.2–§3.4,
 §3.5.2, §3.7, §3.9.2, §3.10, §3.11 and §6 are updated; §9 records what was built before this
 revision.
+
+**Revision (before 0.12.0, decisions D16–D20):** 0.12.0 was designed before D12–D15 and before
+0.11.0 was built. Counterparts now belong to the **scope** (the Area with its Projects), not to
+each file, so a counterpart is confirmed once per Area (D16). One-off `#wf/x` and `#owe/x`
+counterparts (no meeting thread) are tended like the others but marked as such (D17). The Inbox
+takes no part in counterpart status and the roster (D18). Setting a counterpart inactive offers
+all three groups (I owe, Waiting for, Relevant) for close-out (D19). "Back in use" stays
+meeting-based (D20). Everything in 0.12.0 uses the same three relations as the overview: the
+Threads tab, its filter, the roster, the Review panel and the "Since last time" piece. §1.3,
+§1.5, §3.9–§3.11, §4, §5 and §6 are updated.
 
 This document covers one feature delivered in three releases:
 
@@ -98,25 +108,36 @@ overall?"). A type lens ("all retros") is out of scope.
 **Both lenses are scoped to one place** (§1.3): `#retro/alpha` in one Area is a different thread
 from `#retro/alpha` in another Area.
 
-### 1.3 Counterparts live per Area/Project file
+### 1.3 Counterparts live per scope
 
-- A counterpart is owned by the Area/Project file whose todos or meetings use it. The same leaf
-  can live independently in several files.
 - **Scope.** Every overview has an owner: the Project/Area (or the Inbox, which is treated like
   any Area) of the row whose tag was tapped, or the page/roster entry it was opened from. Its
   **scope** is the owner's Area together with the Projects assigned to that Area: an owner Project
   with an assigned Area widens to that Area; a Project without one is its own scope; the Inbox is
   its own scope. Both lenses only show meetings and todos inside the scope, including plain-leaf
   items.
+- **A counterpart belongs to a scope** (decision D16): to an Area together with its Projects, or
+  to a Project without an Area. Its status line lives in that scope's owner file: `area.txt` for
+  an Area and its Projects, `project.txt` for a Project without an Area. `#101/mieke` used in the
+  Atruvia Area and in one of its Projects is one counterpart, confirmed once. The same leaf in
+  another Area is a different counterpart.
 - Status lives on the counterpart, not on threads: `active` or `inactive` only. Threads under a
   counterpart are derived from use.
 - New counterparts are **confirmed**, never written silently: Review and the Threads tab offer
   "Tend" (writes `active`) or "Not" (writes `inactive`).
-- Setting a counterpart inactive with open items runs a short close-out (Done / Cancel / Keep per
-  item). Inactive counterparts leave the Review roster and the tag suggestions; their overview
-  and history keep working.
-- An archived Project takes its counterparts along.
-- The Inbox is an owner like any Area (no special case); it can have counterparts too.
+- **One-off counterparts** (decision D17): a counterpart used only through `#wf/x` or `#owe/x`,
+  with no meeting thread, is a counterpart like any other (new, confirmed, tended), but it is
+  marked wherever counterparts are listed (label "w/f only", "owe only" or "w/f · owe only"), so
+  a one-off waiting-for or promise stands out from an ongoing relationship. It never shows
+  "next —" as a hint, since no meeting is expected.
+- Setting a counterpart inactive with open items runs a short close-out over its I owe, Waiting
+  for and Relevant todos (Done / Cancel / Keep per item, decision D19). Inactive counterparts
+  leave the Review roster and the tag suggestions; their overview and history keep working.
+- An archived Project takes along the counterparts of its own section (a Project without an
+  Area); counterparts of an Area stay with the Area.
+- **The Inbox takes no part in counterpart status** (decision D18): no `## Threads` section in
+  `Inbox.txt`, no New confirmations, no roster entry. The overview still treats the Inbox as an
+  owner (D9); the Inbox is meant to be emptied soon.
 
 ### 1.4 File format (decided)
 
@@ -155,12 +176,13 @@ from `#retro/alpha` in another Area.
 - Current page, Files area: tabs become Project Files | Resources | Area Files | **Threads**
   (Area page: Area Files | Resources | Project Files | **Threads**). Browse merges into
   Project Files and appears only while it is needed (§3.9.4).
-- Threads tab: New (Tend / Not), Active (expandable into threads with next date and "+ next";
-  `wf/<counterpart>` listed as a thread), Inactive (folded). Tapping a counterpart filters the
-  right side; › opens its overview.
-- Review "Tending threads": master-detail; left the New block and active counterparts per
-  Area/Project (two lines: last · next meeting / I owe · oldest Waiting For); right a compact
-  panel with "Open overview" and "Set inactive".
+- Threads tab: New (Tend / Not), Active (expandable into its meeting threads with next date and
+  "+ next"; `wf` and `owe` are not threads and show as counts on the counterpart row), Inactive
+  (folded). One-off counterparts carry their label (D17). Tapping a counterpart filters the right
+  side by the three relations of §1.2.1; › opens its overview.
+- Review "Tending threads": master-detail; left the New block and active counterparts per scope
+  (two lines: last · next meeting, or the one-off label / I owe · oldest Waiting For); right a
+  compact panel with "Open overview" and "Set inactive".
 - "+ Next <type>" copies the latest meeting of the thread (title, tags, time, length) to the
   next date: last date + last interval, stepped forward past today.
 
@@ -538,6 +560,11 @@ editor offers `{tag}` as a tappable placeholder like the others.
 
 - One line per counterpart: `- <leaf>: active|inactive`, lowercase. Room for later columns
   after a comma (`- client-a: active, ~3w`), ignored until a feature reads them.
+- The section lives in the scope's owner file (D16): `area.txt` for an Area and its Projects,
+  `project.txt` for a Project without an Area; never in `Inbox.txt` (D18). A Project with an Area
+  has no section of its own; a section found there anyway (hand edit, or a Project assigned to an
+  Area later) is read and merged into the Area's view, and the next status write for that leaf
+  goes to the Area's file.
 - Parsed by `domain/threadsSection.ts` (`parseThreadsSpan` / `writeThreadsIntoContent`,
   span-scoped, unknown lines kept). `CachedItem.threads` / `threadsExtraLines`, write-through
   `updateItemThreads` in `storage/dataCache.ts`.
@@ -546,11 +573,19 @@ editor offers `{tag}` as a tappable placeholder like the others.
 
 #### 3.9.2 Which counterparts exist
 
-`counterpartsOf(item, ruleTypes)` (pure): every counterpart of a nested tag whose type is in
-`ruleTypes` (Tag Rule tags plus `wf` and `owe`) in the item's tasks and meetings (not cancelled, done included), plus every line of its `## Threads` section. Each
-gets `status: 'active' | 'inactive' | 'new'` (new = in use, no line yet) and its types.
+`counterpartsOf(scope, items, ruleTypes)` (pure): every counterpart of a nested tag whose type is
+in `ruleTypes` (Tag Rule tags plus `wf` and `owe`) in the tasks and meetings of all items of the
+scope (not cancelled, done included), plus every line of the scope's `## Threads` section(s).
+Each gets `status: 'active' | 'inactive' | 'new'` (new = in use, no line yet), its meeting
+threads (types other than `wf`/`owe`) and `oneOff: 'wf' | 'owe' | 'wf+owe' | null` (D17: no
+meeting thread, only `wf` and/or `owe` use). Scopes are the Areas (with their Projects) and the
+Projects without an Area, Active and On Hold; the Inbox is not a scope here (D18).
 
-**Decision D2 (decided, extended by D13):** only nested tags whose type is a Tag Rule tag (any enabled rule, any context), `wf` or `owe` make counterparts. Other nested tags (`#tax/2026`) stay plain context tags: no confirmation, no Threads line. They still open the overview when tapped (thread lens only).
+**Decision D2 (decided, extended by D13 and D17):** only nested tags whose type is a Tag Rule tag
+(any enabled rule, any context), `wf` or `owe` make counterparts. Counterparts made only by `wf`
+or `owe` are one-off counterparts: tended like the others, labelled. Other nested tags
+(`#tax/2026`) stay plain context tags: no confirmation, no Threads line. They still open the
+overview when tapped (thread lens only).
 
 **Decision D3 (decided):** "reactivate on reuse" is asked where counterparts are tended, not
 while saving: an inactive counterpart that gets a new future meeting appears in Review's and the
@@ -560,10 +595,10 @@ every save on six screens.
 #### 3.9.3 Close-out when setting inactive
 
 `ui/CounterpartCloseOut.tsx` (used by Review and the Threads tab): lists the counterpart's open
-todos and Waiting Fors in this owner file (`buildThreadOverview` counterpart lens, filtered to the
-owner) with Done / Cancel / Keep per item (Keep is the default). "Set inactive" applies them
-through `storage/itemMove.ts`'s `closeTask` (extended to use `withTaskDone`), then writes the
-status line. No open items → a single confirmation.
+todos in the scope in the overview's three groups (`buildThreadOverview` counterpart lens: I owe,
+Waiting for, Relevant; decision D19), each with Done / Cancel / Keep (Keep is the default). "Set
+inactive" applies them through `storage/itemMove.ts`'s `closeTask` (using `withTaskDone`), then
+writes the status line. No open items → a single confirmation.
 
 #### 3.9.4 Threads tab on the Current page
 
@@ -576,28 +611,39 @@ status line. No open items → a single confirmation.
   the top of the Project Files list shows a row "Other Projects/Areas ›" that opens Browse in
   the same slot. Outside arming, Browse is not offered (opening another item works from the
   Projects/Areas tabs).
-- `screens/thread/ThreadsTab.tsx` (in the Files area's viewport, paged with `PagedSection`):
-  New (Tend / Not), Active (row: leaf, "last · next", "n open · w/f nd"; ▾ expands threads with
-  next date and "+ next"; › opens the counterpart overview), Inactive (folded, one row "n
-  inactive ▸").
+- `screens/thread/ThreadsTab.tsx` (in the Files area's viewport, paged with `PagedSection`) lists
+  the counterparts of the page's scope (on a Project with an Area: the Area's counterparts that
+  this Project's entries use; on an Area: all of the scope's). New (Tend / Not), Active (row:
+  leaf, "last · next" or the one-off label, "n owe · w/f nd" from the overview's I owe and oldest
+  Waiting for; ▾ expands its meeting threads, never `wf`/`owe`, with next date and "+ next"; ›
+  opens the counterpart overview), Inactive (folded, one row "n inactive ▸"). Tend / Not and Set
+  inactive write to the scope's owner file (D16).
 - Tapping a counterpart sets a filter in `ItemDetail` that `ProjectDataPanel` receives as
-  `counterpartFilter?: {leaf: string; types: string[]} | null`: Todos and Meetings show only
-  matching entries (indexes computed against the full arrays first), with a "<leaf> ✕" pill
-  above Quick Add. The filter is view state only.
+  `counterpartFilter?: {leaf: string; types: string[]} | null`: Todos show only entries that
+  belong to the counterpart in any of the three ways of §1.2.1 (agreed in one of its meetings,
+  `#owe/<leaf>`, `#wf/<leaf>`, a thread tag of it or the plain leaf; the same predicate the
+  aggregate uses), Meetings only those carrying a thread of it or the leaf. Indexes are computed
+  against the full arrays first; a "<leaf> ✕" pill sits above Quick Add. The filter is view state
+  only.
+- `ProjectDataPanel.tsx` is in the code-health baseline and must not grow: the filter logic goes
+  into a hook or helper, after a preparatory extraction with no change in behaviour.
 
 ### 3.10 Review step "Tending threads" (0.12.0)
 
 - `domain/reviewSteps.ts`: `{id: 'tendingThreads', title: 'Tending threads', kind: 'ritual'}`,
   placed after "Meetings to close out". Count = new + active counterparts.
-- `storage/threadAggregate.ts`'s `buildTendingRoster(items, inbox, today)`: per Project/Area
-  (Active and On Hold), its new and active counterparts with signals: last meeting date, next
-  meeting date or none, open I-owe count (§1.2.1: agreed or `#owe`), oldest Waiting For age. No sorting by urgency: groups in
-  the Projects/Areas order, counterparts alphabetically.
+- `storage/threadAggregate.ts`'s `buildTendingRoster(items, inbox, today)`: per scope (an Area
+  with its Projects, or a Project without an Area; Active and On Hold; no Inbox, D18), its new and
+  active counterparts with signals from the overview's counterpart lens: last meeting date, next
+  meeting date or none (one-off counterparts show their label instead), open I-owe count, oldest
+  Waiting For age. No sorting by urgency: scopes in the Areas/Projects order, counterparts
+  alphabetically.
 - `screens/review/steps/TendingThreadsStep.tsx` with `ReviewMasterDetail`: left the roster
   (frozen list as in other steps; New block on top), right `screens/thread/ThreadSummary.tsx`
   (next meetings or "+ Next <type>", I owe, Waiting for, Relevant, the last 3 past meetings,
   "Open overview ›", "Set inactive"). "Open overview" opens the overlay over Review; Back returns to the
   step as it was.
+- One-off counterparts carry their label in the roster and the New block (D17).
 - Recap counts: confirmed, set inactive, next meetings added.
 
 ### 3.11 "Since last time" note piece (0.12.0)
@@ -608,7 +654,9 @@ status line. No open items → a single confirmation.
   item, as of the moment the note is written. Blocks: "Agreed last time" (todos agreed in the
   previous meeting of the thread, open first, then done), "I owe" (other open I-owe todos),
   "Waiting for", "Relevant", "Done since <date>". Previous = the latest meeting of the thread
-  before this one.
+  before this one. Each todo appears once: a todo agreed last time stays in "Agreed last time"
+  (open or done) and is left out of the other blocks; the rest follow the overview's precedence.
+  With five blocks of at most 6 lines, the piece can reach about 35 lines; check it on paper.
 - `renderPieceText` formats it as in the UX draft; at most **6 lines per block**, then
   "… +N more" (decision D10, decided). Empty blocks are omitted; no previous meeting → the
   piece renders nothing.
@@ -620,7 +668,7 @@ status line. No open items → a single confirmation.
 | # | Decision | Proposal |
 |---|---|---|
 | D1 | Overview as an overlay over the tab content | **decided:** yes, for a start (§3.5.1) |
-| D2 | Which nested tags make counterparts | **decided:** Tag Rule types plus `wf` (§3.9.2) |
+| D2 | Which nested tags make counterparts | **decided:** Tag Rule types plus `wf` and `owe` (§3.9.2; D13, D17) |
 | D3 | Reactivation | **decided:** asked in Review/Threads tab, not at save (§3.9.2) |
 | D4 | Browse merge | **decided:** Browse replaces Project Files while arming; "Other Projects/Areas ›" during link-arming (§3.9.4) |
 | D5 | Migration | **withdrawn:** data files stay `.txt`, no conversion pass (§3.1.5) |
@@ -634,6 +682,11 @@ status line. No open items → a single confirmation.
 | D13 | Promises outside meetings | **decided:** `#owe/<counterpart>` → I owe; reserved like `wf`; `#wf/x` and `#owe/x` open the counterpart lens (§1.4, §3.2, §3.7) |
 | D14 | Renamed-meeting fallback | **decided:** date + the meeting's thread tags found in the key, not the todo's tags (§3.4) |
 | D15 | Scope of agreed todos | **decided:** by where the todo is filed, like everything else; an agreed todo in the Inbox shows once it is filed (§3.2) |
+| D16 | Where a counterpart lives | **decided:** per scope (Area with its Projects, or a Project without an Area); status line in the scope's owner file; confirmed once (§1.3, §3.9.1) |
+| D17 | One-off `#wf/x` / `#owe/x` | **decided:** they make counterparts that are tended like others and labelled "w/f only" / "owe only" / "w/f · owe only"; no "next —" hint (§1.3, §3.9.2) |
+| D18 | Inbox and counterpart status | **decided:** no `## Threads` in `Inbox.txt`, no New, no roster entry; the overview keeps the Inbox as an owner (§1.3) |
+| D19 | Close-out on inactive | **decided:** I owe, Waiting for and Relevant, each Done / Cancel / Keep, Keep default (§3.9.3) |
+| D20 | "Back in use" | **decided:** stays triggered by a new future meeting only; a date in the status line is possible later (§3.9.2) |
 
 ## 5. Files
 
@@ -663,6 +716,9 @@ status line. No open items → a single confirmation.
 
 ### 0.12.0
 
+- Preparation: an extraction from `ProjectDataPanel.tsx` (baseline) with no change in behaviour,
+  so the counterpart filter fits; the open fix of the help page "Using gtdpara with Obsidian"
+  (verified Tasks setting names and example queries) as a small doc commit.
 - New: `domain/threadsSection.ts`, `storage/counterparts.ts`, `screens/thread/ThreadsTab.tsx`,
   `screens/thread/ThreadSummary.tsx`, `ui/CounterpartCloseOut.tsx`,
   `screens/review/steps/TendingThreadsStep.tsx`; tests for the section, roster, sinceLast.
@@ -699,6 +755,12 @@ code-health baseline and must not grow: the provenance line and seed logic go in
   Relevant for Sven; `#wf/cp` → Waiting for; bare `#wf` + agreed → Waiting for; counterpart lens
   collects all threads of the counterpart; "Since" row (completion ≥ latest past meeting, none
   before 0.10 data, no row without a past meeting).
+- Counterparts per scope: one counterpart for an Area and its Projects; a Project without an
+  Area on its own; the Inbox never; one-off labels (`wf` only, `owe` only, both); a stray section
+  in a Project with an Area is merged.
+- Counterpart filter and roster counts use the §1.2.1 predicate (the Mieke/Sven example on the
+  Current page).
+- sinceLast: no todo twice; agreed-last-time done stays in its block.
 - Smoke render: App with the overlay open; ThreadsTab; TendingThreadsStep.
 
 ### On the device (checklist per release)
@@ -718,9 +780,12 @@ code-health baseline and must not grow: the provenance line and seed logic go in
   Relevant for Sven; `#owe/x` shows under I owe; tapping `#w/f X` or `#owe/x` opens the
   counterpart lens; the "Since" row lists todos ticked since the last meeting; "+ Next" in the
   overlay; `{tag}` file names.
-- 0.12.0: New counterpart → Tend writes the line; Not writes inactive; Threads tab filter and ✕;
-  Browse while refiling and linking; Review step with roster, summary, "Open overview" and back;
-  set inactive with open items; "Since last time" on a new meeting note.
+- 0.12.0: New counterpart → Tend writes the line into `area.txt` (also when first used in one
+  of its Projects); Not writes inactive; a one-off `#wf/x` shows as new with "w/f only"; nothing
+  appears for Inbox-only counterparts; Threads tab filter (a todo agreed with Mieke but tagged
+  `#101/sven` shows under "mieke") and ✕; Browse while refiling and linking; Review step with
+  roster, summary, "Open overview" and back; set inactive with open items in all three groups;
+  "Since last time" on a new meeting note (each todo once).
 
 ## 7. Open points
 
