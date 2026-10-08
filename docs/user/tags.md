@@ -25,6 +25,10 @@ You type tags; gtdpara writes fields. Besides the due date it records two dates 
 
 Todos added with older versions get no created date, and a todo checked before this version gets no completion date: gtdpara never makes up a date. See [Your files and folders](files-and-folders.md) for how the line is built and how Obsidian reads it.
 
+## Promises: #owe/name
+
+`#owe/name` marks something you promised someone outside a meeting, for example `#owe/lena`. It is not a flow tag: it goes together with `#next`, `#someday` or a due date. The todo shows under **I owe** in Lena's thread overview, see [Threads](threads.md). A plain `#owe` without a name is an ordinary tag.
+
 ## Now
 
 `#now` marks what you are doing right now, on top of `#next`. It drives [focus mode](daily.md).
@@ -49,4 +53,4 @@ A tag that matches a project's or area's abbreviation (for example `#GR`) is sho
 - `#prepped` and `#reviewed`: meeting preparation and review, see [Meetings](meetings.md)
 - `#monthly`: the meeting is a monthly highlight
 
-These words, the flow words, `wf` and `now` can't be used as abbreviations.
+These words, the flow words, `wf`, `owe` and `now` can't be used as abbreviations.

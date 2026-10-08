@@ -1,8 +1,12 @@
 // docs/dev/history/technical-design-tending-threads.md §1.2, §3.2: threads, counterparts and scope.
+import {validateAbbrev} from '../../src/domain/abbrev';
+import {deriveFlowState, isContextTag} from '../../src/domain/flowState';
 import {
   belongsToCounterpart,
   belongsToThread,
   inThreadLens,
+  isCounterpartType,
+  owedTo,
   scopeOf,
   threadOf,
   threadsOfTags,
@@ -84,5 +88,27 @@ describe('scopeOf', () => {
   });
   it('keeps an unknown owner on its own', () => {
     expect(scopeOf('/elsewhere', items, inbox)).toEqual(['/elsewhere']);
+  });
+});
+
+describe('#owe/<counterpart> (D13)', () => {
+  it('names the counterparts a todo promises something to', () => {
+    expect(owedTo(['owe/sven', 'next', 'owe/sven/budget', 'owe/mieke', 'owe'])).toEqual(['sven', 'mieke']);
+    expect(owedTo(['owe', 'wf/sven'])).toEqual([]);
+  });
+  it('is not a flow state: it combines with #next and #someday', () => {
+    expect(deriveFlowState(['owe/sven', 'next'])).toBe('next');
+    expect(deriveFlowState(['owe/sven', 'someday'])).toBe('someday');
+    expect(deriveFlowState(['owe/sven'])).toBeNull();
+  });
+  it('names a counterpart, not a thread, like wf', () => {
+    expect(isCounterpartType('owe')).toBe(true);
+    expect(isCounterpartType('wf')).toBe(true);
+    expect(isCounterpartType('retro')).toBe(false);
+  });
+  it('leaves a bare #owe a plain tag, but OWE is no abbreviation', () => {
+    expect(isContextTag('owe')).toBe(true);
+    expect(validateAbbrev('OWE', [])).toEqual({valid: false, reason: {kind: 'reserved'}});
+    expect(validateAbbrev('OWEN', []).valid).toBe(true);
   });
 });

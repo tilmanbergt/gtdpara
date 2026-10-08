@@ -85,7 +85,9 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   tag `type/counterpart` inside the owner's scope (domain/threads.ts: the owner's Area plus its
   Projects; a Project without Area and the Inbox are their own scope). Header: back, tag, owner,
   lens switch (thread | all of the counterpart). Left: `AheadSection` (one paged list: next
-  meetings, I owe, Waiting for, with "+ Next <type>" in its header) above `LookingBackSection`
+  meetings, I owe, Waiting for, Relevant, with "+ Next <type>" in its header; each open todo in
+  the first of Waiting for, I owe, Relevant that applies: agreed in a meeting of the lens or
+  `#owe/<counterpart>` is I owe, the lens's tags alone are Relevant) above `LookingBackSection`
   (one two-line row per past meeting with agreed/done/open counts). Right: Quick Add, then
   `PastMeetingPanel` (the selected past meeting, the latest by default, and its agreed todos).
   Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `useThreadActions.ts`
@@ -256,7 +258,10 @@ repeated known key or one without a value is kept as an unknown field. Dates are
   (segments after `/`) and Project/Area abbreviations such as `#AT`. A nested tag is also a
   **thread** (`domain/threads.ts`): type `coaching`, counterpart `sabina`; the plain leaf
   `#sabina` belongs to the counterpart, a plain parent `#coaching` to no thread. Matching is
-  read-time only.
+  read-time only. `#owe/<counterpart>` is a promise made outside a meeting: a context tag, not a
+  flow state (it combines with `#next`, due, Someday); `owe` and `wf` name a counterpart, not a
+  thread (`isCounterpartType`: no thread lens, no "+ Next"), and `OWE` is refused as an
+  abbreviation. A bare `#owe` is a plain context tag.
 
 Helpers that edit text for a tag (`setFlowStateTag`, `setBareTag`,
 `insertTagAtPosition`, `removeTagFromText`) strip and re-append; whole-tag guards treat `/`, `-`

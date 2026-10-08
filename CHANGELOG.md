@@ -12,8 +12,9 @@ or your project/area files are stored.
 
 ### New
 - **Threads.** Tap a nested tag such as `#retro/alpha` in any todo or meeting, or a `#w/f Name`
-  label, to open its overview over the screen: next meetings, what you owe and what you are
-  waiting for, and every past meeting with what was agreed in it and how much of it is done.
+  label, to open its overview over the screen: next meetings, what you owe (agreed in its
+  meetings), what you are waiting for, what is relevant (tagged with it), and every past meeting
+  with what was agreed in it and how much of it is done.
   A switch shows the whole counterpart (`All alpha`) instead of one thread. The overview covers
   the project or area you tapped in, together with its area and that area's projects. **‹** with
   the tab's name, or any tab, closes it; the screen behind stays as it was.
@@ -24,6 +25,9 @@ or your project/area files are stored.
   another: from the overview's Quick Add, from the Review step **Meetings to close out**, and
   from a lasso capture or mark on a meeting's note page. A grey line in Quick Add
   (`↳ from Retro alpha · Wed 30.9.`) shows this before you save; ✕ drops it for that todo.
+- `#owe/name` marks a promise made outside a meeting; it shows under **I owe** in that
+  person's thread overview and combines with `#next`, `#someday` or a due date. `OWE` can't be
+  an abbreviation.
 - Tag Rules: the shared file name can contain `{tag}`, the rule tag the item matched, so one
   rule on `sparring` and `retro` names its files `sparring max 2026` and `retro alpha 2026`.
 - New help pages **Threads** and **Using gtdpara with Obsidian**.

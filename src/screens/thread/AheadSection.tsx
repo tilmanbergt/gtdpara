@@ -1,8 +1,9 @@
 /**
  * The overview's "Ahead" (docs/dev/history/technical-design-tending-threads.md
  * §3.5.2): one paged list with sub-head rows - next meetings, then what I
- * owe, then what I'm waiting for - so it never clips; when everything fits,
- * no pager shows. The header offers "+ Next <type>" for each type with a
+ * owe, what I'm waiting for and what is relevant (each todo in one of them,
+ * §1.2.1) - so it never clips; when everything fits, no pager shows. An
+ * empty sub-list shows no head. The header offers "+ Next <type>" for each type with a
  * meeting to copy (one in the thread lens, one per type in the counterpart
  * lens).
  */
@@ -37,20 +38,24 @@ interface Props {
   borderColor: string;
 }
 
+const TASK_SECTIONS: Array<{key: 'waiting' | 'owe' | 'relevant'; label: string}> = [
+  {key: 'owe', label: 'I owe'},
+  {key: 'waiting', label: 'Waiting for'},
+  {key: 'relevant', label: 'Relevant'},
+];
+
 function rowsOf(overview: ThreadOverview): AheadRow[] {
   const rows: AheadRow[] = [];
-  const {meetings, owe, waiting} = overview.ahead;
+  const {meetings} = overview.ahead;
   if (meetings.length > 0) {
     rows.push({kind: 'head', key: 'h-meetings', label: 'Next meetings'});
     meetings.forEach(entry => rows.push({kind: 'meeting', key: `m-${meetingEntryKey(entry)}`, entry}));
   }
-  if (owe.length > 0) {
-    rows.push({kind: 'head', key: 'h-owe', label: 'I owe'});
-    owe.forEach(entry => rows.push({kind: 'task', key: `t-${taskEntryKey(entry)}`, entry}));
-  }
-  if (waiting.length > 0) {
-    rows.push({kind: 'head', key: 'h-waiting', label: 'Waiting for'});
-    waiting.forEach(entry => rows.push({kind: 'task', key: `t-${taskEntryKey(entry)}`, entry}));
+  for (const section of TASK_SECTIONS) {
+    const entries = overview.ahead[section.key];
+    if (entries.length === 0) continue;
+    rows.push({kind: 'head', key: `h-${section.key}`, label: section.label});
+    entries.forEach(entry => rows.push({kind: 'task', key: `t-${taskEntryKey(entry)}`, entry}));
   }
   return rows;
 }

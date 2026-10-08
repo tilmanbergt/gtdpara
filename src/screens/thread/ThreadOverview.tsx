@@ -99,7 +99,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
 
   // The edited row, found in whichever list shows it.
   const target = edit.target;
-  const taskEntries = overview ? [...overview.ahead.owe, ...overview.ahead.waiting, ...overview.past.flatMap(p => p.agreed)] : [];
+  const taskEntries = overview ? [...overview.ahead.owe, ...overview.ahead.waiting, ...overview.ahead.relevant, ...overview.past.flatMap(p => p.agreed)] : [];
   const meetingEntries = overview ? [...overview.ahead.meetings, ...overview.past.map(p => p.entry)] : [];
   const editingTask = target?.type === 'task' ? taskEntries.find(e => taskEntryKey(e) === target.key) ?? null : null;
   const editingMeeting = target?.type === 'meeting' ? meetingEntries.find(e => meetingEntryKey(e) === target.key) ?? null : null;

@@ -12,12 +12,23 @@
  * - the plain leaf `#alpha` belongs to the counterpart and shows in every
  *   thread of it;
  * - `#wf/alpha` is Waiting For from `alpha` (Waiting For is one more type);
+ * - `#owe/alpha` is a promise to `alpha` made outside a meeting (decision
+ *   D13). Not a flow state: it combines with `#next`, a due date, Someday. A
+ *   bare `#owe` is a plain tag without meaning;
  * - a plain parent tag (`#retro`) never reaches down into the retro threads.
+ *
+ * `wf` and `owe` name a counterpart, not a thread (`isCounterpartType`): they
+ * have no thread lens and are never offered for "+ Next".
  *
  * Every overview is **scoped** to one owner (decision D9): the owner's Area
  * plus the Projects assigned to it. A Project without an Area is its own
  * scope, and so is the Inbox.
  */
+
+import {WAITING_FOR_TYPE} from './flowState';
+
+/** The type of a promise made outside a meeting: `#owe/<counterpart>`. */
+export const OWE_TYPE = 'owe';
 
 /** One thread: `tag` is always `type/counterpart`, lowercased. */
 export interface ThreadRef {
@@ -43,6 +54,21 @@ export function threadsOfTags(tags: readonly string[]): ThreadRef[] {
   for (const tag of tags) {
     const thread = threadOf(tag);
     if (thread && !out.some(t => t.tag === thread.tag)) out.push(thread);
+  }
+  return out;
+}
+
+/** Whether `type` names a counterpart rather than a thread: `wf` and `owe`. */
+export function isCounterpartType(type: string): boolean {
+  return type === WAITING_FOR_TYPE || type === OWE_TYPE;
+}
+
+/** The counterparts `tags` promise something to: one per `owe/<counterpart>[/…]` tag, once each. */
+export function owedTo(tags: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const tag of tags) {
+    const thread = threadOf(tag);
+    if (thread && thread.type === OWE_TYPE && !out.includes(thread.counterpart)) out.push(thread.counterpart);
   }
   return out;
 }

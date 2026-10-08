@@ -7,9 +7,24 @@ A nested tag such as `#retro/alpha` ties todos and meetings together. Its first 
 - `#retro/alpha` belongs to the thread retro/alpha and to the counterpart alpha. A deeper tag such as `#retro/alpha/2026` belongs to the same thread.
 - The plain tag `#alpha` belongs to the counterpart and shows up in every thread of it.
 - `#wf/alpha` means you are waiting for alpha, see [Tags](tags.md).
+- `#owe/alpha` means you promised alpha something outside a meeting.
 - A plain `#retro` does not include the retro threads.
 
 Nothing is written into your lines for this: gtdpara reads the tags you typed.
+
+## How a todo relates to a thread
+
+A todo can relate to a thread in three ways, and each has its own source:
+
+- **I owe**: you agreed to it in a meeting of the thread (the todo carries that meeting, see "Where a todo was agreed" below), or you tagged it `#owe/alpha` for a promise made outside a meeting. `#owe/alpha` works together with `#next`, a due date or `#someday`; a plain `#owe` means nothing special.
+- **Waiting for**: `#wf/alpha`; or a plain `#wf` on a todo agreed in the thread or tagged with it.
+- **Relevant**: the todo has the thread's tag or the plain `#alpha`, and none of the above applies: something to raise or act on there.
+
+A todo shows once, in the first of Waiting for, I owe, Relevant that applies. For example, in your 1:1 with Mieke you agree to raise the budget with Sven. You add the todo from that meeting and tag it `#101/sven`:
+
+`- [ ] Raise budget question #101/sven [meeting:: 2026-09-30 1:1 Mieke 101/mieke]`
+
+Mieke's thread shows it under **I owe** and under her meeting of 30.9. in **Looking back**; Sven's thread shows it under **Relevant**.
 
 ## Opening the overview
 
@@ -35,8 +50,11 @@ The switch at the top right chooses what you look at:
 The upper list on the left:
 
 - **Next meetings**: meetings of the thread that aren't over yet, soonest first
-- **I owe**: open todos of the thread, Someday and Maybe included
-- **Waiting for**: open Waiting For todos for the counterpart or with the thread's tag
+- **I owe**: open todos agreed in the thread's meetings or tagged `#owe/alpha`, Someday and Maybe included
+- **Waiting for**: open todos you are waiting for alpha on
+- **Relevant**: open todos with the thread's tag or `#alpha` that are neither of the above
+
+A list with nothing in it is left out.
 
 Tap a row to edit it in Quick Add; tick, note and file icons work as on every list.
 
