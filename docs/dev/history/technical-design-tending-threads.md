@@ -2,7 +2,8 @@
 
 Status: **design approved (all decisions in §4).** Requirements were clarified in conversation (October
 2026); the UX draft is a design canvas outside the repository. 0.10.0 is implemented on
-`feature/plain-files` (steps 1–3 of §3.1); 0.11.0 and 0.12.0 are not started.
+`feature/plain-files` (steps 1–3 of §3.1, As built §8); 0.11.0 on `feature/threads` (As built §9);
+0.12.0 is not started.
 
 **Revision (device test of 0.10.0):** the data files stay `.txt`. Supernote Cloud accepts `.md`
 files uploaded by the device and lets Obsidian download them, but refuses `.md` uploads from
@@ -702,3 +703,76 @@ removed before the release (D5, D6 withdrawn); what was learned is in §3.1.5.
 
 Off-device: `npm run check` (tsc, ESLint, 440 Jest tests, script, help-page and code-health
 tests, code health). T0 passed (§7). The device checklist of §6 "0.10.0" is still open.
+
+## 9. As built (0.11.0)
+
+0.11.0 "Threads" is §3.2–§3.8 on `feature/threads`; every commit ends with `npm run check` green.
+
+- `dc60999` Preparation, behaviour unchanged: the overlay hosting moved out of `App.tsx` (now
+  `screens/useAppOverlays.tsx`, so `App.tsx` fell below 1,000 lines and out of the code-health
+  baseline) and one `ui/TaggableText.tsx` replaced the two `renderTaggableText` copies.
+- `d2648a1` `domain/threads.ts` (`threadOf`, `threadsOfTags`, `belongsToThread`,
+  `belongsToCounterpart`, `inThreadLens`, `typesForCounterpart`, `scopeOf`) and
+  `domain/nextMeeting.ts` (`nextMeetingSeed`), with tests.
+- `d23f852` `domain/provenance.ts` (`meetingKey`, `provenanceOf`, `applyProvenance`,
+  `provenanceLabel`, `resolveProvenance`) and `storage/threadAggregate.ts`
+  (`buildThreadOverview`, both lenses, scoped), with tests.
+- `95b6ab9` Quick Add's `provenance` and `meetingSeed` (`ui/quickAdd/ProvenanceLine.tsx`,
+  `useDraftRequests.ts`, `useProvenance.ts`), `storage/threadProvenance.ts`
+  (`meetingForNotePage`), provenance written from "Meetings to close out" and from capture/marks.
+- `ab0399a` The overlay (`ui/threadOverlayStore.ts`, `screens/thread/*`), tap routing
+  (`ownerPath` on `TaskRow`/`MeetingRow` in every list, `#w/f Name` label), App smoke test.
+- `6918894` `{tag}` (`ruleTypeTag`, the placeholder chip, help page Note templates).
+- `69ec06f` Help pages Threads and Using gtdpara with Obsidian, the pages that changed, CHANGELOG,
+  README, design-overview, dev README.
+
+Choices where §3 left a detail open, and deviations:
+
+- **Overlay host.** `App.tsx` calls `useAppOverlays(inTabs, activeTab)` instead of rendering the
+  overview itself; the hook lives in `screens/` because it imports a screen (`ui/` never imports
+  from `screens/`). An overview requested outside the tab shell (a nested tag tapped in focus
+  mode) is dropped, so focus mode never shows it.
+- **Writing provenance.** The screens do not pass `{meeting: key}` to `buildTask`; they run
+  Quick Add's composed line through `applyProvenance` (missing thread tags appended to the text,
+  `[meeting:: key]` set) and hand that line to the unchanged add path. One mechanism for all
+  three writers, and Review's shared `onAddTask` needs no new parameter. The key leaves out `[`
+  and `]`, so a title with brackets cannot break the field.
+- **Past and ahead.** "Past" is a meeting that has ended (`meetingEndMs <= now`), "ahead" one that
+  hasn't, so a meeting earlier today that is over is already in Looking back and can be
+  selected for its follow-ups. `buildThreadOverview` therefore takes `now: Date`, not `today`.
+  Cancelled meetings are in neither list.
+- **Overview shape.** `owner` can be the Inbox (`kind: 'inbox'`); `scope` (the paths) is part of the
+  result; `types` lists the thread's own type first. Agreed todos are found with
+  `resolveProvenance` (D11 fallback included), not only by exact key; cancelled ones are left out.
+- **Waiting for** in the thread lens also lists `#wf/<counterpart>` todos without the thread tag
+  (what I wait for from alpha matters in every alpha thread).
+- **Rows.** Ahead and the meeting panel use the flat `TaskRow` (Someday/Maybe keep their tag in
+  the title as their label); done todos in the panel are grouped under "Done · Tue 6.10." heads
+  instead of a date per row; Looking back uses the two-line `MeetingRow` with the counts in its
+  second line (`3 agreed · 1 done · 2 open, oldest 12 d`). The panel's button is "Open note", or
+  "+ Note" (open-or-create with the usual confirmation) when the meeting has none.
+- **Quick Add in the overview.** Destination: the "+ Next" base meeting's item until a meeting is
+  added, else the selected past meeting's item while the provenance line is on, else the owner
+  (Inbox without one). Quick-file works in edit mode; there is no Refile (no Files pane).
+- **"+ Next".** Offered only for types with a meeting in the overview (`wf` never). A seed that
+  arrives while an edit is open waits until the edit has closed (`useDraftRequests`); a
+  `prefill` keeps being dropped as before. `useDraftRequests` took over the prefill effect, so
+  `QuickAddWidget.tsx` got shorter. No info line after "+ Next".
+- **Provenance line** sits directly above the actions row in both variants (in capture above the
+  Save buttons), only in create mode on the Todo tab.
+- **Capture.** The source page's meeting is resolved once per source page and kept for the
+  screen's lifetime: once for the lasso, once per marked page when marks are processed (so more
+  than one keyword read when marks from several shared-note pages are processed).
+- **Tap routing.** Nested context tags are tappable in every `TaskRow`/`MeetingRow`, also where the
+  row's own tap selects (Review's close-out list). Tags in rows are shown as typed
+  (`TextSegment.raw`), no longer lowercased. The tappable `#w/f Name` label is underlined; a tap
+  on it opens the overview instead of starting an edit.
+- **Header.** Owner as "in <item name>" (the item tapped in, not the widened Area); lens switch
+  labels `#retro/alpha` | `All alpha`.
+- No `domain/helpTopics.ts` mapping (the overview is not a tab; "?" closes it and opens the tab's
+  page) and no debug-bundle line (the overview keeps no state beyond the session).
+
+Off-device: `npm run check` (tsc, ESLint, 502 Jest tests including the App smoke test with the
+overview open, script, help-page and code-health tests, code health). The device checklist of §6
+"0.11.0" and the steps of the help page "Using gtdpara with Obsidian" are still open.
+

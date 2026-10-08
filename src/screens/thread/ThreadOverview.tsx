@@ -28,6 +28,8 @@ import {useProvenance} from '../../ui/quickAdd/useProvenance';
 import {ThreadOverviewRequest} from '../../ui/threadOverlayStore';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useCachedItems} from '../../ui/useCachedItems';
+import {getCachedData} from '../../storage/dataCache';
+import {useLinkedFileMissing} from '../usePlanningScreen';
 import AheadSection, {NextOffer} from './AheadSection';
 import LookingBackSection from './LookingBackSection';
 import PastMeetingPanel from './PastMeetingPanel';
@@ -95,6 +97,19 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
   const [seed, setSeed] = useState<MeetingSeed | null>(null);
   const [seedItem, setSeedItem] = useState<ThreadItemRef | null>(null);
 
+  // The edited row, found in whichever list shows it.
+  const target = edit.target;
+  const taskEntries = overview ? [...overview.ahead.owe, ...overview.ahead.waiting, ...overview.past.flatMap(p => p.agreed)] : [];
+  const meetingEntries = overview ? [...overview.ahead.meetings, ...overview.past.map(p => p.entry)] : [];
+  const editingTask = target?.type === 'task' ? taskEntries.find(e => taskEntryKey(e) === target.key) ?? null : null;
+  const editingMeeting = target?.type === 'meeting' ? meetingEntries.find(e => meetingEntryKey(e) === target.key) ?? null : null;
+  const editing = editingTask ? {task: editingTask} : editingMeeting ? {meeting: editingMeeting} : null;
+  const editedItem = (editingTask ?? editingMeeting)?.item ?? null;
+  const linkedFileMissing = useLinkedFileMissing(
+    editingTask?.task.linkedFile ?? editingMeeting?.meeting.linkedFile,
+    getCachedData()?.paths ?? null,
+  );
+
   if (!overview) {
     return (
       <View style={styles.overlay}>
@@ -116,14 +131,6 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
         setSeedItem(item);
       }),
   }));
-
-  // The edited row, found in whichever list shows it.
-  const target = edit.target;
-  const taskEntries = [...overview.ahead.owe, ...overview.ahead.waiting, ...overview.past.flatMap(p => p.agreed)];
-  const meetingEntries = [...overview.ahead.meetings, ...overview.past.map(p => p.entry)];
-  const editingTask = target?.type === 'task' ? taskEntries.find(e => taskEntryKey(e) === target.key) ?? null : null;
-  const editingMeeting = target?.type === 'meeting' ? meetingEntries.find(e => meetingEntryKey(e) === target.key) ?? null : null;
-  const editing = editingTask ? {task: editingTask} : editingMeeting ? {meeting: editingMeeting} : null;
 
   const fixedDestination = destinationOf(seedItem ?? (origin.active && selected ? selected.entry.item : overview.owner));
   const labels = lensLabels(overview.thread);
@@ -190,7 +197,8 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             editingMeeting={editingMeeting?.meeting}
             editTargetKey={target ? `${target.type}:${target.key}` : null}
             flushEditRef={edit.flushEditRef}
-            editingItemPath={editing ? (editingTask ?? editingMeeting)!.item.path : undefined}
+            editingItemPath={editedItem ? (editedItem.kind === 'inbox' ? null : editedItem.path) : undefined}
+            linkedFileMissing={linkedFileMissing}
             onSaveEditTask={(line, linkedFile) => (editingTask ? actions.commitTaskEdit(editingTask, line, linkedFile) : Promise.resolve(true))}
             onSaveEditMeeting={(fields, linkedFile) =>
               editingMeeting ? actions.commitMeetingEdit(editingMeeting, fields, linkedFile) : Promise.resolve(true)
