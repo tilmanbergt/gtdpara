@@ -1,9 +1,8 @@
 # Technical design: 0.13.0 "Projects and findable notes"
 
 Status: **approved** (2026-10-08). The single design for 0.13.0. It merges two drafts: the
-findable-notes draft written in an earlier session (formerly
-`technical-design-findable-notes-0.13.md`, whose host-API research, writing order and keyword
-planning are kept) and the decisions taken on 2026-10-08, which win where the two differed
+findable-notes draft written in an earlier session (a separate 0.13 findable-notes design,
+merged into this one; its host-API research, writing order and keyword planning are kept) and the decisions taken on 2026-10-08, which win where the two differed
 (§2.1). Decisions are in §4; §5 lists what the first alpha checks on the device.
 `nextVersion` is 0.13.0; branch `feature/projects-notes`.
 
