@@ -14,10 +14,18 @@ or your project/area files are stored.
 - **Projects tab** on an area page, after Threads: the area's projects at a glance - active
   ones, then the ones on hold folded - each with its latest and next meeting, open todos, how
   many are `#next` (or `no next action`) and the oldest Waiting For. Tap one to open it.
-- **Headings in notes.** New meeting Tag Rules start with a **Date & title** piece
-  (`30.9.2026 · Retro demand retro/demand`, its tags as words without `#`) instead of Title and Date; it is also written as a
-  Supernote heading, so it shows in the note's table of contents. New todo rules write their
-  Title as a heading. Existing rules don't change.
+- **Headings in notes.** A **Heading** switch on every text piece of a todo or meeting Tag Rule
+  writes that piece as a Supernote heading, so it shows in the note's table of contents - on
+  notes of their own and on every page of a shared note. Existing rules don't change until you
+  switch it on.
+- **Date & title** piece for meeting rules: `30.9.2026 · Retro demand retro/demand`, a heading
+  from the start. New meeting rules start with Date & title, Time and Linked file; new todo
+  rules with Title (as a heading) and Linked file.
+- **Heading style** in Settings → Tag Rules: Black, Light grey, Dark grey (default) or Shadow.
+- **Date keywords**: notes and pages of meetings get the meeting's date as a keyword
+  (`2026-10-04`), todos their creation date. When a meeting moves, its keyword follows the next
+  time you open the note.
+- Pages in **shared notes** now also get the item's tags as keywords, like notes of their own.
 
 ### Changed
 - An area page's Files tabs are now **Threads | Projects | Area Files | Resources**. The

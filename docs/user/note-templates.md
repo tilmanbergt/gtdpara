@@ -19,16 +19,24 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
 - **Name**, **Context**, **Tags** (separated by spaces), **Default**, **Enabled**
 - **Background**: tap **Change…** and pick one of your templates from the MyStyle folder
 - **Pieces**: what is written onto the page. Tap **Add piece** and choose:
-  - **Title** of the item
+  - **Title** of the item; tags are written as words without `#` (`Retro demand retro/demand`), the tags gtdpara uses itself (`#next`, `#wf/anna` …) are left out
+  - **Date & title** (meetings): the date with the year and the title, `30.9.2026 · Retro demand retro/demand`
   - **Date** and **Time** (meetings)
   - **Related items**: open todos and meetings that share a tag with the item
   - **Linked file**: a link to the file linked to the item
   - **Since last time** (meetings): what happened in the meeting's thread since its previous meeting, see below
   - a **static text** you write once for this rule (**+ New text**) and place on the page, for example "Agenda" or "Decisions"
-- A new meeting rule starts with **Date & title** (`30.9.2026 · Retro demand retro/demand`, the meeting's date with the year and its title, tags written as words without `#`), **Time** and **Linked file**; a new todo rule with **Title** and **Linked file**. The meeting's Date & title and the todo's Title are also written as a **heading**: Supernote lists it in the note's table of contents. Existing rules don't change.
+- A new meeting rule starts with **Date & title**, **Time** and **Linked file**; a new todo rule with **Title** and **Linked file**.
 - The preview shows where each piece sits. Select a piece and move it with the arrows; change its font size and maximum width.
+- **Heading** (todo and meeting rules): below the arrows, for the selected piece. A piece with Heading on is also written as a Supernote **heading**, so it shows in the note's table of contents - on a note of its own and on each page of a shared note. Date & title has it on from the start, and so has the Title of a new todo rule; for every other piece it is off until you switch it on. Linked file can't be a heading. In the preview a heading piece has a grey backing.
 
 **Create** or **Save** stores the rule; it is used for notes created from then on.
+
+## Heading style
+
+At the top of **Settings → Tag Rules**, **Heading style** sets how gtdpara's headings look in all notes: **Black**, **Light grey**, **Dark grey** (the default) or **Shadow**. It applies to headings written from then on; existing headings keep their style until their page is written again.
+
+Like the other pieces, headings are written when the note is created and again when you open the note from gtdpara, until the meeting is over or the todo is done. Rules you had before don't write headings until you switch Heading on for a piece; a note that is still refreshed then gets its heading the next time you open it. A heading you make yourself on your own handwriting or text stays; one you put on a piece gtdpara wrote is replaced with that piece.
 
 ## Meetings only
 
@@ -43,7 +51,10 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
 
 - A note of its own is named after its item, for example `2026-10-04 - Site visit with Marco marco`, so the Supernote's file search finds it. File names leave out `#` and the other characters listed in [Your files and folders](files-and-folders.md).
 - A page in a shared note gets a **keyword**: the meeting's date and title, or the todo's text, including its tags - for example `2026-10-04 Site visit with Marco #marco`. The Supernote's keyword search then finds every page about Marco.
-- A note of its own also gets the item's tags as **keywords** (without `#next`, `#wf` and the other tags gtdpara uses itself), for example `marco`. A note from the **Note** tab in Quick Add gets the tags of its title as keywords the same way.
+- A note of its own, and a page in a shared note, also gets the item's tags as **keywords** (without `#next`, `#wf` and the other tags gtdpara uses itself), for example `marco`. A note from the **Note** tab in Quick Add gets the tags of its title as keywords the same way.
+- Notes and pages of meetings and todos also get a **date keyword**: the meeting's date, or the day the todo was created (if it has a `created` date), for example `2026-10-04`. The keyword search matches part of a keyword, so searching `2026-10` finds everything from October 2026.
+- These keywords are kept up to date whenever you open the note from gtdpara, while it is still refreshed: when a meeting moves to another day, its date keyword follows on the next open. A keyword that is only a date (like `2026-10-04`) on such a page belongs to gtdpara and is replaced; tag keywords are only ever added, never removed, so keywords you add yourself stay.
+- With headings switched on (see above), the note's **table of contents** lists every meeting of a shared note by date and title.
 
 ## Todos and meetings: one note or one shared note
 

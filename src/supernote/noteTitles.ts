@@ -33,8 +33,6 @@ export interface ElementTitle {
 /** A page element as getElements returns it, with the parts a title element carries. */
 export interface ElementWithTitle extends Element {
   title?: ElementTitle | null;
-  /** The SDK's contour accessor (sn-plugin-lib `ElementDataAccessor`); only its size is read here. */
-  contoursSrc?: {size(): Promise<number>} | null;
 }
 
 export interface TitleElementSpec {

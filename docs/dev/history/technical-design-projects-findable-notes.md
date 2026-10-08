@@ -411,3 +411,37 @@ Device (demo space, build labelled 0.13.0):
   backing, new-rule defaults.
 - **S3** Keywords: planning + sync, `chronologicalInsertIndex`.
 - **S4** Docs, CHANGELOG, README, design-overview; `npm run check`; device test §6; release.
+
+## As built
+
+Built on `feature/projects-notes` in the steps of §7. Device-tested: Part 1 and the S1
+checkpoint (the bare version of §2.6 worked - none of the §5 fallbacks was needed). S2-S4 were
+built in one go after that; their device test is §6.
+
+Decided after the S1 device test (§4 N3 and N5 are updated above):
+
+- Title and Date & title write the item's **tags as words**: `#` removed, a nested tag keeps
+  its `/`, gtdpara's own tags (`#next`, `#wf/…`, everything `isContextTag` rejects) are left
+  out (`domain/markdown.ts`'s `tagsAsWords`). This also changes the Title piece of existing
+  rules (meetings showed `#tag`, todos dropped tags); CHANGELOG "Changed" says so.
+- Heading style default **3 (dark grey)**.
+
+Details chosen while building:
+
+- Part 1: the Projects tab has its own 57 dp two-line row; the Threads tab's active row is
+  built inline with its toggles and actions, so no shared `ui/TwoLineRow.tsx` was extracted.
+  The Waiting For age reads `w/f 12 d`, as on the Threads tab. "no next action" also shows for
+  on-hold Projects. `FileBrowserExtraTab.armingRoot` is the mechanism of §1.2; an arm that ends
+  on an arming root returns to the extra tab holding it.
+- `dateTitleText(date, title)` is a pure helper in `domain/tagRules.ts`; the meeting caller
+  passes `tagsAsWords(meetingDisplayTitle(meeting))`.
+- The todo default heading is seeded by `withDefaultPieces` (`DEFAULT_HEADING_PIECES`), so
+  `createDefaultMeetingRule` and the editor's context switch get the same defaults.
+- `applyPieceHeadings` reads the page again after the insert and builds titles from each
+  heading textbox's `numInPage` and `textRect`, exactly the §2.6 data (rect fields included).
+- `syncPageKeywords` runs before the rule is resolved (so also without a rule) and before the
+  page is populated; order does not matter for keywords.
+- Heading style is saved at once when tapped, like the Tag Rules themselves. A change applies
+  to every title written from then on, including the titles of non-frozen pages rewritten on
+  their next open (§6 item 8 "existing titles unchanged" holds for frozen pages only).
+- The temporary `S1-DIAG` title log of the checkpoint was removed in S4.

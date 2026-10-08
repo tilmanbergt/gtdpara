@@ -17,11 +17,11 @@
  * names, §2.9).
  */
 import {notePieceUserData} from '../domain/meetingNoteBlock';
-import {isOurHeading, planPageKeywords} from '../domain/noteFindability';
+import {planPageKeywords} from '../domain/noteFindability';
 import {NoteHeadingStyle} from '../domain/settings';
 import {pieceIsHeading, TagRule} from '../domain/tagRules';
 import {deleteKeyWord, getElements, getKeyWords, insertElements, insertKeyWord} from '../supernote/fileSystem';
-import {buildTitleElement, ELEMENT_TYPE_TITLE, ElementWithTitle} from '../supernote/noteTitles';
+import {buildTitleElement, ElementWithTitle} from '../supernote/noteTitles';
 import {recycleElements} from '../supernote/sdkElements';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logWarn} from '../utils/log';
@@ -64,42 +64,6 @@ export async function applyPieceHeadings(
     logWarn('noteFindability: heading failed', errorMessage(e));
   } finally {
     recycleElements(titles);
-  }
-  await logTitleCheckpoint(notePath, page);
-}
-
-/**
- * TEMPORARY device-checkpoint diagnostic (design §5, step S1; delete in
- * step S4): logs every title element `getElements` returns for the page -
- * type, numInPage, title.controlTrailNums, title.style, contour count, and
- * whether it carries gtdpara's marker - so the debug log shows what the host
- * stored. Numbers only, no texts. Never throws.
- */
-async function logTitleCheckpoint(notePath: string, page: number): Promise<void> {
-  try {
-    const elements = (await getElements(page, notePath)) as ElementWithTitle[];
-    const titles = elements.filter(el => el.type === ELEMENT_TYPE_TITLE);
-    log('S1-DIAG titles', `page=${page}`, `elements=${elements.length}`, `titles=${titles.length}`);
-    for (const el of titles) {
-      let contours: string;
-      try {
-        contours = el.contoursSrc ? String(await el.contoursSrc.size()) : 'none';
-      } catch (e) {
-        contours = `error:${errorMessage(e)}`;
-      }
-      log(
-        'S1-DIAG title',
-        `type=${el.type}`,
-        `numInPage=${el.numInPage}`,
-        `controlTrailNums=${JSON.stringify(el.title?.controlTrailNums ?? null)}`,
-        `style=${el.title?.style ?? 'none'}`,
-        `contours=${contours}`,
-        `userData=${el.userData == null ? 'none' : 'set'}`,
-        `ours=${isOurHeading(el)}`,
-      );
-    }
-  } catch (e) {
-    logWarn('S1-DIAG titles failed', errorMessage(e));
   }
 }
 

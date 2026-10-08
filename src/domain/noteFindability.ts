@@ -5,7 +5,7 @@
  * should carry. No SDK, no I/O - storage/meetingNoteContent.ts and
  * storage/noteFindability.ts read the page and do the writing.
  */
-import {isNoteTemplateManagedElement, NOTE_HEADING_USERDATA} from './meetingNoteBlock';
+import {isNoteTemplateManagedElement} from './meetingNoteBlock';
 import {Meeting, Task} from './types';
 
 /** sn-plugin-lib `Element.TYPE_TITLE`: a title element (a heading in the note's table of contents). */
@@ -42,11 +42,6 @@ export function staleManagedNums(elements: readonly PageElementInfo[]): number[]
     if (covered.length > 0 && covered.every(num => managed.has(num))) stale.add(el.numInPage);
   }
   return [...stale].sort((a, b) => a - b);
-}
-
-/** Whether an element is one of gtdpara's heading titles. */
-export function isOurHeading(el: Pick<PageElementInfo, 'type' | 'userData'>): boolean {
-  return el.type === TITLE_ELEMENT_TYPE && el.userData === NOTE_HEADING_USERDATA;
 }
 
 const BARE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

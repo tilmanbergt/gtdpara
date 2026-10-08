@@ -493,9 +493,10 @@ folder for auto-locate. Gmail email notes and attachments become linked files un
 
 **Tag Rules.** `domain/tagRules.ts` defines `TagRule`s (stored in `settings.tagRules`, edited in
 Settings → Tag Rules, `screens/settings/tagRules/`): a context (Project, Area, Todo, Meeting), an
-optional tag, a MyStyle background template, and positioned content pieces (`title`, `date`,
-`time`, `text` from the rule's own reusable texts, `related` open todos, `link` to the item's
-linked file, `sinceLast` for meetings). `resolveNoteTemplate` picks the rule for an item; a rule tag matches itself and
+optional tag, a MyStyle background template, and positioned content pieces (`title`,
+`dateTitle` and `date` for meetings, `time`, `text` from the rule's own reusable texts,
+`related` open todos, `link` to the item's linked file, `sinceLast` for meetings). Title and
+Date & title write tags as words (`domain/markdown.ts`'s `tagsAsWords`). `resolveNoteTemplate` picks the rule for an item; a rule tag matches itself and
 every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting (default)" rule.
 
 - **Content.** `populateNoteFromRule` writes one textbox element per piece; pieces are always
@@ -503,6 +504,18 @@ every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting
   (`storage/notePieceMetrics.ts` → native `TextboxMetrics`) and capped at the piece's
   `maxWidthPx`. Re-population on reopen stops once the meeting is over or the todo is done or
   cancelled (`isMeetingAutoUpdateFrozen`, `isTodoAutoUpdateFrozen`); creation always populates.
+  The delete before the insert is planned by `domain/noteFindability.ts`'s `staleManagedNums`:
+  every element with a gtdpara marker plus titles that cover only those.
+- **Headings.** A piece's `heading` switch (`pieceIsHeading`: absent = on for `dateTitle`, off
+  otherwise, never for `link`) makes `storage/noteFindability.ts`'s `applyPieceHeadings` add a
+  title element (type 100, `supernote/noteTitles.ts`) over the piece's textbox after the insert:
+  `title.controlTrailNums = [numInPage]`, `title.style = settings.noteHeadingStyle` (default 3),
+  marker `NOTE_HEADING_USERDATA`, all titles in one `insertElements`. A failure is logged and
+  never fails the note. Supernote builds the table of contents from these titles.
+- **Keywords.** Every non-frozen refresh (and creation) calls `syncPageKeywords` before the rule
+  is resolved: the page gets the item's date keyword (`itemDateKeyword`: meeting date, todo
+  `created`) and its context tags; other bare `YYYY-MM-DD` keywords are deleted
+  (`planPageKeywords`), tag keywords never. `chronologicalInsertIndex` ignores bare dates.
 - **Shared notes.** A Todo/Meeting rule can target one shared `.note` instead of a file per item
   (`noteTarget: 'shared'`): each item gets a page located by keyword (meeting: `<date> <title>`;
   todo: its text without functional tags), inserted chronologically (`storage/sharedNotePages.ts`
@@ -549,7 +562,8 @@ Detail: `docs/dev/history/technical-design-note-templates.md`,
 `docs/dev/history/technical-design-shared-note-pages.md`,
 `docs/dev/history/technical-design-split-by-tag.md`,
 `docs/dev/history/technical-design-meeting-tracking.md`,
-`docs/dev/history/technical-design-textbox-metrics.md`.
+`docs/dev/history/technical-design-textbox-metrics.md`,
+`docs/dev/history/technical-design-projects-findable-notes.md`.
 
 ### 2.7 Daily, Week and Month
 
@@ -767,7 +781,7 @@ two only while switched on), Tag Rules, Advanced, About. Folders, Focus, Calenda
 one draft (`useSettingsDraft.ts`) that only Save writes; every Save clears the cache (the next
 screen builds it again) and the Gmail list, and a changed Inbox folder name moves the folder first (`storage/inboxFolder.ts`, refused
 when the target exists, not moved when Base or Areas change in the same save). Tag Rules save
-per rule; the switches on Advanced and About write immediately. Advanced holds Profiles, the
+per rule, and its Heading style (`noteHeadingStyle`) at once; the switches on Advanced and About write immediately. Advanced holds Profiles, the
 experimental switches, "Reload all files", "Run Integrity Check", "Keep tabs in memory" and
 "Performance tracing". About shows version and build, the changelog ("What's new", also offered
 once after an update), Debug logging and "Export debug bundle".
