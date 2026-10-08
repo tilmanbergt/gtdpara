@@ -3,7 +3,7 @@
 Status: **design approved (all decisions in §4).** Requirements were clarified in conversation (October
 2026); the UX draft is a design canvas outside the repository. 0.10.0 is implemented on
 `feature/plain-files` (steps 1–3 of §3.1, As built §8) and released; 0.11.0 on `feature/threads`
-(As built §9) and released; 0.12.0 is not started.
+(As built §9) and released; 0.12.0 on `feature/tending` (As built §10), device test open.
 
 **Revision (device test of 0.10.0):** the data files stay `.txt`. Supernote Cloud accepts `.md`
 files uploaded by the device and lets Obsidian download them, but refuses `.md` uploads from
@@ -981,3 +981,93 @@ Choices where the design left a detail open, and deviations:
 Off-device: `npm run check` (tsc, ESLint, 526 Jest tests including the App smoke test with the
 overview open, the "Since" row selected and a `#wf/…` overview, script, help-page and
 code-health tests, code health). The device checklist of §6 "0.11.0" is still open.
+
+## 10. As built (0.12.0)
+
+0.12.0 "Tending" is §3.9–§3.11 with D16–D20 on `feature/tending`; every commit ends with
+`npm run check` green.
+
+- `9f97fdc` Preparation, behaviour unchanged: `TodosSection` and `MeetingsSection` moved from
+  `screens/ProjectDataPanel.tsx` to `screens/projectData/` (with `panelLayout.ts`);
+  `ProjectDataPanel.tsx` fell below 1,000 lines and left the code-health baseline.
+- `df80c39` `domain/threadsSection.ts` (`parseThreadsSpan`, `writeThreadsIntoContent`,
+  `withCounterpartStatus`), `threads`/`threadsExtraLines` in the file state and the cache
+  (`updateItemThreads`), `storage/counterparts.ts`'s `setCounterpartStatus`, the Integrity Check's
+  heading list; `domain/counterparts.ts`.
+- `2b574a2` Tests for `domain/counterparts.ts` (`counterpartScopes`, `counterpartsOf`, one-off
+  labels, back in use, `inactiveLeaves`).
+- `7408b1e` `storage/threadAggregate.ts`'s `threadLensContext` (the lens, its scope and the §1.2.1
+  predicates, which `buildThreadOverview` now uses), `counterpartMatcher`, `nextMeetingOffers`
+  (moved out of `ThreadOverview.tsx`); `storage/tendingRoster.ts`.
+- `ad6b152` `FileBrowserPane`'s `extraTabs` and `alternate` (Browse merge), the Threads tab, the
+  counterpart filter, `ui/CounterpartCloseOut.tsx`, inactive counterparts out of the tag
+  suggestions, the debug-bundle line; smoke tests for the Threads tab and the Browse merge.
+- `95d70c2` The Review step, `screens/thread/ThreadSummary.tsx`, recap counts; smoke test.
+- `4a08fcf` The `sinceLast` piece (`domain/sinceLastText.ts`, `storage/sinceLast.ts`), Tag Rule
+  editor entry; tests.
+- Docs: help pages Projects and Areas (Current page), Threads, Weekly Review, Tags, Note
+  templates, Your files and folders; design-overview §2.1–§2.3, §2.5, §2.6, §2.8; dev README;
+  README; CHANGELOG with the upgrade note.
+
+Choices where the design left a detail open, and deviations:
+
+- **Files.** The roster is `storage/tendingRoster.ts` and the piece `storage/sinceLast.ts`, not
+  `threadAggregate.ts` (§3.10, §3.11), to keep each file to one job; both build on
+  `threadLensContext`, so overview, filter, roster, summary and piece share one classification.
+  `counterpartsOf` and the scope helpers are `domain/counterparts.ts`.
+- **Scope of a counterpart.** As D16; a Project whose `area:` names no Area in the cache counts as
+  a Project without an Area (its own scope, its own file). The overview's `scopeOf` still groups
+  such Projects by the area name, so for that rare case the two can differ.
+- **Status lines.** Leaf and status are read case-insensitively and kept lowercase; an unchanged
+  line is written back exactly as read, a changed one as `- leaf: status[,rest]`; a new leaf is
+  appended after the others (no sorting). A hand-written duplicate: the first line decides, a
+  status write changes all of them. A stray section in a member Project is read (the owner's line
+  wins) and left as it is; writes always go to the owner's file.
+- **Which counterparts.** Rule types are the first segment of every enabled rule's tags, any
+  context. "In use" counts tasks and meetings of every item of the scope, Done Projects included;
+  a status line nobody uses is listed with no threads and no one-off label.
+- **Back in use** (D20): inactive, with a meeting of one of its threads (a rule type other than
+  `wf`/`owe`) that is not cancelled and not over. Without a date in the status line a "new"
+  meeting can't be told from one that existed when it was set inactive, so "Not" on a back-in-use
+  offer writes nothing and hides the offer for the rest of the session only
+  (`screens/thread/useTending.ts`).
+- **Threads tab.** On a Project with an Area: the Area's counterparts whose nested tags (rule
+  types) this Project's own todos and meetings carry; the heading names the Area
+  (`Threads · Coaching`). "Set inactive" shows on the row the filter is on; tapping the name again
+  clears the filter. Unfolded inactive rows offer "Tend" to take one back. The filter prop is
+  `{leaf, tag}` (any nested tag naming the counterpart); the types come from the lens.
+- **"+ next" on the Current page** fills ProjectDataPanel's Quick Add; the thread's item is the
+  destination for the meeting only (todos still go to the page's item) until a meeting is added.
+- **Close-out** runs the chosen Done/Cancel one todo at a time through `closeTask`, then writes the
+  status; a failure stops there and shows in the status slot (earlier choices stay applied, the
+  status line is not written; running it again is safe). Inbox entries are never offered (they are
+  outside every counterpart scope).
+- **Tag suggestions.** A leaf is hidden when it is inactive in some scope and active in none (the
+  suggestions are not per scope); hidden are its nested tags of any type and the plain leaf.
+  Filtered at read time in `storage/tagUsage.ts`, so `QuickAddWidget.tsx` (baseline) is unchanged.
+- **Browse merge** (D4) is generic in `FileBrowserPane` (`alternate` on a root); the Inbox screen
+  and Review's Inbox step keep Browse as their own tab, as the design covers only the Current page.
+- **Review step.** A ritual step (always worth a look), so it never counts as reviewed when empty;
+  its count is new (not dismissed) plus active counterparts. New rows show their scope's name. The
+  detail column has Quick Add (to the scope's owner; "+ Next <type>" fills its meeting draft, to
+  the thread's item) above the summary, whose lists are cut at 3 lines each ("+N more"). "Not" on a
+  new counterpart counts as set inactive in the recap. The new step makes the Review tab's ● show
+  once after the upgrade (CHANGELOG).
+- **Since last time.** The thread is the meeting's first nested tag that is not `wf`/`owe`; the
+  previous meeting carries the thread tag (or deeper) and starts before this one (plain-leaf
+  meetings don't count). "Done since then" takes completions on or after the previous meeting's
+  day, in any of the three relations, and leaves out todos agreed last time. Text: heading
+  `Since last time · Wed 30.9.`, `Title:` per block, `-` open / `✓` done, todo text without flow
+  tags (`displayTaskText`).
+- No `domain/helpTopics.ts` change: the Threads tab lives on the Current page (Projects and Areas
+  help page), the step on the Review page.
+
+Off-device: `npm run check` (tsc, ESLint, 562 Jest tests including App smoke tests of the Threads
+tab with filter and close-out, of the Review step with summary, Tend and the overlay over Review,
+and of the Browse merge; script, help-page and code-health tests, code health). Open:
+
+- the device checklist of §6 "0.12.0", including the row heights of the Threads tab (44/57/37 dp)
+  and the Review roster (57 dp) and the summary's length on the A5 X;
+- the help page "Using gtdpara with Obsidian" fix of §5 "Preparation" (verified Tasks setting
+  names and example queries) was not done: no verified wording was available here;
+- "Not" on a counterpart back in use lasts for the session only (see Back in use above).

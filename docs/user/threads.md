@@ -88,6 +88,26 @@ A todo agreed in a meeting carries the meeting at the end of its line, for examp
 
 When you rename a meeting later, gtdpara still finds its todos by the meeting's date and its thread tag, which the line names (`retro/alpha` above). Lines in other files are never rewritten.
 
+## Tending counterparts
+
+The counterparts you work with belong to an area together with its projects, or to a project without an area. `#101/mieke` in the Atruvia area and in one of its projects is one counterpart; the same name in another area is a different one. Only nested tags whose type is the tag of one of your Tag Rules (see [Note templates](note-templates.md)), and `#wf/name` and `#owe/name`, make counterparts; other nested tags such as `#tax/2026` don't.
+
+A counterpart you use for the first time is **new**: gtdpara asks you, in the Weekly Review's **Tending threads** and on the Current page's **Threads** tab, whether to **Tend** it (it stays active) or **Not** (it is set aside, inactive). Nothing is decided for you. Your answer is one line in the area's file (`area.txt`), or in the project's file for a project without an area:
+
+`## Threads`
+`- mieke: active`
+`- sven: inactive`
+
+You can edit these lines by hand. A counterpart used only with `#wf/name` or `#owe/name` (no meetings) is tended like the others but marked `w/f only`, `owe only` or `w/f · owe only`, so a one-off promise or waiting-for stands out from an ongoing relationship. The Inbox has no counterparts of its own: it is meant to be emptied soon.
+
+**Set inactive** (on the Threads tab or in the Review) first goes through the counterpart's open todos under I owe, Waiting for and Relevant: Done, Cancel or Keep each one. An inactive counterpart leaves the Review and the tag suggestions; its overview and history keep working. When it gets a new meeting, it comes back as `back in use: name` with Tend / Not.
+
+See [Projects and Areas](projects-and-areas.md) for the Threads tab and [Weekly Review](review.md) for the step.
+
+## Since last time on a meeting note
+
+A Meeting rule can place the piece **Since last time**: on the meeting's note it prints what happened in the meeting's thread since the previous meeting of that thread - what was agreed then, what you owe, wait for and should raise, and what got done since. See [Note templates](note-templates.md).
+
 ## Naming shared notes by type
 
 One Tag Rule can serve several types: with the tags `sparring` and `retro` and the shared file name `{tag} {subtag} {year}`, `#retro/alpha` meetings go into `retro alpha 2026`. See [Note templates](note-templates.md).

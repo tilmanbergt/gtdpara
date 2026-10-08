@@ -76,8 +76,14 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
 - **Current** — `screens/ItemDetail.tsx`: left pane `ui/ItemFocusPanel.tsx` (Scope, focus
   checkboxes, goals) on top, the Files pane (`ui/FileBrowserPane.tsx`) in the middle and
   `ui/ItemStatusPanel.tsx` (status, close-out/archive, Assign to Area) at the bottom; right pane
-  `screens/ProjectDataPanel.tsx` with Quick Add, Todos and Meetings. The header shows the kind and
-  the editable abbreviation pill.
+  `screens/ProjectDataPanel.tsx` with Quick Add, Todos and Meetings (the two lists in
+  `screens/projectData/`). The header shows the kind and the editable abbreviation pill. The Files
+  pane's last tab is **Threads** (`screens/thread/ThreadsTab.tsx`, §2.6): the scope's counterparts
+  (New with Tend / Not, Active with signals and their threads with "+ next", Inactive folded);
+  tapping one sets ItemDetail's `counterpartFilter`, which ProjectDataPanel applies to Todos and
+  Meetings (`screens/projectData/counterpartFilter.tsx`, the overview's §1.2.1 predicate,
+  `counterpartMatcher`) with a "<leaf> ✕" pill above Quick Add; "+ next" hands Quick Add a
+  meeting seed and the thread's item as destination. Both are view state only.
 - **Review** — `screens/review/ReviewScreen.tsx` (§2.8). While a close-out is open, the Review
   tab shows `screens/CloseOutWizard.tsx` instead (§2.9).
 - **Settings** — `screens/settings/Settings.tsx` (§2.12).
@@ -189,6 +195,7 @@ Ship the tender by end of quarter.
 | `## Meetings` | one meeting per line | `parseMeetingsSpan` / `writeMeetingsIntoContent` |
 | `## Weekly Goals`, `## Monthly Goals` | `- 2026-W45: text`, `- 2026-11: text` | `parse*GoalsSpan` / `setGoalForWeek` / `setGoalForMonth` |
 | `## Marks` | open "Mark for later" lines (§2.10) | `parseMarksSpan`, `domain/marks.ts` |
+| `## Threads` | counterpart status lines `- mieke: active` (§2.6); `area.txt`, or `project.txt` of a Project without an Area, never `Inbox.txt` | `domain/threadsSection.ts` (`parseThreadsSpan` / `writeThreadsIntoContent`) |
 | `## Close-out` | the close-out plan (§2.9) | `domain/closeOut/plan.ts` via `readSectionLines` |
 
 `ensureSkeleton` writes a new file as frontmatter (`kind`, `status: active`) plus empty
@@ -284,7 +291,7 @@ relative to recognized lines does not.
 
 `storage/dataCache.ts` holds one module-level `DataCache {scannedAt, paths, items}` with one
 `CachedItem` per Project/Area folder: the raw file text plus every parsed span and frontmatter
-field as flat fields (`tasks`, `meetings`, `scope`, `weeklyGoals`, `monthlyGoals`, `marks`,
+field as flat fields (`tasks`, `meetings`, `scope`, `weeklyGoals`, `monthlyGoals`, `marks`, `threads`,
 `status`, focus flags, `area`, `abbrev`, `defaultResourceFolder`, their extra lines and an
 optional `loadError`). It is disposable: a full rebuild always reproduces it from the files.
 
@@ -308,7 +315,7 @@ Screens read it through `ui/useCachedInbox.ts`; a write anywhere is seen everywh
    Requests are de-duplicated. A sync tool that keeps both time and size the same is missed
    until "Reload all files".
 3. **Write-through** (`updateItemTasks`, `updateItemMeetings`, `updateItemFrontMatter`,
-   `updateItemScope`, `updateItemWeeklyGoals`, `updateItemMonthlyGoals`, `updateItemRawContent`,
+   `updateItemScope`, `updateItemThreads`, `updateItemWeeklyGoals`, `updateItemMonthlyGoals`, `updateItemRawContent`,
    `removeCachedItem`): every plugin save writes the file first, then updates the cache entry.
 4. **Change notification**: write-through mutates items in place, so every mutation calls
    `notifyCacheChanged()`, which bumps a version and notifies `subscribeCache` listeners.
@@ -318,8 +325,8 @@ Screens read it through `ui/useCachedInbox.ts`; a write anywhere is seen everywh
 `ensureItemCached(kind, name, path)` loads one item on demand when it is not cached yet;
 `findCachedItem(path)` reads one. Cross-project views are pure, synchronous transforms over the
 warm cache (`storage/dailyAggregate.ts`, `weeklyAggregate.ts`, `monthlyAggregate.ts`,
-`reviewAggregate.ts`, `periodFocusCards.ts`, `threadAggregate.ts`), never their own filesystem
-scans.
+`reviewAggregate.ts`, `periodFocusCards.ts`, `threadAggregate.ts`, `tendingRoster.ts`,
+`sinceLast.ts`), never their own filesystem scans.
 
 What gtdpara does not cache: the Files pane lists folders live on every visit, and Google
 Calendar and Gmail have their own caches (§2.11). Detail:
@@ -436,12 +443,18 @@ mini-tabs, each listed live and sorted alphabetically. A `LinkTarget` puts it in
 Roots never appear or disappear while arming; roots that cannot take the pick render `disabled`.
 The **Browse** root (`sources`) shows "Projects" and "Areas", then the Active items of that kind:
 a tap there jumps to the item (`onNavigateToItem`), picks it while refile-arming, or drills in
-while link-arming. `startAt` lets an arm open directly in one source (Assign to Area). Roots per
-screen:
+while link-arming. `startAt` lets an arm open directly in one source (Assign to Area). A root can
+carry Browse as its `alternate` instead of a tab of its own: the slot shows it (labelled
+"Browse") while an arm targets it and switches back when the arm ends; during a file-link arm the
+slot's list starts with "Other Projects/Areas ›", which opens it there. `extraTabs` add tabs with
+their own content after the roots (the Current page's Threads tab); arming and locating never
+switch to one and disable them. Roots per screen:
 
 - Inbox and Review's Inbox step: Resources, Browse.
-- Current, Project: Project Files, Resources, Area Files (once assigned), Browse.
-- Current, Area: Area Files, Resources, Project Files (its assigned Projects), Browse.
+- Current, Project: Project Files (Browse as its alternate), Resources, Area Files (once
+  assigned), then the Threads tab.
+- Current, Area: Area Files, Resources, Project Files (its assigned Projects; Browse as its
+  alternate), then the Threads tab.
 
 The Resources root can pin a per-item default subfolder (`defaultResourceFolder`).
 
@@ -474,7 +487,7 @@ folder for auto-locate. Gmail email notes and attachments become linked files un
 Settings → Tag Rules, `screens/settings/tagRules/`): a context (Project, Area, Todo, Meeting), an
 optional tag, a MyStyle background template, and positioned content pieces (`title`, `date`,
 `time`, `text` from the rule's own reusable texts, `related` open todos, `link` to the item's
-linked file). `resolveNoteTemplate` picks the rule for an item; a rule tag matches itself and
+linked file, `sinceLast` for meetings). `resolveNoteTemplate` picks the rule for an item; a rule tag matches itself and
 every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting (default)" rule.
 
 - **Content.** `populateNoteFromRule` writes one textbox element per piece; pieces are always
@@ -495,6 +508,34 @@ every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting
   `toggleMeetingTrackingAt`. The phase switches at the real end of the meeting (`meetingEndMs`).
   Review's "Meetings to close out" lists outstanding reviews of the last
   `REVIEW_LOOKBACK_DAYS` (7) days.
+- **Since last time.** A Meeting rule can place the `sinceLast` piece (never in a rule's
+  defaults): `storage/sinceLast.ts`'s `buildSinceLast` takes the meeting's first thread tag, the
+  thread lens with the meeting's item as owner, and the previous meeting of the thread, and lists
+  Agreed last time (open, then done), I owe, Waiting for, Relevant and Done since then, each todo
+  once; `domain/sinceLastText.ts` prints at most 6 lines per block, then "… +N more". It follows
+  the freeze rule above like every piece.
+
+**Counterparts and tending.** A counterpart (the second segment of a nested tag) belongs to a
+**scope**: an Area with its assigned Projects, or a Project without an Area
+(`domain/counterparts.ts`: `counterpartScopes`, `scopeOwnerOf`, `scopeMembers`; a Project whose
+`area:` names no known Area counts as one without). Only nested tags whose type is a Tag Rule tag
+(`ruleTypesOf`: the first segment of every enabled rule's tags) or `wf`/`owe` make counterparts.
+`counterpartsOf` lists them per scope with `status` `new` (in use, no line) / `active` /
+`inactive`, their meeting threads, the one-off marker (`wf`/`owe` only, labelled "w/f only",
+"owe only", "w/f · owe only") and `backInUse` (inactive with an upcoming meeting of one of its
+threads). The status lines live in the scope owner's `## Threads` section (§2.2); a section found
+in a member Project is read too, the owner's line wins. The only writer is
+`storage/counterparts.ts`'s `setCounterpartStatus`, which resolves the owner and writes its file
+and cache. The Inbox has no counterparts. `storage/tendingRoster.ts` builds per scope the
+counterparts to confirm, the active and the inactive ones, each with signals from the overview's
+counterpart lens (last and next meeting, I owe, Waiting for and the oldest one's age); the
+Threads tab (§2.1) and Review's "Tending threads" (§2.8) show it. Setting one inactive runs
+`ui/CounterpartCloseOut.tsx` over its open I owe, Waiting for and Relevant todos (Done / Cancel /
+Keep through `storage/itemMove.ts`'s `closeTask`), or one status-slot confirmation when nothing is
+open. "Not" on a counterpart back in use only hides that offer for the session
+(`screens/thread/useTending.ts`). Inactive counterparts are left out of the tag suggestions
+(`storage/tagUsage.ts`); the debug bundle counts status lines. Detail:
+`docs/dev/history/technical-design-tending-threads.md`.
 
 Detail: `docs/dev/history/technical-design-note-templates.md`,
 `docs/dev/history/technical-design-shared-note-pages.md`,
@@ -562,6 +603,7 @@ with its count and last-reviewed date, and the steps themselves, one component e
 |---|---|---|
 | Week ahead | ritual | `WeekAheadStep` (the Week screen, next week from Friday) |
 | Meetings to close out | backlog | `MeetingsCloseOutStep` |
+| Tending threads | ritual | `TendingThreadsStep` (the roster per scope, New block on top; detail: Quick Add above `screens/thread/ThreadSummary.tsx`) |
 | Gmail inbox (experimental) | backlog | `GmailStep` |
 | Inbox to zero | backlog | `InboxStep` (Files pane, Refile, quick-file, marks card) |
 | Stalled projects, Done awaiting review, On Hold reconsideration, Neglected areas | backlog | `ItemListStep` + `ItemDetails` (master/detail, `ui/ReviewMasterDetail.tsx`) |

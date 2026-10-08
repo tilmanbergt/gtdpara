@@ -50,6 +50,8 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
 - **Threads**: tap a nested tag like `#retro/alpha` for everything around a person, team or meeting
   series - next meetings, what you owe, what you wait for, what is relevant, what was agreed in
   past meetings and what got done since
+- **Tending threads**: confirm the people and series you work with per area, see what you owe and
+  wait for on a Threads tab, tend them in the Weekly Review, print "since last time" on a meeting note
 - Works with **Obsidian** (Tasks and Dataview) through the Supernote Cloud Sync plugin
 - **Note templates** (Tag Rules): new notes come with a background and pre-filled context; shared
   notes can be split by tag, nested tag and date, e.g. one file per coaching client and year

@@ -23,6 +23,7 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
   - **Date** and **Time** (meetings)
   - **Related items**: open todos and meetings that share a tag with the item
   - **Linked file**: a link to the file linked to the item
+  - **Since last time** (meetings): what happened in the meeting's thread since its previous meeting, see below
   - a **static text** you write once for this rule (**+ New text**) and place on the page, for example "Agenda" or "Decisions"
 - The preview shows where each piece sits. Select a piece and move it with the arrows; change its font size and maximum width.
 
@@ -31,6 +32,11 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
 ## Meetings only
 
 - **Prepare before** and **Review after** switch on the preparation and review marks for matching meetings, see [Meetings](meetings.md).
+- **Since last time** is a piece you add yourself; new rules don't have it. It looks at the meeting's first thread tag (such as `#retro/alpha`, see [Threads](threads.md)) and the previous meeting of that thread, and prints:
+  - **Agreed last time**: the todos agreed in the previous meeting, open ones first, then the done ones (✓)
+  - **I owe**, **Waiting for**, **Relevant**: the other open todos of the thread, as in its overview
+  - **Done since then**: todos of the thread ticked since the day of the previous meeting
+- Each todo appears once; a todo agreed last time stays under Agreed last time. A block shows at most 6 lines, then `… +2 more`; empty blocks are left out. Without a previous meeting the piece writes nothing. Like every piece it is written when the note is created and again when you open the note, until the meeting is over.
 
 ## Finding notes again
 
