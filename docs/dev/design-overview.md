@@ -386,7 +386,9 @@ clamped together with the title; a double tap on the `#next`/`#now` label toggle
 a row's title go through `ui/TaggableText.tsx`: a nested context tag always opens the thread
 overview with the row's item as owner (rows get `ownerPath`; Inbox lists pass the Inbox folder),
 a plain context tag is tappable only where the screen passes a handler (Daily's context filter);
-the `#w/f Name` label opens the overview of `wf/<name>`. Meeting
+the `#w/f Name` label and an `#owe/<name>` tag open the counterpart lens for `<name>`
+(`openThreadOverview` forces it for `wf`/`owe`; the header then shows "All <name>" without a
+switch). Meeting
 rows have two fixed heights (one line 37 dp, two lines 57 dp); every list has a 1-line/2-line
 switch remembered per list for the session (`ui/listLayout.ts`). Every action (note, file, prep/
 review, highlight, source) is an optional prop, so a list enables features by props, never by

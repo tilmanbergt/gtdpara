@@ -6,7 +6,7 @@
  * body and closes it on a tab tap, on Back, or when the help opens.
  */
 import {useSyncExternalStore} from 'react';
-import {ThreadLens} from '../domain/threads';
+import {isCounterpartType, threadOf, ThreadLens} from '../domain/threads';
 
 export interface ThreadOverviewRequest {
   /** The tapped tag (a nested tag, `type/counterpart[/…]`). */
@@ -23,8 +23,16 @@ function emit(): void {
   listeners.forEach(listener => listener());
 }
 
+/**
+ * Opens the overview of `tag`. `wf/<name>` and `owe/<name>` name a
+ * counterpart, not a thread (decision D13), so they always open the
+ * counterpart lens; other tags the requested lens, the thread lens by default.
+ */
 export function openThreadOverview(request: {tag: string; ownerPath?: string | null; lens?: ThreadLens}): void {
-  current = {tag: request.tag.toLowerCase(), ownerPath: request.ownerPath ?? null, lens: request.lens ?? 'thread'};
+  const tag = request.tag.toLowerCase();
+  const thread = threadOf(tag);
+  const lens = thread && isCounterpartType(thread.type) ? 'counterpart' : request.lens ?? 'thread';
+  current = {tag, ownerPath: request.ownerPath ?? null, lens};
   emit();
 }
 

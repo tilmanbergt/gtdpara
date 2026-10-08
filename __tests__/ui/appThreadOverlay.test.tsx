@@ -119,6 +119,7 @@ describe('App with the thread overview', () => {
     expect(texts(r)).toContain('‹ Daily');
     expect(texts(r)).toContain('#retro/alpha');
     expect(texts(r)).toContain('in Coaching');
+    expect(r.root.findAll(n => Array.isArray(n.props.tabs) && n.props.tabs.some((t: {label: string}) => t.label === 'All alpha'))).not.toHaveLength(0);
     expect(rendered(r)).toContain('Ahead');
     expect(rendered(r)).toContain('+ Next retro');
     expect(rendered(r)).toContain('Draft agenda');
@@ -155,6 +156,20 @@ describe('App with the thread overview', () => {
     act(() => r.unmount());
   });
 
+  it('shows a #wf/<name> overview as "All <name>" without a lens switch', async () => {
+    const r = await renderApp();
+    await act(async () => openThreadOverview({tag: 'wf/alpha', ownerPath: AREA}));
+    await settle();
+    expect(texts(r)).toContain('All alpha');
+    expect(texts(r)).not.toContain('#wf/alpha');
+    const lensSwitch = (n: TestRenderer.ReactTestInstance) =>
+      Array.isArray(n.props.tabs) && n.props.tabs.some((t: {label: string}) => t.label === 'All alpha');
+    expect(r.root.findAll(lensSwitch)).toHaveLength(0);
+    expect(rendered(r)).toContain('+ Next retro');
+    expect(rendered(r)).toContain('Send minutes');
+    act(() => r.unmount());
+  });
+
   it('closes on a tab tap and when the help opens', async () => {
     const r = await renderApp();
     await act(async () => openThreadOverview({tag: 'retro/alpha', ownerPath: AREA}));
@@ -174,12 +189,12 @@ describe('App with the thread overview', () => {
 });
 
 describe('tap routing in a row', () => {
-  it('opens the overview from a nested tag and from the #w/f label, with the row as owner', () => {
+  it('opens the overview from a nested tag (thread lens), the #w/f label and #owe/<name> (counterpart lens)', () => {
     let r!: TestRenderer.ReactTestRenderer;
     act(() => {
       r = TestRenderer.create(
         <TaskRow
-          task={task('Agenda #retro/alpha #wf/max')}
+          task={task('Agenda #retro/alpha #wf/max #owe/lena')}
           isEditing={false}
           onStartEdit={() => undefined}
           onToggleDone={() => undefined}
@@ -198,7 +213,13 @@ describe('tap routing in a row', () => {
     expect(getThreadOverview()).toEqual({tag: 'retro/alpha', ownerPath: AREA, lens: 'thread'});
     const label = r.root.findAll(n => typeof n.props.onPress === 'function' && n.props.children === '#w/f Max')[0];
     act(() => label.props.onPress());
-    expect(getThreadOverview()).toEqual({tag: 'wf/max', ownerPath: AREA, lens: 'thread'});
+    expect(getThreadOverview()).toEqual({tag: 'wf/max', ownerPath: AREA, lens: 'counterpart'});
+    const owe = r.root.findAll(n => typeof n.props.onPress === 'function' && n.props.children === '#owe/lena')[0];
+    act(() => owe.props.onPress());
+    expect(getThreadOverview()).toEqual({tag: 'owe/lena', ownerPath: AREA, lens: 'counterpart'});
+    // A wf/owe tag never opens a thread lens of its own, whatever is asked for.
+    act(() => openThreadOverview({tag: 'wf/max', lens: 'thread'}));
+    expect(getThreadOverview()?.lens).toBe('counterpart');
   });
 
   it('keeps a plain tag inert without a filter handler', () => {

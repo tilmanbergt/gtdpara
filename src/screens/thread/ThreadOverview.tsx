@@ -5,7 +5,9 @@
  * a nested tag or a `#w/f Name` label (ui/threadOverlayStore.ts).
  *
  * Header: "‹ <tab>" (closes it), the tag, the owner, the lens switch
- * (thread | all of the counterpart). Left: Ahead above Looking back. Right:
+ * (thread | all of the counterpart). `#wf/<name>` and `#owe/<name>` name a
+ * counterpart, not a thread: their overview is "All <name>" without a
+ * switch. Left: Ahead above Looking back. Right:
  * Quick Add, then the selected Looking back row: a past meeting (the latest
  * by default) with the todos agreed in it, or the "Since" row with the todos
  * done since that meeting. While a past meeting is selected, a new todo
@@ -20,7 +22,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {todayIso} from '../../domain/meetingTime';
 import {MeetingSeedFields, nextMeetingSeed} from '../../domain/nextMeeting';
-import {belongsToThread, ThreadLens, ThreadRef} from '../../domain/threads';
+import {belongsToThread, isCounterpartType, ThreadLens, ThreadRef} from '../../domain/threads';
 import {lensLabels} from '../../domain/threadText';
 import {buildThreadOverview, PastMeeting, ThreadItemRef, ThreadOverview as Overview} from '../../storage/threadAggregate';
 import MiniTabs from '../../ui/MiniTabs';
@@ -47,7 +49,7 @@ function destinationOf(item: ThreadItemRef | null): Destination {
 
 /** "+ Next <type>" offers: per type, the thread's meetings in the overview, seeded from the latest. */
 function nextSeeds(overview: Overview, today: string): Array<{type: string; seed: MeetingSeedFields; item: ThreadItemRef}> {
-  const types = overview.lens === 'thread' ? [overview.thread.type] : overview.types.filter(t => t !== 'wf');
+  const types = overview.lens === 'thread' ? [overview.thread.type] : overview.types.filter(t => !isCounterpartType(t));
   const entries = [...overview.ahead.meetings, ...overview.past.map(p => p.entry)];
   const out: Array<{type: string; seed: MeetingSeedFields; item: ThreadItemRef}> = [];
   for (const type of types) {
@@ -144,6 +146,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
 
   const fixedDestination = destinationOf(seedItem ?? (origin.active && selected ? selected.entry.item : overview.owner));
   const labels = lensLabels(overview.thread);
+  const counterpartOnly = isCounterpartType(overview.thread.type);
 
   return (
     <View style={styles.overlay}>
@@ -153,27 +156,29 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
         </Pressable>
         <View style={styles.titleBox}>
           <Text style={[styles.tag, {color: textColor}]} numberOfLines={1}>
-            #{overview.thread.tag}
+            {counterpartOnly ? labels.counterpart : `#${overview.thread.tag}`}
           </Text>
           <Text style={[styles.owner, {color: textColor}]} numberOfLines={1}>
             {overview.owner ? `in ${overview.owner.name}` : 'in all files'}
           </Text>
         </View>
-        <View style={styles.lens}>
-          <MiniTabs<ThreadLens>
-            tabs={[
-              {key: 'thread', label: labels.thread},
-              {key: 'counterpart', label: labels.counterpart},
-            ]}
-            activeKey={lens}
-            onChange={next => edit.afterSave(() => {
-              edit.set(null);
-              setLens(next);
-            })}
-            textColor={textColor}
-            borderColor={borderColor}
-          />
-        </View>
+        {!counterpartOnly && (
+          <View style={styles.lens}>
+            <MiniTabs<ThreadLens>
+              tabs={[
+                {key: 'thread', label: labels.thread},
+                {key: 'counterpart', label: labels.counterpart},
+              ]}
+              activeKey={lens}
+              onChange={next => edit.afterSave(() => {
+                edit.set(null);
+                setLens(next);
+              })}
+              textColor={textColor}
+              borderColor={borderColor}
+            />
+          </View>
+        )}
       </View>
       <View style={styles.body}>
         <View style={[styles.column, styles.left]}>

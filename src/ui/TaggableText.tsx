@@ -7,11 +7,13 @@
  *
  * - A nested context tag (`#retro/alpha`) is always a tap target: it opens
  *   the thread overview (thread lens) with the row's item as owner
- *   (`ownerPath`; null when the row doesn't know it).
+ *   (`ownerPath`; null when the row doesn't know it). `#owe/<name>` opens
+ *   the counterpart lens for `<name>` instead (ui/threadOverlayStore.ts).
  * - A plain context tag is a tap target only when the screen passes
  *   `onToggleContext` (Daily's filter); it is drawn filled when it is the
  *   active `contextTag`.
- * - Reserved words (flow state, `#wf/…`, `#now`, due) stay plain text.
+ * - Reserved words (flow state, `#wf/…`, `#now`, due) stay plain text; the
+ *   `#w/f Name` label (ui/TaskLabels.tsx) is the tap target for `#wf/<name>`.
  *
  * A tag's `onPress` wins over the row's own tap: React Native gives a touch
  * to the innermost element with its own `onPress`.

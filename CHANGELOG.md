@@ -16,7 +16,8 @@ or your project/area files are stored.
   meetings), what you are waiting for, what is relevant (tagged with it), and every past meeting
   with what was agreed in it and how much of it is done. A "Since" row lists what you ticked
   since the latest meeting.
-  A switch shows the whole counterpart (`All alpha`) instead of one thread. The overview covers
+  A switch shows the whole counterpart (`All alpha`) instead of one thread; a `#w/f Name` label
+  or an `#owe/name` tag opens the whole counterpart right away. The overview covers
   the project or area you tapped in, together with its area and that area's projects. **‹** with
   the tab's name, or any tab, closes it; the screen behind stays as it was.
 - **+ Next retro** in the overview copies the thread's latest meeting to the next date, keeping

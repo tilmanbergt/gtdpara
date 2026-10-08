@@ -28,7 +28,7 @@ Mieke's thread shows it under **I owe** and under her meeting of 30.9. in **Look
 
 ## Opening the overview
 
-Tap a nested tag in a todo or meeting, on any screen: Daily, Week, Month, Inbox, Current or the Review. A `#w/f Name` label opens the overview for `#wf/name`. The overview opens over the screen; the tab bar stays.
+Tap a nested tag in a todo or meeting, on any screen: Daily, Week, Month, Inbox, Current or the Review. A `#w/f Name` label and an `#owe/name` tag name a counterpart rather than a thread: they open **All name**, everything with that counterpart, without the switch. The overview opens over the screen; the tab bar stays.
 
 - **‹ Daily** (the name of the tab underneath) closes it, and so does a tap on any tab. The screen behind is exactly as you left it.
 - The help and the overview replace each other.

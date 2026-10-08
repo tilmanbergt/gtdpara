@@ -11,7 +11,7 @@
  * reacts to touch, and only when `onToggleNow` is passed: two taps within
  * DOUBLE_TAP_MS flip `#now` (docs/dev/history/technical-design-now-focus-mode.md §3).
  * A single tap on it does nothing. The `#w/f Name` label opens the thread
- * overview of `wf/<name>` when `onOpenWaitingFor` is passed
+ * overview of the counterpart `<name>` when `onOpenWaitingFor` is passed
  * (docs/dev/history/technical-design-tending-threads.md §3.7). Taps on other
  * labels go to the row (start editing), since they have no onPress of their
  * own.
