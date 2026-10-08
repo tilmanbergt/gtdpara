@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-10-08
+
 ### New
 - **Tending threads.** The people, teams and series behind nested tags such as `#retro/alpha`
   (counterparts) are now tended per area (with its projects) or per project without an area. A
