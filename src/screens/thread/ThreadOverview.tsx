@@ -21,10 +21,9 @@ import React, {useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {todayIso} from '../../domain/meetingTime';
-import {MeetingSeedFields, nextMeetingSeed} from '../../domain/nextMeeting';
-import {belongsToThread, isCounterpartType, ThreadLens, ThreadRef} from '../../domain/threads';
+import {isCounterpartType, ThreadLens} from '../../domain/threads';
 import {lensLabels} from '../../domain/threadText';
-import {buildThreadOverview, PastMeeting, ThreadItemRef, ThreadOverview as Overview} from '../../storage/threadAggregate';
+import {buildThreadOverview, nextMeetingOffers, PastMeeting, ThreadItemRef} from '../../storage/threadAggregate';
 import MiniTabs from '../../ui/MiniTabs';
 import QuickAddWidget from '../../ui/QuickAddWidget';
 import {MeetingSeed} from '../../ui/quickAdd/useDraftRequests';
@@ -45,24 +44,6 @@ const AHEAD_VIEWPORT_DP = 480;
 function destinationOf(item: ThreadItemRef | null): Destination {
   if (!item || item.kind === 'inbox') return {type: 'inbox'};
   return {type: 'item', kind: item.kind, name: item.name, path: item.path};
-}
-
-/** "+ Next <type>" offers: per type, the thread's meetings in the overview, seeded from the latest. */
-function nextSeeds(overview: Overview, today: string): Array<{type: string; seed: MeetingSeedFields; item: ThreadItemRef}> {
-  const types = overview.lens === 'thread' ? [overview.thread.type] : overview.types.filter(t => !isCounterpartType(t));
-  const entries = [...overview.ahead.meetings, ...overview.past.map(p => p.entry)];
-  const out: Array<{type: string; seed: MeetingSeedFields; item: ThreadItemRef}> = [];
-  for (const type of types) {
-    const thread: ThreadRef = {type, counterpart: overview.thread.counterpart, tag: `${type}/${overview.thread.counterpart}`};
-    const own = entries.filter(e => belongsToThread(e.meeting.tags, thread));
-    const seed = nextMeetingSeed(own.map(e => e.meeting), today);
-    const base = own.reduce<(typeof own)[number] | null>(
-      (latest, e) => (!latest || `${e.meeting.date} ${e.meeting.time}` > `${latest.meeting.date} ${latest.meeting.time}` ? e : latest),
-      null,
-    );
-    if (seed && base) out.push({type, seed, item: base.item});
-  }
-  return out;
 }
 
 interface Props {
@@ -134,7 +115,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
   }
 
   const today = todayIso();
-  const offers: NextOffer[] = nextSeeds(overview, today).map(({type, seed: fields, item}) => ({
+  const offers: NextOffer[] = nextMeetingOffers(overview, today).map(({type, seed: fields, item}) => ({
     type,
     onPress: () =>
       edit.afterSave(() => {

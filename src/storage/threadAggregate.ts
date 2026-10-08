@@ -40,7 +40,7 @@
  * mutateEntryMeetings (the index-safety rule).
  */
 import {meetingEndMs, todayIso} from '../domain/meetingTime';
-import {daysBetween} from '../domain/nextMeeting';
+import {daysBetween, MeetingSeedFields, nextMeetingSeed} from '../domain/nextMeeting';
 import {meetingKey, ProvenanceMatch, ProvenanceSource, resolveProvenance} from '../domain/provenance';
 import {
   belongsToCounterpart,
@@ -147,24 +147,46 @@ function fallbackOwner(sources: readonly ThreadSource[], thread: ThreadRef): Thr
   return best?.ref ?? null;
 }
 
+/** How an open or done todo relates to a lens (§1.2.1); the first that applies. */
+export type ThreadRelation = 'waiting' | 'owe' | 'relevant';
+
 /**
- * The overview of the thread of `tag` in `requestedLens` (the counterpart
- * lens for `wf`/`owe` tags), scoped to `ownerPath` - see the module doc
- * comment. Null when `tag` is not a nested tag.
+ * A lens resolved against the cache: its scope and the §1.2.1 predicates.
+ * Shared by the overview, the Threads tab's filter, the Review roster and the
+ * "Since last time" piece, so they all agree on what belongs to a thread or
+ * counterpart.
  */
-export function buildThreadOverview(
+export interface ThreadLensContext {
+  lens: ThreadLens;
+  thread: ThreadRef;
+  owner: ThreadItemRef | null;
+  scope: string[];
+  /** The sources inside the scope (the Inbox only when it is the owner). */
+  inScope: ThreadSource[];
+  types: string[];
+  /** Whether tags carry the lens's tags (thread tag or plain leaf; counterpart lens: any thread of it). */
+  inLens: (tags: readonly string[]) => boolean;
+  /** The meeting a todo was agreed in, when its provenance resolves. */
+  provenanceOf: (task: Task) => ProvenanceMatch | null;
+  /** How a todo (filed inside the scope) relates to the lens, or null. */
+  relationOf: (task: Task, match?: ProvenanceMatch | null) => ThreadRelation | null;
+}
+
+/**
+ * The lens of `tag` in `requestedLens` (the counterpart lens for `wf`/`owe`
+ * tags), scoped to `ownerPath` - see the module doc comment. Null when `tag`
+ * is not a nested tag.
+ */
+export function threadLensContext(
   items: readonly CachedItem[],
   inbox: ThreadInboxInput | null,
   tag: string,
   requestedLens: ThreadLens,
   ownerPath: string | null,
-  now: Date = new Date(),
-): ThreadOverview | null {
+): ThreadLensContext | null {
   const thread = threadOf(tag);
   if (!thread) return null;
   const lens: ThreadLens = isCounterpartType(thread.type) ? 'counterpart' : requestedLens;
-  const today = todayIso(now);
-  const nowMs = now.getTime();
   const all = threadSourcesOf(items, inbox);
 
   const ownerRef = ownerPath
@@ -191,9 +213,8 @@ export function buildThreadOverview(
   const agreedInLens = (match: ProvenanceMatch | null) =>
     match !== null && scope.includes(match.path) && inLens(match.meeting.tags);
 
-  /** How an in-scope todo relates to the lens (§1.2.1), or null. */
-  const relationOf = (task: Task, match: ProvenanceMatch | null): 'waiting' | 'owe' | 'relevant' | null => {
-    const agreed = agreedInLens(match);
+  const relationOf = (task: Task, known?: ProvenanceMatch | null): ThreadRelation | null => {
+    const agreed = agreedInLens(known === undefined ? provenanceOf(task) : known);
     const tagged = inLens(task.tags);
     if (task.flowState === 'waiting-for') {
       if (task.waitingOn === cp) return 'waiting';
@@ -202,6 +223,28 @@ export function buildThreadOverview(
     if (agreed || owedTo(task.tags).includes(cp)) return 'owe';
     return tagged ? 'relevant' : null;
   };
+
+  return {lens, thread, owner: ownerRef, scope, inScope, types, inLens, provenanceOf, relationOf};
+}
+
+/**
+ * The overview of the thread of `tag` in `requestedLens` (the counterpart
+ * lens for `wf`/`owe` tags), scoped to `ownerPath` - see the module doc
+ * comment. Null when `tag` is not a nested tag.
+ */
+export function buildThreadOverview(
+  items: readonly CachedItem[],
+  inbox: ThreadInboxInput | null,
+  tag: string,
+  requestedLens: ThreadLens,
+  ownerPath: string | null,
+  now: Date = new Date(),
+): ThreadOverview | null {
+  const ctx = threadLensContext(items, inbox, tag, requestedLens, ownerPath);
+  if (!ctx) return null;
+  const {lens, thread, scope, inScope, types, inLens, provenanceOf, relationOf} = ctx;
+  const today = todayIso(now);
+  const nowMs = now.getTime();
 
   const aheadMeetings: ThreadMeetingEntry[] = [];
   const pastEntries: ThreadMeetingEntry[] = [];
@@ -261,11 +304,53 @@ export function buildThreadOverview(
   return {
     lens,
     thread,
-    owner: ownerRef,
+    owner: ctx.owner,
     scope,
     types,
     ahead: {meetings: aheadMeetings, ...lists},
     since: {from, done: sinceDone},
     past,
   };
+}
+
+/**
+ * Whether a todo or meeting of the scope of `ownerPath` belongs to the
+ * counterpart of `tag` - the counterpart lens's §1.2.1 predicate, the one the
+ * overview classifies with (the Current page's counterpart filter). Null when
+ * `tag` is not a nested tag.
+ */
+export function counterpartMatcher(
+  items: readonly CachedItem[],
+  inbox: ThreadInboxInput | null,
+  tag: string,
+  ownerPath: string,
+): {task: (task: Task) => boolean; meeting: (meeting: Meeting) => boolean} | null {
+  const ctx = threadLensContext(items, inbox, tag, 'counterpart', ownerPath);
+  if (!ctx) return null;
+  return {task: task => ctx.relationOf(task) !== null, meeting: meeting => ctx.inLens(meeting.tags)};
+}
+
+/** One "+ Next <type>" offer: the seed from the thread's latest meeting, to that meeting's item. */
+export interface NextMeetingOffer {
+  type: string;
+  seed: MeetingSeedFields;
+  item: ThreadItemRef;
+}
+
+/** "+ Next <type>" offers of an overview: per thread type (one in the thread lens), seeded from its meetings in the overview. */
+export function nextMeetingOffers(overview: ThreadOverview, today: string): NextMeetingOffer[] {
+  const types = overview.lens === 'thread' ? [overview.thread.type] : overview.types.filter(t => !isCounterpartType(t));
+  const entries = [...overview.ahead.meetings, ...overview.past.map(p => p.entry)];
+  const out: NextMeetingOffer[] = [];
+  for (const type of types) {
+    const tag = `${type}/${overview.thread.counterpart}`;
+    const own = entries.filter(e => belongsToThread(e.meeting.tags, {type, counterpart: overview.thread.counterpart, tag}));
+    const seed = nextMeetingSeed(own.map(e => e.meeting), today);
+    const base = own.reduce<ThreadMeetingEntry | null>(
+      (latest, e) => (!latest || startKey(e.meeting) > startKey(latest.meeting) ? e : latest),
+      null,
+    );
+    if (seed && base) out.push({type, seed, item: base.item});
+  }
+  return out;
 }
