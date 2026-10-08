@@ -148,8 +148,9 @@ function fallbackOwner(sources: readonly ThreadSource[], thread: ThreadRef): Thr
 }
 
 /**
- * The overview of the thread of `tag` in `lens`, scoped to `ownerPath` - see
- * the module doc comment. Null when `tag` is not a nested tag.
+ * The overview of the thread of `tag` in `requestedLens` (the counterpart
+ * lens for `wf`/`owe` tags), scoped to `ownerPath` - see the module doc
+ * comment. Null when `tag` is not a nested tag.
  */
 export function buildThreadOverview(
   items: readonly CachedItem[],

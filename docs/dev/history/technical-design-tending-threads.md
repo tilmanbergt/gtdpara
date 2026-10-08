@@ -861,3 +861,58 @@ Off-device: `npm run check` (tsc, ESLint, 502 Jest tests including the App smoke
 overview open, script, help-page and code-health tests, code health). The device checklist of §6
 "0.11.0" and the steps of the help page "Using gtdpara with Obsidian" are still open.
 
+
+### Rework D12–D15
+
+The revision at the top of this document, on `feature/threads`; every commit ends with
+`npm run check` green.
+
+- `b972f16` Write provenance as the meeting field only: `applyProvenance(line, key)` sets
+  `[meeting:: key]` and leaves the text as typed (`provenanceOf`, `provenanceTags` and the
+  `Provenance` type are gone); `provenanceLabel` is `↳ from <title> · <day>`. All three writers
+  go through `ui/quickAdd/useProvenance.ts`, unchanged otherwise. `resolveProvenance` takes only
+  the todo's fields: the fallback (D14) is a meeting on the key's date with one of its thread tags
+  among the key's words. Tests: provenance cases, `useProvenance` (no "adds", ✕ for one todo).
+- `67e8a27` Classify thread todos as waiting, owed or relevant: `buildThreadOverview` per §3.3
+  (`ahead.relevant`, `since`), `OWE_TYPE`, `isCounterpartType` and `owedTo` in
+  `domain/threads.ts`, `OWE` refused in `validateAbbrev`, the "Relevant" sub-list in
+  `AheadSection`; help pages Threads and Tags, design-overview. Tests: §6 "Classification" with
+  the Mieke/Sven example.
+- `1058322` Show what was done since the latest meeting in Looking back: the "Since" row
+  (`LookingBackSection`), `PastMeetingPanel` taking a `PanelSelection` (meeting or since),
+  `sinceRowLabel`; App smoke test selects the row.
+- `42135dd` Open the counterpart lens from `#w/f` labels and `#owe` tags: `openThreadOverview`
+  forces the counterpart lens for `wf`/`owe`; the header shows "All <name>" without the switch.
+- `b42f25c` The help pages Lasso and Review still said a todo from a meeting gets its thread tag;
+  Threads names where a todo counts (D15); README.
+
+Choices where the design left a detail open, and deviations:
+
+- **A meeting of the lens** is one the overview lists: the lens's tags, so in the thread lens
+  also a meeting with only the plain leaf (`#mieke`), and in the counterpart lens any thread of
+  the counterpart or the leaf, inside the scope, past, ahead or cancelled. §3.3 says "thread tag /
+  any thread of the counterpart"; including the leaf keeps every open todo counted under a
+  meeting in Looking back also in I owe or Waiting for.
+- **Waiting for** takes the user's wording of §1.2.1 literally: `#wf/<counterpart>`, or a *bare*
+  `#wf` with the agreement or the lens's tags. A todo agreed with Mieke and tagged `#wf/sven` is
+  Waiting for in Sven's threads and I owe in Mieke's (§3.3's looser list would have made it
+  Waiting for in both).
+- **The lens's tags** in the counterpart lens are the counterpart's thread types without `wf` and
+  `owe`: `#wf/<cp>` and `#owe/<cp>` have their own meaning, so a bare `#wf` next to `#owe/mieke`
+  stays I owe in both lenses.
+- **`#owe/<cp>`** stays a context tag (tag chips, note keywords, tappable); only the bare `owe` is
+  refused as an abbreviation, by `validateAbbrev`, since `isContextTag('owe')` stays true (a bare
+  `#owe` is a plain tag). `wf`/`owe` overviews are forced to the counterpart lens in
+  `openThreadOverview` and again in `buildThreadOverview`, so no caller can open a `wf` thread lens.
+- **Display order** in Ahead is §3.5.2's (Next meetings, I owe, Waiting for, Relevant); the
+  precedence Waiting for > I owe > Relevant decides only where a todo goes.
+- **Since** lists done, not cancelled todos with `completion ≥` the latest past meeting's date,
+  latest first; the panel groups them under the same "Done · <day>" heads as a meeting's done
+  todos, its header reads "Since <day>" / "n done since the latest meeting". The row is drawn at
+  the two-line meeting row's height (57 dp), so the list pages by one height.
+- Point 7 of the rework brief (an Obsidian help page change) carried no content and was left out;
+  `docs/user/obsidian.md` is unchanged.
+
+Off-device: `npm run check` (tsc, ESLint, 526 Jest tests including the App smoke test with the
+overview open, the "Since" row selected and a `#wf/…` overview, script, help-page and
+code-health tests, code health). The device checklist of §6 "0.11.0" is still open.
