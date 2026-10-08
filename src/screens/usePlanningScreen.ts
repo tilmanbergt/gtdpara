@@ -325,6 +325,7 @@ export function usePlanningScreen({logTag}: Options) {
     file: {linkedFile: entry.meeting.linkedFile, onOpen: onOpenLinkedFile},
     onPress: () => startMeetingEdit(entry),
     state: editingKey === meetingKey(entry) ? 'editing' : undefined,
+    ownerPath: entry.item.path,
     textColor: opts.textColor,
     borderColor: opts.borderColor,
   });

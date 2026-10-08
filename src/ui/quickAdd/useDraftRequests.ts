@@ -7,8 +7,9 @@
  *
  * Each request acts exactly when its `nonce` changes - a fresh object with the
  * same nonce does nothing, so a caller can keep it in state - and at most once
- * per nonce, even across a remount. Requests that arrive while an edit is open
- * are dropped (the tabs are locked then).
+ * per nonce, even across a remount. A prefill that arrives while an edit is
+ * open is dropped (the tabs are locked then); a meeting seed waits until the
+ * edit has closed (the overview ends its edit and sends the seed in one tap).
  */
 import {useEffect, useRef} from 'react';
 import {MeetingSeedFields} from '../../domain/nextMeeting';
@@ -31,14 +32,20 @@ interface Appliers {
   seed: (fields: MeetingSeedFields) => void;
 }
 
-function useOnce<T extends {nonce: number}>(request: T | null | undefined, isEditing: boolean, apply: (request: T) => void): void {
+function useOnce<T extends {nonce: number}>(
+  request: T | null | undefined,
+  isEditing: boolean,
+  waitForEdit: boolean,
+  apply: (request: T) => void,
+): void {
   const handledRef = useRef<number | null>(request ? request.nonce : null);
   useEffect(() => {
     if (!request || request.nonce === handledRef.current) return;
+    if (isEditing && waitForEdit) return;
     handledRef.current = request.nonce;
     if (!isEditing) apply(request);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [request?.nonce]);
+  }, [request?.nonce, waitForEdit && isEditing]);
 }
 
 export function useDraftRequests(
@@ -47,9 +54,9 @@ export function useDraftRequests(
   isEditing: boolean,
   apply: Appliers,
 ): void {
-  useOnce(prefill, isEditing, request => {
+  useOnce(prefill, isEditing, false, request => {
     const addition = request.text.replace(/\s+/g, ' ').trim();
     if (addition) apply.text(request.kind, addition);
   });
-  useOnce(meetingSeed, isEditing, request => apply.seed(request.fields));
+  useOnce(meetingSeed, isEditing, true, request => apply.seed(request.fields));
 }

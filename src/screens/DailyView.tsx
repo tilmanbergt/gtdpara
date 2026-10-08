@@ -256,13 +256,11 @@ export default function DailyView({
   const features = useFeatures();
 
   // Context-tag filter (technical-design-context-tags.md §6) - session-only,
-  // not persisted (resets to off on every reopen, same posture docs/
-  // technical-design-now-focus-mode.md §5 uses for focus mode's own
-  // state), Daily-only (deliberately never threaded into
-  // focusMode's own rendering below - see the design doc's §2/§10). Set by
-  // tapping a tag in a row's text (ui/TaskRow.tsx/
-  // ui/MeetingRow.tsx's onToggleContext) or the indicator's own ✕; there's
-  // no other way to set it (no picker) by design.
+  // not persisted, Daily-only (never threaded into focus mode's rendering,
+  // the design doc's §2/§10). Set by tapping a plain tag in a row's text
+  // (ui/TaggableText.tsx; a nested tag opens the thread overview instead,
+  // docs/dev/history/technical-design-tending-threads.md §3.7) and cleared by
+  // the indicator's ✕; there's no other way to set it (no picker) by design.
   const [dailyContext, setDailyContext] = useState<string | null>(null);
   const toggleContext = (tag: string) => setDailyContext(current => (current === tag ? null : tag));
 
@@ -854,6 +852,7 @@ export default function DailyView({
         onToggleNow={() => handleToggleNow(entry)}
         contextTag={dailyContext}
         onToggleContext={toggleContext}
+        ownerPath={entry.item.path}
         context="flat"
         height={heightPx}
         numberOfLines={heightPx != null ? taskRowLines(entry.task, COLUMN_WIDTH_PX, 'flat', dailyContext != null) : undefined}
@@ -972,6 +971,7 @@ export default function DailyView({
         state={editTarget?.type === 'meeting' && editTarget.key === key ? 'editing' : undefined}
         contextTag={focusMode ? undefined : dailyContext}
         onToggleContext={focusMode ? undefined : toggleContext}
+        ownerPath={entry.item.path}
         textColor={textColor}
         borderColor={borderColor}
       />

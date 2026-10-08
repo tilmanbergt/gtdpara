@@ -142,6 +142,7 @@ export function ReviewItemDetail({
             <MeetingRow
               key={`${m.item.path}#${m.meetingIndex}`}
               meeting={m.meeting}
+              ownerPath={m.item.path}
               layout="oneLine"
               time="dateTime"
               textColor={textColor}
@@ -314,6 +315,7 @@ export function DoneOnHoldDetail({
           <MeetingRow
             key={`meeting-${meetingIndex}`}
             meeting={meeting}
+            ownerPath={itemRef.path}
             layout="oneLine"
             time="dateTime"
             textColor={textColor}

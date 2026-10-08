@@ -25,7 +25,7 @@ import {MarkScope} from './src/domain/marks';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
-import {useAppOverlays} from './src/ui/useAppOverlays';
+import {useAppOverlays} from './src/screens/useAppOverlays';
 import {StatusProvider} from './src/ui/status/StatusProvider';
 import StatusFrame from './src/ui/status/StatusFrame';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
@@ -193,7 +193,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // effect isn't needed (a tab switch away always unmounts it first).
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('folders');
 
-  // Help and the other overlays over the tab body (ui/useAppOverlays.tsx).
+  // Help and the other overlays over the tab body (screens/useAppOverlays.tsx).
   const overlays = useAppOverlays(mode === 'tabs', activeTab);
   // Leftovers of an interrupted PDF export live only in the plugin's private
   // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - clear

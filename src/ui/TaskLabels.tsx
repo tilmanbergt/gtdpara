@@ -10,8 +10,11 @@
  * bolder font, not by color (grayscale rule). Only the `#next`/`#now` label
  * reacts to touch, and only when `onToggleNow` is passed: two taps within
  * DOUBLE_TAP_MS flip `#now` (docs/dev/history/technical-design-now-focus-mode.md §3).
- * A single tap on it does nothing. Taps on other labels go to the row
- * (start editing), since they have no onPress of their own.
+ * A single tap on it does nothing. The `#w/f Name` label opens the thread
+ * overview of `wf/<name>` when `onOpenWaitingFor` is passed
+ * (docs/dev/history/technical-design-tending-threads.md §3.7). Taps on other
+ * labels go to the row (start editing), since they have no onPress of their
+ * own.
  */
 import React, {useRef} from 'react';
 import {StyleSheet, Text} from 'react-native';
@@ -24,9 +27,10 @@ const DOUBLE_TAP_MS = 350;
 interface Props {
   labels: TaskLabel[];
   onToggleNow?: () => void;
+  onOpenWaitingFor?: () => void;
 }
 
-export default function TaskLabels({labels, onToggleNow}: Props): React.JSX.Element | null {
+export default function TaskLabels({labels, onToggleNow, onOpenWaitingFor}: Props): React.JSX.Element | null {
   const lastTapRef = useRef<number>(0);
   if (labels.length === 0) return null;
 
@@ -44,10 +48,11 @@ export default function TaskLabels({labels, onToggleNow}: Props): React.JSX.Elem
     <>
       {labels.map((label, index) => {
         const toggles = onToggleNow && (label.kind === 'next' || label.kind === 'now');
+        const opens = label.kind === 'waiting' ? onOpenWaitingFor : undefined;
         return (
           <React.Fragment key={`${label.kind}-${index}`}>
             {LABEL_GAP}
-            <Text style={styles.label} onPress={toggles ? handleNowPress : undefined} suppressHighlighting>
+            <Text style={[styles.label, opens && styles.link]} onPress={toggles ? handleNowPress : opens} suppressHighlighting>
               {label.text}
             </Text>
           </React.Fragment>
@@ -62,4 +67,5 @@ const styles = StyleSheet.create({
     fontSize: FONT.small,
     fontWeight: '600',
   },
+  link: {textDecorationLine: 'underline'},
 });

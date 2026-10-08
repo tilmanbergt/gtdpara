@@ -409,6 +409,7 @@ return (
             isEditing={editingInboxTaskIndex === taskIndex}
             isArming={armingInboxTaskIndex === taskIndex}
             onStartEdit={() => startEditingInboxTask(taskIndex)}
+            ownerPath={inboxPath}
             onToggleDone={() => handleInboxTaskDone(taskIndex)}
             onCreateNote={() => handleInboxTaskNote(taskIndex)}
             onOpenNote={() => handleInboxTaskNote(taskIndex)}
@@ -443,6 +444,7 @@ return (
           <MeetingRow
             key={`meeting-${meetingIndex}`}
             meeting={meeting}
+            ownerPath={inboxPath}
             layout={layout}
             time="dateTime"
             highlight="mark"

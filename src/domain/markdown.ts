@@ -157,7 +157,8 @@ export function extractContextTags(text: string): string[] {
   return tags;
 }
 
-export type TextSegment = {kind: 'text'; value: string} | {kind: 'tag'; value: string};
+/** A tag segment's `value` is lowercased without `#` (for matching); `raw` is the tag as typed, `#` included (for display). */
+export type TextSegment = {kind: 'text'; value: string} | {kind: 'tag'; value: string; raw: string};
 
 /**
  * Walks `text` once with the same `TAG_RE` `extractTags` uses, yielding
@@ -180,7 +181,7 @@ export function splitTextWithTags(text: string): TextSegment[] {
     if (index > lastIndex) {
       segments.push({kind: 'text', value: text.slice(lastIndex, index)});
     }
-    segments.push({kind: 'tag', value: match[1].toLowerCase()});
+    segments.push({kind: 'tag', value: match[1].toLowerCase(), raw: match[0]});
     lastIndex = index + match[0].length;
   }
   if (lastIndex < text.length) {

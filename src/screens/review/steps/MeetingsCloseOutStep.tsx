@@ -67,6 +67,7 @@ function CloseOutMeetingRow({
       layout={layout}
       time="dateTime"
       source={{abbrev: current.abbrev ?? entry.item.name, name: entry.item.name}}
+      ownerPath={entry.item.path}
       state={state}
       textColor={textColor}
       borderColor={borderColor}

@@ -82,6 +82,8 @@ export interface MeetingRowProps {
   /** Daily's context filter - see ui/TaskRow.tsx's identical props. */
   contextTag?: string | null;
   onToggleContext?: (tag: string) => void;
+  /** The item this meeting lives in (the Inbox folder for Inbox rows): owner of the overview its nested tags open. */
+  ownerPath?: string | null;
   textColor: string;
   borderColor: string;
 }
@@ -101,6 +103,7 @@ function MeetingRowV2({
   state,
   contextTag,
   onToggleContext,
+  ownerPath,
   textColor,
   borderColor,
 }: MeetingRowProps): React.JSX.Element {
@@ -119,7 +122,7 @@ function MeetingRowV2({
     <Text style={[v2.title, titleWraps && v2.titleWrapped, {color: textColor}]} numberOfLines={titleWraps ? 2 : 1}>
       {done ? '✓ ' : ''}
       {continuesBefore ? '◂ ' : ''}
-      {renderTaggableText(meetingDisplayTitle(meeting), {contextTag, onToggleContext})}
+      {renderTaggableText(meetingDisplayTitle(meeting), {contextTag, onToggleContext, ownerPath})}
       {continuesAfter ? ' ▸' : ''}
     </Text>
   );

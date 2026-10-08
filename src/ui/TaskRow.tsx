@@ -32,8 +32,11 @@
  * `editTarget`/`armTarget`, see the tech design doc §8) decides.
  *
  * Tappable inline tags (technical-design-context-tags.md §7): the title's
- * `#tags` go through ui/TaggableText.tsx; `contextTag`/`onToggleContext` are
- * passed only by Daily's own instances (screens/DailyView.tsx).
+ * `#tags` go through ui/TaggableText.tsx - nested tags open the thread
+ * overview with `ownerPath` as owner, and so does the `#w/f Name` label
+ * (docs/dev/history/technical-design-tending-threads.md §3.7);
+ * `contextTag`/`onToggleContext` (the plain-tag filter) are passed only by
+ * Daily's own instances (screens/DailyView.tsx).
  *
  * Title and labels are ONE <Text> (docs/dev/history/technical-design-waiting-for-0.7.md
  * §3.3): what's drawn (title, then labels as nested spans) and the height a
@@ -48,6 +51,8 @@ import {TaskLabelContext} from '../domain/taskLabels';
 import TaskLabels from './TaskLabels';
 import {TASK_COLUMN_WIDTH_PX, taskRowLayout} from './taskRowLayout';
 import {renderTaggableText} from './TaggableText';
+import {openThreadOverview} from './threadOverlayStore';
+import {WAITING_FOR_TYPE} from '../domain/flowState';
 import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
 
@@ -100,6 +105,8 @@ interface Props {
   contextTag?: string | null;
   /** Set only by Daily's own instances - present, every context tag in this row's text becomes its own tap target that calls this instead of onStartEdit; absent, tags render as plain text. */
   onToggleContext?: (tag: string) => void;
+  /** The item this row's todo lives in (the Inbox folder for Inbox rows): owner of the thread overview its nested tags and `#w/f Name` label open. */
+  ownerPath?: string | null;
   context: TaskBadgeContext;
   /** Computed via `taskRowHeight()`/`taskRowLines()` above by a caller
    * building a ui/PagedSection.tsx - overrides this row's default
@@ -129,6 +136,7 @@ export default function TaskRow({
   onToggleNow,
   contextTag,
   onToggleContext,
+  ownerPath,
   context,
   height,
   numberOfLines,
@@ -169,8 +177,14 @@ export default function TaskRow({
             <Text
               style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]}
               numberOfLines={numberOfLines ?? layout.lines}>
-              {renderTaggableText(layout.title, {contextTag, onToggleContext})}
-              <TaskLabels labels={layout.labels} onToggleNow={onToggleNow} />
+              {renderTaggableText(layout.title, {contextTag, onToggleContext, ownerPath})}
+              <TaskLabels
+                labels={layout.labels}
+                onToggleNow={onToggleNow}
+                onOpenWaitingFor={
+                  task.waitingOn ? () => openThreadOverview({tag: `${WAITING_FOR_TYPE}/${task.waitingOn}`, ownerPath: ownerPath ?? null}) : undefined
+                }
+              />
             </Text>
           </Pressable>
         </View>

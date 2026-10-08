@@ -49,7 +49,7 @@ describe('nested tags - parsing', () => {
   it('splits text into one tag segment per nested tag', () => {
     expect(splitTextWithTags('Session #coaching/sabina today')).toEqual([
       {kind: 'text', value: 'Session '},
-      {kind: 'tag', value: 'coaching/sabina'},
+      {kind: 'tag', value: 'coaching/sabina', raw: '#coaching/sabina'},
       {kind: 'text', value: ' today'},
     ]);
     expect(stripAllTags('Session #coaching/sabina today')).toBe('Session today');
