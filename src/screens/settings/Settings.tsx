@@ -212,7 +212,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
           {activeTab === 'focus' && <FocusTab draft={draft} {...tabProps} />}
           {activeTab === 'calendar' && <CalendarTab draft={draft} {...tabProps} />}
           {activeTab === 'gmail' && <GmailTab draft={draft} {...tabProps} />}
-          {activeTab === 'templates' && <TagRulesTab draft={tagRules} tagRules={values.tagRules} myStyle={myStyle} {...tabProps} />}
+          {activeTab === 'templates' && <TagRulesTab draft={tagRules} tagRules={values.tagRules} headingStyle={values.noteHeadingStyle} myStyle={myStyle} {...tabProps} />}
           {activeTab === 'advanced' && (
             <AdvancedTab
               activeProfileId={values.activeProfileId}

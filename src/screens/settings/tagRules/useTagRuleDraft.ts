@@ -8,7 +8,7 @@
  */
 import {Dispatch, SetStateAction, useRef, useState} from 'react';
 import {stripSpaceAfterHash} from '../../../domain/markdown';
-import {GtdParaSettings} from '../../../domain/settings';
+import {GtdParaSettings, NoteHeadingStyle} from '../../../domain/settings';
 import {
   addPieceToRule,
   addTextItem,
@@ -24,7 +24,9 @@ import {
   removePlacedPiece,
   removeTextItem,
   ruleTexts,
+  pieceIsHeading,
   setPieceFontSize,
+  setPieceHeading,
   setPieceMaxWidth,
   setPieceStep,
   TagRule,
@@ -345,6 +347,25 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     setDraftDef(setPieceStep(draftDef, selectedPieceIndex, step));
   };
 
+  /** The Heading switch of the selected piece (docs/dev/history/technical-design-projects-findable-notes.md §2.8). */
+  const handleToggleHeadingSelectedPiece = () => {
+    if (!draftDef || selectedPieceIndex === null) return;
+    const piece = draftDef.pieces[selectedPieceIndex];
+    setDraftDef(setPieceHeading(draftDef, selectedPieceIndex, !pieceIsHeading(piece)));
+  };
+
+  /** Heading style (§2.8): global, persisted at once like the rules themselves (see persistTagRules). */
+  const handleSetHeadingStyle = async (noteHeadingStyle: NoteHeadingStyle) => {
+    setValues(prev => ({...prev, noteHeadingStyle}));
+    setTemplatesSaveError(null);
+    try {
+      const onDisk = await loadSettings();
+      await saveSettings({...onDisk, noteHeadingStyle});
+    } catch (e) {
+      setTemplatesSaveError(errorMessage(e));
+    }
+  };
+
   const handleMaxWidthDeltaSelectedPiece = (delta: number) => {
     if (!draftDef || selectedPieceIndex === null) return;
     const current = pieceMaxWidthPx(draftDef.pieces[selectedPieceIndex]);
@@ -402,6 +423,8 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     handleFontDeltaSelectedPiece,
     handleStepChangeSelectedPiece,
     handleMaxWidthDeltaSelectedPiece,
+    handleToggleHeadingSelectedPiece,
+    handleSetHeadingStyle,
   };
 }
 
