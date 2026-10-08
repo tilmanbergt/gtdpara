@@ -16,10 +16,12 @@ or your project/area files are stored.
   counterpart you use for the first time is **new**: you decide **Tend** or **Not**, nothing is
   decided for you. Counterparts used only with `#wf/name` or `#owe/name` are marked `w/f only`,
   `owe only` or `w/f · owe only`. The Inbox has none.
-- **Threads tab** on the Current page, next to the Files tabs: new, active and inactive
-  counterparts with their latest and next meeting and what you owe or wait for. Tap a counterpart
-  to show only its todos and meetings (a todo agreed with one person but tagged for another shows
-  under both); **▸** shows its threads with **+ next**; **›** opens its overview.
+- **Threads tab** on the Current page, the first of the Files tabs and open when you open a
+  project or area: new, active and inactive counterparts with their latest and next meeting and
+  what you owe or wait for. Tap a counterpart to show only its todos and meetings (a todo agreed
+  with one person but tagged for another shows under both); **▸** shows its threads with
+  **+ next**; **›** opens its overview. Linking a file, refiling or assigning an area switches
+  to the files and back to Threads when you are done.
 - **Set inactive** first goes through the counterpart's open todos under I owe, Waiting for and
   Relevant: Done, Cancel or Keep each one. Inactive counterparts leave the Review and the tag
   suggestions in Quick Add; their overview keeps working. One that gets a new meeting comes back

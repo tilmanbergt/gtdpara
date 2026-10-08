@@ -112,10 +112,12 @@
  * slot's list is tapped. The slot switches back when the arm ends. Outside
  * arming the alternate is not offered.
  *
- * `extraTabs` - tabs after the roots in the same MiniTabs row that show
+ * `extraTabs` - tabs before the roots in the same MiniTabs row that show
  * their own content (the Current page's Threads tab) instead of a folder
- * listing. Arming or locating never switches to an extra tab; one that
- * starts while an extra tab is shown switches back to a root.
+ * listing. The first one is shown when the pane opens and whenever
+ * `resetKey` changes. Arming or locating never switches to an extra tab;
+ * one that starts while an extra tab is shown switches to a root, and an
+ * arm that ends goes back to the extra tab it started on.
  *
  * `pageSize` (`FileBrowserRoot`) - kept on the type but not read by
  * `FileBrowserPane`; no caller sets it. Sizing comes from the
@@ -284,7 +286,7 @@ export type LinkTarget =
       startAt?: 'project' | 'area';
     };
 
-/** A tab after the roots that shows its own content - see the module doc comment's `extraTabs` note. */
+/** A tab before the roots that shows its own content - see the module doc comment's `extraTabs` note. */
 export interface FileBrowserExtraTab {
   key: string;
   label: string;
@@ -321,7 +323,7 @@ interface Props {
    * yet confirmed safe to self-measure.
    */
   viewportHeight?: number;
-  /** Tabs after the roots with their own content - see the module doc comment's `extraTabs` note. */
+  /** Tabs before the roots with their own content - see the module doc comment's `extraTabs` note. */
   extraTabs?: FileBrowserExtraTab[];
   textColor: string;
   borderColor: string;
@@ -355,7 +357,7 @@ export default function FileBrowserPane({
   const slotRoot = roots.find(r => r.key === activeRootKey) ?? roots[0];
   const [showAlternate, setShowAlternate] = useState(false);
   const activeRoot = showAlternate && slotRoot?.alternate ? slotRoot.alternate : slotRoot;
-  const [extraKey, setExtraKey] = useState<string | null>(null);
+  const [extraKey, setExtraKey] = useState<string | null>(extraTabs[0]?.key ?? null);
   const activeExtra = extraTabs.find(t => t.key === extraKey) ?? null;
   // Set by the locating/arming effects when they build the stack themselves, so the reset below doesn't undo it.
   const builtForRef = useRef<string | null>(null);
@@ -417,6 +419,13 @@ export default function FileBrowserPane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRootIdentity, resetKey]);
 
+  // A new item opens on the first extra tab again.
+  const firstExtraKey = extraTabs[0]?.key ?? null;
+  useEffect(() => {
+    setExtraKey(firstExtraKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
+
   /** The slot showing `key`: a root itself, or the root whose `alternate` it is. */
   const findSlot = (key: string): {slot: FileBrowserRoot; root: FileBrowserRoot; alternate: boolean} | null => {
     const own = roots.find(r => r.key === key);
@@ -435,11 +444,20 @@ export default function FileBrowserPane({
   };
 
   // The alternate (Browse) is shown only while arming: an arm that ends, or
-  // anything but an arm, puts the slot's own root back.
+  // anything but an arm, puts the slot's own root back. An arm leaves an
+  // extra tab for a root and returns to it when it ends.
   const arming = linkTarget?.mode === 'arming';
+  const extraBeforeArmRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!arming) setShowAlternate(false);
-    else setExtraKey(null);
+    if (arming) {
+      extraBeforeArmRef.current = extraKey;
+      setExtraKey(null);
+      return;
+    }
+    setShowAlternate(false);
+    if (extraBeforeArmRef.current) setExtraKey(extraBeforeArmRef.current);
+    extraBeforeArmRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arming]);
 
   // `locating` mode: switch root and drill straight to folderPath whenever
@@ -683,11 +701,11 @@ export default function FileBrowserPane({
         <View style={styles.tabsRow}>
           <MiniTabs
             tabs={[
+              ...extraTabs.map(t => ({key: t.key, label: t.label, disabled: arming})),
               ...roots.map(r => {
                 const shown = r.key === slotRoot.key && showAlternate && r.alternate ? r.alternate : r;
                 return {key: r.key, label: shown.label, disabled: shown.disabled};
               }),
-              ...extraTabs.map(t => ({key: t.key, label: t.label, disabled: arming})),
             ]}
             activeKey={activeExtra ? activeExtra.key : slotRoot.key}
             onChange={key => {

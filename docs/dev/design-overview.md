@@ -78,7 +78,8 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   `ui/ItemStatusPanel.tsx` (status, close-out/archive, Assign to Area) at the bottom; right pane
   `screens/ProjectDataPanel.tsx` with Quick Add, Todos and Meetings (the two lists in
   `screens/projectData/`). The header shows the kind and the editable abbreviation pill. The Files
-  pane's last tab is **Threads** (`screens/thread/ThreadsTab.tsx`, §2.6): the scope's counterparts
+  pane's first tab, open when the page opens, is **Threads** (`screens/thread/ThreadsTab.tsx`,
+  §2.6): the scope's counterparts
   (New with Tend / Not, Active with signals and their threads with "+ next", Inactive folded);
   tapping one sets ItemDetail's `counterpartFilter`, which ProjectDataPanel applies to Todos and
   Meetings (`screens/projectData/counterpartFilter.tsx`, the overview's §1.2.1 predicate,
@@ -447,14 +448,16 @@ while link-arming. `startAt` lets an arm open directly in one source (Assign to 
 carry Browse as its `alternate` instead of a tab of its own: the slot shows it (labelled
 "Browse") while an arm targets it and switches back when the arm ends; during a file-link arm the
 slot's list starts with "Other Projects/Areas ›", which opens it there. `extraTabs` add tabs with
-their own content after the roots (the Current page's Threads tab); arming and locating never
-switch to one and disable them. Roots per screen:
+their own content before the roots (the Current page's Threads tab); the first is shown when the
+pane opens and when `resetKey` changes. Arming and locating never switch to one and disable them;
+an arm started on one switches to its root and back to the extra tab when it ends. Roots per
+screen:
 
 - Inbox and Review's Inbox step: Resources, Browse.
-- Current, Project: Project Files (Browse as its alternate), Resources, Area Files (once
-  assigned), then the Threads tab.
-- Current, Area: Area Files, Resources, Project Files (its assigned Projects; Browse as its
-  alternate), then the Threads tab.
+- Current, Project: the Threads tab, then Project Files (Browse as its alternate), Resources,
+  Area Files (once assigned).
+- Current, Area: the Threads tab, then Area Files, Resources, Project Files (its assigned
+  Projects; Browse as its alternate).
 
 The Resources root can pin a per-item default subfolder (`defaultResourceFolder`).
 

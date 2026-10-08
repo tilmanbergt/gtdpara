@@ -16,7 +16,7 @@ Tapping a project or area opens it on the **Current** tab:
 - **Scope**: one to three sentences about what this project or area is about. Tap to edit.
 - **Focus**: daily, weekly and monthly focus, each with an optional goal for the week or month
 - **Status**: Active, On Hold, Done (projects only) - and Close out… or Archive…
-- **Files**: tabs for the project's own folder (**Project Files**), **Resources**, the area's folder (**Area Files**, once one is assigned) and **Threads**. On an area page: **Area Files**, **Resources**, **Project Files** (its projects) and **Threads**.
+- **Files**: **Threads** first (it is open when the page opens), then the project's own folder (**Project Files**), **Resources** and the area's folder (**Area Files**, once one is assigned). On an area page: **Threads**, **Area Files**, **Resources** and **Project Files** (its projects).
 - **Todos** and **Meetings**, grouped and paged, with Quick Add above them
 
 ## Status
@@ -44,6 +44,8 @@ Other projects and areas show in the Files pane only while you pick one:
 
 - **Refile** and **Assign to Area…**: the **Project Files** tab turns into **Browse**, with Projects and Areas; it turns back when you are done.
 - Linking a file: the top of **Project Files** offers **Other Projects/Areas ›**, which opens Browse in the same tab, so you can link a file from another project or area.
+
+When you start one of these while **Threads** is open, the Files pane switches to the files for the pick and back to **Threads** when you are done.
 
 To open another project or area, use the Projects or Areas tab.
 

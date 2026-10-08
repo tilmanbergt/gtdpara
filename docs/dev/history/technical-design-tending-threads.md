@@ -173,9 +173,9 @@ from `#retro/alpha` in another Area.
 - Quick Add shows **one** grey line when gtdpara links a new todo to a meeting in the
   background: `↳ from Retro alpha · Tue 30.9.`, with ✕ to drop the link. Nothing else is
   explained (the "+ Next" prefill speaks for itself).
-- Current page, Files area: tabs become Project Files | Resources | Area Files | **Threads**
-  (Area page: Area Files | Resources | Project Files | **Threads**). Browse merges into
-  Project Files and appears only while it is needed (§3.9.4).
+- Current page, Files area: tabs become **Threads** | Project Files | Resources | Area Files
+  (Area page: **Threads** | Area Files | Resources | Project Files); Threads is open when the
+  page opens. Browse merges into Project Files and appears only while it is needed (§3.9.4).
 - Threads tab: New (Tend / Not), Active (expandable into its meeting threads with next date and
   "+ next"; `wf` and `owe` are not threads and show as counts on the counterpart row), Inactive
   (folded). One-off counterparts carry their label (D17). Tapping a counterpart filters the right
@@ -603,8 +603,10 @@ writes the status line. No open items → a single confirmation.
 #### 3.9.4 Threads tab on the Current page
 
 - `FileBrowserPane` gets `extraTabs?: {key: string; label: string; render: (viewportHeight:
-  number) => React.ReactNode}[]`, shown after the roots in the same MiniTabs row. Arming never
-  switches to an extra tab; an arm that starts while one is shown switches to its root as today.
+  number) => React.ReactNode}[]`, shown before the roots in the same MiniTabs row; the first one
+  is shown when the pane opens and when `resetKey` changes (another item). Arming never switches
+  to an extra tab; an arm that starts while one is shown switches to its root as today, and back
+  to the extra tab when the arm ends.
 - **Browse merges into "Project Files"** (decision D4, decided): the Browse root object is no
   longer a fifth tab. While an arm targets Browse (refile, assign Area) the Project Files slot
   shows Browse with the label "Browse" and switches back when the arm ends. While link-arming,
@@ -782,7 +784,8 @@ code-health baseline and must not grow: the provenance line and seed logic go in
   overlay; `{tag}` file names.
 - 0.12.0: New counterpart → Tend writes the line into `area.txt` (also when first used in one
   of its Projects); Not writes inactive; a one-off `#wf/x` shows as new with "w/f only"; nothing
-  appears for Inbox-only counterparts; Threads tab filter (a todo agreed with Mieke but tagged
+  appears for Inbox-only counterparts; the Current page opens on the Threads tab, and linking,
+  refiling and assigning an Area from it switch to the files and back; Threads tab filter (a todo agreed with Mieke but tagged
   `#101/sven` shows under "mieke") and ✕; Browse while refiling and linking; Review step with
   roster, summary, "Open overview" and back; set inactive with open items in all three groups;
   "Since last time" on a new meeting note (each todo once).
@@ -1059,6 +1062,11 @@ Choices where the design left a detail open, and deviations:
   day, in any of the three relations, and leaves out todos agreed last time. Text: heading
   `Since last time · Wed 30.9.`, `Title:` per block, `-` open / `✓` done, todo text without flow
   tags (`displayTaskText`).
+- **Threads first.** The Threads tab is the first tab of the Files area and open when the page
+  opens (and when another item is opened). An arm started on it (link a file, refile, assign
+  Area) switches to the matching root as before and back to Threads when it ends; an arm started
+  on a root stays on that root. Locating a linked file while editing a row switches to its root
+  and stays there.
 - No `domain/helpTopics.ts` change: the Threads tab lives on the Current page (Projects and Areas
   help page), the step on the Review page.
 

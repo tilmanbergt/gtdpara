@@ -88,8 +88,10 @@
  * grey out every other root (never remove them) while either a refile or an
  * area-assignment is being picked.
  *
- * The last tab, **Threads** (screens/thread/ThreadsTab.tsx), lists the
- * counterparts of this item's scope. Tapping one sets `counterpartFilter`,
+ * The first tab, **Threads** (screens/thread/ThreadsTab.tsx, an `extraTabs`
+ * entry of FileBrowserPane), is shown when the page opens. An arm (link a
+ * file, refile, assign Area) switches to the matching file root and back to
+ * Threads when it ends. Threads lists the counterparts of this item's scope. Tapping one sets `counterpartFilter`,
  * which ProjectDataPanel applies to its Todos and Meetings; "+ next" on a
  * thread row fills Quick Add's meeting draft (`meetingSeed`), to the item of
  * the thread's latest meeting. Both are view state only.

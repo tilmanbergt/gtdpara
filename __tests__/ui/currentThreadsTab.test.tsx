@@ -99,12 +99,6 @@ const pressText = async (r: TestRenderer.ReactTestRenderer, label: string | RegE
   expect(node).not.toBeNull();
   await act(async () => node!.props.onPress());
 };
-const pressTab = async (r: TestRenderer.ReactTestRenderer, label: string) => {
-  const tabs = r.root.findAll(n => Array.isArray(n.props.tabs) && typeof n.props.onChange === 'function' && n.props.tabs.some((t: {label: string}) => t.label === label));
-  expect(tabs.length).toBeGreaterThan(0);
-  const tab = tabs[0].props.tabs.find((t: {label: string}) => t.label === label);
-  await act(async () => tabs[0].props.onChange(tab.key));
-};
 /** The rows a list was handed (lists measure themselves on the device). */
 const listRows = (r: TestRenderer.ReactTestRenderer, header: string) =>
   r.root.findAll(n => n.props.header === header && Array.isArray(n.props.rows))[0]?.props.rows ?? [];
@@ -144,11 +138,10 @@ async function openCoachingThreads() {
   await settle();
   await pressText(r, /^Coaching /);
   await settle();
-  // Browse is no tab of its own (it is Project Files' alternate while arming).
+  // Threads comes first and is open; Browse is no tab of its own (it is Project Files' alternate while arming).
   const filesTabs = r.root.findAll(n => Array.isArray(n.props.tabs) && n.props.tabs.some((t: {label: string}) => t.label === 'Threads'))[0];
-  expect(filesTabs.props.tabs.map((t: {label: string}) => t.label)).toEqual(['Area Files', 'Resources', 'Project Files', 'Threads']);
-  await pressTab(r, 'Threads');
-  await settle();
+  expect(filesTabs.props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Area Files', 'Resources', 'Project Files']);
+  expect(filesTabs.props.activeKey).toBe('threads');
   return r;
 }
 
