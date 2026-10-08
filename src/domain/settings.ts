@@ -201,7 +201,7 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   focusModeActive: false,
   tagRules: [],
   nextTagRuleId: 1,
-  noteHeadingStyle: 2,
+  noteHeadingStyle: 3,
   gmailEmail: '',
   gmailAppPassword: '',
   gmailImapHost: 'imap.gmail.com',

@@ -1,6 +1,6 @@
 /** Headings and the Date & title piece (docs/dev/history/technical-design-projects-findable-notes.md §2.1, §2.5, §2.6). */
 import {formatHeadingDate} from '../../src/domain/dateFormat';
-import {stripAllTags} from '../../src/domain/markdown';
+import {tagsAsWords} from '../../src/domain/markdown';
 import {NOTE_HEADING_USERDATA, notePieceUserData} from '../../src/domain/meetingNoteBlock';
 import {staleManagedNums, TITLE_ELEMENT_TYPE} from '../../src/domain/noteFindability';
 import {DEFAULT_SETTINGS} from '../../src/domain/settings';
@@ -68,16 +68,21 @@ describe('Date & title piece and new-rule defaults', () => {
     expect(hasUntouchedDefaultPieces(setPieceHeading(rule, 0, true))).toBe(true);
     expect(hasUntouchedDefaultPieces(setPieceHeading(rule, 0, false))).toBe(false);
   });
-  it('renders `d.M.yyyy · title` without tags, the year always shown', () => {
+  it('keeps context tags as words without `#`, nested ones with their slash, and drops gtdpara’s own', () => {
+    expect(tagsAsWords('Retro demand #retro/demand')).toBe('Retro demand retro/demand');
+    expect(tagsAsWords('Call #Anna about #wf/bert the offer #next  #now')).toBe('Call Anna about the offer');
+    expect(tagsAsWords('#team sync')).toBe('team sync');
+  });
+  it('renders `d.M.yyyy · title` with tags as words, the year always shown', () => {
     expect(formatHeadingDate('2026-09-30')).toBe('30.9.2026');
-    const text = dateTitleText('2026-09-30', stripAllTags('Retro demand #retro/demand'));
-    expect(text).toBe('30.9.2026 · Retro demand');
+    const text = dateTitleText('2026-09-30', tagsAsWords('Retro demand #retro/demand'));
+    expect(text).toBe('30.9.2026 · Retro demand retro/demand');
     expect(renderPieceText(piece('dateTitle'), {title: 'Retro demand #retro/demand', dateTitle: text})).toBe(text);
     expect(renderPieceText(piece('dateTitle'), {title: 'x'})).toBe('');
     expect(dateTitleText('2026-09-30', '  ')).toBe('30.9.2026');
   });
-  it('has the heading style default 2 (light grey)', () => {
-    expect(DEFAULT_SETTINGS.noteHeadingStyle).toBe(2);
+  it('has the heading style default 3 (dark grey)', () => {
+    expect(DEFAULT_SETTINGS.noteHeadingStyle).toBe(3);
   });
 });
 

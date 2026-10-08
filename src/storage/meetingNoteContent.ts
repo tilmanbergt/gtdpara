@@ -58,7 +58,7 @@ import {linkTypeForExtension, notePieceUserData} from '../domain/meetingNoteBloc
 import {staleManagedNums} from '../domain/noteFindability';
 import {isMeetingAutoUpdateFrozen, todayIso} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
-import {stripAllTags} from '../domain/markdown';
+import {tagsAsWords} from '../domain/markdown';
 import {
   dateTitleText,
   effectiveNoteTarget,
@@ -397,9 +397,9 @@ export async function refreshMeetingNoteBlock(
   const linked = definition.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, meeting.linkedFile) : null;
 
   const ctx: PieceRenderContext = {
-    title: meetingDisplayTitle(meeting),
+    title: tagsAsWords(meetingDisplayTitle(meeting)),
     date: meeting.date,
-    dateTitle: dateTitleText(meeting.date, stripAllTags(meetingDisplayTitle(meeting))),
+    dateTitle: dateTitleText(meeting.date, tagsAsWords(meetingDisplayTitle(meeting))),
     // '' means "no time given" (Meeting.time's own convention) - left
     // unset on ctx rather than passed through as '', so renderPieceText's
     // `ctx.time ?? ''` for a `time` piece and its "meeting only, only when
@@ -433,10 +433,9 @@ function sinceLastInbox(): ThreadInboxInput | null {
  * Todo definition) means `populateNoteFromRule` is never called at
  * all: the note stays blank - the same rule Meetings follow.
  *
- * `ctx.title` is `stripAllTags(task.text)`, not `task.text` verbatim -
- * unlike a Meeting's title, a task's text routinely ends with `#next`/
- * context tags that don't belong in a note's title (see
- * domain/markdown.ts's `stripAllTags` doc comment). `ctx.relatedItems`
+ * `ctx.title` is `tagsAsWords(task.text)`, as for a Meeting: context tags
+ * stay as words without `#`, gtdpara's own (`#next`, `#wf/…`) go (see
+ * domain/markdown.ts's `tagsAsWords`). `ctx.relatedItems`
  * reuses the same `relatedItemsFor` aggregate the Meeting path uses, tagged
  * with this task's own `tags` and excluding this task's own `notePath` so
  * it never lists itself (see storage/meetingNoteAggregate.ts's doc
@@ -470,7 +469,7 @@ export async function refreshTodoNoteBlock(
   const linked = definition.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, task.linkedFile) : null;
 
   const ctx: PieceRenderContext = {
-    title: stripAllTags(task.text),
+    title: tagsAsWords(task.text),
     relatedItems: relatedTodos.map(t => ({text: t.task.text})),
     linkedFileName: linked?.fileName,
   };

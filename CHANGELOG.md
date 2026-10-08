@@ -15,7 +15,7 @@ or your project/area files are stored.
   ones, then the ones on hold folded - each with its latest and next meeting, open todos, how
   many are `#next` (or `no next action`) and the oldest Waiting For. Tap one to open it.
 - **Headings in notes.** New meeting Tag Rules start with a **Date & title** piece
-  (`30.9.2026 · Retro demand`, without tags) instead of Title and Date; it is also written as a
+  (`30.9.2026 · Retro demand retro/demand`, its tags as words without `#`) instead of Title and Date; it is also written as a
   Supernote heading, so it shows in the note's table of contents. New todo rules write their
   Title as a heading. Existing rules don't change.
 
@@ -23,6 +23,9 @@ or your project/area files are stored.
 - An area page's Files tabs are now **Threads | Projects | Area Files | Resources**. The
   **Project Files** tab of an area is gone; its projects' folders show in the Projects tab while
   you link a file, and Browse while you refile.
+- The **Title** piece of a note writes tags as words without `#` (`Retro demand retro/demand`);
+  gtdpara's own tags such as `#next` or `#wf/anna` are left out. Todo notes used to leave out
+  every tag.
 
 ## [0.12.0] — 2026-10-08
 

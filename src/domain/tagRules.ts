@@ -52,8 +52,9 @@ export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
  */
 /**
  * `dateTitle` (docs/dev/history/technical-design-projects-findable-notes.md
- * §2.1 R2): Meeting only - `30.9.2026 · Retro demand`, the date with the year
- * and the display title without tags. A heading unless switched off.
+ * §2.1 R2): Meeting only - `30.9.2026 · Retro demand retro/demand`, the date
+ * with the year and the display title with its tags as words (no `#`). A
+ * heading unless switched off.
  */
 export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link' | 'sinceLast' | 'dateTitle';
 
@@ -565,7 +566,7 @@ export interface PieceRenderContext {
   relatedItems?: Array<{text: string}>;
   /** Meeting only - the "Since last time" snapshot (storage/sinceLast.ts), built only when the rule places the piece. */
   sinceLast?: SinceLast | null;
-  /** Meeting only - the `dateTitle` piece's text, `30.9.2026 · Retro demand`, built by the caller with `dateTitleText` from the meeting's date and its display title without tags. */
+  /** Meeting only - the `dateTitle` piece's text, `30.9.2026 · Retro demand`, built by the caller with `dateTitleText` from the meeting's date and its display title with tags as words (domain/markdown.ts's `tagsAsWords`). */
   dateTitle?: string;
   /** Todo/Meeting only - bare file name of the item's `linkedFile`, set by the caller ONLY when that file actually exists (missing file -> unset -> the `link` piece is skipped, docs/dev/history/technical-design-linked-file-piece.md §1.4). */
   linkedFileName?: string;
@@ -612,7 +613,7 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
   }
 }
 
-/** The text of a meeting's `dateTitle` piece: `30.9.2026 · Retro demand` - the date always with its year, the title as given (callers pass it without tags). */
+/** The text of a meeting's `dateTitle` piece: `30.9.2026 · Retro demand` - the date always with its year, the title as given (callers pass it with tags as words, `tagsAsWords`). */
 export function dateTitleText(date: string, title: string): string {
   const shown = date ? formatHeadingDate(date) : '';
   return [shown, title.trim()].filter(Boolean).join(' · ');

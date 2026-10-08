@@ -79,16 +79,16 @@ last 30.9. · next 14.10.        7 open · 2 next · w/f 12d
   the same on notes of their own and on pages of shared notes. Applies to Meeting and Todo
   rules; Project/Area rules have no switch.
 - **R2 Date & title piece** (`dateTitle`, Meeting rules only): `30.9.2026 · Retro demand` — the
-  date always with the year (`d.M.yyyy`), a middle dot, the display title **without tags**. Its
+  date always with the year (`d.M.yyyy`), a middle dot, the display title with its **tags as words** (`#` removed, nested tags keep their `/`; gtdpara's own tags such as `#next` dropped). Its
   Heading switch is **on by default**.
 - **R3 Defaults and existing rules.** Absent switch = the piece type's default: on for
   `dateTitle`, off for everything else. So **existing rules don't change** (they have no
   `dateTitle`, and their Title stays without heading until the user switches it on). New rules
   start with: meeting — Date & title (heading on), Time, Linked file (the seeded "Meeting
   (default)" rule plus Related, as today); todo — Title with the switch **set on explicitly**,
-  Linked file. Todos have no date, so their heading is the Title (todo text without tags).
+  Linked file. Todos have no date, so their heading is the Title (todo text, tags as words). The Title piece of meetings and todos renders the same way.
 - **R4 Title style** is a **global setting** (Settings → Tag Rules, "Heading style"), default
-  **2 = light grey**; the other SDK values are offered too: 1 black background, 3 dark grey,
+  **3 = dark grey**; the other SDK values are offered too: 1 black background, 2 light grey,
   4 shadow (`Title.style` in sn-plugin-lib; 0 means "remove" and is not offered).
 - **Existing notes.** No backfill. A note that is still being regenerated on open (not frozen
   per `isMeetingAutoUpdateFrozen` / `isTodoAutoUpdateFrozen`) gets a title on its next open once
@@ -190,7 +190,7 @@ path is never called (`isHeading` is never set) and sets the style on the elemen
     `setPieceHeading(definition, index, on)`: pure update, used by the editor.
     `hasUntouchedDefaultPieces` ignores the field where it equals the default.
 - `domain/dateFormat.ts`: `formatHeadingDate` (`d.M.yyyy`, always with the year).
-- `domain/settings.ts`: `noteHeadingStyle: 1 | 2 | 3 | 4`, default 2; absent reads as 2 (no
+- `domain/settings.ts`: `noteHeadingStyle: 1 | 2 | 3 | 4`, default 3; absent reads as 3 (no
   migration step). Profiles: part of the settings already classified per profile.
 - No settings migration and no change to existing rules (absent = default); no upgrade note
   (CHANGELOG: New).
@@ -269,7 +269,7 @@ todo would already collide with a same-text todo); listed under risks.
 ### 2.8 Settings UI
 
 - Settings → Tag Rules, top of the list: **Heading style** with the four values (labels "Black",
-  "Light grey", "Dark grey", "Shadow"), default Light grey. A change affects titles written from
+  "Light grey", "Dark grey", "Shadow"), default Dark grey. A change affects titles written from
   then on (new notes, regenerated pages); existing titles are not rewritten.
 - Tag Rule editor (`screens/settings/tagRules/TagRuleEditor.tsx`, `useTagRuleDraft.ts`): below
   the `NudgePad` for the selected piece, a `CheckToggle` **Heading** (hidden for Linked file and
@@ -319,7 +319,7 @@ design-overview, CHANGELOG.
 | --- | --- |
 | `src/domain/tagRules.ts` | `dateTitle` piece type, contexts, defaults; `heading?`, `pieceIsHeading`, `setPieceHeading` |
 | `src/domain/dateFormat.ts` | `formatHeadingDate` |
-| `src/domain/settings.ts` | `noteHeadingStyle` (default 2) |
+| `src/domain/settings.ts` | `noteHeadingStyle` (default 3) |
 | `src/domain/meetingNoteBlock.ts` | `NOTE_HEADING_USERDATA`, recognised as managed |
 | `src/domain/noteFindability.ts` (new) | `staleManagedNums`, `itemDateKeyword`, `isBareDateKeyword`, `planPageKeywords` |
 | `src/domain/sharedNotePages.ts` | `chronologicalInsertIndex` skips bare dates |
@@ -343,9 +343,9 @@ files.
 | P4 | No project-folder browsing outside link-arming | decided |
 | N1 | Heading switch on every text piece (Meeting/Todo rules), not on Linked file | decided |
 | N2 | New Date & title piece (meeting), switch on by default; new meeting rules start with it instead of Title + Date; new todo rules start with Title, switch on; absent switch = off for all other pieces, so existing rules don't change | decided |
-| N3 | Date & title text `30.9.2026 · Title` without tags; todo heading = the Title (text) | decided |
+| N3 | Date & title text `30.9.2026 · Title tag/words` (tags as words, no `#`); todo heading = the Title (text, tags as words) | decided (revised after the S1 device test) |
 | N4 | Headings on notes of their own and shared pages; not Project/Area notes | decided |
-| N5 | Heading style: global setting, default 2 (light grey) | decided |
+| N5 | Heading style: global setting, default 3 (dark grey) | decided (revised after the S1 device test) |
 | N6 | Date keywords: meeting date, todo created date; standalone notes not covered | decided |
 | N7 | Tags as keywords on shared pages too | decided (earlier draft) |
 | N8 | Keywords follow a moved meeting lazily, on the next note open | decided |
@@ -376,7 +376,7 @@ Jest (pure):
 - `buildProjectGlance`: last/next, counts, stalled, on hold, done/archived excluded.
 - Heading: `pieceIsHeading` (dateTitle default on, others default off, explicit on/off, link
   always off); `PIECE_CONTEXTS`/defaults (new todo Title seeded on); Date & title text (tags
-  stripped, year always); settings default 2.
+  as words, year always); settings default 3.
 - `staleManagedNums`: managed textboxes; our title marker; a title over a managed box
   (user-made); a title over a user's own box is kept; mixed `controlTrailNums` is kept.
 - `itemDateKeyword`: meeting; todo with created; todo without; malformed date.
