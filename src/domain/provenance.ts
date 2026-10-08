@@ -4,8 +4,11 @@
  *
  * Written as the trailing field `[meeting:: <key>]`; the key is the meeting's
  * shared-page keyword `<date> <display title>` (domain/sharedNotePages.ts's
- * `meetingPageKeyword`), with `[` and `]` left out so the field stays one
- * token. Resolution (decision D11): an exact key match among the meetings of
+ * `meetingPageKeyword`) with `#`, `[` and `]` left out: the brackets would end
+ * the field, and Obsidian reads a `#tag` inside a field as a tag of the todo.
+ * The tag text stays (`2026-10-08 1:1 Mieke mh 101/mieke`), so two meetings
+ * with the same title on one day but different thread tags keep different
+ * keys. Resolution (decision D11): an exact key match among the meetings of
  * the todo's own scope, then among all meetings; failing that (the meeting
  * was renamed) a meeting on the key's date that shares a thread tag with the
  * todo; else unresolved, shown as "from <key>". Renaming a meeting never
@@ -24,9 +27,14 @@ import {parseTaskInput} from './taskEdit';
 import {belongsToThread, threadOf, threadsOfTags} from './threads';
 import {Meeting, Task} from './types';
 
+/** `text` as a provenance key: without `#`, `[` and `]`, whitespace collapsed. */
+export function normalizeMeetingKey(text: string): string {
+  return text.replace(/[#[\]]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 /** The provenance key of `meeting`. */
 export function meetingKey(meeting: Pick<Meeting, 'date' | 'title'>): string {
-  return meetingPageKeyword(meeting).replace(/[[\]]/g, '').replace(/\s+/g, ' ').trim();
+  return normalizeMeetingKey(meetingPageKeyword(meeting));
 }
 
 /** The thread tags (`type/counterpart`) of a meeting - what provenance adds to a todo. */
@@ -113,7 +121,8 @@ export function resolveProvenance(
   sources: readonly ProvenanceSource[],
   scopePaths: readonly string[],
 ): ProvenanceMatch | null {
-  const key = task.fields.meeting;
+  // Normalized, so a hand-written key with `#` still matches.
+  const key = task.fields.meeting ? normalizeMeetingKey(task.fields.meeting) : '';
   if (!key) return null;
   const inScope = sources.filter(s => scopePaths.includes(s.path));
   const exactTest = (m: Meeting) => meetingKey(m) === key;

@@ -338,7 +338,10 @@ export function buildThreadOverview(items, inbox, tag, lens, ownerPath, today): 
 ### 3.4 Provenance (0.11.0)
 
 **Key.** `meetingKey(meeting) = meetingPageKeyword(meeting)` (`<date> <display title>`, the
-same string shared note pages use). Written as `[meeting:: <key>]`.
+same string shared note pages use) without `#`, `[` and `]`: Obsidian reads a `#tag` inside an
+inline field as a tag of the task. The tag text stays, so two meetings with the same title on one
+day but different thread tags keep different keys (`2026-10-08 1:1 Mieke mh 101/mieke`). Written
+as `[meeting:: <key>]`; a stored key is normalized the same way before matching.
 
 **Resolution** (`resolveProvenance(task, items)`): exact key match among the meetings of the
 task's own scope, then of all items; if none matches (the meeting was renamed), a match on date
@@ -735,8 +738,9 @@ Choices where §3 left a detail open, and deviations:
 - **Writing provenance.** The screens do not pass `{meeting: key}` to `buildTask`; they run
   Quick Add's composed line through `applyProvenance` (missing thread tags appended to the text,
   `[meeting:: key]` set) and hand that line to the unchanged add path. One mechanism for all
-  three writers, and Review's shared `onAddTask` needs no new parameter. The key leaves out `[`
-  and `]`, so a title with brackets cannot break the field.
+  three writers, and Review's shared `onAddTask` needs no new parameter. The key leaves out `#`,
+  `[` and `]` (§3.4): brackets would break the field, and Obsidian would count the meeting's
+  tags as the todo's.
 - **Past and ahead.** "Past" is a meeting that has ended (`meetingEndMs <= now`), "ahead" one that
   hasn't, so a meeting earlier today that is over is already in Looking back and can be
   selected for its follow-ups. `buildThreadOverview` therefore takes `now: Date`, not `today`.

@@ -16,6 +16,14 @@ jest.mock('../../src/storage/tagUsage', () => ({
   getRecentTagsSync: () => ['tom', 'call'],
   recordTagsUsed: async () => undefined,
 }));
+// The capture panel reads recent "File to" targets from AsyncStorage when it mounts; that read
+// resolves after the test's act() and would update state outside act. Never resolving keeps the
+// list empty, as on a first start.
+jest.mock('../../src/storage/destinationUsage', () => ({
+  getRecentDestinations: () => new Promise(() => undefined),
+  getRecentDestinationsSync: () => [],
+  recordDestinationUsed: async () => undefined,
+}));
 jest.mock('../../src/ui/useAbbrevItems', () => ({
   useAbbrevItems: () => [
     {kind: 'project', name: 'Team offsite', path: '/Note/1 Projects/Team offsite', abbrev: 'TO', status: 'active'},

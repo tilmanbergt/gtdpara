@@ -210,7 +210,7 @@ an older `#due:` tag in `text` when there is no due field. A new todo gets `crea
 checking it done writes `completion` (today), unchecking removes it; created and completion dates
 are never invented for older todos. `meeting` is the todo's **provenance**, the meeting it was
 agreed in: `<date> <display title>` (`domain/provenance.ts`'s `meetingKey`, the shared-page
-keyword without `[`/`]`), written only where Quick Add shows it first (§2.4) and resolved at read
+keyword without `#`, `[` and `]`: Obsidian would read a `#tag` in a field as a tag of the todo), written only where Quick Add shows it first (§2.4) and resolved at read
 time (exact key in the todo's scope, then anywhere, then date plus a shared thread tag). Only
 `domain/taskEdit.ts` builds or changes a Task (`newTask`, `withTaskText`, `withTaskDue`,
 `withTaskDone`, `withTaskCancelled`, `applyTaskInput`), so the derived fields always match `text`

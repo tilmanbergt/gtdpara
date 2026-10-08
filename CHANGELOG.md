@@ -20,7 +20,7 @@ or your project/area files are stored.
 - **+ Next retro** in the overview copies the thread's latest meeting to the next date, keeping
   the time between the last two meetings.
 - Todos agreed in a meeting record it at the end of the line (`[meeting:: 2026-09-30 Retro
-  alpha #retro/alpha]`) and get the meeting's thread tag: from the overview's Quick Add, from
+  alpha retro/alpha]`) and get the meeting's thread tag: from the overview's Quick Add, from
   the Review step **Meetings to close out**, and from a lasso capture or mark on a meeting's
   note page. A grey line in Quick Add shows this before you save; ✕ drops it for that todo.
 - Tag Rules: the shared file name can contain `{tag}`, the rule tag the item matched, so one
@@ -30,7 +30,8 @@ or your project/area files are stored.
 ### Changed
 - On Daily, a nested tag opens its thread overview instead of filtering the list; plain tags
   still filter.
-- Tags you tap show as you typed them (upper and lower case kept).
+- Tags in todo and meeting rows show as you typed them (upper and lower case kept); they were
+  shown in lowercase where they could be tapped.
 
 ### Upgrade notes
 - New todos agreed in a meeting end in a `[meeting:: …]` field, before `[created:: …]`. 0.10.0

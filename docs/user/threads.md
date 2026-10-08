@@ -60,7 +60,7 @@ The header of **Ahead** offers **+ Next retro**: it copies the thread's latest m
 
 ## Where a todo was agreed
 
-A todo agreed in a meeting carries the meeting at the end of its line, for example `[meeting:: 2026-09-30 Retro alpha #retro/alpha]`: the meeting's date and title. gtdpara writes it, always with the grey line in Quick Add first, from:
+A todo agreed in a meeting carries the meeting at the end of its line, for example `[meeting:: 2026-09-30 Retro alpha retro/alpha]`: the meeting's date and title, written without `#` so Obsidian doesn't count the meeting's tags as tags of the todo. gtdpara writes it, always with the grey line in Quick Add first, from:
 
 - Quick Add in the thread overview
 - the Review step **Meetings to close out**, see [Weekly Review](review.md)
