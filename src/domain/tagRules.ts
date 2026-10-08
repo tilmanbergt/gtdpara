@@ -28,7 +28,7 @@
  * `domain/sharedNotePages.ts`, so this file need not import `Task`/`Meeting`
  * tag-stripping logic.
  */
-import {formatDayHeader, formatTime} from './dateFormat';
+import {formatDayHeader, formatHeadingDate, formatTime} from './dateFormat';
 // Type-only import (erased at compile time, so this doesn't create a real
 // runtime circular dependency even though domain/settings.ts imports
 // TagRule back from this file) - migrateTagRuleDefaults
@@ -50,7 +50,12 @@ export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
  * overview for the meeting's first thread tag since the previous meeting of
  * that thread (domain/sinceLastText.ts, storage/sinceLast.ts).
  */
-export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link' | 'sinceLast';
+/**
+ * `dateTitle` (docs/dev/history/technical-design-projects-findable-notes.md
+ * §2.1 R2): Meeting only - `30.9.2026 · Retro demand`, the date with the year
+ * and the display title without tags. A heading unless switched off.
+ */
+export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link' | 'sinceLast' | 'dateTitle';
 
 /**
  * Where a Meeting/Todo definition's note content ends up (
@@ -91,6 +96,15 @@ export interface NotePiece {
    * notePieceMetrics.ts's `measureNotePieceRect`.
    */
   maxWidthPx?: number;
+  /**
+   * Whether this piece is also written as a Supernote title element (a
+   * heading in the note's table of contents) - docs/dev/history/
+   * technical-design-projects-findable-notes.md §2.1 R1/R3. Absent = the
+   * type's default (on for `dateTitle`, off otherwise), so rules saved
+   * before the switch existed don't change. Read through `pieceIsHeading`,
+   * never directly.
+   */
+  heading?: boolean;
 }
 
 /**
@@ -152,24 +166,52 @@ export const PIECE_CONTEXTS: Record<PieceType, NoteContext[]> = {
   related: ['todo', 'meeting'],
   link: ['todo', 'meeting'],
   sinceLast: ['meeting'],
+  dateTitle: ['meeting'],
 };
 
 /**
  * The pieces a freshly created rule starts with, in top-to-bottom order
- * (docs/dev/history/technical-design-linked-file-piece.md §4.1): Title, Date, Time,
- * Link. Project/Area only get Title - Date/Time/Linked file don't exist in
- * those contexts.
+ * (docs/dev/history/technical-design-projects-findable-notes.md §2.1 R3):
+ * a meeting rule Date & title, Time, Linked file; a todo rule Title and
+ * Linked file. Project/Area only get Title - Date/Time/Linked file don't
+ * exist in those contexts.
  */
 export const DEFAULT_PIECE_TYPES: Record<NoteContext, PieceType[]> = {
-  meeting: ['title', 'date', 'time', 'link'],
+  meeting: ['dateTitle', 'time', 'link'],
   todo: ['title', 'link'],
   project: ['title'],
   area: ['title'],
 };
 
+/** Default pieces seeded with the Heading switch set on explicitly (a todo's heading is its Title, §2.1 R3). */
+const DEFAULT_HEADING_PIECES: Partial<Record<NoteContext, PieceType[]>> = {todo: ['title']};
+
 /** Adds `DEFAULT_PIECE_TYPES[definition.context]` to `definition`, stacked via addPieceToRule's own seed logic. */
 export function withDefaultPieces(definition: TagRule): TagRule {
-  return DEFAULT_PIECE_TYPES[definition.context].reduce((def, type) => addPieceToRule(def, type), definition);
+  const seeded = DEFAULT_PIECE_TYPES[definition.context].reduce((def, type) => addPieceToRule(def, type), definition);
+  const headings = DEFAULT_HEADING_PIECES[definition.context] ?? [];
+  const start = definition.pieces.length;
+  return {
+    ...seeded,
+    pieces: seeded.pieces.map((p, i) => (i >= start && headings.includes(p.type) ? {...p, heading: true} : p)),
+  };
+}
+
+/**
+ * Whether `piece` is written as a heading (docs/dev/history/
+ * technical-design-projects-findable-notes.md §2.1 R1/R3): its own switch,
+ * else the type's default - on for `dateTitle`, off otherwise. Never for a
+ * `link` piece (a link element can't be a title).
+ */
+export function pieceIsHeading(piece: Pick<NotePiece, 'type' | 'heading'>): boolean {
+  if (piece.type === 'link') return false;
+  return piece.heading ?? piece.type === 'dateTitle';
+}
+
+/** Sets the Heading switch of `definition.pieces[index]` (the rule editor's toggle). */
+export function setPieceHeading(definition: TagRule, index: number, on: boolean): TagRule {
+  const pieces = definition.pieces.map((p, i) => (i === index ? {...p, heading: on} : p));
+  return {...definition, pieces};
 }
 
 /**
@@ -189,7 +231,8 @@ export function hasUntouchedDefaultPieces(definition: TagRule): boolean {
       q.x === p.x &&
       q.y === p.y &&
       q.fontSize === p.fontSize &&
-      pieceMaxWidthPx(q) === pieceMaxWidthPx(p)
+      pieceMaxWidthPx(q) === pieceMaxWidthPx(p) &&
+      pieceIsHeading(q) === pieceIsHeading(p)
     );
   });
 }
@@ -522,6 +565,8 @@ export interface PieceRenderContext {
   relatedItems?: Array<{text: string}>;
   /** Meeting only - the "Since last time" snapshot (storage/sinceLast.ts), built only when the rule places the piece. */
   sinceLast?: SinceLast | null;
+  /** Meeting only - the `dateTitle` piece's text, `30.9.2026 · Retro demand`, built by the caller with `dateTitleText` from the meeting's date and its display title without tags. */
+  dateTitle?: string;
   /** Todo/Meeting only - bare file name of the item's `linkedFile`, set by the caller ONLY when that file actually exists (missing file -> unset -> the `link` piece is skipped, docs/dev/history/technical-design-linked-file-piece.md §1.4). */
   linkedFileName?: string;
 }
@@ -560,13 +605,21 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
       return ctx.linkedFileName ? linkPieceText(ctx.linkedFileName) : '';
     case 'sinceLast':
       return renderSinceLast(ctx.sinceLast);
+    case 'dateTitle':
+      return ctx.dateTitle ?? '';
     default:
       return '';
   }
 }
 
+/** The text of a meeting's `dateTitle` piece: `30.9.2026 · Retro demand` - the date always with its year, the title as given (callers pass it without tags). */
+export function dateTitleText(date: string, title: string): string {
+  const shown = date ? formatHeadingDate(date) : '';
+  return [shown, title.trim()].filter(Boolean).join(' · ');
+}
+
 /**
- * Seeds the one "Meeting (default)" definition (title + date + related items,
+ * Seeds the one "Meeting (default)" definition (date & title + time + link + related items,
  * at the standard 100/100 seed - NOT meetingNoteBlockTopX/Y (60/60), a
  * deliberate choice, see technical-design-note-templates.md §7). Built via
  * addPieceToRule so the pieces stack automatically using its own
@@ -574,8 +627,7 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
  * new definition.
  */
 export function createDefaultMeetingRule(id: string): TagRule {
-  // docs/dev/history/technical-design-linked-file-piece.md §4.1: the standard Meeting
-  // defaults (Title, Date, Time, Linked file) plus Related items at the bottom,
+  // The standard Meeting defaults (Date & title, Time, Linked file) plus Related items at the bottom,
   // so this seeded rule also carries the related-todos content.
   let def = createEmptyTagRule(id, 'meeting');
   def = {...def, name: 'Meeting (default)', isDefault: true};

@@ -25,6 +25,7 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
   - **Linked file**: a link to the file linked to the item
   - **Since last time** (meetings): what happened in the meeting's thread since its previous meeting, see below
   - a **static text** you write once for this rule (**+ New text**) and place on the page, for example "Agenda" or "Decisions"
+- A new meeting rule starts with **Date & title** (`30.9.2026 · Retro demand`, the meeting's date with the year and its title without tags), **Time** and **Linked file**; a new todo rule with **Title** and **Linked file**. The meeting's Date & title and the todo's Title are also written as a **heading**: Supernote lists it in the note's table of contents. Existing rules don't change.
 - The preview shows where each piece sits. Select a piece and move it with the arrows; change its font size and maximum width.
 
 **Create** or **Save** stores the rule; it is used for notes created from then on.

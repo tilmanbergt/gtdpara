@@ -28,6 +28,13 @@ export const MEETING_NOTE_BLOCK_USERDATA = 'gtdpara:meeting-note-block:v1';
  */
 export const NOTE_LINK_USERDATA = 'gtdpara:meeting-note-link:v1';
 
+/**
+ * userData marker of the title elements gtdpara writes over a heading
+ * piece's textbox (docs/dev/history/technical-design-projects-findable-notes.md
+ * §2.6) - so a refresh can find and replace them with their textboxes.
+ */
+export const NOTE_HEADING_USERDATA = 'gtdpara:note-heading:v1';
+
 /** Prefix for a definition-driven piece's own per-index userData marker (docs/dev/history/technical-design-note-templates.md §4: one marker per index, since piece count and order are data-driven). See notePieceUserData below. */
 const NOTE_PIECE_USERDATA_PREFIX = 'gtdpara:note-piece:';
 
@@ -38,7 +45,8 @@ export function notePieceUserData(index: number): string {
 
 /**
  * True for any element this feature has ever written - the two LEGACY
- * markers (fixed block, auto-link) or a per-piece marker.
+ * markers (fixed block, auto-link), a per-piece marker or the heading
+ * marker.
  * populateNoteFromRule deletes every element matching this before
  * inserting its fresh set, so notes written by an older version get their
  * legacy block/link cleaned up on the next refresh instead of keeping a
@@ -55,6 +63,7 @@ export function isNoteTemplateManagedElement(userData: string | null | undefined
   return (
     userData === MEETING_NOTE_BLOCK_USERDATA ||
     userData === NOTE_LINK_USERDATA ||
+    userData === NOTE_HEADING_USERDATA ||
     userData.startsWith(NOTE_PIECE_USERDATA_PREFIX)
   );
 }

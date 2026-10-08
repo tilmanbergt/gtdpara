@@ -14,6 +14,10 @@ or your project/area files are stored.
 - **Projects tab** on an area page, after Threads: the area's projects at a glance - active
   ones, then the ones on hold folded - each with its latest and next meeting, open todos, how
   many are `#next` (or `no next action`) and the oldest Waiting For. Tap one to open it.
+- **Headings in notes.** New meeting Tag Rules start with a **Date & title** piece
+  (`30.9.2026 · Retro demand`, without tags) instead of Title and Date; it is also written as a
+  Supernote heading, so it shows in the note's table of contents. New todo rules write their
+  Title as a heading. Existing rules don't change.
 
 ### Changed
 - An area page's Files tabs are now **Threads | Projects | Area Files | Resources**. The

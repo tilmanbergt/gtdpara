@@ -98,6 +98,14 @@ export interface GtdParaSettings {
    */
   nextTagRuleId: number;
   /**
+   * The style of the title elements gtdpara writes for heading pieces
+   * (docs/dev/history/technical-design-projects-findable-notes.md §2.1 R4,
+   * sn-plugin-lib's `Title.style`): 1 black background, 2 light grey,
+   * 3 dark grey, 4 shadow. Global, not per rule. Absent in older settings
+   * reads as the default through DEFAULT_SETTINGS.
+   */
+  noteHeadingStyle: NoteHeadingStyle;
+  /**
    * Gmail inbox review step (docs/dev/history/technical-design-review-gmail-inbox.md
    * §2) - the account this plugin reads via IMAP. '' means "not configured",
    * same convention as googleCalendarIcsUrl above: the Gmail step then shows
@@ -170,6 +178,9 @@ export interface GtdParaSettings {
   activeProfileId: string;
 }
 
+/** sn-plugin-lib `Title.style` values a heading can take (0 = remove is not one). */
+export type NoteHeadingStyle = 1 | 2 | 3 | 4;
+
 export const DEFAULT_SETTINGS: GtdParaSettings = {
   baseRoot: '/storage/emulated/0/Note',
   projectsFolder: '1 Projects',
@@ -190,6 +201,7 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   focusModeActive: false,
   tagRules: [],
   nextTagRuleId: 1,
+  noteHeadingStyle: 2,
   gmailEmail: '',
   gmailAppPassword: '',
   gmailImapHost: 'imap.gmail.com',
