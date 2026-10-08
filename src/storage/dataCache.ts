@@ -47,6 +47,7 @@ import {ExistingAbbrev, generateDefaultAbbrev} from '../domain/abbrev';
 import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {FrontMatterFields} from '../domain/markdown';
 import {ItemStatus, Mark, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
+import {CounterpartLine} from '../domain/threadsSection';
 import {FileStat, listFolderEntries, statFiles} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
@@ -74,6 +75,9 @@ export interface CachedItem {
   /** From the `## Marks` span (docs/dev/history/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines whose note lives in this item's folder. */
   marks: Mark[];
   marksExtraLines: string[];
+  /** From the `## Threads` span (docs/dev/history/technical-design-tending-threads.md §3.9.1) - the confirmed counterparts of the scope this item owns. Written only through storage/counterparts.ts. */
+  threads: CounterpartLine[];
+  threadsExtraLines: string[];
   /** From the frontmatter block - see domain/markdown.ts's parseFrontMatter, storage/focusSlots.ts and storage/statusControl.ts. */
   status: ItemStatus;
   dailyFocus: boolean;
@@ -262,6 +266,8 @@ async function loadOneItem(kind: 'project' | 'area', name: string, path: string)
       monthlyGoalsExtraLines: [],
       marks: [],
       marksExtraLines: [],
+      threads: [],
+      threadsExtraLines: [],
       status: 'active',
       dailyFocus: false,
       weeklyFocus: false,
@@ -641,6 +647,22 @@ export function updateItemScope(path: string, rawContent: string, scope: string)
   if (!item) return;
   item.rawContent = rawContent;
   item.scope = scope;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/** Write-through after saving an item's Threads span - see updateItemTasks. */
+export function updateItemThreads(
+  path: string,
+  rawContent: string,
+  threads: CounterpartLine[],
+  threadsExtraLines: string[],
+): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.threads = threads;
+  item.threadsExtraLines = threadsExtraLines;
   item.loadError = undefined;
   notifyCacheChanged();
 }

@@ -141,7 +141,7 @@ export async function checkHashNotePath(input: IntegrityCheckInput, io: Integrit
  * importing markdown.ts's own private heading constants, since this list is
  * about what to LOOK FOR in a suspect file, not about writing one.
  */
-const RECOGNIZED_HEADINGS = ['## Scope', '## Tasks', '## Meetings', '## Weekly Goals', '## Monthly Goals', '## Marks'];
+const RECOGNIZED_HEADINGS = ['## Scope', '## Tasks', '## Meetings', '## Weekly Goals', '## Monthly Goals', '## Marks', '## Threads'];
 
 /**
  * File-structure soundness. Two things, both derived from exactly how
