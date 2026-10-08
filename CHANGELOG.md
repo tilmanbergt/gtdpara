@@ -10,6 +10,16 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Projects tab** on an area page, after Threads: the area's projects at a glance - active
+  ones, then the ones on hold folded - each with its latest and next meeting, open todos, how
+  many are `#next` (or `no next action`) and the oldest Waiting For. Tap one to open it.
+
+### Changed
+- An area page's Files tabs are now **Threads | Projects | Area Files | Resources**. The
+  **Project Files** tab of an area is gone; its projects' folders show in the Projects tab while
+  you link a file, and Browse while you refile.
+
 ## [0.12.0] — 2026-10-08
 
 ### New

@@ -84,7 +84,11 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   tapping one sets ItemDetail's `counterpartFilter`, which ProjectDataPanel applies to Todos and
   Meetings (`screens/projectData/counterpartFilter.tsx`, the overview's §1.2.1 predicate,
   `counterpartMatcher`) with a "<leaf> ✕" pill above Quick Add; "+ next" hands Quick Add a
-  meeting seed and the thread's item as destination. Both are view state only.
+  meeting seed and the thread's item as destination. Both are view state only. On an Area the
+  second tab is **Projects** (`screens/area/ProjectsTab.tsx`): the assigned Projects, Active
+  then a folded On hold group, each with last/next meeting, open, `#next` (or "no next action")
+  and the oldest Waiting For (`storage/projectGlance.ts`'s `buildProjectGlance`); a row opens
+  the Project.
 - **Review** — `screens/review/ReviewScreen.tsx` (§2.8). While a close-out is open, the Review
   tab shows `screens/CloseOutWizard.tsx` instead (§2.9).
 - **Settings** — `screens/settings/Settings.tsx` (§2.12).
@@ -327,7 +331,7 @@ Screens read it through `ui/useCachedInbox.ts`; a write anywhere is seen everywh
 `findCachedItem(path)` reads one. Cross-project views are pure, synchronous transforms over the
 warm cache (`storage/dailyAggregate.ts`, `weeklyAggregate.ts`, `monthlyAggregate.ts`,
 `reviewAggregate.ts`, `periodFocusCards.ts`, `threadAggregate.ts`, `tendingRoster.ts`,
-`sinceLast.ts`), never their own filesystem scans.
+`sinceLast.ts`, `projectGlance.ts`), never their own filesystem scans.
 
 What gtdpara does not cache: the Files pane lists folders live on every visit, and Google
 Calendar and Gmail have their own caches (§2.11). Detail:
@@ -450,14 +454,15 @@ carry Browse as its `alternate` instead of a tab of its own: the slot shows it (
 slot's list starts with "Other Projects/Areas ›", which opens it there. `extraTabs` add tabs with
 their own content before the roots (the Current page's Threads tab); the first is shown when the
 pane opens and when `resetKey` changes. Arming and locating never switch to one and disable them;
-an arm started on one switches to its root and back to the extra tab when it ends. Roots per
-screen:
+an arm started on one switches to its root and back to the extra tab when it ends. An extra tab
+can carry an `armingRoot`: while any arm is active that root takes the tab's slot (with its
+`alternate`), and the slot is the extra tab again when the arm ends. Roots per screen:
 
 - Inbox and Review's Inbox step: Resources, Browse.
 - Current, Project: the Threads tab, then Project Files (Browse as its alternate), Resources,
   Area Files (once assigned).
-- Current, Area: the Threads tab, then Area Files, Resources, Project Files (its assigned
-  Projects; Browse as its alternate).
+- Current, Area: the Threads and Projects tabs, then Area Files, Resources. Project Files (its
+  assigned Projects; Browse as its alternate) is the Projects tab's `armingRoot`.
 
 The Resources root can pin a per-item default subfolder (`defaultResourceFolder`).
 

@@ -16,7 +16,7 @@ Tapping a project or area opens it on the **Current** tab:
 - **Scope**: one to three sentences about what this project or area is about. Tap to edit.
 - **Focus**: daily, weekly and monthly focus, each with an optional goal for the week or month
 - **Status**: Active, On Hold, Done (projects only) - and Close out… or Archive…
-- **Files**: **Threads** first (it is open when the page opens), then the project's own folder (**Project Files**), **Resources** and the area's folder (**Area Files**, once one is assigned). On an area page: **Threads**, **Area Files**, **Resources** and **Project Files** (its projects).
+- **Files**: **Threads** first (it is open when the page opens), then the project's own folder (**Project Files**), **Resources** and the area's folder (**Area Files**, once one is assigned). On an area page: **Threads**, **Projects** (its projects at a glance), **Area Files** and **Resources**.
 - **Todos** and **Meetings**, grouped and paged, with Quick Add above them
 
 ## Status
@@ -30,7 +30,7 @@ On Hold and Done take the project or area out of focus. Putting an area on hold 
 
 ## Assigning a project to an area
 
-A project can support one area. Tap **Assign to Area…** in the status section, then tap the area in the Files pane (the **Project Files** tab shows **Browse** with the areas while you pick). The project's files then also offer the area's folder. An area with active or on-hold projects can't be archived.
+A project can support one area. Tap **Assign to Area…** in the status section, then tap the area in the Files pane (the **Project Files** tab shows **Browse** with the areas while you pick). The area's **Projects** tab then lists the project. The project's files then also offer the area's folder. An area with active or on-hold projects can't be archived.
 
 ## Abbreviations
 
@@ -42,12 +42,21 @@ The Files pane browses the project folder, Resources and the area's folder. Tap 
 
 Other projects and areas show in the Files pane only while you pick one:
 
-- **Refile** and **Assign to Area…**: the **Project Files** tab turns into **Browse**, with Projects and Areas; it turns back when you are done.
-- Linking a file: the top of **Project Files** offers **Other Projects/Areas ›**, which opens Browse in the same tab, so you can link a file from another project or area.
+- **Refile** and **Assign to Area…**: the **Project Files** tab turns into **Browse**, with Projects and Areas; it turns back when you are done. On an area page the **Projects** tab does this.
+- Linking a file: the top of **Project Files** offers **Other Projects/Areas ›**, which opens Browse in the same tab, so you can link a file from another project or area. On an area page the **Projects** tab turns into **Project Files** (the folders of its projects) while you link a file.
 
-When you start one of these while **Threads** is open, the Files pane switches to the files for the pick and back to **Threads** when you are done.
+When you start one of these while **Threads** or **Projects** is open, the Files pane switches to the files for the pick and back when you are done.
 
 To open another project or area, use the Projects or Areas tab.
+
+## Projects of an area
+
+On an area page, the **Projects** tab lists the projects assigned to the area: active ones first, by name, then a folded row `2 on hold ▸`. Done and archived projects are not listed. Each row has two lines:
+
+- the project's name (and `on hold` in the folded group), with **›**;
+- `last 30.9. · next 14.10.`: its latest meeting and the next one (`—` when there is none), and `7 open · 2 next · w/f 12 d`: open todos, how many of them are `#next`, and how long the oldest thing you wait for has waited. A project without a todo you can act on (Someday/Maybe don't count) shows `no next action` instead of the `#next` count, as in the Review's "Stalled projects".
+
+Tap a row to open the project. To browse the projects' folders, open the project; while you link a file, the tab shows them (see above).
 
 ## Threads
 

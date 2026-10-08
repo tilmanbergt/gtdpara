@@ -119,6 +119,13 @@
  * one that starts while an extra tab is shown switches to a root, and an
  * arm that ends goes back to the extra tab it started on.
  *
+ * `armingRoot` (`FileBrowserExtraTab`, the Area page's Projects tab,
+ * docs/dev/history/technical-design-projects-findable-notes.md §1.2) - while
+ * any arm is active, that extra tab's slot is replaced by this root (its
+ * label, its listing, its `alternate`), so an arm started on the tab lands on
+ * the root and an arm targeting the root's alternate (Browse) finds it there.
+ * When the arm ends the slot is the extra tab again.
+ *
  * `pageSize` (`FileBrowserRoot`) - kept on the type but not read by
  * `FileBrowserPane`; no caller sets it. Sizing comes from the
  * component-level `viewportHeight` prop instead.
@@ -292,6 +299,8 @@ export interface FileBrowserExtraTab {
   label: string;
   /** The tab's content; `viewportHeight` is the pane's own when the caller passed one, else the content self-measures (flex: 1). */
   render: (viewportHeight: number | undefined) => React.ReactNode;
+  /** The root this tab's slot shows while arming - see the module doc comment's `armingRoot` note. */
+  armingRoot?: FileBrowserRoot;
 }
 
 interface Props {
@@ -341,7 +350,7 @@ function relativeToRoot(root: string, path: string): string {
 }
 
 export default function FileBrowserPane({
-  roots,
+  roots: ownRoots,
   linkTarget,
   resetKey,
   onActiveLocationChange,
@@ -352,7 +361,11 @@ export default function FileBrowserPane({
 }: Props): React.JSX.Element {
   // See `viewportHeight`'s own doc comment above.
   const selfMeasuring = viewportHeight == null;
-  const [activeRootKey, setActiveRootKey] = useState(roots[0]?.key);
+  const arming = linkTarget?.mode === 'arming';
+  // While arming, the extra tabs' `armingRoot`s take their slots (see the module doc comment).
+  const armingTabs = arming ? extraTabs.filter(t => t.armingRoot) : [];
+  const roots = [...armingTabs.map(t => t.armingRoot as FileBrowserRoot), ...ownRoots];
+  const [activeRootKey, setActiveRootKey] = useState(ownRoots[0]?.key);
   // The slot root (the tab), and what it shows: its `alternate` while one is needed.
   const slotRoot = roots.find(r => r.key === activeRootKey) ?? roots[0];
   const [showAlternate, setShowAlternate] = useState(false);
@@ -446,16 +459,21 @@ export default function FileBrowserPane({
   // The alternate (Browse) is shown only while arming: an arm that ends, or
   // anything but an arm, puts the slot's own root back. An arm leaves an
   // extra tab for a root and returns to it when it ends.
-  const arming = linkTarget?.mode === 'arming';
   const extraBeforeArmRef = useRef<string | null>(null);
   useEffect(() => {
     if (arming) {
       extraBeforeArmRef.current = extraKey;
+      const armingRoot = extraTabs.find(t => t.key === extraKey)?.armingRoot;
+      if (armingRoot) setActiveRootKey(armingRoot.key);
       setExtraKey(null);
       return;
     }
     setShowAlternate(false);
-    if (extraBeforeArmRef.current) setExtraKey(extraBeforeArmRef.current);
+    // An arm that ended on an arming root goes back to the extra tab that holds it.
+    const holder = extraTabs.find(t => t.armingRoot?.key === activeRootKey);
+    if (holder) setActiveRootKey(ownRoots[0]?.key);
+    const back = extraBeforeArmRef.current ?? holder?.key ?? null;
+    if (back) setExtraKey(back);
     extraBeforeArmRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arming]);
@@ -695,17 +713,19 @@ export default function FileBrowserPane({
     return <View />;
   }
 
+  const rootTab = (r: FileBrowserRoot) => {
+    const shown = r.key === slotRoot.key && showAlternate && r.alternate ? r.alternate : r;
+    return {key: r.key, label: shown.label, disabled: shown.disabled};
+  };
+
   return (
     <View style={selfMeasuring ? styles.selfMeasuringRoot : undefined}>
-      {roots.length + extraTabs.length > 1 ? (
+      {ownRoots.length + extraTabs.length > 1 ? (
         <View style={styles.tabsRow}>
           <MiniTabs
             tabs={[
-              ...extraTabs.map(t => ({key: t.key, label: t.label, disabled: arming})),
-              ...roots.map(r => {
-                const shown = r.key === slotRoot.key && showAlternate && r.alternate ? r.alternate : r;
-                return {key: r.key, label: shown.label, disabled: shown.disabled};
-              }),
+              ...extraTabs.map(t => (arming && t.armingRoot ? rootTab(t.armingRoot) : {key: t.key, label: t.label, disabled: arming})),
+              ...ownRoots.map(rootTab),
             ]}
             activeKey={activeExtra ? activeExtra.key : slotRoot.key}
             onChange={key => {

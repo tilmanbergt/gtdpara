@@ -68,12 +68,14 @@
  *
  * **File browser roots** (technical-design-project-area-assignment.md §4.4):
  * a Project always gets 'project'/'resources', plus a third 'area' root once
- * one is assigned, pointed at that Area's own folder. An Area always gets
- * 'project' (labeled "Area Files"), 'resources', and 'projectFiles' (every
- * Project whose `area` matches this one, via entryFilter). `findCachedItem`
- * (storage/dataCache.ts) is what that filter reads - the same already-warm
- * cache every other cross-item lookup in this app prefers over a filesystem
- * scan.
+ * one is assigned, pointed at that Area's own folder. An Area gets
+ * 'project' (labeled "Area Files") and 'resources' as tabs; its third root,
+ * 'projectFiles' (every Project whose `area` matches this one, via
+ * entryFilter), is the Projects tab's `armingRoot`: shown in that tab's slot
+ * only while arming (docs/dev/history/technical-design-projects-findable-notes.md
+ * §1.2). `findCachedItem` (storage/dataCache.ts) is what that filter reads -
+ * the same already-warm cache every other cross-item lookup in this app
+ * prefers over a filesystem scan.
  *
  * 'browse' - a two-level, always-Active-only Projects/Areas browser
  * (ui/FileBrowserPane.tsx's `sources`) - is no tab of its own: it is the
@@ -91,7 +93,9 @@
  * The first tab, **Threads** (screens/thread/ThreadsTab.tsx, an `extraTabs`
  * entry of FileBrowserPane), is shown when the page opens. An arm (link a
  * file, refile, assign Area) switches to the matching file root and back to
- * Threads when it ends. Threads lists the counterparts of this item's scope. Tapping one sets `counterpartFilter`,
+ * Threads when it ends. On an Area the second tab is **Projects**
+ * (screens/area/ProjectsTab.tsx): its assigned Projects with their signals; a
+ * row opens the Project. Threads lists the counterparts of this item's scope. Tapping one sets `counterpartFilter`,
  * which ProjectDataPanel applies to its Todos and Meetings; "+ next" on a
  * thread row fills Quick Add's meeting draft (`meetingSeed`), to the item of
  * the thread's latest meeting. Both are view state only.
@@ -114,11 +118,12 @@ import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import ClipboardTextInput from '../ui/ClipboardTextInput';
 import {common} from '../ui/commonStyles';
 import {FONT, useThemeColors} from '../ui/theme';
-import FileBrowserPane, {FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPane';
+import FileBrowserPane, {FileBrowserExtraTab, FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPane';
 import ItemFocusPanel from '../ui/ItemFocusPanel';
 import ItemStatusPanel from '../ui/ItemStatusPanel';
 import ProjectDataPanel from './ProjectDataPanel';
 import ThreadsTab, {CounterpartSelection} from './thread/ThreadsTab';
+import ProjectsTab from './area/ProjectsTab';
 import {Destination} from '../domain/destination';
 import {NextMeetingOffer} from '../storage/threadAggregate';
 import {MeetingSeed} from '../ui/quickAdd/useDraftRequests';
@@ -157,7 +162,7 @@ interface Props {
   onArchived?: (kind: 'project' | 'area') => void;
   /** Threaded straight through to ProjectDataPanel's MeetingsSection (docs/dev/history/technical-design-google-calendar.md §9) - switches to Settings' Calendar sub-tab from the Google mini-tab's empty state. */
   onOpenCalendarSettings?: () => void;
-  /** The Files pane's Browse tab (see the module doc comment's "browse" note) - plain-browsing a top-level Project/Area entry there swaps the "Current" tab to that item, via the same App.tsx `openItem` the Projects/Areas tabs open one with. */
+  /** The Files pane's Browse (see the module doc comment's "browse" note) and an Area's Projects tab - opening a Project/Area there swaps the "Current" tab to that item, via the same App.tsx `openItem` the Projects/Areas tabs open one with. */
   onOpenItem?: (kind: 'project' | 'area', entry: FolderEntry) => void;
   /** Projects: opens the close-out wizard from the status panel's "Close out…" (docs/dev/history/technical-design-project-close-out.md §6.2). */
   onStartCloseOut?: (projectPath: string) => void;
@@ -439,20 +444,61 @@ export default function ItemDetail({
             defaultSubfolder: resourceFolderState?.defaultResourceFolder ?? null,
             onSetDefaultSubfolder: handleSetDefaultResourceFolder,
           }),
-          {
-            key: 'projectFiles',
-            label: 'Project Files',
-            rootPath: paths.projects,
-            ...(browseRoot ? {alternate: browseRoot} : {}),
-            // Every Project currently assigned to this Area, by bare folder
-            // name (same identity `area` itself is stored by) - see
-            // storage/areaAssignment.ts's assignedProjects, which this
-            // mirrors inline since entryFilter needs a per-entry predicate,
-            // not a list.
-            entryFilter: entry => findCachedItem(entry.path)?.area === name,
-          },
         ]
     : [{key: 'project', label: kind === 'project' ? 'Project Files' : 'Area Files', rootPath: path}];
+
+  // An Area's Projects' folders - the Projects tab's slot while arming (see the module doc comment).
+  const projectFilesRoot: FileBrowserRoot | undefined =
+    paths && kind === 'area'
+      ? {
+          key: 'projectFiles',
+          label: 'Project Files',
+          rootPath: paths.projects,
+          ...(browseRoot ? {alternate: browseRoot} : {}),
+          // Every Project currently assigned to this Area, by bare folder
+          // name (same identity `area` itself is stored by) - see
+          // storage/areaAssignment.ts's assignedProjects, which this
+          // mirrors inline since entryFilter needs a per-entry predicate,
+          // not a list.
+          entryFilter: entry => findCachedItem(entry.path)?.area === name,
+        }
+      : undefined;
+
+  const extraTabs: FileBrowserExtraTab[] = [
+    {
+      key: 'threads',
+      label: 'Threads',
+      render: viewportHeight => (
+        <ThreadsTab
+          path={path}
+          selected={counterpartFilter}
+          onSelect={setCounterpartFilter}
+          onNextMeeting={handleNextMeeting}
+          viewportHeight={viewportHeight}
+          textColor={textColor}
+          borderColor={borderColor}
+        />
+      ),
+    },
+    ...(kind === 'area'
+      ? [
+          {
+            key: 'projects',
+            label: 'Projects',
+            armingRoot: projectFilesRoot,
+            render: (viewportHeight: number | undefined) => (
+              <ProjectsTab
+                areaName={name}
+                onOpenItem={onOpenItem}
+                viewportHeight={viewportHeight}
+                textColor={textColor}
+                borderColor={borderColor}
+              />
+            ),
+          },
+        ]
+      : []),
+  ];
 
 
   return (
@@ -497,23 +543,7 @@ export default function ItemDetail({
               linkTarget={linkTarget}
               resetKey={path}
               onActiveLocationChange={(rootKey, folderPath) => setActiveFilesLocation({rootKey, path: folderPath})}
-              extraTabs={[
-                {
-                  key: 'threads',
-                  label: 'Threads',
-                  render: viewportHeight => (
-                    <ThreadsTab
-                      path={path}
-                      selected={counterpartFilter}
-                      onSelect={setCounterpartFilter}
-                      onNextMeeting={handleNextMeeting}
-                      viewportHeight={viewportHeight}
-                      textColor={textColor}
-                      borderColor={borderColor}
-                    />
-                  ),
-                },
-              ]}
+              extraTabs={extraTabs}
               textColor={textColor}
               borderColor={borderColor}
             />
