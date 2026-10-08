@@ -211,7 +211,9 @@ checking it done writes `completion` (today), unchecking removes it; created and
 are never invented for older todos. `meeting` is the todo's **provenance**, the meeting it was
 agreed in: `<date> <display title>` (`domain/provenance.ts`'s `meetingKey`, the shared-page
 keyword without `#`, `[` and `]`: Obsidian would read a `#tag` in a field as a tag of the todo), written only where Quick Add shows it first (§2.4) and resolved at read
-time (exact key in the todo's scope, then anywhere, then date plus a shared thread tag). Only
+time (exact key in the todo's scope, then anywhere, then a meeting on the key's date whose thread
+tags appear in the key). Provenance never adds tags: where a todo was agreed and where it is to be
+acted on are separate facts (§2.6). Only
 `domain/taskEdit.ts` builds or changes a Task (`newTask`, `withTaskText`, `withTaskDue`,
 `withTaskDone`, `withTaskCancelled`, `applyTaskInput`), so the derived fields always match `text`
 and `fields`; `deriveTaskFields` is used only inside `domain/`.
@@ -341,10 +343,10 @@ the `isMeetingDateVisible` prop).
 `meetingSeed` replaces the meeting draft ("+ Next <type>", `domain/nextMeeting.ts`'s
 `nextMeetingSeed`; it waits until an open edit has closed); both act once per nonce
 (`useDraftRequests.ts`). `provenance` shows one grey line above the actions in create mode on the
-Todo tab (`ProvenanceLine.tsx`, `↳ from <meeting> · <day> · adds #<tags>`, ✕ drops it for one
-todo). The widget only shows it; the screen writes it through `useProvenance.ts`, which applies
-`domain/provenance.ts`'s `applyProvenance` to the composed line (missing thread tags appended,
-`[meeting:: <key>]` set) before `buildTask`. Review's "Meetings to close out", the thread
+Todo tab (`ProvenanceLine.tsx`, `↳ from <meeting> · <day>`, ✕ drops it for one todo). The
+widget only shows it; the screen writes it through `useProvenance.ts`, which applies
+`domain/provenance.ts`'s `applyProvenance` to the composed line (`[meeting:: <key>]` set, the
+text left as typed) before `buildTask`. Review's "Meetings to close out", the thread
 overview and capture from a meeting's note page use it.
 
 **One edit and one arm per screen.** `ui/useEditTarget.ts` holds a screen's edit target (the

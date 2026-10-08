@@ -8,23 +8,24 @@
  * the field, and Obsidian reads a `#tag` inside a field as a tag of the todo.
  * The tag text stays (`2026-10-08 1:1 Mieke mh 101/mieke`), so two meetings
  * with the same title on one day but different thread tags keep different
- * keys. Resolution (decision D11): an exact key match among the meetings of
- * the todo's own scope, then among all meetings; failing that (the meeting
- * was renamed) a meeting on the key's date that shares a thread tag with the
- * todo; else unresolved, shown as "from <key>". Renaming a meeting never
- * rewrites other lines.
+ * keys. Resolution (decisions D11, D14): an exact key match among the
+ * meetings of the todo's own scope, then among all meetings; failing that
+ * (the meeting was renamed) a meeting on the key's date whose thread tags
+ * appear as words in the key; else unresolved, shown as "from <key>".
+ * Renaming a meeting never rewrites other lines.
  *
- * Writing it adds the meeting's thread tags the todo does not carry yet;
- * Quick Add shows both in one grey line before saving
- * (`provenanceLabel`), and ✕ there drops both for that one todo.
+ * Provenance records where a todo was agreed and nothing else: writing it
+ * sets only the field, never a tag (decision D12; tags are only ever set by
+ * the user). Quick Add shows it in one grey line before saving
+ * (`provenanceLabel`), and ✕ there drops it for that one todo.
  */
 import {formatDayHeader} from './dateFormat';
-import {splitTextWithTags, stripAllTags} from './markdown';
+import {stripAllTags} from './markdown';
 import {meetingDisplayTitle} from './meetingTracking';
 import {meetingPageKeyword, parseKeywordLeadingDate} from './sharedNotePages';
 import {appendTaskFields} from './taskLine';
 import {parseTaskInput} from './taskEdit';
-import {belongsToThread, threadOf, threadsOfTags} from './threads';
+import {threadOf, threadsOfTags} from './threads';
 import {Meeting, Task} from './types';
 
 /** `text` as a provenance key: without `#`, `[` and `]`, whitespace collapsed. */
@@ -37,37 +38,13 @@ export function meetingKey(meeting: Pick<Meeting, 'date' | 'title'>): string {
   return normalizeMeetingKey(meetingPageKeyword(meeting));
 }
 
-/** The thread tags (`type/counterpart`) of a meeting - what provenance adds to a todo. */
-export function provenanceTags(meeting: Pick<Meeting, 'tags'>): string[] {
-  return threadsOfTags(meeting.tags).map(t => t.tag);
-}
-
-/** What a screen writes into a new todo: the key and the tags to add. */
-export interface Provenance {
-  key: string;
-  tags: string[];
-}
-
-export function provenanceOf(meeting: Pick<Meeting, 'date' | 'title' | 'tags'>): Provenance {
-  return {key: meetingKey(meeting), tags: provenanceTags(meeting)};
-}
-
 /**
  * A composed Quick Add line (text plus trailing fields) with provenance
- * applied: the tags the text does not carry yet (itself or nested below) are
- * appended to the text, and `[meeting:: key]` is set.
+ * applied: `[meeting:: key]` is set; the text stays as typed.
  */
-export function applyProvenance(composedLine: string, provenance: Provenance): string {
+export function applyProvenance(composedLine: string, key: string): string {
   const {text, fields} = parseTaskInput(composedLine);
-  const present = splitTextWithTags(text)
-    .filter(s => s.kind === 'tag')
-    .map(s => s.value);
-  const missing = provenance.tags.filter(tag => {
-    const thread = threadOf(tag);
-    return thread ? !belongsToThread(present, thread) : !present.includes(tag);
-  });
-  const nextText = [text, ...missing.map(tag => `#${tag}`)].filter(Boolean).join(' ');
-  return appendTaskFields(nextText, {...fields, meeting: provenance.key});
+  return appendTaskFields(text, {...fields, meeting: key});
 }
 
 /** The meeting's title without tags, for the provenance line ("Retro alpha"). */
@@ -76,12 +53,9 @@ function plainTitle(meeting: Pick<Meeting, 'title'>): string {
   return stripAllTags(display) || display;
 }
 
-/** Quick Add's grey line: `↳ from Retro alpha · Tue 30.9. · adds #retro/alpha`. */
-export function provenanceLabel(meeting: Pick<Meeting, 'date' | 'title' | 'tags'>, today: string): string {
-  const tags = provenanceTags(meeting);
-  const parts = [`↳ from ${plainTitle(meeting)}`, formatDayHeader(meeting.date, today)];
-  if (tags.length > 0) parts.push(`adds ${tags.map(t => `#${t}`).join(' ')}`);
-  return parts.join(' · ');
+/** Quick Add's grey line: `↳ from Retro alpha · Tue 30.9.`. */
+export function provenanceLabel(meeting: Pick<Meeting, 'date' | 'title'>, today: string): string {
+  return `↳ from ${plainTitle(meeting)} · ${formatDayHeader(meeting.date, today)}`;
 }
 
 /** The meetings of one Project/Area or the Inbox. */
@@ -95,7 +69,7 @@ export interface ProvenanceMatch {
   /** Index into that source's full meetings array. */
   meetingIndex: number;
   meeting: Meeting;
-  /** False when found by the date + thread tag fallback. */
+  /** False when found by the date + thread tag fallback (D14). */
   exact: boolean;
 }
 
@@ -117,7 +91,7 @@ function findIn(
  * `scopeOf`), searched first.
  */
 export function resolveProvenance(
-  task: Pick<Task, 'fields' | 'tags'>,
+  task: Pick<Task, 'fields'>,
   sources: readonly ProvenanceSource[],
   scopePaths: readonly string[],
 ): ProvenanceMatch | null {
@@ -129,9 +103,14 @@ export function resolveProvenance(
   const exact = findIn(inScope, exactTest, true) ?? findIn(sources, exactTest, true);
   if (exact) return exact;
   const date = parseKeywordLeadingDate(key);
-  const taskThreads = threadsOfTags(task.tags).map(t => t.tag);
-  if (!date || taskThreads.length === 0) return null;
+  // The key's words as thread tags: `retro/alpha/2026` counts as `retro/alpha`.
+  const keyThreads = key
+    .toLowerCase()
+    .split(' ')
+    .map(word => threadOf(word)?.tag)
+    .filter((tag): tag is string => !!tag);
+  if (!date || keyThreads.length === 0) return null;
   const fallbackTest = (m: Meeting) =>
-    !m.cancelled && m.date === date && provenanceTags(m).some(tag => taskThreads.includes(tag));
+    !m.cancelled && m.date === date && threadsOfTags(m.tags).some(thread => keyThreads.includes(thread.tag));
   return findIn(inScope, fallbackTest, false) ?? findIn(sources, fallbackTest, false);
 }

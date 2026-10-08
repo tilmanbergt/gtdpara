@@ -1,7 +1,7 @@
 /**
  * The provenance a screen writes into the todos it adds from Quick Add
  * (docs/dev/history/technical-design-tending-threads.md §3.4): the meeting
- * they were agreed in and its thread tags. Used by Review's "Meetings to
+ * they were agreed in, as `[meeting:: key]` - no tags. Used by Review's "Meetings to
  * close out", the thread overview and capture from a meeting's note page.
  *
  * `provenance` is Quick Add's grey line; its ✕ drops the provenance for the
@@ -10,7 +10,7 @@
  */
 import {useState} from 'react';
 import {todayIso} from '../../domain/meetingTime';
-import {applyProvenance, meetingKey, provenanceLabel, provenanceOf} from '../../domain/provenance';
+import {applyProvenance, meetingKey, provenanceLabel} from '../../domain/provenance';
 import {Meeting} from '../../domain/types';
 import {QuickAddProvenance} from './ProvenanceLine';
 
@@ -32,7 +32,7 @@ export function useProvenance(meeting: ProvenanceMeeting | null): ProvenanceStat
   return {
     provenance: active && meeting ? {label: provenanceLabel(meeting, todayIso()), onClear: () => setDroppedKey(key)} : null,
     active,
-    apply: line => (active && meeting ? applyProvenance(line, provenanceOf(meeting)) : line),
+    apply: line => (active && key ? applyProvenance(line, key) : line),
     added: () => setDroppedKey(null),
   };
 }

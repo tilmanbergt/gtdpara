@@ -48,11 +48,11 @@ Tap a meeting to look at it on the right; at first the latest one is selected. T
 
 ## Adding from the overview
 
-Quick Add on the right adds to the selected past meeting. A grey line says what it adds, for example:
+Quick Add on the right adds to the selected past meeting. A grey line says so, for example:
 
-`↳ from Retro alpha · Wed 30.9. · adds #retro/alpha`
+`↳ from Retro alpha · Wed 30.9.`
 
-The new todo goes into the meeting's project or area, gets the meeting's thread tag if it doesn't have it yet, and records the meeting at the end of the line. Tap ✕ on the grey line to add this one todo without it; it then goes into the project or area you opened the overview from (or the Inbox).
+The new todo goes into the meeting's project or area and records the meeting at the end of the line. Its tags stay as you type them: add `#retro/alpha` only if you also want it under **Relevant** there, or another thread's tag for where you will raise it. Tap ✕ on the grey line to add this one todo without it; it then goes into the project or area you opened the overview from (or the Inbox).
 
 ## + Next retro
 
@@ -66,7 +66,7 @@ A todo agreed in a meeting carries the meeting at the end of its line, for examp
 - the Review step **Meetings to close out**, see [Weekly Review](review.md)
 - the lasso, when you capture from a page of a meeting's note or process a mark made there: the meeting's own note, a page linked to the meeting, or its page in a shared note, see [Lasso](lasso.md)
 
-When you rename a meeting later, gtdpara still finds its todos by the meeting's date and a shared thread tag. Lines in other files are never rewritten.
+When you rename a meeting later, gtdpara still finds its todos by the meeting's date and its thread tag, which the line names (`retro/alpha` above). Lines in other files are never rewritten.
 
 ## Naming shared notes by type
 

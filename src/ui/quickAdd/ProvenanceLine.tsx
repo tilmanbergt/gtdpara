@@ -1,8 +1,8 @@
 /**
- * Quick Add's one grey line when a todo gets context added in the background
- * (docs/dev/history/technical-design-tending-threads.md §1.5, §3.4):
- * `↳ from Retro alpha · Tue 30.9. · adds #retro/alpha`, with ✕ to drop the
- * provenance and the added tags for this one todo. The screen builds the
+ * Quick Add's one grey line when a new todo is linked to a meeting in the
+ * background (docs/dev/history/technical-design-tending-threads.md §1.5, §3.4):
+ * `↳ from Retro alpha · Tue 30.9.`, with ✕ to drop the link for this one
+ * todo. The screen builds the
  * label (domain/provenance.ts's `provenanceLabel`) and decides what to write;
  * this only shows it. 34 dp high.
  */

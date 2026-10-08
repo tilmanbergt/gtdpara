@@ -24,6 +24,7 @@ import TestRenderer, {act} from 'react-test-renderer';
 import QuickAddWidget from '../../src/ui/QuickAddWidget';
 import {MeetingSeed} from '../../src/ui/quickAdd/useDraftRequests';
 import {QuickAddProvenance} from '../../src/ui/quickAdd/ProvenanceLine';
+import {ProvenanceState, useProvenance} from '../../src/ui/quickAdd/useProvenance';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
 
 function render(extra: {provenance?: QuickAddProvenance | null; meetingSeed?: MeetingSeed | null}) {
@@ -53,8 +54,8 @@ const texts = (r: TestRenderer.ReactTestRenderer) =>
 describe('Quick Add provenance line', () => {
   it('shows the label on the Todo tab and ✕ clears it', () => {
     const onClear = jest.fn();
-    const {r} = render({provenance: {label: '↳ from Retro alpha · Wed 30.9. · adds #retro/alpha', onClear}});
-    expect(texts(r)).toContain('↳ from Retro alpha · Wed 30.9. · adds #retro/alpha');
+    const {r} = render({provenance: {label: '↳ from Retro alpha · Wed 30.9.', onClear}});
+    expect(texts(r)).toContain('↳ from Retro alpha · Wed 30.9.');
     const clear = r.root.findAll(n => n.props.accessibilityLabel === 'Drop' && typeof n.props.onPress === 'function')[0];
     act(() => clear.props.onPress());
     expect(onClear).toHaveBeenCalled();
@@ -63,6 +64,37 @@ describe('Quick Add provenance line', () => {
   it('shows nothing without provenance', () => {
     const {r} = render({provenance: null});
     expect(texts(r).some(t => t.startsWith('↳'))).toBe(false);
+  });
+});
+
+describe('useProvenance (close-out, overview and capture write through it)', () => {
+  const mieke = {date: '2026-09-30', title: '1:1 Mieke #101/mieke', tags: ['101/mieke']};
+  function probe(): {current: () => ProvenanceState} {
+    let state!: ProvenanceState;
+    function Probe() {
+      state = useProvenance(mieke);
+      return null;
+    }
+    act(() => {
+      TestRenderer.create(<Probe />);
+    });
+    return {current: () => state};
+  }
+
+  it('writes only the meeting field and shows no "adds"', () => {
+    const p = probe();
+    expect(p.current().provenance?.label.startsWith('↳ from 1:1 Mieke · ')).toBe(true);
+    expect(p.current().provenance?.label).not.toContain('adds');
+    expect(p.current().apply('Raise budget #101/sven')).toBe('Raise budget #101/sven [meeting:: 2026-09-30 1:1 Mieke 101/mieke]');
+  });
+
+  it('✕ drops the link for the next todo only', () => {
+    const p = probe();
+    act(() => p.current().provenance!.onClear());
+    expect(p.current().provenance).toBeNull();
+    expect(p.current().apply('Raise budget')).toBe('Raise budget');
+    act(() => p.current().added());
+    expect(p.current().apply('Next one')).toBe('Next one [meeting:: 2026-09-30 1:1 Mieke 101/mieke]');
   });
 });
 

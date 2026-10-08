@@ -19,7 +19,7 @@ Choose the **Meeting** tab, write the title, set the date and the time. For the 
 
 ## The grey line: where a todo comes from
 
-Where a todo is agreed in a meeting - in a thread overview, in the Review step **Meetings to close out**, or when you capture from a meeting's note page - Quick Add shows one grey line above its buttons, for example `↳ from Retro alpha · Wed 30.9. · adds #retro/alpha`. The new todo then records that meeting and gets its thread tag. Tap ✕ on the line to add this one todo without it. See [Threads](threads.md).
+Where a todo is agreed in a meeting - in a thread overview, in the Review step **Meetings to close out**, or when you capture from a meeting's note page - Quick Add shows one grey line above its buttons, for example `↳ from Retro alpha · Wed 30.9.`. The new todo then records that meeting at the end of its line; its tags stay as you type them. Tap ✕ on the line to add this one todo without the link. See [Threads](threads.md).
 
 ## Adding a note
 

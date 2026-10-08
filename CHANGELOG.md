@@ -20,9 +20,10 @@ or your project/area files are stored.
 - **+ Next retro** in the overview copies the thread's latest meeting to the next date, keeping
   the time between the last two meetings.
 - Todos agreed in a meeting record it at the end of the line (`[meeting:: 2026-09-30 Retro
-  alpha retro/alpha]`) and get the meeting's thread tag: from the overview's Quick Add, from
-  the Review step **Meetings to close out**, and from a lasso capture or mark on a meeting's
-  note page. A grey line in Quick Add shows this before you save; ✕ drops it for that todo.
+  alpha retro/alpha]`); no tag is added, so a todo agreed with one person can be tagged for
+  another: from the overview's Quick Add, from the Review step **Meetings to close out**, and
+  from a lasso capture or mark on a meeting's note page. A grey line in Quick Add
+  (`↳ from Retro alpha · Wed 30.9.`) shows this before you save; ✕ drops it for that todo.
 - Tag Rules: the shared file name can contain `{tag}`, the rule tag the item matched, so one
   rule on `sparring` and `retro` names its files `sparring max 2026` and `retro alpha 2026`.
 - New help pages **Threads** and **Using gtdpara with Obsidian**.
