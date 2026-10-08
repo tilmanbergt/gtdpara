@@ -47,6 +47,12 @@ t('error text, console, alert, date format', () => {
   assert.deepEqual(rules(checkSourceFile('src/domain/marks.ts', "const d = String(day).padStart(2, '0');")), []);
 });
 
+t('deriveTaskFields only in domain', () => {
+  const src = ["import {deriveTaskFields} from '../domain/markdown';", '// deriveTaskFields is internal to domain/'].join('\n');
+  assert.deepEqual(rules(checkSourceFile('src/screens/X.tsx', src)), ['task-edit:1']);
+  assert.deepEqual(rules(checkSourceFile('src/domain/taskEdit.ts', src)), []);
+});
+
 t('history in comments', () => {
   const src = [
     '// Fixed 2026-09-17 after Tilman reported it',

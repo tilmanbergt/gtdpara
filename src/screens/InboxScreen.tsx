@@ -87,8 +87,8 @@ import {ActivityIndicator, Keyboard, Pressable, StyleSheet, Text, View} from 're
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination} from '../domain/destination';
 import {groupTasksByFlowState} from '../domain/flowState';
-import {deriveTaskFields} from '../domain/markdown';
-import {splitAndSortMeetings} from '../domain/meetingTime';
+import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
+import {splitAndSortMeetings, todayIso} from '../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {TagRule} from '../domain/tagRules';
 import {ResolvedParaPaths} from '../domain/settings';
@@ -101,7 +101,7 @@ import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
-import {applyMeetingEdit, buildMeeting, buildTask} from '../storage/itemMutations';
+import {applyMeetingEdit, applyTaskEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {loadProjectFile, saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings, saveSettings} from '../storage/settingsStorage';
 import {FolderEntry} from '../supernote/fileSystem';
@@ -300,7 +300,7 @@ export default function InboxScreen({
   const handleToggleTaskDone = (taskIndex: number) => {
     runTaskAction(() =>
       saveInboxTasks(tasks => {
-        tasks[taskIndex] = {...tasks[taskIndex], done: !tasks[taskIndex].done};
+        tasks[taskIndex] = withTaskDone(tasks[taskIndex], !tasks[taskIndex].done, todayIso());
         return tasks;
       }),
     );
@@ -340,7 +340,7 @@ export default function InboxScreen({
     if (!text) return Promise.resolve(false);
     return runWidgetSave(async () => {
       await saveInboxTasks(tasks => {
-        tasks[taskIndex] = {...tasks[taskIndex], text, ...deriveTaskFields(text), linkedFile: nextLinkedFile};
+        tasks[taskIndex] = applyTaskEdit(tasks[taskIndex], text, nextLinkedFile);
         return tasks;
       });
       cancelEditTarget();
@@ -426,7 +426,7 @@ export default function InboxScreen({
     runWidgetAction(async () => {
       if (target.type === 'task') {
         await saveInboxTasks(tasks => {
-          tasks[target.index] = {...tasks[target.index], cancelled: true};
+          tasks[target.index] = withTaskCancelled(tasks[target.index], true);
           return tasks;
         });
       } else {
@@ -453,7 +453,7 @@ export default function InboxScreen({
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = inbox.tasks[index];
       if (!stored) throw new Error('That inbox item changed on disk - Settings → Advanced → Reload all files.');
-      const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
+      const updated: Task = applyTaskEdit(stored, payload.text, payload.linkedFile);
       const moved = await moveTask(inboxSource(inboxPath), index, updated, itemTarget(target), moveUi);
       if (!moved) return; // cancelled in the note confirm - stay in edit mode
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {

@@ -248,10 +248,10 @@ function truncateItemName(name: string, max = 14): string {
 /**
  * What `onQuickFile` (edit mode) hands the caller to save at the resolved
  * target - the widget's own currently-edited text/fields, fully composed
- * exactly the way `Save` itself composes them (flow-state/due tags folded in
- * via `setFlowStateTag`/`setDueTag` for a task, `validateMeetingFields`-
- * normalized for a meeting) and with the matched abbreviation tag already
- * stripped out via `removeTagFromText`. Callers must NOT re-read their own
+ * exactly the way `Save` itself composes them (flow-state tag and
+ * `[due:: …]` field folded in by domain/quickAddCompose.ts's
+ * `composeTaskText` for a task, `validateMeetingFields`-normalized for a
+ * meeting), the matched abbreviation tag stripped via `removeTagFromText`. Callers must NOT re-read their own
  * last-*saved* task/meeting for the text/title - that would silently discard
  * whatever the user typed or changed during this edit session. `linkedFile`
  * is threaded through the same way `onSaveEditTask`/`onSaveEditMeeting`'s

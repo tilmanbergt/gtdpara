@@ -10,7 +10,8 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {isFocused} from '../../../domain/destination';
 import {setFlowStateTag} from '../../../domain/flowState';
-import {deriveTaskFields, setDueTag} from '../../../domain/markdown';
+import {todayIso} from '../../../domain/meetingTime';
+import {withTaskCancelled, withTaskDone, withTaskDue, withTaskText} from '../../../domain/taskEdit';
 import {GtdParaSettings} from '../../../domain/settings';
 import {CachedItem, findCachedItem, updateItemTasks} from '../../../storage/dataCache';
 import {FocusScope, focusBlockedReason, setItemFocus} from '../../../storage/focusSlots';
@@ -400,12 +401,11 @@ export default function UnfocusedNextStep({
     }
     const nextTasks = cachedItem.tasks.slice();
     if (action === 'done') {
-      nextTasks[entry.taskIndex] = {...current, done: true};
+      nextTasks[entry.taskIndex] = withTaskDone(current, true, todayIso());
     } else if (action === 'cancel') {
-      nextTasks[entry.taskIndex] = {...current, cancelled: true};
+      nextTasks[entry.taskIndex] = withTaskCancelled(current, true);
     } else {
-      const nextText = setFlowStateTag(current.text, action);
-      nextTasks[entry.taskIndex] = {...current, text: nextText, ...deriveTaskFields(nextText)};
+      nextTasks[entry.taskIndex] = withTaskText(current, setFlowStateTag(current.text, action));
     }
     const nextRaw = await saveTasks(entry.item.kind, entry.item.path, cachedItem.rawContent, nextTasks, cachedItem.taskExtraLines);
     updateItemTasks(entry.item.path, nextRaw, nextTasks, cachedItem.taskExtraLines);
@@ -416,9 +416,9 @@ export default function UnfocusedNextStep({
 
   /**
    * "+ Set due date" on an Unfocused-next-items task - a task with no other
-   * way back onto Daily can be given a due date right here. `setDueTag` (same
-   * helper as ui/QuickAddWidget.tsx's due-date field) writes/clears the
-   * `#due:` tag, with the same findCachedItem/saveTasks/updateItemTasks
+   * way back onto Daily can be given a due date right here. `withTaskDue`
+   * writes/clears the `[due:: …]` field (and strips a legacy `#due:` tag),
+   * with the same findCachedItem/saveTasks/updateItemTasks
    * write-through as every other task mutation on this screen. `dueDate: null`
    * clears it (the UI's "✕"). Once saved, reviewAggregate.ts's `nextTasksFor`
    * excludes the task, so it drops out of the item's live task list on the
@@ -431,9 +431,8 @@ export default function UnfocusedNextStep({
     if (!cachedItem || !current) {
       throw new Error(`"${entry.task.text}" changed on disk - Settings → Advanced → Reload all files.`);
     }
-    const nextText = setDueTag(current.text, dueDate);
     const nextTasks = cachedItem.tasks.slice();
-    nextTasks[entry.taskIndex] = {...current, text: nextText, ...deriveTaskFields(nextText)};
+    nextTasks[entry.taskIndex] = withTaskDue(current, dueDate);
     const nextRaw = await saveTasks(entry.item.kind, entry.item.path, cachedItem.rawContent, nextTasks, cachedItem.taskExtraLines);
     updateItemTasks(entry.item.path, nextRaw, nextTasks, cachedItem.taskExtraLines);
     log('ReviewScreen: unfocused-next task due date set', dueDate, entry.item.path, entry.taskIndex);

@@ -12,6 +12,7 @@
  */
 import {deriveFlowState, deriveNow, deriveWaitingOn, isContextTag} from './flowState';
 import {MARKS_HEADING, parseMarkLines, serializeMarkLines} from './marks';
+import {appendTaskFields, splitTrailingFields} from './taskLine';
 import {FlowState, GtdParaKind, ItemStatus, Mark, Meeting, MonthlyGoal, Task, WeeklyGoal} from './types';
 
 const SCOPE_HEADING = '## Scope';
@@ -99,24 +100,24 @@ function deriveDueDate(tags: string[]): string | null {
   return null;
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
  * Derives a task's `tags`/`dueDate`/`flowState`/`waitingOn`/`now` from its
- * `text` - the same read `parseTasksSpan` does on load, exported so UI code
- * can keep an in-memory `Task` internally consistent the moment `text` is
- * set or edited (screens/ProjectDataPanel.tsx's TodosSection,
- * screens/DailyView.tsx, ui/TaskQuickAdd.tsx, ui/TaskEditCard.tsx), rather
- * than leaving stale derived fields until the next full reload re-parses
- * the file. Callers spread `...deriveTaskFields(text)` onto a Task object
- * (technical-design-tags.md §1, docs/dev/history/technical-design-now-focus-mode.md
- * §2).
+ * `text` and its `[due:: …]` field (`fieldDue`, which wins over a legacy
+ * `#due:` tag when it is a date). The same read `parseTasksSpan` does on
+ * load. Used only inside domain/: everything else changes a Task through
+ * domain/taskEdit.ts, which calls this (`npm run code-health` reports it
+ * elsewhere).
  */
 export function deriveTaskFields(
   text: string,
+  fieldDue: string | null = null,
 ): {tags: string[]; dueDate: string | null; flowState: FlowState; waitingOn: string | null; now: boolean} {
   const tags = extractTags(text);
   return {
     tags,
-    dueDate: deriveDueDate(tags),
+    dueDate: fieldDue && ISO_DATE_RE.test(fieldDue) ? fieldDue : deriveDueDate(tags),
     flowState: deriveFlowState(tags),
     waitingOn: deriveWaitingOn(tags),
     now: deriveNow(tags),
@@ -252,17 +253,17 @@ export function removeTagFromText(text: string, tag: string): string {
 }
 
 /**
- * Removes any existing `#due:YYYY-MM-DD` tag from `text` and appends the new
- * one, if any - the counterpart to domain/flowState.ts's `setFlowStateTag`,
- * used by ui/TaskQuickAdd.tsx and ui/TaskEditCard.tsx so the dedicated due-
- * date field can write the tag for the user instead of requiring it typed
- * by hand. Kept here rather than in flowState.ts since DUE_TAG_RE/
- * deriveDueDate already live in this file.
+ * Sets the due date of a composed task line (text plus trailing fields, as
+ * domain/quickAddCompose.ts's `composeTaskText` builds it): strips a legacy
+ * `#due:YYYY-MM-DD` tag from the text and replaces the trailing
+ * `[due:: …]` field (removed when `dueDate` is null). On a task's `text`
+ * (which never holds fields), `setDueInLine(text, null)` just strips the
+ * legacy tag - what display code uses.
  */
-export function setDueTag(text: string, dueDate: string | null): string {
+export function setDueInLine(line: string, dueDate: string | null): string {
+  const {text, fields} = splitTrailingFields(line);
   const stripped = text.replace(DUE_TAG_ANY_RE, '').replace(/\s{2,}/g, ' ').trim();
-  if (!dueDate) return stripped;
-  return stripped ? `${stripped} #due:${dueDate}` : `#due:${dueDate}`;
+  return appendTaskFields(stripped, {...fields, due: dueDate});
 }
 
 /** Splits a parsed line's trailing text into {text, notePath}, stripping a "→ [[...]]" suffix if present. */
@@ -605,24 +606,28 @@ export function parseTasksSpan(content: string): ParsedTasks {
       continue;
     }
     const [, state, rawText] = match;
-    const {text: afterLinkedFile, linkedFile} = extractLinkedFile(rawText);
+    // Right to left: fields, then the linked file, then the note link.
+    const {text: beforeFields, fields} = splitTrailingFields(rawText);
+    const {text: afterLinkedFile, linkedFile} = extractLinkedFile(beforeFields);
     const {text, notePath} = extractNoteLink(afterLinkedFile);
     tasks.push({
       text,
       done: state.toLowerCase() === 'x',
       cancelled: state === '-',
-      ...deriveTaskFields(text),
+      ...deriveTaskFields(text, fields.due),
       notePath,
       linkedFile,
+      fields,
     });
   }
   return {tasks, extraLines};
 }
 
-function serializeTaskLine(task: Task): string {
+/** One task line, written left to right: text, note link, linked file, fields. */
+export function serializeTaskLine(task: Task): string {
   const state = task.cancelled ? '-' : task.done ? 'x' : ' ';
   const withNoteLink = appendNoteLink(task.text, task.notePath);
-  return `- [${state}] ${appendLinkedFile(withNoteLink, task.linkedFile)}`;
+  return `- [${state}] ${appendTaskFields(appendLinkedFile(withNoteLink, task.linkedFile), task.fields)}`;
 }
 
 /** Rebuilds only the Tasks span; everything else in `content` is untouched. */

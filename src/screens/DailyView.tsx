@@ -94,7 +94,7 @@ import {
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination, destinationLabel} from '../domain/destination';
 import {setNowTag} from '../domain/flowState';
-import {deriveTaskFields} from '../domain/markdown';
+import {withTaskCancelled, withTaskDone, withTaskText} from '../domain/taskEdit';
 import {isoDateOffset, meetingTimestampMs, todayIso} from '../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
@@ -115,7 +115,7 @@ import {CachedItem, getCachedData, getCachedInbox, rebuildCache, setCachedInbox}
 import {focusBlockedReason, setItemFocus} from '../storage/focusSlots';
 import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
-import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
+import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, buildTask, mutateEntryMeetings, mutateEntryTasks} from '../storage/itemMutations';
 import {linkedFileStatus, openLinkedFile} from '../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
@@ -448,7 +448,7 @@ export default function DailyView({
   const handleToggleDone = (entry: DailyTaskEntry) => {
     toggleAction.run(async () => {
       await saveEntryTasks(entry, tasks => {
-        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !tasks[entry.taskIndex].done};
+        tasks[entry.taskIndex] = withTaskDone(tasks[entry.taskIndex], !tasks[entry.taskIndex].done, todayIso());
         return tasks;
       });
       log('DailyView: toggled', entry.item.path, entry.taskIndex);
@@ -458,7 +458,7 @@ export default function DailyView({
   /**
    * The `#next`/`#now` label's double-tap (ui/TaskLabels.tsx's onToggleNow,
    * threaded through ui/TaskRow.tsx) - flips `#now` on `entry.task` via the
-   * same setNowTag-then-deriveTaskFields round-trip every other tag mutator
+   * same setNowTag-then-withTaskText round-trip every other tag mutator
    * on this screen uses (see commitTaskEdit above). Wired both from normal
    * Daily's Open-tasks rows (renderTaskEntry below - marking #now doesn't
    * require being in focus mode, docs/dev/history/technical-design-now-focus-mode.md §3)
@@ -472,8 +472,7 @@ export default function DailyView({
     toggleAction.run(async () => {
       await saveEntryTasks(entry, tasks => {
         const task = tasks[entry.taskIndex];
-        const nextText = setNowTag(task.text, !task.now);
-        tasks[entry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
+        tasks[entry.taskIndex] = withTaskText(task, setNowTag(task.text, !task.now));
         return tasks;
       });
       log('DailyView: toggled #now', entry.item.path, entry.taskIndex);
@@ -500,7 +499,7 @@ export default function DailyView({
     toggleAction.run(async () => {
       const wasDone = entry.task.done;
       const doneResult = await saveEntryTasks(entry, tasks => {
-        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], done: !wasDone};
+        tasks[entry.taskIndex] = withTaskDone(tasks[entry.taskIndex], !wasDone, todayIso());
         return tasks;
       });
       if (wasDone) return;
@@ -532,8 +531,7 @@ export default function DailyView({
           doneEntry,
           tasks => {
             const task = tasks[doneEntry.taskIndex];
-            const nextText = setNowTag(task.text, false);
-            tasks[doneEntry.taskIndex] = {...task, text: nextText, ...deriveTaskFields(nextText)};
+            tasks[doneEntry.taskIndex] = withTaskText(task, setNowTag(task.text, false));
             return tasks;
           },
           inboxState,
@@ -562,10 +560,10 @@ export default function DailyView({
 
   /**
    * ui/QuickAddWidget.tsx's `editingTask` mode onSaveEditTask - `nextText`
-   * already has flow-state/due/waiting-on tags composed in (same
-   * setFlowStateTag/setDueTag calls its add mode uses), so this only needs
-   * to re-derive tags/dueDate/flowState/waitingOn and write through, same
-   * as ProjectDataPanel's TodosSection commitEdit. `nextLinkedFile` is
+   * is the composed line (flow-state tag, waiting-on name, `[due:: …]`,
+   * same composeTaskText its add mode uses), so this only applies it with
+   * `applyTaskEdit` and writes through, same as ProjectDataPanel's
+   * TodosSection commitEdit. `nextLinkedFile` is
    * assigned straight onto the field. Closes edit mode only on a successful
    * save - runWidgetAction swallows errors internally, so chaining
    * `.then(() => ...)` after it would close edit mode even on a failed save.
@@ -575,7 +573,7 @@ export default function DailyView({
     if (!text) return Promise.resolve(false);
     return runWidgetSave(async () => {
       await saveEntryTasks(entry, tasks => {
-        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], text, ...deriveTaskFields(text), linkedFile: nextLinkedFile};
+        tasks[entry.taskIndex] = applyTaskEdit(tasks[entry.taskIndex], text, nextLinkedFile);
         return tasks;
       });
       cancelEditTarget();
@@ -587,7 +585,7 @@ export default function DailyView({
     Keyboard.dismiss();
     runWidgetAction(async () => {
       await saveEntryTasks(entry, tasks => {
-        tasks[entry.taskIndex] = {...tasks[entry.taskIndex], cancelled: true};
+        tasks[entry.taskIndex] = withTaskCancelled(tasks[entry.taskIndex], true);
         return tasks;
       });
       cancelEditTarget();
@@ -674,12 +672,7 @@ export default function DailyView({
   const handleQuickFileEdit = async (target: AbbrevFileMatch, payload: QuickFilePayload): Promise<void> => {
     if (editTarget?.type === 'task' && editingTaskEntry && payload.kind === 'task') {
       const entry = editingTaskEntry;
-      const updated: Task = {
-        ...entry.task,
-        text: payload.text,
-        ...deriveTaskFields(payload.text),
-        linkedFile: payload.linkedFile,
-      };
+      const updated: Task = applyTaskEdit(entry.task, payload.text, payload.linkedFile);
       const moved = await moveTask(entry.item, entry.taskIndex, updated, itemTarget(target), moveUi);
       if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
     } else if (editTarget?.type === 'meeting' && editingMeetingEntry && payload.kind === 'meeting') {

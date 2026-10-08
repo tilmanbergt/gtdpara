@@ -9,6 +9,8 @@ Quick Add is the small form you find on Daily, Week, Month, Inbox, Current and i
 3. Optionally set a due date. While the date field is active, a strip offers -1, Today, +1 and +7.
 4. Tap **+ Add**.
 
+gtdpara writes the due date as `[due:: …]` at the end of the line and records the day you added the todo as `[created:: …]`, see [Tags](tags.md). When you edit a todo, its created and done dates stay; clearing the due date in Quick Add removes it.
+
 A row of recently used tags lets you insert a tag with one tap. A space typed right after `#` is removed automatically, so handwritten tags are recognized.
 
 ## Adding a meeting

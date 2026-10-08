@@ -53,6 +53,14 @@ describe('demo space', () => {
     ]);
   });
 
+  it('writes todos in the current syntax: [due:: …] fields and #wf/<name>', () => {
+    const all = files.map(f => f.content).join('\n');
+    expect(all).not.toMatch(/#due:|#waiting-for/);
+    const garden = parseTasksSpan(byPath('1 Projects/Garden renovation/project.txt')).tasks;
+    expect(garden.find(t => t.text.startsWith('Order soil'))!.fields.due).toBe('2026-10-03');
+    expect(garden.find(t => t.text.startsWith('Get a quote'))!.text).toBe('Get a quote from the landscaper #wf/marco');
+  });
+
   it('profile settings point at the demo folders and survive the profile file filter', () => {
     const s = demoProfileSettings();
     expect(s.baseRoot).toBe(DEMO_BASE_ROOT);

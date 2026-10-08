@@ -52,8 +52,10 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
   `src/screens/`.
 - **Files are the source of truth.** `project.txt` / `area.txt` / `Inbox.txt` hold content;
   AsyncStorage holds configuration only. The cache must be rebuildable from the files at any time.
-- **File format.** Changes are span-scoped (`getSpan`/`setSpan` in `domain/markdown.ts`) - never
-  regenerate a whole file. Lines the parser doesn't understand survive. A format change needs
+- **File format.** Typed meanings are `#tags`; data gtdpara records about an entry are trailing
+  `[key:: value]` fields; never a second syntax for the same meaning (design-overview §3).
+  Changes are span-scoped (`getSpan`/`setSpan` in `domain/markdown.ts`) - never regenerate a
+  whole file. Lines the parser doesn't understand survive. A format change needs
   parser + serializer + round-trip test, must read files written by older versions, and needs
   an **Upgrade note** in the CHANGELOG.
 - **Write-through.** Mutations write the file first, then the cache (`storage/itemMutations.ts`,
@@ -86,9 +88,10 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
 - **Known host limits** are respected and documented: for example, creating notes only works
   when the plugin was opened from a note.
 - **One way to do a thing.** Moving a todo or meeting goes through `storage/entryMove.ts`
-  (`moveTask`/`moveMeeting`); a screen's edit/arm state through `ui/useEditTarget.ts`; every date
-  or time shown through `domain/dateFormat.ts`; every caught error's text through
-  `utils/errorMessage.ts`. `npm run code-health` checks the last two.
+  (`moveTask`/`moveMeeting`); a todo is built or changed only through `domain/taskEdit.ts`
+  (`buildTask`/`applyTaskEdit` on top of it); a screen's edit/arm state through
+  `ui/useEditTarget.ts`; every date or time shown through `domain/dateFormat.ts`; every caught
+  error's text through `utils/errorMessage.ts`. `npm run code-health` checks the todo rule and the last two.
 - **File size.** New files stay at or below 1,000 lines; split by responsibility (one component
   or hook per file, like `screens/review/` and `screens/settings/`). Files that are longer today
   are listed in `scripts/code-health-baseline.json` and may only shrink.

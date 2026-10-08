@@ -6,7 +6,7 @@
  * under wherever the user happens to be browsing in the left-pane file tree.
  */
 import {RESERVED_BARE_TAGS, setFlowStateTag, stripBareTags} from '../domain/flowState';
-import {setDueTag} from '../domain/markdown';
+import {setDueInLine} from '../domain/markdown';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {NoteContext, resolveNoteTemplate} from '../domain/tagRules';
 import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
@@ -78,7 +78,7 @@ export function meetingNoteBaseName(meeting: Pick<Meeting, 'date' | 'title'>): s
 /**
  * Todos have no date, so the note is just named after the todo's text - with
  * the plugin's own functional tags stripped (flow state `#next`/
- * `#waiting-for[:x]`/`#someday`/`#maybe`, `#due:<date>`, and the bare
+ * `#wf[/x]`/`#waiting-for[:x]`/`#someday`/`#maybe`, a legacy `#due:<date>`, and the bare
  * `#now`/`#prepped`/`#reviewed`): machine-managed state that changes over the
  * todo's life and doesn't belong in a file name. Free/context tags
  * (`#daily`, `#music`, ...) stay - they're part of what the todo *is*, and
@@ -91,8 +91,8 @@ export function meetingNoteBaseName(meeting: Pick<Meeting, 'date' | 'title'>): s
  * "functional" can't drift between the two.
  */
 export function todoNoteBaseName(task: Pick<Task, 'text'>): string {
-  const withoutDue = setDueTag(task.text, null);
-  const withoutFlowState = setFlowStateTag(withoutDue, null); // also covers #waiting-for:<slug>
+  const withoutDue = setDueInLine(task.text, null);
+  const withoutFlowState = setFlowStateTag(withoutDue, null); // also covers #wf/<slug> and #waiting-for:<slug>
   return sanitizeFileNameComponent(stripBareTags(withoutFlowState, RESERVED_BARE_TAGS));
 }
 

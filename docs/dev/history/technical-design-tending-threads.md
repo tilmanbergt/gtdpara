@@ -1,18 +1,25 @@
 # Technical design: Tending threads (and the file format it needs)
 
 Status: **design approved (all decisions in §4).** Requirements were clarified in conversation (October
-2026); the UX draft is a design canvas outside the repository. Nothing here is implemented yet.
+2026); the UX draft is a design canvas outside the repository. 0.10.0 is implemented on
+`feature/plain-files` (steps 1–3 of §3.1); 0.11.0 and 0.12.0 are not started.
+
+**Revision (device test of 0.10.0):** the data files stay `.txt`. Supernote Cloud accepts `.md`
+files uploaded by the device and lets Obsidian download them, but refuses `.md` uploads from
+anywhere else ("This file cannot be uploaded"), so edits made in Obsidian could never reach the
+device. The `.md` switch, the conversion pass and the raw view/edit were built, tested in the demo
+space and removed again; §3.1.5 records what was learned.
 
 This document covers one feature delivered in three releases:
 
 | Release | Name | Content |
 |---|---|---|
-| 0.10.0 | Plain files | `.md` data files, Obsidian-compatible syntax (`#wf/…`, `[due:: …]`, `[created:: …]`, `[completion:: …]`), one confirmed migration pass, a small raw view/edit of a data file |
+| 0.10.0 | Plain syntax | Obsidian-compatible syntax in the existing `.txt` files (`#wf/…`, `[due:: …]`, `[created:: …]`, `[completion:: …]`); every todo change through shared helpers |
 | 0.11.0 | Threads | provenance (`[meeting:: …]`), the thread overview, tap rules for nested tags, "+ Next" meeting, `{tag}` in shared file names |
 | 0.12.0 | Tending | `## Threads` section, Threads tab on the Current page, Review step "Tending threads", close-out when a counterpart goes inactive, "Since last time" note piece |
 
-Each release is useful on its own and ships separately. 0.10.0 touches every data file once,
-which is why it comes first.
+Each release is useful on its own and ships separately. 0.10.0 comes first because 0.11.0 and
+0.12.0 build on its fields.
 
 ## 1. Requirements as decided
 
@@ -87,10 +94,11 @@ from `#retro/alpha` in another Area.
 - Created: `[created:: YYYY-MM-DD]` on **every new todo**.
 - Done: `[completion:: YYYY-MM-DD]` when a todo is checked.
 - Provenance: `[meeting:: YYYY-MM-DD <title>]` (§3.4).
-- Data files become `project.md`, `area.md`, `Inbox.md`. Reason: Supernote Cloud Sync carries
-  Obsidian's `.md` back to the device, and Obsidian (with Tasks/Dataview) indexes only `.md`.
-  Opening the data file from the Supernote file browser is replaced by a small raw view/edit in
-  gtdpara.
+- Data files stay `project.txt`, `area.txt`, `Inbox.txt` (see the revision note at the top and
+  §3.1.5). Old lines are not converted: every old form keeps being read, and a line gets the new
+  syntax the next time gtdpara writes its span. Obsidian's Tasks and Dataview only index `.md`, so
+  they read these fields once something on the Obsidian side presents the files as Markdown;
+  that is outside gtdpara.
 
 ### 1.5 UX (decided; see the UX draft)
 
@@ -235,73 +243,40 @@ Quick Add's edit mode already reads `editingTask.dueDate`; nothing else in the w
 `setDueTag` is renamed `setDueInLine` and works on the trailing field (it still strips a legacy
 tag). `displayTaskText` strips a legacy `#due:` tag as today; fields are never in `text`.
 
-#### 3.1.5 `.md` data files and the migration pass
+#### 3.1.5 Rejected: `.md` data files, conversion pass, raw view/edit
 
-**Resolution.** `domain/types.ts` keeps both names: `DATA_FILE_NAMES = {project: {current:
-'project.md', legacy: 'project.txt'}, …}`. The cache rebuild/refresh stats both candidates per
-folder in its one `statFiles` call and records the existing one as `CachedItem.dataFile`
-(`.md` wins when both exist). `dataFilePath(kind, folder)` is replaced by
-`itemDataFile(item)` for cached items and by `resolveDataFile(kind, folder)` (one stat call)
-where no cache entry exists (`markStore`, `marks` from the lasso button, `createItem`).
-`createItem` and the demo space always write `.md`. Archive scanners (`archiveScan`,
-Integrity Check) accept both names; archived folders are never migrated.
+Built on `feature/plain-files` (commits `decb612` … `e9a8013`, kept on a local backup branch) and
+removed before release, because of what the demo-space test with Supernote Cloud Sync showed:
 
-**Until the migration ran**, gtdpara reads and writes each item in the file it found, so a
-mixed state is safe. Old syntax keeps being read forever; new writes always use the new syntax,
-so a line moves to the new form the next time its span is saved.
+| Direction | `.txt` | `.md` |
+|---|---|---|
+| device → Supernote Cloud | works | works |
+| Supernote Cloud → Obsidian vault (download) | works | works |
+| Obsidian vault → Supernote Cloud (upload) | works | refused: "This file cannot be uploaded" |
 
-**The migration pass** (`storage/formatMigration.ts`, pure planning in
-`domain/formatMigration.ts`):
+The Supernote Cloud web upload refuses `.md` the same way. With `.md` data files every change
+made in Obsidian would stay in the vault, which defeats the reason for the switch. Learned on
+the way, useful for later work:
 
-1. After the first cache build in 0.10.0, if any live Project/Area/Inbox still has a `.txt`
-   file, a **persistent status-slot notice** offers: "34 data files use the old format. Convert
-   to .md (Obsidian-ready)? · Convert · Later". "Later" hides it for the session; the notice
-   returns on the next start. Settings → Advanced gets a "Convert data files to .md" button for
-   the same action.
-2. Before running it shows the plan (count of renames, count of lines rewritten) as one
-   confirmation, per `domain/fileChangeText.ts`.
-3. Per file, as journaled operations (the `archiveOps`/`execute` pattern; journal in the private
-   data folder, so an interrupted run resumes):
-   1. `moveFile(<folder>/project.txt → <folder>/project.md)` (refused when `.md` exists: that
-      file is reported, not touched);
-   2. rewrite the Tasks span with the new syntax (`#waiting-for:x` → `#wf/x`, `#due:` →
-      `[due:: ]`); meetings, goals, marks and frontmatter are not touched;
-   3. read back and compare the parse result (same tasks, same states, same due dates) — a
-      mismatch stops the run and reports the file.
-4. The cache is rebuilt; the result is reported ("Converted 34 files. 1 skipped: both
-   project.txt and project.md exist in <folder>").
+- The Cloud Sync plugin's mirrored folders are one-way (cloud → vault); only its single Paired
+  folder syncs both ways and stops completely when either inventory is incomplete. Editing
+  gtdpara files from Obsidian works only inside the Paired folder (help page).
+- A save must keep writing to the file it was read from (the per-folder memory the
+  implementation used), should a second data file name ever come back.
+- A conversion should rewrite only the lines it changes, in place, rather than re-saving the
+  whole span (blank lines, unknown-line positions).
 
-No `created` date is invented for existing todos (age shows only where known; provenance gives
-a date for agreed items).
-
-**Integrity Check** gets one check: "both `.txt` and `.md` exist" (report only).
-
-**Upgrade note**: data files become `.md`; nothing is lost; old syntax is still read; Obsidian
-users can switch Tasks to the Dataview format.
-
-#### 3.1.6 Raw view/edit of a data file
-
-`screens/RawFileView.tsx`, opened from a "View file" action in `ui/ItemStatusPanel.tsx`
-(Current) and from the Inbox tab's header row. It is a mode of the Current/Inbox screen (the
-right pane is replaced), not a new tab.
-
-- **View**: the whole file paginated with `domain/textPagination.ts`, page arrows, no scrolling.
-- **Edit**: "Edit this page" turns the visible page's lines into one multiline input (inside the
-  upper two thirds); Save splices those lines back into the file text, guarded by the 0.6
-  "changed elsewhere" stamp check (`docs/dev/history/technical-design-files-0.6.md`), then writes through the
-  cache (`updateItemRawContent`), which re-parses everything.
-- Cancel discards. No syntax help, no highlighting.
+Making Obsidian treat `project.txt` as Markdown (for example an extension mapping in the sync
+plugin) is outside gtdpara.
 
 #### 3.1.7 Rules that change
 
 The design-overview and the development policy change in the same release:
 
-- §3 "Identity is the folder… data files stay `.txt`" → data files are `.md`.
 - §3 "One tag mechanism" becomes: *typed meanings are `#tags` (a new meaning is a new reserved
   word or a nested `type/…` form); data gtdpara records about an entry are trailing
   `[key:: value]` fields, parsed like links. Never a second syntax for the same meaning.*
 - §2.2 file format section, the table of trailing tokens, and the example file.
-- DEVELOPMENT-POLICY §3 names `project.md` / `area.md` / `Inbox.md`.
 
 ### 3.2 Thread model (domain, 0.11.0)
 
@@ -579,8 +554,8 @@ status line. No open items → a single confirmation.
 | D2 | Which nested tags make counterparts | **decided:** Tag Rule types plus `wf` (§3.9.2) |
 | D3 | Reactivation | **decided:** asked in Review/Threads tab, not at save (§3.9.2) |
 | D4 | Browse merge | **decided:** Browse replaces Project Files while arming; "Other Projects/Areas ›" during link-arming (§3.9.4) |
-| D5 | Migration | **decided:** confirmed pass, journaled; mixed state readable meanwhile; Archive stays `.txt` (§3.1.5) |
-| D6 | Raw edit | **decided:** view paginated, edit one page of lines at a time; entry in the status panel and Inbox header (§3.1.6) |
+| D5 | Migration | **withdrawn:** data files stay `.txt`, no conversion pass (§3.1.5) |
+| D6 | Raw edit | **withdrawn:** not needed while the files stay `.txt` (§3.1.5) |
 | D7 | Release split | **decided:** 0.10.0 / 0.11.0 / 0.12.0 as in the table above |
 | D8 | Created/completion dates | **decided:** from 0.10.0 on, never invented for existing todos |
 | D9 | Owner and scope | **decided:** owner = item of the tapped row (Inbox included, no exception); scope = its Area plus the Area's Projects; both lenses scoped (§1.3, §3.2) |
@@ -591,20 +566,15 @@ status line. No open items → a single confirmation.
 
 ### 0.10.0
 
-- New: `domain/taskEdit.ts`, `domain/formatMigration.ts`, `storage/formatMigration.ts`,
-  `screens/RawFileView.tsx`; tests `__tests__/domain/taskLine.test.ts`,
-  `taskEdit.test.ts`, `formatMigration.test.ts`, `flowStateWf.test.ts`.
-- Changed: `domain/types.ts` (TaskFields, file names), `domain/markdown.ts` (fields parse/write,
+- New: `domain/taskEdit.ts`; tests for the task line, task helpers and `#wf`.
+- Changed: `domain/types.ts` (TaskFields), `domain/markdown.ts` (fields parse/write,
   `setDueInLine`), `domain/flowState.ts` (wf), `domain/taskLabels.ts`, `domain/quickAddCompose.ts`,
-  `domain/abbrev.ts` (reserved `wf`), `domain/integrityCheck.ts`, `domain/closeOut/archiveScan.ts`,
-  `domain/demoSpace.ts`, `storage/projectFile.ts`, `storage/dataCache.ts` (`dataFile`, double
-  stat), `storage/itemMutations.ts` (`applyTaskEdit`, `buildTask` created), `storage/itemMove.ts`,
-  `storage/createItem.ts`, `storage/markStore.ts`, `storage/marks.ts`, `screens/DailyView.tsx`,
-  `screens/InboxScreen.tsx`, `screens/ProjectDataPanel.tsx`, `screens/review/steps/ItemListStep.tsx`,
-  `ui/ItemStatusPanel.tsx`, `screens/settings/AdvancedTab.tsx`, `scripts/code-health.mjs`
-  (`deriveTaskFields` outside domain).
-- Docs: design-overview §2.2/§3, DEVELOPMENT-POLICY §3, `docs/user` pages on todos/Waiting
-  For/Obsidian, CHANGELOG (Changed + Upgrade note), README (Obsidian line).
+  `domain/abbrev.ts` (reserved `wf`), `storage/itemMutations.ts` (`applyTaskEdit`, `buildTask`
+  created), `storage/itemMove.ts`, `screens/DailyView.tsx`, `screens/InboxScreen.tsx`,
+  `screens/ProjectDataPanel.tsx`, `screens/review/steps/ItemListStep.tsx`,
+  `scripts/code-health.mjs` (`deriveTaskFields` outside domain).
+- Docs: design-overview §2.2/§3 (field rule), `docs/user` pages on todos and Waiting For, a short
+  Obsidian note, CHANGELOG (Changed + Upgrade note).
 
 ### 0.11.0
 
@@ -642,8 +612,6 @@ code-health baseline and must not grow: the provenance line and seed logic go in
 - **Round trips**: every task line form (legacy `#due:`, `#waiting-for:x`, new fields, unknown
   fields, links + fields, cancelled) parses and writes back byte-identical when unchanged; new
   writes use the new order.
-- **Migration**: planner on sample files (both extensions present, Inbox, mixed syntax);
-  conversion keeps every parsed task equal except syntax.
 - `withTaskText` keeps `fields`; `withTaskDone` sets/clears completion; `applyTaskEdit` keeps
   created/meeting.
 - `wf`: derive, set, strip, labels, `isContextTag`, abbreviation refusal.
@@ -659,9 +627,11 @@ code-health baseline and must not grow: the provenance line and seed logic go in
 - **T0 (before 0.10 slice 2)**: in Obsidian with Tasks set to Dataview format, a line
   `- [ ] x #wf/a → [[n.note]] [meeting:: 2026-10-01 Retro] [created:: 2026-10-01] [due:: 2026-10-09]`
   shows due and created in Tasks queries. If not, change the field order before continuing.
-- 0.10.0: install over 0.9; notice appears; convert in the demo space; files are `.md`; Cloud
-  Sync shows them in Obsidian; add/edit/done/due/Waiting For work; raw view pages; raw edit of a
-  page saves; edit the same file in Obsidian meanwhile → "changed elsewhere" message.
+- 0.10.0: install over 0.9; old lines show as before (due labels, `#w/f Name`); a new todo
+  ends in `[created:: …]`; done adds `[completion:: …]`, undone removes it; setting a due date
+  writes `[due:: …]` and removes an old `#due:` tag; Waiting For with a name writes `#wf/name`;
+  editing a todo keeps its created date; Daily, Inbox, Current, Week, Month and Review show the
+  same todos as in 0.9; a `.txt` edited in Obsidian's Paired folder still syncs to the device.
 - 0.11.0: tap a nested tag in Daily, Current, Week day panel, Review → overlay; Back and tab tap
   close it; edit a todo in the overlay; close-out Quick Add shows the provenance line and writes
   the field; capture from a meeting note page gets provenance; "+ Next" in the overlay; `{tag}`
@@ -672,10 +642,63 @@ code-health baseline and must not grow: the provenance line and seed logic go in
 
 ## 7. Open points
 
-- Whether the Tasks plugin accepts our field order (T0). If not, `meeting` moves after the Tasks
-  fields or becomes a tag-free text marker; the rest of the design is unaffected.
-- How Supernote Cloud Sync handles the rename (`.txt` deleted + `.md` created in the vault, or a
-  leftover `.txt`). Tested in the demo space before converting real data; the release notes say
-  what to expect.
+- T0 passed (Obsidian Tasks with "Task Format: Dataview"): the full line, and variants with
+  `[created::]`, `[meeting::]`, `→ [[note]]` or `#wf/…` before `[due::]`, all show their due date.
+  With the default emoji format Tasks ignores the fields, so the help page for Obsidian tells
+  users to switch that setting.
+- Obsidian-side Markdown view of the `.txt` files (outside gtdpara; see §3.1.5).
 - Rhythm/cadence per counterpart (later; the `## Threads` line format leaves room).
 - Tag renames once history accumulates (later).
+
+## 8. As built (0.10.0)
+
+0.10.0 "Plain syntax" is §3.1.1–3.1.4 and §3.1.7, on `feature/plain-files`; every commit ends
+with `npm run check` green. 0.11.0 and 0.12.0 are not started.
+
+- `685b12f` Read and write task fields, `#wf` and `[due::]`: `domain/taskLine.ts` (parse and
+  write the trailing fields), `TaskFields` on `Task`, `domain/taskEdit.ts`, `#wf` in
+  `domain/flowState.ts`, `setDueInLine`, `composeTaskText` writing `[due:: …]`, `WF` refused as
+  an abbreviation; tests for the line, the helpers and `#wf`.
+- `28521ca` Change todos only through the task helpers: every screen edit, done toggle and cancel
+  (Daily, Inbox, Current, Review's Inbox, item list and unfocused-next steps, `itemMove`) goes
+  through `applyTaskEdit` and `domain/taskEdit.ts`; `buildTask` records `created`; the
+  code-health rule `task-edit` reports `deriveTaskFields` outside `src/domain/`.
+- `cbecc2f` Write the demo space in the task field syntax: the check against this design found
+  `domain/demoSpace.ts` still writing `#due:` and `#waiting-for:` into new demo files.
+- `51009ea` Comments in `domain/types.ts` and `ui/QuickAddWidget.tsx` that still described
+  `setDueTag` and spreading `deriveTaskFields`.
+- `784a7f2`, `b3b4d01` design-overview §2.2 (line grammar, fields, `#wf`, example file), §2.4
+  (`applyTaskEdit`), §3 ("One tag mechanism, one field mechanism", "One task change path"), §4;
+  DEVELOPMENT-POLICY §3 (file format, one way to change a todo).
+- `7bd927b` Help pages Tags, Your files and folders (with an Obsidian section), Quick Add,
+  Note templates. `c0f3c29` CHANGELOG Changed and Upgrade notes.
+
+Deviations from §3.1:
+
+- **Due date in a Quick Add edit.** `applyTaskEdit(stored, composedText, linkedFile)` is
+  `domain/taskEdit.ts`'s pure `applyTaskInput` plus the linked file. It takes the text and the
+  due date from Quick Add's composed line, not "fields present replace, others kept": Quick Add
+  always composes the due date, so a line without `[due:: …]` means the user removed it, and
+  removing the due date in Quick Add clears it. `created`, `meeting` and `completion` are kept
+  unless the line carries them; unknown fields in the line replace the stored ones, otherwise the
+  stored ones are kept.
+- `domain/taskEdit.ts` also has `newTask` (used by `buildTask`); `deriveTaskFields(text,
+  fieldDue)` takes the due field as a second argument and uses it only when it is a
+  `YYYY-MM-DD` date, else the legacy tag.
+- A repeated known key, or a known key without a value, is kept verbatim in `fields.extra`, so a
+  second parse of a written line gives the same result.
+- Known fields are written in a canonical form (`[key:: value]`, the fixed order). A hand-written
+  `[due::2026-10-09]` or a different order of known fields reads correctly but is rewritten in
+  that form the next time the file's Tasks span is saved. Unknown fields stay verbatim. Keys are
+  `[a-z][\w-]*` as designed, so `[Priority:: high]` stays part of the text.
+- `wf` is reserved through `isWaitingForTag`/`isContextTag` (which `validateAbbrev` uses), not a
+  separate list. `withTaskDone(task, true, today)` keeps a completion date the task already has.
+- Legacy lines are not converted: a `#due:` tag is removed by a Quick Add edit or `withTaskDue`,
+  `#waiting-for:` is rewritten by `setFlowStateTag` (every Quick Add edit); a done toggle leaves
+  the text as it is.
+
+The `.md` data files, the conversion pass and the raw view/edit were built on this branch and
+removed before the release (D5, D6 withdrawn); what was learned is in §3.1.5.
+
+Off-device: `npm run check` (tsc, ESLint, 440 Jest tests, script, help-page and code-health
+tests, code health). T0 passed (§7). The device checklist of §6 "0.10.0" is still open.

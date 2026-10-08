@@ -9,8 +9,8 @@ import React, {useEffect, useState} from 'react';
 import {Text, View} from 'react-native';
 import {AbbrevFileMatch} from '../../../domain/abbrev';
 import {Destination, destinationLabel} from '../../../domain/destination';
-import {deriveTaskFields} from '../../../domain/markdown';
-import {isTodayOrFuture} from '../../../domain/meetingTime';
+import {withTaskCancelled, withTaskDone} from '../../../domain/taskEdit';
+import {isTodayOrFuture, todayIso} from '../../../domain/meetingTime';
 import {toggleMeetingTrackingAt} from '../../../domain/meetingTracking';
 import {Meeting, Task} from '../../../domain/types';
 import {findCachedItem, setCachedInbox} from '../../../storage/dataCache';
@@ -20,7 +20,7 @@ import {useEntryMoveUi} from '../../../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../../../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../../../ui/useNoteCreateConfirm';
-import {addMeetingToDestination, applyMeetingEdit, buildMeeting, mutateEntryMeetings, mutateEntryTasks} from '../../../storage/itemMutations';
+import {addMeetingToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, mutateEntryMeetings, mutateEntryTasks} from '../../../storage/itemMutations';
 import {loadSettings} from '../../../storage/settingsStorage';
 import {FolderEntry} from '../../../supernote/fileSystem';
 import {log, logError} from '../../../utils/log';
@@ -120,7 +120,7 @@ export default function InboxStep({
 
   const handleInboxTaskDone = (taskIndex: number) =>
     action.run(async () => {
-      await changeTask(taskIndex, t => ({...t, done: true}));
+      await changeTask(taskIndex, t => withTaskDone(t, true, todayIso()));
       bump('inboxCleared');
       log('ReviewScreen: inbox task done', taskIndex);
     });
@@ -130,7 +130,7 @@ export default function InboxStep({
     if (!editTarget) return;
     const {type, index} = editTarget;
     action.run(async () => {
-      if (type === 'task') await changeTask(index, t => ({...t, cancelled: true}));
+      if (type === 'task') await changeTask(index, t => withTaskCancelled(t, true));
       else await changeMeeting(index, m => ({...m, cancelled: true}));
       cancelEditTarget();
       bump('inboxCleared');
@@ -164,7 +164,7 @@ export default function InboxStep({
     let moved: Task | Meeting | null = null;
     if (editTarget.type === 'task' && payload.kind === 'task') {
       const stored = current.tasks[index] ?? fail();
-      const updated: Task = {...stored, text: payload.text, ...deriveTaskFields(payload.text), linkedFile: payload.linkedFile};
+      const updated: Task = applyTaskEdit(stored, payload.text, payload.linkedFile);
       moved = await moveTask(source, index, updated, itemTarget(target), moveUi);
     } else if (editTarget.type === 'meeting' && payload.kind === 'meeting') {
       const stored = current.meetings[index] ?? fail();
@@ -211,7 +211,7 @@ export default function InboxStep({
 
   const handleInboxTaskSave = (taskIndex: number, nextText: string, nextLinkedFile: string): Promise<boolean> =>
     action.runSave(async () => {
-      await changeTask(taskIndex, t => ({...t, text: nextText, ...deriveTaskFields(nextText), linkedFile: nextLinkedFile}));
+      await changeTask(taskIndex, t => applyTaskEdit(t, nextText, nextLinkedFile));
       cancelEditTarget();
       log('ReviewScreen: inbox task edited', taskIndex);
     });

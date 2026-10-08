@@ -82,8 +82,8 @@ export function buildDemoFiles(today: Date): DemoFile[] {
     tasks: [
       '- [x] Sketch the new layout',
       '- [ ] Measure the raised beds #next',
-      `- [ ] Order soil and compost #next #due:${d(2)}`,
-      '- [ ] Get a quote from the landscaper #waiting-for:marco',
+      `- [ ] Order soil and compost #next [due:: ${d(2)}]`,
+      '- [ ] Get a quote from the landscaper #wf/marco',
       '- [ ] Build a small greenhouse #someday',
     ],
     meetings: [`- ${d(3)} 10:00-11:00 Site visit with Marco #marco`],
@@ -97,8 +97,8 @@ export function buildDemoFiles(today: Date): DemoFile[] {
     scope: 'Two calm days away with the team: look back, choose three priorities for next quarter.',
     tasks: [
       '- [ ] Collect agenda topics from the team #next #lena',
-      `- [ ] Book the venue #due:${d(5)}`,
-      '- [ ] Send the invitation #waiting-for:lena',
+      `- [ ] Book the venue [due:: ${d(5)}]`,
+      '- [ ] Send the invitation #wf/lena',
       '- [ ] Plan an outdoor afternoon #maybe',
     ],
     meetings: [
@@ -136,13 +136,13 @@ export function buildDemoFiles(today: Date): DemoFile[] {
     abbrev: 'HE',
     dailyFocus: true,
     scope: 'Sleep, movement and check-ups - the basis for everything else.',
-    tasks: [`- [ ] Book the dentist appointment #next #due:${d(0)}`, '- [ ] Try the new yoga class #someday'],
+    tasks: [`- [ ] Book the dentist appointment #next [due:: ${d(0)}]`, '- [ ] Try the new yoga class #someday'],
     meetings: [`- ${d(2)} 07:00-08:00 Running with Sam #sam`],
   });
   area('Home', {
     abbrev: 'HO',
     scope: 'A calm, working home.',
-    tasks: ['- [ ] Fix the leaking tap #next', `- [ ] Replace the smoke detector batteries #due:${d(-2)}`],
+    tasks: ['- [ ] Fix the leaking tap #next', `- [ ] Replace the smoke detector batteries [due:: ${d(-2)}]`],
     meetings: [],
   });
   area('Team', {

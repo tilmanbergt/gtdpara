@@ -84,6 +84,9 @@ export function checkSourceFile(path, text, baselineLines) {
     if (DISPLAY_DIRS.some(d => path.startsWith(d)) && /padStart\(2, ?'0'\)/.test(line) && !comments[i]) {
       add('date-format', n, 'build date and time text with domain/dateFormat.ts');
     }
+    if (!path.startsWith('src/domain/') && /\bderiveTaskFields\b/.test(line) && !comments[i]) {
+      add('task-edit', n, 'change a Task through domain/taskEdit.ts or storage/itemMutations.ts, not deriveTaskFields');
+    }
     const comment = withoutQuoted(comments[i]);
     if (DATE_RE.test(comment)) add('history-comment', n, 'a date in a comment - say what and why now; history lives in git and the design docs');
     else if (HISTORY_RE.test(comment)) add('history-comment', n, 'history wording in a comment - describe the code as it is');

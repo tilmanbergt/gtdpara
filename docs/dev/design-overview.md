@@ -142,9 +142,10 @@ abbrev: AT
 Ship the tender by end of quarter.
 
 ## Tasks
-- [ ] Draft outreach email #next #alice
-- [ ] Pay invoice #due:2026-11-05
-- [x] Kickoff call → [[Todos/Kickoff call.note]]
+- [ ] Draft outreach email #next #alice [created:: 2026-10-28]
+- [ ] Pay invoice [created:: 2026-10-28] [due:: 2026-11-05]
+- [ ] Signed offer back #wf/alice [due:: 2026-11-06]
+- [x] Kickoff call → [[Todos/Kickoff call.note]] [created:: 2026-10-20] [completion:: 2026-11-03]
 - [-] Cancelled idea
 
 ## Meetings
@@ -178,10 +179,22 @@ Every frontmatter save takes one `FrontMatterFields` object built as
 it did not mean to touch. `domain/lifecycleDates.ts` reads and writes `doneAt`/`archivedAt`.
 
 **Tasks.** `- [ ] text`, with `[x]` done and `[-]` cancelled. Cancelling is the only delete: the
-line stays in the file and is hidden. `Task = {text, done, cancelled, tags, dueDate, flowState,
-waitingOn, now, notePath, linkedFile}`; everything but `text`, the state, `notePath` and
-`linkedFile` is derived from `text` by `deriveTaskFields`, which every call site spreads after
-changing `text`.
+line stays in the file and is hidden. The grammar of a task line:
+
+```
+- [x] <text with #tags> → [[note]] +[[file]] [meeting:: …] [created:: …] [due:: …] [completion:: …]
+```
+
+`Task = {text, done, cancelled, tags, dueDate, flowState, waitingOn, now, notePath, linkedFile,
+fields}`. `text` holds the typed text with its tags and never a field. `fields` (`TaskFields =
+{due, created, completion, meeting, extra}`) are the trailing fields (`domain/taskLine.ts`).
+`tags`, `flowState`, `waitingOn` and `now` are derived from `text`; `dueDate` is `fields.due`, or
+an older `#due:` tag in `text` when there is no due field. A new todo gets `created` (today);
+checking it done writes `completion` (today), unchecking removes it; created and completion dates
+are never invented for older todos. `meeting` is read and kept as found. Only
+`domain/taskEdit.ts` builds or changes a Task (`newTask`, `withTaskText`, `withTaskDue`,
+`withTaskDone`, `withTaskCancelled`, `applyTaskInput`), so the derived fields always match `text`
+and `fields`; `deriveTaskFields` is used only inside `domain/`.
 
 **Meetings.** `- [-]? YYYY-MM-DD <slot> title`, every meeting a one-off (no recurrence). The slot
 is always written: `HH:mm`, `HH:mm-HH:mm` or `Nd` (a date-only meeting spanning N days, `1d` for
@@ -189,25 +202,38 @@ one day); a line without a slot still reads as one day. `Meeting = {title, date,
 days, tags, cancelled, notePath, linkedFile}`, `tags` from `deriveMeetingFields(title)`. A
 hand-written series line and its indented lines are kept as unknown lines.
 
-**Links on a line.** Trailing tokens, in this order: ` → [[notePath]]` (the item's note, §2.6),
-then ` +[[linkedFile]]` (an attached existing file). Parsing strips right to left, writing appends
-left to right. `notePath` is relative to the item's folder (`Todos/x.note`), absolute when it
+**Trailing tokens.** In this order: ` → [[notePath]]` (the item's note, §2.6), then
+` +[[linkedFile]]` (an attached existing file), then, on task lines only, the fields. Parsing
+strips right to left, writing appends left to right. `notePath` is relative to the item's folder (`Todos/x.note`), absolute when it
 starts with `/`, a shared-note anchor `Meetings/Coaching 2026.note#<keyword>`, or a page link
 `<note>#page=N`. `linkedFile` is relative to the base root (it can point into Resources) and may
 also carry `#page=N`.
 
+**Fields.** A field is a Dataview inline field `[key:: value]` (key `[a-z][\w-]*`), the format the
+Obsidian Tasks plugin reads with its "Task Format" set to Dataview. Only fields at the very end of
+a line count; a field in the middle of the text is text. Known keys are written in the fixed order
+`meeting`, `created`, `due`, `completion` (Tasks reads its fields from the end of the line), as
+`[key:: value]`, then unknown fields verbatim in file order, so fields added in Obsidian survive. A
+repeated known key or one without a value is kept as an unknown field. Dates are `YYYY-MM-DD`.
+
 **Tags — one mechanism.** Every `#tag` in a task's text or a meeting's title is extracted
 (`TAG_RE`, lowercased); `text` itself is never rewritten by parsing. What a tag means:
 
-- **flow state** (`domain/flowState.ts`): `#next`, `#waiting-for` / `#waiting-for:<slug>`,
-  `#someday`, `#maybe`; exclusive by UI convention, first match wins when a file has several.
-- **due date**: `#due:YYYY-MM-DD` (`setDueTag`); for a Waiting For task it is the follow-up date.
+- **flow state** (`domain/flowState.ts`): `#next`, `#someday`, `#maybe`, and Waiting For as
+  `#wf/<slug>` (the counterpart; deeper segments are ignored for the name) or bare `#wf`;
+  exclusive by UI convention, first match wins when a file has several. The older
+  `#waiting-for` / `#waiting-for:<slug>` are read as Waiting For; `setFlowStateTag` strips every
+  form and writes `#wf/<slug>` or `#wf`. `wf` is reserved: never a context tag, never an
+  abbreviation.
+- **due date** is the `[due:: YYYY-MM-DD]` field, not a tag (`setDueInLine` on a composed line,
+  `withTaskDue` on a Task); for a Waiting For task it is the follow-up date. An older
+  `#due:YYYY-MM-DD` tag is still read; a Quick Add edit or `withTaskDue` removes it.
 - **bare state tags** (`RESERVED_BARE_TAGS`): `#now` (focus mode), `#prepped`/`#reviewed`
   (meeting tracking, §2.6), `#monthly` (Month highlight, §2.7).
 - **context tags**: everything else (`isContextTag`), including nested tags `#coaching/sabina`
   (segments after `/`) and Project/Area abbreviations such as `#AT`.
 
-Helpers that edit text for a tag (`setFlowStateTag`, `setDueTag`, `setBareTag`,
+Helpers that edit text for a tag (`setFlowStateTag`, `setBareTag`,
 `insertTagAtPosition`, `removeTagFromText`) strip and re-append; whole-tag guards treat `/`, `-`
 and `:` as part of the tag. `stripSpaceAfterHash` removes the space handwriting recognition often
 inserts after `#`.
@@ -299,11 +325,16 @@ too; drafts of new items are never saved implicitly. Inbox, Current, Daily, Week
 resolves `false` on failure for save-then-switch).
 
 **One write path.** `storage/itemMutations.ts` is the only code that builds and places tasks and
-meetings: `buildTask`/`buildMeeting`, `applyMeetingEdit`, `addTaskToDestination`/
+meetings: `buildTask`/`buildMeeting`, `applyTaskEdit`/`applyMeetingEdit`, `addTaskToDestination`/
 `addMeetingToDestination`, and `mutateEntryTasks`/`mutateEntryMeetings` (re-read the entry's
 source, check the index still matches, apply, save, write through). A function that may write
 the Inbox takes an `InboxContext {inbox, inboxPath}` and returns `{nextInbox}` for the caller to
 put into the shared Inbox. An index that no longer matches throws a "changed on disk" message.
+Quick Add hands over a todo as one composed line (`domain/quickAddCompose.ts`'s `composeTaskText`:
+text, flow tag, `[due:: …]`); `buildTask` splits it and adds `created`, and `applyTaskEdit` takes
+the text and the due date from it (a line without `[due:: …]` clears the due date) and keeps
+`created`, `meeting`, `completion` and unknown fields. Done toggles, cancels and due changes on
+the screens go through `domain/taskEdit.ts`.
 
 **Rows.** `ui/TaskRow.tsx` and `ui/MeetingRow.tsx` are the only row components. A task row shows
 labels after its title (`domain/taskLabels.ts`, `ui/TaskLabels.tsx`, layout in
@@ -767,10 +798,12 @@ place it happens.
   lives in the data files; AsyncStorage holds configuration and per-profile UI conveniences only.
 - **Identity is the folder.** No synthetic ids; a Project/Area is referenced by its folder name
   (`area:`) or path. The data files stay `.txt` with Obsidian-flavored Markdown content.
-- **One tag mechanism.** Flow state, due date, waiting-on, `#now`, meeting tracking, highlights,
-  context and abbreviations are all `#tags` in the text. A new meaning is a new reserved word or
-  `:value` form (and an entry in `RESERVED_BARE_TAGS` or `isContextTag`), never a new syntax or a
-  second stored field. Derived fields are recomputed from the text (`deriveTaskFields`,
+- **One tag mechanism, one field mechanism.** Typed meanings are `#tags` in the text: flow
+  state, waiting-on, `#now`, meeting tracking, highlights, context and abbreviations. A new typed
+  meaning is a new reserved word or a nested `type/…` form (and an entry in `RESERVED_BARE_TAGS`
+  or `isContextTag`). Data gtdpara records about an entry (due, created, completion, provenance)
+  are trailing `[key:: value]` fields, parsed like links. Never a second syntax for the same
+  meaning. Derived fields are recomputed from the text and fields (`domain/taskEdit.ts`,
   `deriveMeetingFields`), never edited on their own.
 - **Span-scoped writes.** New file content is its own `## ` section (or frontmatter key) read and
   written with `getSpan`/`setSpan` (`readSectionLines`/`writeSectionLines` for a section a feature
@@ -812,6 +845,10 @@ place it happens.
 - **One move path.** Every move of a task or meeting to another Project, Area or the Inbox goes
   through `storage/entryMove.ts`'s `moveTask`/`moveMeeting`, which also moves or re-points the
   note. Closing an entry from outside its own screen goes through `storage/itemMove.ts`.
+- **One task change path.** A Task is built or changed only through `domain/taskEdit.ts` (and
+  `storage/itemMutations.ts`'s `buildTask`/`applyTaskEdit` on top of it), never by spreading
+  derived fields or toggling `done` by hand; `npm run code-health` reports `deriveTaskFields`
+  outside `src/domain/`.
 - **One edit and arm state.** A screen's edit target and Files-pane arm come from
   `ui/useEditTarget.ts`; every handler that switches or ends the edit goes through it, so
   save-then-switch applies everywhere. Close an edit on confirmed success, never on "the call
@@ -899,9 +936,11 @@ throws on messy input (several flow tags, unknown status values, extra lines), a
 touches only its own section, so a hand-written paragraph or a foreign section survives every
 plugin write.
 
-**One tag mechanism.** A second syntax for due dates, waiting-on or state would fragment what
-users type and what Obsidian shows. Everything is a `#tag`, with `:value` for parameters; the
-cost is accepted lossiness (a waiting-on name becomes a slug).
+**You type tags, gtdpara writes fields.** A second syntax for the same meaning would fragment
+what users type and what Obsidian shows. What users type or tap is a plain Obsidian tag (nesting
+with `/`); the cost is accepted lossiness (a waiting-on name becomes a slug). What gtdpara records
+on its own (dates) is a Dataview field at the end of the line, which the Obsidian Tasks plugin
+(Task Format: Dataview) and Dataview read, and which stays out of the typed text.
 
 **A cache, kept honest.** Reading every data file on every screen open is too slow on the device
 once there are dozens of items. The cache trades a small window of staleness against external

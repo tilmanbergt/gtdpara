@@ -10,6 +10,27 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- Todo lines use a plain syntax that Obsidian's Tasks and Dataview plugins understand: you type
+  tags, gtdpara writes fields at the end of the line. A due date is written as
+  `[due:: 2026-10-15]` instead of `#due:2026-10-15`.
+- Waiting For is written as `#wf/lena`, or `#wf` without a name, instead of
+  `#waiting-for:lena`. The label stays `#w/f Lena`. `WF` can't be used as an abbreviation.
+- New todos record the day they were added (`[created:: …]`); checking a todo done records the
+  day (`[completion:: …]`), unchecking removes it. Editing a todo keeps both dates.
+- Fields you add yourself at the end of a todo line (for example `[priority:: high]`) are kept.
+- The demo space uses the new syntax.
+
+### Upgrade notes
+- Your files stay `project.txt`, `area.txt` and `Inbox.txt`, and nothing is converted on its own.
+  Older lines with `#due:…` or `#waiting-for:…` keep working as before; a line is rewritten in the
+  new syntax only when gtdpara saves it after you edit that todo.
+- Only new todos get a created date, and only todos checked from now on get a done date; gtdpara
+  never makes up dates for existing todos.
+- To see the fields in Obsidian's Tasks plugin, set its **Task Format** to **Dataview**. Edits
+  made in Obsidian reach the Supernote only through the Supernote Cloud Sync plugin's Paired
+  folder; see **Your files and folders** in the help.
+
 ## [0.9.0] — 2026-10-07
 
 ### Changed

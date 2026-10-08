@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react';
 import {setFlowStateTag} from '../../../domain/flowState';
-import {deriveTaskFields} from '../../../domain/markdown';
+import {withTaskText} from '../../../domain/taskEdit';
 import {isoWeekKey} from '../../../domain/weekDate';
 import {archiveItem, archiveLeavesEmptyFolder, archiveTargetsFor} from '../../../storage/archive';
 import {archiveDoneText, emptyFolderConfirmNote} from '../../../domain/fileChangeText';
@@ -169,7 +169,7 @@ export default function ItemListStep({
     if (!cachedItem || !current) throw changedOnDisk(entry.task.text);
     await mutateEntryTasks(
       {item: entry.item, taskIndex: entry.taskIndex, task: current},
-      tasks => tasks.map((t, i) => (i === entry.taskIndex ? {...t, ...retag(t.text)} : t)),
+      tasks => tasks.map((t, i) => (i === entry.taskIndex ? withTaskText(t, setFlowStateTag(t.text, 'next')) : t)),
       {inbox: null, inboxPath: null},
     );
     log('ReviewScreen: promoted shelved task to Next', entry.item.path, entry.taskIndex);
@@ -249,9 +249,4 @@ export default function ItemListStep({
       borderColor={borderColor}
     />
   );
-}
-
-function retag(text: string): {text: string} & ReturnType<typeof deriveTaskFields> {
-  const next = setFlowStateTag(text, 'next');
-  return {text: next, ...deriveTaskFields(next)};
 }
