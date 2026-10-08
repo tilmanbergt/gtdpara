@@ -65,6 +65,12 @@ export interface ReviewSummaryCounts {
    * which means "a Project/Area archived" everywhere else in this recap.
    */
   gmailArchived: number;
+  /** "Tending threads" (docs/dev/history/technical-design-tending-threads.md §3.10): counterparts confirmed with Tend. Absent in older saved stats - every reader uses `?? 0`. */
+  counterpartsConfirmed: number;
+  /** "Tending threads": counterparts set inactive (Not on a new one, or Set inactive). */
+  counterpartsSetInactive: number;
+  /** "Tending threads": meetings added from "+ Next <type>". */
+  nextMeetingsAdded: number;
 }
 
 export const ZERO_REVIEW_SUMMARY: ReviewSummaryCounts = {
@@ -82,12 +88,16 @@ export const ZERO_REVIEW_SUMMARY: ReviewSummaryCounts = {
   meetingsClosedOut: 0,
   gmailItemsCreated: 0,
   gmailArchived: 0,
+  counterpartsConfirmed: 0,
+  counterpartsSetInactive: 0,
+  nextMeetingsAdded: 0,
 };
 
 /** Stable ids - the persisted key of a step. Adding a step: one id here, one REVIEW_STEPS entry, one entry in storage/reviewAggregate.ts's buildReviewStepCounts (the `Record<ReviewStepId, ...>` type makes the compiler insist), one renderer in screens/ReviewScreen.tsx. */
 export type ReviewStepId =
   | 'weekAhead'
   | 'meetingsCloseOut'
+  | 'tendingThreads'
   | 'gmailInbox'
   | 'inbox'
   | 'stalled'
@@ -125,6 +135,9 @@ export interface ReviewStepDef {
 export const REVIEW_STEPS: ReviewStepDef[] = [
   {id: 'weekAhead', title: 'Week ahead', kind: 'ritual'},
   {id: 'meetingsCloseOut', title: 'Meetings to close out', kind: 'backlog'},
+  // Tending ongoing relationships right after routing the last meetings'
+  // outcomes (docs/dev/history/technical-design-tending-threads.md §3.10).
+  {id: 'tendingThreads', title: 'Tending threads', kind: 'ritual'},
   {id: 'gmailInbox', title: 'Gmail inbox', kind: 'backlog'},
   {id: 'inbox', title: 'Inbox to zero', kind: 'backlog'},
   {id: 'stalled', title: 'Stalled projects', kind: 'backlog'},
@@ -359,6 +372,9 @@ export function summaryLines(counts: ReviewSummaryCounts): string[] {
   const lines: string[] = [];
   if (counts.tasksAdded > 0) lines.push(`${pluralize(counts.tasksAdded, 'task')} added`);
   if (counts.meetingsClosedOut > 0) lines.push(`${pluralize(counts.meetingsClosedOut, 'meeting')} closed out`);
+  if ((counts.counterpartsConfirmed ?? 0) > 0) lines.push(`${pluralize(counts.counterpartsConfirmed, 'counterpart')} confirmed`);
+  if ((counts.counterpartsSetInactive ?? 0) > 0) lines.push(`${pluralize(counts.counterpartsSetInactive, 'counterpart')} set inactive`);
+  if ((counts.nextMeetingsAdded ?? 0) > 0) lines.push(`${pluralize(counts.nextMeetingsAdded, 'next meeting')} added`);
   if (counts.gmailItemsCreated > 0) lines.push(`${pluralize(counts.gmailItemsCreated, 'item')} created from email`);
   if (counts.gmailArchived > 0) lines.push(`${pluralize(counts.gmailArchived, 'email')} archived`);
   if (counts.inboxCleared > 0) lines.push(`${pluralize(counts.inboxCleared, 'inbox item')} cleared`);
