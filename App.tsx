@@ -25,9 +25,7 @@ import {MarkScope} from './src/domain/marks';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
-import HelpOverlay from './src/ui/HelpOverlay';
-import {helpStartPage, LastHelpPage} from './src/domain/helpTopics';
-import {USER_DOCS} from './src/generated/userDocs';
+import {useAppOverlays} from './src/ui/useAppOverlays';
 import {StatusProvider} from './src/ui/status/StatusProvider';
 import StatusFrame from './src/ui/status/StatusFrame';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
@@ -195,20 +193,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // effect isn't needed (a tab switch away always unmounts it first).
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('folders');
 
-  // In-app help (docs/dev/history/technical-design-in-app-help.md §3.3): the page
-  // shown in the overlay, or null while it's closed. The last page read per
-  // tab is remembered for this session only.
-  const [helpPage, setHelpPage] = useState<string | null>(null);
-  const lastHelpRef = useRef<LastHelpPage | null>(null);
-  // Capture and focus mode have no TabBar - leaving 'tabs' closes the help;
-  // so does any change of tab (TabBar tap, profile marker, reopening the
-  // plugin from a note that lands on another tab).
-  useEffect(() => {
-    if (mode !== 'tabs') setHelpPage(null);
-  }, [mode]);
-  useEffect(() => {
-    setHelpPage(null);
-  }, [activeTab]);
+  // Help and the other overlays over the tab body (ui/useAppOverlays.tsx).
+  const overlays = useAppOverlays(mode === 'tabs', activeTab);
   // Leftovers of an interrupted PDF export live only in the plugin's private
   // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - clear
   // them once per start. Best-effort: older native builds lack the call.
@@ -736,28 +722,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setCloseOut(null);
   };
 
-  const closeHelp = () => {
-    if (helpPage === null) return;
-    setHelpPage(null);
-    // Revealing the already-mounted screen behind has no load edge of its own.
-    requestEinkRefresh();
-  };
-  const toggleHelp = () => {
-    if (helpPage !== null) {
-      closeHelp();
-      return;
-    }
-    const page = helpStartPage(activeTab, lastHelpRef.current, new Set(Object.keys(USER_DOCS.pages)));
-    lastHelpRef.current = {tab: activeTab, pageId: page};
-    setHelpPage(page);
-  };
-  const selectHelpPage = (pageId: string) => {
-    lastHelpRef.current = {tab: activeTab, pageId};
-    setHelpPage(pageId);
-  };
-
   const handleSelectTab = (tab: AppTab) => {
-    closeHelp();
+    overlays.closeOverlays();
     perfBegin('tab', tab, {from: activeTab});
     perfMark('tab:press');
     if (tab === 'settings') setSettingsTab('folders');
@@ -885,8 +851,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           settings && settings.activeProfileId !== DEFAULT_PROFILE_ID ? settings.activeProfileId.toUpperCase() : null
         }
         onProfilePress={openSettingsAdvanced}
-        helpOpen={helpPage !== null}
-        onHelpPress={toggleHelp}
+        helpOpen={overlays.helpOpen}
+        onHelpPress={overlays.toggleHelp}
       />
       {/* Central status slot (docs/dev/history/technical-design-status-slot.md): a fixed
           strip right under the TabBar, then the active tab's body. */}
@@ -967,7 +933,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
               {nonKeptBody}
             </>
           )}
-          {helpPage !== null && <HelpOverlay pageId={helpPage} onSelectPage={selectHelpPage} onClose={closeHelp} />}
+          {overlays.overlay}
         </View>
       </StatusFrame>
     </View>
