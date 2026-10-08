@@ -43,3 +43,7 @@ When you open gtdpara from a note that belongs to a project or area, it opens th
 2. Open a project and add a few todos with Quick Add. Mark the next step with the **Next** chip.
 3. On **Daily**, pick the project into your daily focus. Its next steps now appear there.
 4. At the end of the week, walk through the **Review** tab.
+
+## Keeping your word with people
+
+Much of what you promise, you promise to someone. Give a meeting series a nested tag, for example `#101/mieke` for your 1:1s with Mieke, and gtdpara keeps the thread: when you meet next, what you agreed, what you owe and what you are waiting for. A project or area opens on its **Threads** tab, and the Weekly Review asks which people and series you still tend. See [Threads](threads.md).

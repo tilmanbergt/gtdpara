@@ -18,6 +18,7 @@ unknown.
 ```
 A calm GTD + PARA workspace for the Supernote. Every Project and Area is a folder in Note; its todos and meetings live in a small plain-text file inside it. You can read and edit everything without the plugin - no lock-in, no internal database.
 
+- Threads: what you agreed, owe and wait for per person or meeting series, tended in the Weekly Review
 - Daily, Week and Month views
 - Focus mode (#now): only what you are doing right now
 - Quick Add for todos, meetings and notes; lasso capture

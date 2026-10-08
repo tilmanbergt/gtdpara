@@ -34,6 +34,8 @@ That is why gtdpara asks you to say clearly what is **next**, what is in **focus
 
 Changing a commitment - moving a due date, taking a project out of focus, putting it on hold - is a real decision, not a typo fix. gtdpara makes these separate, visible actions.
 
+Most of your word is given to someone: in a 1:1, a retro, a coaching session, a quick "I'll send it to you". Threads make this concrete. A todo agreed in a meeting remembers that meeting, so the next time you meet you can see what you said you would do and what is still open, and what you are waiting for from the other side. Once a week the Review asks whether each person and series is still one you tend. Saying "not any more" is allowed; it is a decision you make, going through the open todos one by one, rather than something that quietly fades. See [Threads](threads.md).
+
 ## Every entry is a choice
 
 There are no recurring meetings and no repeating todos, on purpose. Every meeting and every todo in gtdpara is there because you entered it, for that one occasion. A series that continues by itself stays on your list whether or not you still mean it - and then it is no longer your word. Entering each one keeps every item a conscious choice and a real commitment. gtdpara helps you enter things quickly (**New from this**, copying a calendar event, the -1 / Today / +1 / +7 date buttons), but it never enters them for you.

@@ -4,6 +4,12 @@
 text in your own Projects / Areas / Resources / Archive folders, so you can read and edit them
 anywhere, with or without the plugin.
 
+**Keep your word with people.** Most of what you promise, you promise to someone: in a 1:1, a
+retro, a coaching session. Give a meeting series a nested tag such as `#101/mieke` and gtdpara
+keeps its thread: when you meet next, what you agreed last time, what you owe and what you are
+waiting for. A project or area opens on its Threads tab, and the Weekly Review asks once a week
+which people and series you still tend. See [Threads](docs/user/threads.md).
+
 > Status: hobby project, first public release (0.1.0). Expect rough edges.
 > Issues and ideas are welcome.
 
@@ -41,17 +47,17 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
 
 ## Features at a glance
 
+- **Threads**: tap a nested tag like `#retro/alpha` for everything around a person, team or meeting
+  series - next meetings, what you owe, what you wait for, what is relevant, what was agreed in
+  past meetings and what got done since
+- **Tending threads**: confirm the people and series you work with per area, see what you owe and
+  wait for on a Threads tab, tend them in the Weekly Review, print "since last time" on a meeting note
 - **Daily, Week and Month** views with meetings, due todos and next actions from what you focus on
 - **Focus mode** (`#now`): only the few things you are doing right now
 - **Quick Add** for todos, meetings and notes, with tags, due dates and refiling
 - **Projects & Areas** with status, scope, abbreviations and linked files
 - **Inbox + lasso capture** from handwriting, or **Mark for later** in one tap and process the marks later
 - **Weekly Review** hub with one clear step at a time
-- **Threads**: tap a nested tag like `#retro/alpha` for everything around a person, team or meeting
-  series - next meetings, what you owe, what you wait for, what is relevant, what was agreed in
-  past meetings and what got done since
-- **Tending threads**: confirm the people and series you work with per area, see what you owe and
-  wait for on a Threads tab, tend them in the Weekly Review, print "since last time" on a meeting note
 - Works with **Obsidian** (Tasks and Dataview) through the Supernote Cloud Sync plugin
 - **Note templates** (Tag Rules): new notes come with a background and pre-filled context; shared
   notes can be split by tag, nested tag and date, e.g. one file per coaching client and year
