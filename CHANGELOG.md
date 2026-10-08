@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-08
+
 ### Changed
 - Todo lines use a plain syntax that Obsidian's Tasks and Dataview plugins understand: you type
   tags, gtdpara writes fields at the end of the line. A due date is written as
