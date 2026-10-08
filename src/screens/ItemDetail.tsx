@@ -75,18 +75,24 @@
  * cache every other cross-item lookup in this app prefers over a filesystem
  * scan.
  *
- * Every kind also always gets one more: 'browse' - a two-level,
- * always-Active-only Projects/Areas browser (ui/FileBrowserPane.tsx's
- * `sources`) that's a permanent tab: tabs are never added or removed, only
- * what tapping them does changes. Area-assignment picks through it too
- * (`startAt: 'area'`, below).
+ * 'browse' - a two-level, always-Active-only Projects/Areas browser
+ * (ui/FileBrowserPane.tsx's `sources`) - is no tab of its own: it is the
+ * Project Files root's `alternate` (the Browse merge,
+ * docs/dev/history/technical-design-tending-threads.md §3.9.4, decision D4).
+ * While a refile or an area-assignment is picked, the Project Files slot shows
+ * Browse (labelled "Browse") and switches back when the arm ends; while a file
+ * is link-armed, the top of that slot's list offers "Other Projects/Areas ›",
+ * which opens Browse in the same slot. Outside arming Browse is not offered
+ * (the Projects/Areas tabs open other items).
  * `isRefileArming`/`isAreaAssignmentArming`/`disableOthersWhileArming` below
- * grey out every root except Browse (never remove them) while either a
- * refile or an area-assignment is being picked, and Browse itself handles
- * all three of "browse normally" (jumps the app to that item, via
- * `onOpenItem`), "picking" (refile or area-assignment), and "link-arming"
- * (drills in to find a file) on its own - see ui/FileBrowserPane.tsx's
- * `sources`/`onNavigateToItem`/`startAt` doc comments for how.
+ * grey out every other root (never remove them) while either a refile or an
+ * area-assignment is being picked.
+ *
+ * The last tab, **Threads** (screens/thread/ThreadsTab.tsx), lists the
+ * counterparts of this item's scope. Tapping one sets `counterpartFilter`,
+ * which ProjectDataPanel applies to its Todos and Meetings; "+ next" on a
+ * thread row fills Quick Add's meeting draft (`meetingSeed`), to the item of
+ * the thread's latest meeting. Both are view state only.
  *
  * Reloading: leaving the tab and "Reload all files" (Settings → Advanced)
  * remount this screen, which loads the item again; FileBrowserPane scans its
@@ -110,6 +116,10 @@ import FileBrowserPane, {FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPan
 import ItemFocusPanel from '../ui/ItemFocusPanel';
 import ItemStatusPanel from '../ui/ItemStatusPanel';
 import ProjectDataPanel from './ProjectDataPanel';
+import ThreadsTab, {CounterpartSelection} from './thread/ThreadsTab';
+import {Destination} from '../domain/destination';
+import {NextMeetingOffer} from '../storage/threadAggregate';
+import {MeetingSeed} from '../ui/quickAdd/useDraftRequests';
 import {useErrorStatus} from '../ui/status/StatusProvider';
 import MarkWrap from '../ui/status/StatusMark';
 import {usePerfRender} from '../utils/perf';
@@ -322,6 +332,21 @@ export default function ItemDetail({
   // comment's "File browser roots" note).
   const assignedArea = kind === 'project' ? resourceFolderState?.area ?? null : null;
 
+  // The Threads tab's counterpart filter and "+ next" seed (see the module doc comment).
+  const [counterpartFilter, setCounterpartFilter] = useState<CounterpartSelection | null>(null);
+  const [meetingSeed, setMeetingSeed] = useState<MeetingSeed | null>(null);
+  const [seedDestination, setSeedDestination] = useState<Destination | null>(null);
+  useEffect(() => {
+    setCounterpartFilter(null);
+    setMeetingSeed(null);
+    setSeedDestination(null);
+  }, [path]);
+  const handleNextMeeting = useCallback((offer: NextMeetingOffer) => {
+    setMeetingSeed({fields: offer.seed, nonce: Date.now()});
+    setSeedDestination(offer.item.kind === 'inbox' ? {type: 'inbox'} : {type: 'item', kind: offer.item.kind, name: offer.item.name, path: offer.item.path});
+  }, []);
+  const clearSeed = useCallback(() => setSeedDestination(null), []);
+
   // Active-only, same entryFilter every other destination picker in the app
   // uses (technical-design-project-area-assignment.md §4.2,
   // docs/dev/history/technical-design-filing-unification.md §3.1) - shared here by Browse's own
@@ -391,7 +416,7 @@ export default function ItemDetail({
   const fileBrowserRoots: FileBrowserRoot[] = paths
     ? kind === 'project'
       ? [
-          disableOthersWhileArming({key: 'project', label: 'Project Files', rootPath: path}),
+          {key: 'project', label: 'Project Files', rootPath: path, ...(browseRoot ? {alternate: browseRoot} : {})},
           disableOthersWhileArming({
             key: 'resources',
             label: 'Resources',
@@ -402,7 +427,6 @@ export default function ItemDetail({
           ...(assignedArea
             ? [disableOthersWhileArming({key: 'area', label: 'Area Files', rootPath: `${paths.areas}/${assignedArea}`})]
             : []),
-          ...(browseRoot ? [browseRoot] : []),
         ]
       : [
           disableOthersWhileArming({key: 'project', label: 'Area Files', rootPath: path}),
@@ -413,18 +437,18 @@ export default function ItemDetail({
             defaultSubfolder: resourceFolderState?.defaultResourceFolder ?? null,
             onSetDefaultSubfolder: handleSetDefaultResourceFolder,
           }),
-          disableOthersWhileArming({
+          {
             key: 'projectFiles',
             label: 'Project Files',
             rootPath: paths.projects,
+            ...(browseRoot ? {alternate: browseRoot} : {}),
             // Every Project currently assigned to this Area, by bare folder
             // name (same identity `area` itself is stored by) - see
             // storage/areaAssignment.ts's assignedProjects, which this
             // mirrors inline since entryFilter needs a per-entry predicate,
             // not a list.
             entryFilter: entry => findCachedItem(entry.path)?.area === name,
-          }),
-          ...(browseRoot ? [browseRoot] : []),
+          },
         ]
     : [{key: 'project', label: kind === 'project' ? 'Project Files' : 'Area Files', rootPath: path}];
 
@@ -471,6 +495,23 @@ export default function ItemDetail({
               linkTarget={linkTarget}
               resetKey={path}
               onActiveLocationChange={(rootKey, folderPath) => setActiveFilesLocation({rootKey, path: folderPath})}
+              extraTabs={[
+                {
+                  key: 'threads',
+                  label: 'Threads',
+                  render: viewportHeight => (
+                    <ThreadsTab
+                      path={path}
+                      selected={counterpartFilter}
+                      onSelect={setCounterpartFilter}
+                      onNextMeeting={handleNextMeeting}
+                      viewportHeight={viewportHeight}
+                      textColor={textColor}
+                      borderColor={borderColor}
+                    />
+                  ),
+                },
+              ]}
               textColor={textColor}
               borderColor={borderColor}
             />
@@ -496,6 +537,11 @@ export default function ItemDetail({
             onOpenCalendarSettings={onOpenCalendarSettings}
             onLinkTargetChange={setDataPanelLinkTarget}
             noteFolderPath={noteFolderPath}
+            counterpartFilter={counterpartFilter}
+            onClearCounterpartFilter={() => setCounterpartFilter(null)}
+            meetingSeed={meetingSeed}
+            seedDestination={seedDestination}
+            onSeedUsed={clearSeed}
           />
         </View>
       </View>

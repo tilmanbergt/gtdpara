@@ -36,6 +36,7 @@ export default function TodosSection({
   onStartEdit,
   onArmLink,
   onOpenLinkedFile,
+  filter,
   textColor,
   borderColor,
 }: Pick<PaneColors, 'textColor' | 'borderColor'> & {
@@ -48,6 +49,8 @@ export default function TodosSection({
   onStartEdit: (index: number) => void;
   onArmLink: (index: number) => void;
   onOpenLinkedFile: (linkedFile: string) => void;
+  /** The counterpart filter (counterpartFilter.tsx): only todos it accepts show. Applied after grouping, like hideDone. */
+  filter?: ((task: Task) => boolean) | null;
 }): React.JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
   useErrorStatus('ProjectDataPanel.actionError', actionError, () => setActionError(null));
@@ -98,11 +101,15 @@ export default function TodosSection({
   // in place - that keeps every surviving entry's `index` correct and still
   // drops a group left with nothing but done tasks.
   const groupsByFlowState = groupTasksByFlowState(tasks);
-  const groups = hideDone
-    ? groupsByFlowState
-        .map(group => ({...group, entries: group.entries.filter(({task}) => !task.done)}))
-        .filter(group => group.entries.length > 0)
-    : groupsByFlowState;
+  const groups =
+    hideDone || filter
+      ? groupsByFlowState
+          .map(group => ({
+            ...group,
+            entries: group.entries.filter(({task}) => (!hideDone || !task.done) && (!filter || filter(task))),
+          }))
+          .filter(group => group.entries.length > 0)
+      : groupsByFlowState;
 
   // Flattened into one paginated sequence (docs/dev/technical-design-pagination-
   // edit-reuse.md §2/§4) - each group's label becomes a header row counted
@@ -198,7 +205,7 @@ export default function TodosSection({
             />
           )
         }
-        emptyHint="No todos yet."
+        emptyHint={filter ? 'No todos for this counterpart here.' : 'No todos yet.'}
         textColor={textColor}
         borderColor={borderColor}
       />

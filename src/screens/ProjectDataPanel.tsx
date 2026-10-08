@@ -99,6 +99,8 @@ import {useStableCallback} from '../ui/useStableCallback';
 import {useCachedItems} from '../ui/useCachedItems';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
+import {MeetingSeed} from '../ui/quickAdd/useDraftRequests';
+import {CounterpartFilter, CounterpartFilterPill, useCounterpartPredicates} from './projectData/counterpartFilter';
 import TodosSection from './projectData/TodosSection';
 import MeetingsSection from './projectData/MeetingsSection';
 
@@ -133,6 +135,13 @@ interface Props {
    * "+Add" time, not captured here.
    */
   noteFolderPath?: string | null;
+  /** The Threads tab's counterpart filter (screens/projectData/counterpartFilter.tsx), view state of ItemDetail. */
+  counterpartFilter?: CounterpartFilter | null;
+  onClearCounterpartFilter?: () => void;
+  /** "+ next" on the Threads tab: fills Quick Add's meeting draft; the meeting goes to `seedDestination` until it is added (`onSeedUsed`). */
+  meetingSeed?: MeetingSeed | null;
+  seedDestination?: Destination | null;
+  onSeedUsed?: () => void;
 }
 
 /** Just the fields this screen actually reads/writes - CachedItem carries several more (kind/name/path/loadError/status/dailyFocus/weeklyFocus/frontMatterExtraLines/defaultResourceFolder) it doesn't need here - Status/Archive/Focus live in ui/ItemStatusPanel.tsx. */
@@ -153,6 +162,11 @@ export default function ProjectDataPanel({
   onOpenCalendarSettings,
   onLinkTargetChange,
   noteFolderPath,
+  counterpartFilter,
+  onClearCounterpartFilter,
+  meetingSeed,
+  seedDestination,
+  onSeedUsed,
 }: Props): React.JSX.Element {
   usePerfRender('ProjectDataPanel');
   const marksScope: MarkScope = useMemo(() => ({type: 'item', path}), [path]);
@@ -450,7 +464,8 @@ export default function ProjectDataPanel({
   const handleAddTask = (text: string, destination: Destination): Promise<void> =>
     runWidgetAction(async () => {
       const newTask: Task = buildTask(text);
-      if (destination.type === 'item' && destination.path !== path) {
+      // A "+ next" seed's item is where its meeting goes; todos stay here.
+      if (destination.type === 'item' && destination.path !== path && destination !== seedDestination) {
         // Abbreviation quick-file recognized a different Project/Area's
         // #tag while composing here - create it straight there.
         await addTaskToDestination(newTask, destination, {inbox: null, inboxPath: null});
@@ -465,10 +480,11 @@ export default function ProjectDataPanel({
       const newMeeting: Meeting = buildMeeting(fields);
       if (destination.type === 'item' && destination.path !== path) {
         await addMeetingToDestination(newMeeting, destination, {inbox: null, inboxPath: null});
-        return;
+      } else {
+        if (!state) return;
+        await withMeetings([...state.meetings, newMeeting]);
       }
-      if (!state) return;
-      await withMeetings([...state.meetings, newMeeting]);
+      onSeedUsed?.();
     });
 
   /**
@@ -569,7 +585,9 @@ export default function ProjectDataPanel({
   // Stable props for the React.memo'd QuickAddWidget (render-perf-ab §3 B2)
   // - all only called from its event handlers; presence conditions
   // (onRefile/onQuickFile) stay at the call site below.
-  const widgetDestination: Destination = useMemo(() => ({type: 'item', kind, name, path}), [kind, name, path]);
+  const ownDestination: Destination = useMemo(() => ({type: 'item', kind, name, path}), [kind, name, path]);
+  const widgetDestination = seedDestination ?? ownDestination;
+  const predicates = useCounterpartPredicates(counterpartFilter, path);
   const stableAddTask = useStableCallback(handleAddTask);
   const stableAddMeeting = useStableCallback(handleAddMeeting);
   const stableAddNote = useStableCallback(handleAddNote);
@@ -611,9 +629,13 @@ export default function ProjectDataPanel({
           exclusive, so it doesn't belong under either section's own
           heading. First thing in this pane - see the module doc
           comment's placement note. */}
+      {counterpartFilter && onClearCounterpartFilter && (
+        <CounterpartFilterPill leaf={counterpartFilter.leaf} onClear={onClearCounterpartFilter} textColor={textColor} borderColor={borderColor} />
+      )}
       <QuickAddWidget
         layoutKey="current"
         fixedDestination={widgetDestination}
+        meetingSeed={meetingSeed}
         onAddTask={stableAddTask}
         onAddMeeting={stableAddMeeting}
         editingTask={editingTaskForWidget}
@@ -653,6 +675,7 @@ export default function ProjectDataPanel({
             onStartEdit={index => startEditTarget('task', index)}
             onArmLink={index => armLinkTarget('task', index)}
             onOpenLinkedFile={onOpenLinkedFile}
+            filter={predicates?.task}
             textColor={textColor}
             borderColor={borderColor}
           />
@@ -671,6 +694,7 @@ export default function ProjectDataPanel({
             onStartEdit={index => startEditTarget('meeting', index)}
             onArmLink={index => armLinkTarget('meeting', index)}
             onOpenLinkedFile={onOpenLinkedFile}
+            filter={predicates?.meeting}
             textColor={textColor}
             borderColor={borderColor}
             placeholderColor={placeholderColor}

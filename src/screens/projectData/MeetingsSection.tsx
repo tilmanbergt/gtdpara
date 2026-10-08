@@ -43,6 +43,7 @@ export default function MeetingsSection({
   onStartEdit,
   onArmLink,
   onOpenLinkedFile,
+  filter,
   textColor,
   borderColor,
   placeholderColor,
@@ -59,6 +60,8 @@ export default function MeetingsSection({
   onStartEdit: (index: number) => void;
   onArmLink: (index: number) => void;
   onOpenLinkedFile: (linkedFile: string) => void;
+  /** The counterpart filter (counterpartFilter.tsx): only meetings it accepts show. */
+  filter?: ((meeting: Meeting) => boolean) | null;
 }): React.JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
   useErrorStatus('ProjectDataPanel.actionError', actionError, () => setActionError(null));
@@ -92,7 +95,7 @@ export default function MeetingsSection({
 
   const visible = meetings
     .map((meeting, index) => ({meeting, index}))
-    .filter(({meeting}) => !meeting.cancelled);
+    .filter(({meeting}) => !meeting.cancelled && (!filter || filter(meeting)));
   // Upcoming (soonest first) above the add block, past (most recent first)
   // below it - see domain/meetingTime.ts for the split+sort rules, including
   // how a date-only meeting (no time) is placed within its day.
@@ -190,7 +193,7 @@ export default function MeetingsSection({
                 borderColor={borderColor}
               />
             )}
-            emptyHint="No meetings yet."
+            emptyHint={filter ? 'No meetings for this counterpart here.' : 'No meetings yet.'}
             textColor={textColor}
             borderColor={borderColor}
           />
