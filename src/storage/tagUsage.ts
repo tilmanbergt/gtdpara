@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {inactiveLeaves} from '../domain/counterparts';
+import {threadOf} from '../domain/threads';
+import {getCachedData} from './dataCache';
 import {onActiveProfileChange, profileScopedKey} from './profileKeys';
 
 const TAG_USAGE_KEY = 'gtdpara:tagUsage:v1';
@@ -55,12 +58,26 @@ export async function recordTagsUsed(tags: string[]): Promise<void> {
   await saveEntries([...fresh, ...remainder].slice(0, MAX_TAGS));
 }
 
-/** Most-recently-used tags first, up to `limit` (default: every tag this store keeps). Empty array, never throws, if nothing's been recorded yet or storage is unavailable - same "try/catch to a safe default" posture as storage/settingsStorage.ts's loadSettings. */
+/**
+ * `tags` without the counterparts set inactive (docs/dev/history/technical-design-tending-threads.md
+ * §1.3): their nested tags (`#101/sven`) and plain leaf (`#sven`) are no
+ * longer suggested. Read from the cache at call time; without a cache
+ * nothing is left out.
+ */
+function withoutInactive(tags: string[]): string[] {
+  const items = getCachedData()?.items;
+  if (!items) return tags;
+  const hidden = inactiveLeaves(items.filter(item => !item.loadError));
+  if (hidden.size === 0) return tags;
+  return tags.filter(tag => !hidden.has(threadOf(tag)?.counterpart ?? tag));
+}
+
+/** Most-recently-used tags first, inactive counterparts left out, up to `limit` (default: every tag this store keeps). Empty array, never throws, if nothing's been recorded yet or storage is unavailable - same "try/catch to a safe default" posture as storage/settingsStorage.ts's loadSettings. */
 export async function getRecentTags(limit = MAX_TAGS): Promise<string[]> {
   const entries = await loadEntries();
   const all = entries.map(entry => entry.tag);
   lastKnownRecent = all;
-  return all.slice(0, limit);
+  return withoutInactive(all).slice(0, limit);
 }
 
 /**
@@ -71,7 +88,7 @@ export async function getRecentTags(limit = MAX_TAGS): Promise<string[]> {
  * (docs/dev/history/technical-design-render-perf-ab.md §3 A1).
  */
 export function getRecentTagsSync(limit = MAX_TAGS): string[] | null {
-  return lastKnownRecent ? lastKnownRecent.slice(0, limit) : null;
+  return lastKnownRecent ? withoutInactive(lastKnownRecent).slice(0, limit) : null;
 }
 
 let lastKnownRecent: string[] | null = null;

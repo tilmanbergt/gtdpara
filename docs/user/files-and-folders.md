@@ -65,11 +65,12 @@ Turn the back garden into a vegetable garden before winter.
 - A todo line ends in fields that gtdpara writes: `[meeting:: …]` (the meeting it was agreed in, see [Threads](threads.md)), `[created:: …]`, `[due:: …]` and `[completion:: …]`, in this order, after the links. A field you add yourself at the end of the line, for example `[priority:: high]`, is kept. In the middle of the text, `[key:: value]` is just text.
 - Older lines with `#due:2026-10-03` or `#waiting-for:marco` are read as before. A line gets the new form only when you edit that todo; nothing is converted on its own.
 - A `## Marks` section lists open lasso marks, one per line, see [Lasso](lasso.md).
+- A `## Threads` section in `area.txt` (or in `project.txt` of a project without an area) holds the counterparts you confirmed, one per line: `- mieke: active` or `- sven: inactive`. Text after a comma is kept. See [Threads](threads.md).
 - Lines gtdpara doesn't understand are kept as they are.
 
 ## Editing by hand
 
-You can edit these files in any text editor, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`) as they are.
+You can edit these files in any text editor, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`, `## Threads`) as they are.
 
 ## Obsidian
 

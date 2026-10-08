@@ -14,9 +14,10 @@ describe('activeReviewSteps', () => {
     expect(activeReviewSteps({gmail: true})).toBe(REVIEW_STEPS);
   });
   it('next/previous skip the hidden step', () => {
-    expect(nextReviewStepId('meetingsCloseOut', off)).toBe('inbox');
-    expect(prevReviewStepId('inbox', off)).toBe('meetingsCloseOut');
-    expect(nextReviewStepId('meetingsCloseOut')).toBe('gmailInbox');
+    expect(nextReviewStepId('meetingsCloseOut', off)).toBe('tendingThreads');
+    expect(nextReviewStepId('tendingThreads', off)).toBe('inbox');
+    expect(prevReviewStepId('inbox', off)).toBe('tendingThreads');
+    expect(nextReviewStepId('tendingThreads')).toBe('gmailInbox');
   });
   it('a hidden, never-reviewed step does not make the review overdue', () => {
     const now = new Date('2026-10-01T10:00:00Z');

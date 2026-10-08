@@ -40,7 +40,7 @@ import PagedSection from './PagedSection';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 
 interface Props<T> {
-  /** Already flattened (header+entry rows) where a step needs grouping - see ui/ProjectDataPanel.tsx's TodosSection/MeetingsSection convention, reused (not shared code, same pattern) by Unfocused next items. */
+  /** Already flattened (header+entry rows) where a step needs grouping - see screens/projectData/TodosSection.tsx's convention, reused (not shared code, same pattern) by Unfocused next items. */
   rows: T[];
   rowHeight: (row: T) => number;
   /** Content only - this shell wraps the result in the row's own tap target when `isSelectable(row)` is true. A non-selectable row (e.g. a flattened group's own header row) must supply its own `key` since it's returned as-is into the list. */

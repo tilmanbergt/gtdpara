@@ -1,7 +1,6 @@
 {
   "maxLines": {
     "src/screens/DailyView.tsx": 1537,
-    "src/screens/ProjectDataPanel.tsx": 1134,
     "src/supernote/fileSystem.ts": 1251,
     "src/ui/QuickAddWidget.tsx": 2374
   }

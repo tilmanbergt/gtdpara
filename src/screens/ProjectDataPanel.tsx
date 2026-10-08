@@ -39,7 +39,7 @@
  * add/edit/delete handlers themselves (handleAddTask/handleAddMeeting/
  * commitTaskEdit/commitMeetingEdit/handleDeleteEditForWidget below) live at
  * this component's top level rather than inside TodosSection/
- * MeetingsSection, since one widget serves both - each section keeps only
+ * MeetingsSection (screens/projectData/), since one widget serves both - each section keeps only
  * its own list/pagination/row-level actions (toggle done, create/open note).
  *
  * Google Calendar tab (docs/dev/history/technical-design-google-calendar.md §9):
@@ -73,56 +73,36 @@ import {
 import {Meeting, Task} from '../domain/types';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination} from '../domain/destination';
-import {groupTasksByFlowState} from '../domain/flowState';
-import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
-import {splitAndSortMeetings, todayIso} from '../domain/meetingTime';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
-import {TagRule} from '../domain/tagRules';
+import {withTaskCancelled} from '../domain/taskEdit';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
-import {CachedItem, ensureItemCached, findCachedItem, getCachedData, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
+import {CachedItem, ensureItemCached, findCachedItem, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
 import {resolveFilingPick} from '../storage/inboxFiling';
 import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, buildTask} from '../storage/itemMutations';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
-import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
-import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {saveMeetings, saveTasks} from '../storage/projectFile';
-import {loadSettings, saveSettings} from '../storage/settingsStorage';
+import {loadSettings} from '../storage/settingsStorage';
 import {createStandaloneNote} from '../storage/standaloneNotes';
 import {log, logError} from '../utils/log';
-import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
+import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {ARMING_TEXT, LinkTarget} from '../ui/FileBrowserPane';
-import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
-import MeetingRow, {MeetingTrackingConfig} from '../ui/MeetingRow';
-import MeetingList, {MeetingListHeaderRow} from '../ui/MeetingList';
 import {useEditTarget} from '../ui/useEditTarget';
-import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
-import {useFeatures, visibleTabs} from '../ui/featureStore';
-import PagedSection from '../ui/PagedSection';
 import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import MarksCard from '../ui/MarksCard';
 import {MarkScope} from '../domain/marks';
 import {displayTaskText} from '../domain/taskLabels';
-import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {common} from '../ui/commonStyles';
-import {FONT, useThemeColors} from '../ui/theme';
-import {useErrorStatus} from '../ui/status/StatusProvider';
+import {useThemeColors} from '../ui/theme';
 import {usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useCachedItems} from '../ui/useCachedItems';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
-
-// Right column width this whole screen renders in (screens/ItemDetail.tsx's
-// `leftPane`/`rightPane`, both plain `flex:1` inside a 16px-gutter two-
-// column split) - docs/dev/design-device-rendering.md §5.1's own "two-column
-// split" convention: usable content width 1372px, minus the 16px gutter,
-// split evenly ≈ 678px each. Needed by TaskRow's/MeetingRow's row-height
-// estimators below, which predict how many lines a title wraps to at a
-// given width - not separately verified on-device, same as those
-// estimators' own calibration.
-const COLUMN_WIDTH_PX = 678;
+import {MeetingSeed} from '../ui/quickAdd/useDraftRequests';
+import {CounterpartFilter, CounterpartFilterPill, useCounterpartPredicates} from './projectData/counterpartFilter';
+import TodosSection from './projectData/TodosSection';
+import MeetingsSection from './projectData/MeetingsSection';
 
 // Flex weights (docs/dev/history/technical-design-flex-weight-stacking.md §3.3) -
 // TodosSection and MeetingsSection are each the sole occupant of their own
@@ -132,24 +112,11 @@ const COLUMN_WIDTH_PX = 678;
 const TODOS_WEIGHT = 4;
 const MEETINGS_WEIGHT = 3;
 
-// Flow-state/Upcoming-Past group-header rows within each flattened
-// sequence (TodosSection's `styles.subheading`, MeetingsSection's same
-// style) - docs/dev/design-device-rendering.md §5.5's existing "section
-// headings/labels" budget entry for this exact style (marginTop 8/10 +
-// text line ~18 + marginBottom 4), reused rather than re-derived.
-const SUBHEADING_ROW_PX = 30;
-
 /** Which row (task or meeting, by index into ProjectDataPanel's own `state.tasks`/`state.meetings`) is being edited or armed - technical-design-linked-files.md §8's cross-cutting "one edit target" lift. Owned here rather than independently by TodosSection/MeetingsSection, so starting an edit/arm on either row type always cancels whichever of the other three states (the other type's edit, either type's arm) was active - there is exactly one edit *or* arm going on at a time, screen-wide. */
 type EditTarget = {type: 'task' | 'meeting'; index: number};
 
 /** The one arm target for this whole screen - extends EditTarget with which action armed it, mirroring screens/InboxScreen.tsx's own ArmTarget (docs/dev/history/technical-design-filing-unification.md §3.2). 'link' picks an existing file to attach; 'refile' (storage/inboxFiling.ts's module doc comment) picks a different Project/Area to move the item into - the Current tab's own entry point for filing. */
 type ArmTarget = {type: 'task' | 'meeting'; index: number; intent: 'link' | 'refile'};
-
-type MeetingsMainTab = 'meetings' | 'google';
-const MEETINGS_MAIN_TABS: MiniTabDef<MeetingsMainTab>[] = [
-  {key: 'meetings', label: 'Meetings'},
-  {key: 'google', label: 'Google'},
-];
 
 interface Props {
   kind: 'project' | 'area';
@@ -168,6 +135,13 @@ interface Props {
    * "+Add" time, not captured here.
    */
   noteFolderPath?: string | null;
+  /** The Threads tab's counterpart filter (screens/projectData/counterpartFilter.tsx), view state of ItemDetail. */
+  counterpartFilter?: CounterpartFilter | null;
+  onClearCounterpartFilter?: () => void;
+  /** "+ next" on the Threads tab: fills Quick Add's meeting draft; the meeting goes to `seedDestination` until it is added (`onSeedUsed`). */
+  meetingSeed?: MeetingSeed | null;
+  seedDestination?: Destination | null;
+  onSeedUsed?: () => void;
 }
 
 /** Just the fields this screen actually reads/writes - CachedItem carries several more (kind/name/path/loadError/status/dailyFocus/weeklyFocus/frontMatterExtraLines/defaultResourceFolder) it doesn't need here - Status/Archive/Focus live in ui/ItemStatusPanel.tsx. */
@@ -188,6 +162,11 @@ export default function ProjectDataPanel({
   onOpenCalendarSettings,
   onLinkTargetChange,
   noteFolderPath,
+  counterpartFilter,
+  onClearCounterpartFilter,
+  meetingSeed,
+  seedDestination,
+  onSeedUsed,
 }: Props): React.JSX.Element {
   usePerfRender('ProjectDataPanel');
   const marksScope: MarkScope = useMemo(() => ({type: 'item', path}), [path]);
@@ -485,7 +464,8 @@ export default function ProjectDataPanel({
   const handleAddTask = (text: string, destination: Destination): Promise<void> =>
     runWidgetAction(async () => {
       const newTask: Task = buildTask(text);
-      if (destination.type === 'item' && destination.path !== path) {
+      // A "+ next" seed's item is where its meeting goes; todos stay here.
+      if (destination.type === 'item' && destination.path !== path && destination !== seedDestination) {
         // Abbreviation quick-file recognized a different Project/Area's
         // #tag while composing here - create it straight there.
         await addTaskToDestination(newTask, destination, {inbox: null, inboxPath: null});
@@ -500,10 +480,11 @@ export default function ProjectDataPanel({
       const newMeeting: Meeting = buildMeeting(fields);
       if (destination.type === 'item' && destination.path !== path) {
         await addMeetingToDestination(newMeeting, destination, {inbox: null, inboxPath: null});
-        return;
+      } else {
+        if (!state) return;
+        await withMeetings([...state.meetings, newMeeting]);
       }
-      if (!state) return;
-      await withMeetings([...state.meetings, newMeeting]);
+      onSeedUsed?.();
     });
 
   /**
@@ -604,7 +585,9 @@ export default function ProjectDataPanel({
   // Stable props for the React.memo'd QuickAddWidget (render-perf-ab §3 B2)
   // - all only called from its event handlers; presence conditions
   // (onRefile/onQuickFile) stay at the call site below.
-  const widgetDestination: Destination = useMemo(() => ({type: 'item', kind, name, path}), [kind, name, path]);
+  const ownDestination: Destination = useMemo(() => ({type: 'item', kind, name, path}), [kind, name, path]);
+  const widgetDestination = seedDestination ?? ownDestination;
+  const predicates = useCounterpartPredicates(counterpartFilter, path);
   const stableAddTask = useStableCallback(handleAddTask);
   const stableAddMeeting = useStableCallback(handleAddMeeting);
   const stableAddNote = useStableCallback(handleAddNote);
@@ -646,9 +629,13 @@ export default function ProjectDataPanel({
           exclusive, so it doesn't belong under either section's own
           heading. First thing in this pane - see the module doc
           comment's placement note. */}
+      {counterpartFilter && onClearCounterpartFilter && (
+        <CounterpartFilterPill leaf={counterpartFilter.leaf} onClear={onClearCounterpartFilter} textColor={textColor} borderColor={borderColor} />
+      )}
       <QuickAddWidget
         layoutKey="current"
         fixedDestination={widgetDestination}
+        meetingSeed={meetingSeed}
         onAddTask={stableAddTask}
         onAddMeeting={stableAddMeeting}
         editingTask={editingTaskForWidget}
@@ -676,7 +663,7 @@ export default function ProjectDataPanel({
           available height 4:3 between Todos/Meetings via plain sibling
           `flex` weights. Each section is the sole
           occupant of its own weighted box and self-measures into it - see
-          TodosSection's/MeetingsSection's own PagedSection calls below. */}
+          TodosSection's/MeetingsSection's own PagedSection calls. */}
       <View style={styles.stackedColumn}>
         <View style={{flex: TODOS_WEIGHT}}>
           <TodosSection
@@ -688,6 +675,7 @@ export default function ProjectDataPanel({
             onStartEdit={index => startEditTarget('task', index)}
             onArmLink={index => armLinkTarget('task', index)}
             onOpenLinkedFile={onOpenLinkedFile}
+            filter={predicates?.task}
             textColor={textColor}
             borderColor={borderColor}
           />
@@ -706,385 +694,13 @@ export default function ProjectDataPanel({
             onStartEdit={index => startEditTarget('meeting', index)}
             onArmLink={index => armLinkTarget('meeting', index)}
             onOpenLinkedFile={onOpenLinkedFile}
+            filter={predicates?.meeting}
             textColor={textColor}
             borderColor={borderColor}
             placeholderColor={placeholderColor}
           />
         </View>
       </View>
-    </View>
-  );
-}
-
-interface PaneColors {
-  textColor: string;
-  borderColor: string;
-  placeholderColor: string;
-}
-
-/** One flattened Todos row - a flow-state group's header, or a task -
- * see the "Flattened into one paginated sequence" comment inside
- * TodosSection below. */
-type TodoFlatRow =
-  | {kind: 'header'; rowKey: string; label: string}
-  | {kind: 'entry'; rowKey: string; task: Task; index: number};
-
-function TodosSection({
-  itemPath,
-  tasks,
-  onSave,
-  editingIndex,
-  armingIndex,
-  onStartEdit,
-  onArmLink,
-  onOpenLinkedFile,
-  textColor,
-  borderColor,
-}: Pick<PaneColors, 'textColor' | 'borderColor'> & {
-  itemPath: string;
-  tasks: Task[];
-  onSave: (next: Task[]) => Promise<void>;
-  /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/history/technical-design-unified-quickadd.md §8) - this section only needs `editingIndex` to keep highlighting the row currently being edited. */
-  editingIndex: number | null;
-  armingIndex: number | null;
-  onStartEdit: (index: number) => void;
-  onArmLink: (index: number) => void;
-  onOpenLinkedFile: (linkedFile: string) => void;
-}): React.JSX.Element {
-  const [actionError, setActionError] = useState<string | null>(null);
-  useErrorStatus('ProjectDataPanel.actionError', actionError, () => setActionError(null));
-  const confirmNoteCreate = useNoteCreateConfirm('ProjectDataPanel.todoNoteCreateConfirm');
-
-  // "Hide done tasks" - remembered across visits via
-  // GtdParaSettings.hideDoneProjectTasks (domain/settings.ts), loaded once
-  // on mount; done tasks are shown by default (false). Loaded/saved directly
-  // here via loadSettings/saveSettings rather than threaded down as a prop
-  // through ItemDetail - same self-contained "load your own settings"
-  // pattern this file's own toggleFocus already uses.
-  const [hideDone, setHideDone] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    loadSettings().then(s => {
-      if (!cancelled) setHideDone(s.hideDoneProjectTasks);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const toggleHideDone = () => {
-    const next = !hideDone;
-    setHideDone(next);
-    loadSettings()
-      .then(s => saveSettings({...s, hideDoneProjectTasks: next}))
-      .catch(e => logError('TodosSection: save hideDoneProjectTasks failed', errorMessage(e)));
-  };
-
-  const doneCount = tasks.filter(t => !t.cancelled && t.done).length;
-
-  // Grouped by flow-state (technical-design-tags.md §4) - Next, Waiting
-  // For, Someday, Maybe, then Other (no flow tag), empty groups omitted.
-  // Not-cancelled only.
-  //
-  // groupTasksByFlowState is called against the *full*, unfiltered `tasks`
-  // array (not a hideDone-prefiltered copy) so each entry's `index` stays a
-  // valid position into `tasks` - every row action below (commitEdit,
-  // handleToggleDone, handleCancel, ...) does `tasks.slice(); next[index] =
-  // ...` against that same full array. Pre-filtering before grouping would
-  // renumber entries relative to the *shorter* filtered array instead, so
-  // e.g. editing the first visible task while an earlier task happens to be
-  // done-and-hidden would silently edit that unrelated hidden task instead
-  // (index 0 of the filtered list isn't index 0 of `tasks` once something
-  // ahead of it was removed). Hiding done tasks is applied *after*
-  // grouping instead, by filtering each group's already-indexed `entries`
-  // in place - that keeps every surviving entry's `index` correct and still
-  // drops a group left with nothing but done tasks.
-  const groupsByFlowState = groupTasksByFlowState(tasks);
-  const groups = hideDone
-    ? groupsByFlowState
-        .map(group => ({...group, entries: group.entries.filter(({task}) => !task.done)}))
-        .filter(group => group.entries.length > 0)
-    : groupsByFlowState;
-
-  // Flattened into one paginated sequence (docs/dev/technical-design-pagination-
-  // edit-reuse.md §2/§4) - each group's label becomes a header row counted
-  // as content within that sequence, rather than paging per-group.
-  const flatRows: TodoFlatRow[] = groups.flatMap(group => [
-    {kind: 'header', rowKey: `header-${group.key}`, label: group.label} as TodoFlatRow,
-    ...group.entries.map(
-      ({task, index}): TodoFlatRow => ({kind: 'entry', rowKey: `task-${index}`, task, index}),
-    ),
-  ]);
-  const runAction = async (fn: () => Promise<void>) => {
-    setActionError(null);
-    try {
-      await fn();
-      log('TodosSection: action done');
-    } catch (e) {
-      logError('TodosSection: action failed', errorMessage(e));
-      setActionError(errorMessage(e));
-    }
-  };
-
-  const handleToggleDone = (index: number) => {
-    Keyboard.dismiss();
-    runAction(async () => {
-      const next = tasks.slice();
-      next[index] = withTaskDone(next[index], !next[index].done, todayIso());
-      await onSave(next);
-    });
-  };
-
-  /**
-   * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md §6): one
-   * call into `openOrCreateTodoNote` - it decides create-vs-open (and
-   * own-vs-shared-target) internally and ends by opening the resolved page
-   * itself, so this handler only has to persist the (possibly unchanged) `tasks` array through this section's
-   * own `onSave` prop when `notePath` changed.
-   */
-  const handleNote = (index: number) => {
-    Keyboard.dismiss();
-    runAction(async () => {
-      const settings = await loadSettings();
-      const {task, changed} = await openOrCreateTodoNote(tasks[index], itemPath, settings, null, {confirmCreate: confirmNoteCreate});
-      if (changed) {
-        const next = tasks.slice();
-        next[index] = task;
-        await onSave(next);
-      }
-    });
-  };
-
-  return (
-    <View style={styles.section}>
-      {doneCount > 0 && (
-        <Pressable onPress={toggleHideDone} hitSlop={8} style={styles.hideDoneRow}>
-          <Text style={[styles.hideDoneText, {color: textColor}]}>
-            {hideDone ? `Show ${doneCount} done task${doneCount === 1 ? '' : 's'}` : 'Hide done tasks'}
-          </Text>
-        </Pressable>
-      )}
-      {/* "Todos" heading and pagination in one PagedSection
-          (docs/dev/history/technical-design-pagination-fixed-height.md §3.4). An
-          empty list shows `emptyHint` and still reserves the box's full
-          height - these boxes are fixed and always there. */}
-      <PagedSection
-        header="Todos"
-        rows={flatRows}
-        rowHeight={row => (row.kind === 'header' ? SUBHEADING_ROW_PX : taskRowHeight(row.task, COLUMN_WIDTH_PX, 'grouped'))}
-        isCountableRow={row => row.kind === 'entry'}
-        renderRow={row =>
-          row.kind === 'header' ? (
-            <Text key={row.rowKey} style={[styles.subheading, {color: textColor}]}>
-              {row.label}
-            </Text>
-          ) : (
-            <TaskRow
-              key={row.rowKey}
-              task={row.task}
-              isEditing={editingIndex === row.index}
-              isArming={armingIndex === row.index}
-              onStartEdit={() => onStartEdit(row.index)}
-              onToggleDone={() => handleToggleDone(row.index)}
-              onCreateNote={() => handleNote(row.index)}
-              onOpenNote={() => handleNote(row.index)}
-              linkedFile={row.task.linkedFile}
-              onOpenLinkedFile={onOpenLinkedFile}
-              onArmLink={() => onArmLink(row.index)}
-              ownerPath={itemPath}
-              context="grouped"
-              height={taskRowHeight(row.task, COLUMN_WIDTH_PX, 'grouped')}
-              numberOfLines={taskRowLines(row.task, COLUMN_WIDTH_PX, 'grouped')}
-              textColor={textColor}
-              borderColor={borderColor}
-            />
-          )
-        }
-        emptyHint="No todos yet."
-        textColor={textColor}
-        borderColor={borderColor}
-      />
-    </View>
-  );
-}
-
-function MeetingsSection({
-  kind,
-  name,
-  itemPath,
-  meetings,
-  onSave,
-  onOpenCalendarSettings,
-  editingIndex,
-  armingIndex,
-  onStartEdit,
-  onArmLink,
-  onOpenLinkedFile,
-  textColor,
-  borderColor,
-  placeholderColor,
-}: PaneColors & {
-  kind: 'project' | 'area';
-  name: string;
-  itemPath: string;
-  meetings: Meeting[];
-  onSave: (next: Meeting[]) => Promise<void>;
-  onOpenCalendarSettings?: () => void;
-  /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment and TodosSection's identical props. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/history/technical-design-unified-quickadd.md §8) - see TodosSection's identical note. */
-  editingIndex: number | null;
-  armingIndex: number | null;
-  onStartEdit: (index: number) => void;
-  onArmLink: (index: number) => void;
-  onOpenLinkedFile: (linkedFile: string) => void;
-}): React.JSX.Element {
-  const [actionError, setActionError] = useState<string | null>(null);
-  useErrorStatus('ProjectDataPanel.actionError', actionError, () => setActionError(null));
-  const confirmNoteCreate = useNoteCreateConfirm('ProjectDataPanel.meetingNoteCreateConfirm');
-
-  // Meetings/Google mini-tab (docs/dev/history/technical-design-google-calendar.md §9) -
-  // "Meetings" is this section's own list below, "Google" swaps in the shared GoogleCalendarPanel. icsUrl is loaded
-  // directly here (not threaded down as a prop) - same self-contained
-  // "load your own settings" pattern TodosSection's hideDone already uses
-  // above.
-  const [mainTabState, setMainTab] = useState<MeetingsMainTab>('meetings');
-  // The Google tab only while the experimental Google Calendar integration
-  // is on (docs/dev/history/technical-design-about-debug-experimental.md §3.2).
-  const features = useFeatures();
-  const mainTabs = visibleTabs(MEETINGS_MAIN_TABS, mainTabState, 'google', features.googleCalendar);
-  const mainTab = mainTabs.activeKey;
-  const [icsUrl, setIcsUrl] = useState('');
-  // Tag Rules for the rows' prep/review checkpoint icon - same one-shot load.
-  const [tagRules, setTagRules] = useState<TagRule[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    loadSettings().then(s => {
-      if (cancelled) return;
-      setIcsUrl(s.googleCalendarIcsUrl);
-      setTagRules(s.tagRules);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const visible = meetings
-    .map((meeting, index) => ({meeting, index}))
-    .filter(({meeting}) => !meeting.cancelled);
-  // Upcoming (soonest first) above the add block, past (most recent first)
-  // below it - see domain/meetingTime.ts for the split+sort rules, including
-  // how a date-only meeting (no time) is placed within its day.
-  const {upcoming, past} = splitAndSortMeetings(visible);
-
-  const runAction = async (fn: () => Promise<void>) => {
-    setActionError(null);
-    try {
-      await fn();
-      log('MeetingsSection: action done');
-    } catch (e) {
-      logError('MeetingsSection: action failed', errorMessage(e));
-      setActionError(errorMessage(e));
-    }
-  };
-
-  /** Meeting counterpart of TodosSection's handleNote above - see its doc comment. */
-  const handleNote = (index: number) => {
-    Keyboard.dismiss();
-    runAction(async () => {
-      const settings = await loadSettings();
-      const {meeting, changed} = await openOrCreateMeetingNote(meetings[index], itemPath, settings, null, {
-        confirmCreate: confirmNoteCreate,
-      });
-      if (changed) {
-        const next = meetings.slice();
-        next[index] = meeting;
-        await onSave(next);
-      }
-    });
-  };
-
-  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
-  const handleToggleTracking = (index: number, trackingKind: MeetingTrackingKind) => {
-    runAction(async () => {
-      await onSave(toggleMeetingTrackingAt(meetings, index, trackingKind));
-      requestEinkRefresh();
-    });
-  };
-  const trackingFor = (index: number): MeetingTrackingConfig => ({
-    rules: tagRules,
-    onToggle: trackingKind => handleToggleTracking(index, trackingKind),
-  });
-
-  // Flattened into one paginated sequence (docs/dev/technical-design-pagination-
-  // edit-reuse.md §2/§4) - "Upcoming"/"Past" become header rows counted as
-  // content, same rule TodosSection's flow-state groups follow. "Upcoming"
-  // only gets its own header when Past also has entries.
-  // Upcoming/Past as MeetingList group headers (docs/dev/technical-design-
-  // meeting-lists.md §4.4) - the headers only appear when both groups exist.
-  type MeetingEntryRow = {rowKey: string; meeting: Meeting; index: number};
-  const meetingRows: Array<MeetingEntryRow | MeetingListHeaderRow> = [
-    ...(upcoming.length > 0 && past.length > 0
-      ? [{kind: 'header', key: 'header-upcoming', label: 'Upcoming'} as MeetingListHeaderRow]
-      : []),
-    ...upcoming.map(({meeting, index}): MeetingEntryRow => ({rowKey: `meeting-${index}`, meeting, index})),
-    ...(past.length > 0 ? [{kind: 'header', key: 'header-past', label: 'Past'} as MeetingListHeaderRow] : []),
-    ...past.map(({meeting, index}): MeetingEntryRow => ({rowKey: `meeting-${index}`, meeting, index})),
-  ];
-  return (
-    <View style={styles.section}>
-      {/* No separate "Meetings" label - MeetingList's own `header` below
-          says it, on the list itself. */}
-      <MiniTabs
-        tabs={mainTabs.tabs}
-        activeKey={mainTab}
-        onChange={setMainTab}
-        textColor={textColor}
-        borderColor={borderColor}
-      />
-      {mainTab === 'meetings' ? (
-        <>
-          {/* The header row carries the pagination arrows/+N count. An empty list shows `emptyHint` below, same
-              as TodosSection. */}
-          <MeetingList
-            listId="project"
-            defaultLayout="oneLine"
-            header="Meetings"
-            rows={meetingRows}
-            resetKey={itemPath}
-            renderRow={(row, layout) => (
-              <MeetingRow
-                key={row.rowKey}
-                meeting={row.meeting}
-                layout={layout}
-                time="dateTime"
-                highlight="mark"
-                tracking={trackingFor(row.index)}
-                note={{onOpen: () => handleNote(row.index), onCreate: () => handleNote(row.index)}}
-                file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile, onArm: () => onArmLink(row.index)}}
-                onPress={() => onStartEdit(row.index)}
-                state={editingIndex === row.index ? 'editing' : armingIndex === row.index ? 'arming' : undefined}
-                ownerPath={itemPath}
-                textColor={textColor}
-                borderColor={borderColor}
-              />
-            )}
-            emptyHint="No meetings yet."
-            textColor={textColor}
-            borderColor={borderColor}
-          />
-        </>
-      ) : (
-        <GoogleCalendarPanel
-          maxDays={30}
-          defaultDestination={{type: 'item', kind, name, path: itemPath}}
-          items={getCachedData()?.items ?? ([] as CachedItem[])}
-          icsUrl={icsUrl}
-          inboxPath={getCachedData()?.paths.inboxFolder ?? ''}
-          onOpenSettings={() => onOpenCalendarSettings?.()}
-          textColor={textColor}
-          borderColor={borderColor}
-          placeholderColor={placeholderColor}
-        />
-      )}
     </View>
   );
 }
@@ -1101,33 +717,8 @@ const styles = StyleSheet.create({
   stackedColumn: {
     flex: 1,
   },
-  // flex:1 (same doc) - each section is the sole occupant of
-  // its own weighted box above, so its own PagedSection (and, for
-  // MeetingsSection, its Google mini-tab) can self-measure into whatever
-  // real height that box resolves to instead of being told a fixed pixel
-  // viewport.
-  section: {
-    flex: 1,
-    marginBottom: 8,
-  },
-  subheading: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    opacity: 0.6,
-    marginTop: 10,
-    marginBottom: 4,
-  },
   divider: {
     height: 1,
     marginVertical: 16,
-  },
-  hideDoneRow: {
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  hideDoneText: {
-    fontSize: FONT.small,
-    opacity: 0.6,
-    textDecorationLine: 'underline',
   },
 });

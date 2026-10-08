@@ -47,6 +47,8 @@ export function item(
     monthlyGoalsExtraLines: [],
     marks: [],
     marksExtraLines: [],
+    threads: [],
+    threadsExtraLines: [],
     status: 'active',
     dailyFocus: false,
     weeklyFocus: false,

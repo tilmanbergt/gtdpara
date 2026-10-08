@@ -305,10 +305,13 @@ export function buildReviewStepCounts(
   },
   gmailInboxCount: number,
   weekAheadInboxCount = 0,
+  tendingCount = 0,
 ): Record<ReviewStepId, ReviewStepCount> {
   return {
     weekAhead: {n: aggregate.weekMeetings.length + weekAheadInboxCount},
     meetingsCloseOut: {n: aggregate.meetingsToClose.length},
+    // New and active counterparts (docs/dev/history/technical-design-tending-threads.md §3.10).
+    tendingThreads: {n: tendingCount},
     gmailInbox: {n: gmailInboxCount},
     inbox: {n: inboxOpenCount},
     stalled: {n: aggregate.stalledProjects.length},

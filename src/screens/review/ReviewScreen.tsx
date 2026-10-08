@@ -60,6 +60,7 @@ import GmailStep from './steps/GmailStep';
 import InboxStep, {inboxStepEntries} from './steps/InboxStep';
 import ItemListStep from './steps/ItemListStep';
 import MeetingsCloseOutStep from './steps/MeetingsCloseOutStep';
+import TendingThreadsStep, {tendingCount, useTendingRoster} from './steps/TendingThreadsStep';
 import UnfocusedNextStep from './steps/UnfocusedNextStep';
 import WeekAheadStep from './steps/WeekAheadStep';
 import {useReviewData} from './useReviewData';
@@ -198,6 +199,7 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
       .catch(e => logError('ReviewScreen: inbox reload after week ahead failed', errorMessage(e)));
   };
 
+  const tendingRoster = useTendingRoster(data);
   // The hub's per-step numbers, from the same aggregate the steps read.
   const inboxEntries = inboxStepEntries(inbox);
   const week = weekAheadRangeIso();
@@ -210,6 +212,7 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
           settings,
           getCachedGmailInbox()?.length ?? 0,
           countMeetingsInRange(inbox?.meetings ?? [], week.start, week.end),
+          tendingCount(tendingRoster),
         )
       : null;
   // Backlog steps with nothing in them, as a string so the effect below only runs when that set changes.
@@ -269,6 +272,8 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
         );
       case 'meetingsCloseOut':
         return <MeetingsCloseOutStep {...stepProps} />;
+      case 'tendingThreads':
+        return <TendingThreadsStep {...stepProps} />;
       case 'gmailInbox':
         return <GmailStep {...stepProps} />;
       case 'inbox':

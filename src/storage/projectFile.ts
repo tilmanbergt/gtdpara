@@ -29,6 +29,7 @@ import {
   writeTasksIntoContent,
   writeWeeklyGoalsIntoContent,
 } from '../domain/markdown';
+import {CounterpartLine, parseThreadsSpan, writeThreadsIntoContent} from '../domain/threadsSection';
 import {
   AREA_FILE_NAME,
   GtdParaKind,
@@ -74,6 +75,9 @@ export interface ProjectFileState {
   /** From the `## Marks` span (docs/dev/history/technical-design-lasso-0.8.md §3.1) - open "Mark for later" lines; empty for most files. Written only through storage/markStore.ts. */
   marks: Mark[];
   marksExtraLines: string[];
+  /** From the `## Threads` span (docs/dev/history/technical-design-tending-threads.md §3.9.1) - the confirmed counterparts of the scope this file owns; empty for most files and always for the Inbox. Written only through storage/counterparts.ts. */
+  threads: CounterpartLine[];
+  threadsExtraLines: string[];
   /** From the frontmatter block's status/dailyFocus/weeklyFocus/monthlyFocus/defaultResourceFolder/area fields - see domain/markdown.ts's parseFrontMatter. */
   status: ItemStatus;
   dailyFocus: boolean;
@@ -120,6 +124,7 @@ export function parseProjectFileContent(rawContent: string): ProjectFileState {
   const {goals: weeklyGoals, extraLines: weeklyGoalsExtraLines} = parseWeeklyGoalsSpan(rawContent);
   const {goals: monthlyGoals, extraLines: monthlyGoalsExtraLines} = parseMonthlyGoalsSpan(rawContent);
   const {marks, extraLines: marksExtraLines} = parseMarksSpan(rawContent);
+  const {threads, extraLines: threadsExtraLines} = parseThreadsSpan(rawContent);
   const {
     status,
     dailyFocus,
@@ -143,6 +148,8 @@ export function parseProjectFileContent(rawContent: string): ProjectFileState {
     monthlyGoalsExtraLines,
     marks,
     marksExtraLines,
+    threads,
+    threadsExtraLines,
     status,
     dailyFocus,
     weeklyFocus,
@@ -183,6 +190,20 @@ export async function saveMeetings(
 ): Promise<string> {
   const base = ensureSkeleton(rawContent, kind);
   const next = writeMeetingsIntoContent(base, meetings, extraLines);
+  await writeTextFile(dataFilePath(kind, itemPath), next);
+  return next;
+}
+
+/** Saves the Threads span (docs/dev/history/technical-design-tending-threads.md §3.9.1) - see saveTasks for the shared rawContent/scaffolding behavior. */
+export async function saveThreads(
+  kind: GtdParaKind,
+  itemPath: string,
+  rawContent: string,
+  threads: CounterpartLine[],
+  extraLines: string[] = [],
+): Promise<string> {
+  const base = ensureSkeleton(rawContent, kind);
+  const next = writeThreadsIntoContent(base, threads, extraLines);
   await writeTextFile(dataFilePath(kind, itemPath), next);
   return next;
 }

@@ -35,6 +35,7 @@ import {formatDayHeader, formatTime} from './dateFormat';
 // below is the one function here that needs the whole settings shape.
 import type {GtdParaSettings} from './settings';
 import type {Task} from './types';
+import {renderSinceLast, SinceLast} from './sinceLastText';
 
 export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
 /**
@@ -43,7 +44,13 @@ export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
  * attachment) - Todo/Meeting only. A rule without a `link` piece writes no
  * link at all.
  */
-export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link';
+/**
+ * `sinceLast` (docs/dev/history/technical-design-tending-threads.md §3.11):
+ * Meeting only, never in a rule's defaults - a printed snapshot of the thread
+ * overview for the meeting's first thread tag since the previous meeting of
+ * that thread (domain/sinceLastText.ts, storage/sinceLast.ts).
+ */
+export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link' | 'sinceLast';
 
 /**
  * Where a Meeting/Todo definition's note content ends up (
@@ -144,6 +151,7 @@ export const PIECE_CONTEXTS: Record<PieceType, NoteContext[]> = {
   text: ['project', 'area', 'todo', 'meeting'],
   related: ['todo', 'meeting'],
   link: ['todo', 'meeting'],
+  sinceLast: ['meeting'],
 };
 
 /**
@@ -512,6 +520,8 @@ export interface PieceRenderContext {
   time?: string;
   /** From a generalized relatedItemsFor(...) call (storage/meetingNoteAggregate.ts) - already filtered/matched by the caller; renderPieceText only formats what it's given. */
   relatedItems?: Array<{text: string}>;
+  /** Meeting only - the "Since last time" snapshot (storage/sinceLast.ts), built only when the rule places the piece. */
+  sinceLast?: SinceLast | null;
   /** Todo/Meeting only - bare file name of the item's `linkedFile`, set by the caller ONLY when that file actually exists (missing file -> unset -> the `link` piece is skipped, docs/dev/history/technical-design-linked-file-piece.md §1.4). */
   linkedFileName?: string;
 }
@@ -548,6 +558,8 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
     }
     case 'link':
       return ctx.linkedFileName ? linkPieceText(ctx.linkedFileName) : '';
+    case 'sinceLast':
+      return renderSinceLast(ctx.sinceLast);
     default:
       return '';
   }

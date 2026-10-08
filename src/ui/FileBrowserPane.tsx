@@ -103,6 +103,22 @@
  * chooser is deliberately exempt - it's a fixed, caller-declared list
  * ("Projects" then "Areas"), and sorting it would flip that declared order.
  *
+ * `alternate` (`FileBrowserRoot`, the Browse merge of
+ * docs/dev/history/technical-design-tending-threads.md §3.9.4, decision D4) -
+ * a root can carry a second root (Browse) shown in its own tab slot, under
+ * the alternate's label, instead of a tab of its own: while an arm targets
+ * the alternate's key (`LinkTarget.root`: refile, assign Area), and during a
+ * file-link arm after the "Other Projects/Areas ›" row at the top of the
+ * slot's list is tapped. The slot switches back when the arm ends. Outside
+ * arming the alternate is not offered.
+ *
+ * `extraTabs` - tabs before the roots in the same MiniTabs row that show
+ * their own content (the Current page's Threads tab) instead of a folder
+ * listing. The first one is shown when the pane opens and whenever
+ * `resetKey` changes. Arming or locating never switches to an extra tab;
+ * one that starts while an extra tab is shown switches to a root, and an
+ * arm that ends goes back to the extra tab it started on.
+ *
  * `pageSize` (`FileBrowserRoot`) - kept on the type but not read by
  * `FileBrowserPane`; no caller sets it. Sizing comes from the
  * component-level `viewportHeight` prop instead.
@@ -163,11 +179,16 @@ const FILE_ENTRY_CHROME_PX = 5 * 2 + 5 * 2;
 // is the same font size.
 const FILE_ENTRY_LINE_HEIGHT_PX = 22;
 
+/** The label of the row that opens a slot's alternate (Browse) during a file-link arm. */
+export const OTHER_ITEMS_ROW_LABEL = 'Other Projects/Areas ›';
+const OTHER_ITEMS_ROW_PATH = '\u0000other-items';
+
 /** The exact string this row renders - mirrors ui/MeetingRow.tsx's own
  * `meetingLineText` pattern of estimating the real displayed text, not just
  * the bare name, so the folder icon/arrow or file icon prefix/suffix count
  * toward the wrap width too. */
 function fileEntryDisplayText(entry: FolderEntry): string {
+  if (entry.path === OTHER_ITEMS_ROW_PATH) return entry.name;
   return entry.isFolder ? `📁 ${entry.name} ›` : `📄 ${entry.name}`;
 }
 
@@ -216,6 +237,8 @@ export interface FileBrowserRoot {
   sources?: {kind: 'project' | 'area'; path: string; label: string}[];
   /** Composite "Browse" root only - fires on a tap, one level below the depth-0 chooser, of an entry inside one of `sources`' listings, when `linkTarget` is null (plain browsing, not arming) - see the module doc comment's tap-priority note. Ignored elsewhere, and ignored entirely on a root with no `sources`. */
   onNavigateToItem?: (kind: 'project' | 'area', name: string, path: string) => void;
+  /** A root shown in this root's tab slot while arming needs it (the Browse merge) - see the module doc comment's `alternate` note. */
+  alternate?: FileBrowserRoot;
   /** Not read by `FileBrowserPane` (see the module doc comment's `pageSize` note) - use the component-level `viewportHeight` prop (with `fileBrowserViewportHeightPx`) instead. */
   pageSize?: number;
 }
@@ -263,6 +286,14 @@ export type LinkTarget =
       startAt?: 'project' | 'area';
     };
 
+/** A tab before the roots that shows its own content - see the module doc comment's `extraTabs` note. */
+export interface FileBrowserExtraTab {
+  key: string;
+  label: string;
+  /** The tab's content; `viewportHeight` is the pane's own when the caller passed one, else the content self-measures (flex: 1). */
+  render: (viewportHeight: number | undefined) => React.ReactNode;
+}
+
 interface Props {
   /** 1 root (Inbox) -> MiniTabs omitted; 2 roots (Current) -> MiniTabs shown. */
   roots: FileBrowserRoot[];
@@ -292,6 +323,8 @@ interface Props {
    * yet confirmed safe to self-measure.
    */
   viewportHeight?: number;
+  /** Tabs before the roots with their own content - see the module doc comment's `extraTabs` note. */
+  extraTabs?: FileBrowserExtraTab[];
   textColor: string;
   borderColor: string;
 }
@@ -313,13 +346,21 @@ export default function FileBrowserPane({
   resetKey,
   onActiveLocationChange,
   viewportHeight,
+  extraTabs = [],
   textColor,
   borderColor,
 }: Props): React.JSX.Element {
   // See `viewportHeight`'s own doc comment above.
   const selfMeasuring = viewportHeight == null;
   const [activeRootKey, setActiveRootKey] = useState(roots[0]?.key);
-  const activeRoot = roots.find(r => r.key === activeRootKey) ?? roots[0];
+  // The slot root (the tab), and what it shows: its `alternate` while one is needed.
+  const slotRoot = roots.find(r => r.key === activeRootKey) ?? roots[0];
+  const [showAlternate, setShowAlternate] = useState(false);
+  const activeRoot = showAlternate && slotRoot?.alternate ? slotRoot.alternate : slotRoot;
+  const [extraKey, setExtraKey] = useState<string | null>(extraTabs[0]?.key ?? null);
+  const activeExtra = extraTabs.find(t => t.key === extraKey) ?? null;
+  // Set by the locating/arming effects when they build the stack themselves, so the reset below doesn't undo it.
+  const builtForRef = useRef<string | null>(null);
 
   /**
    * Builds the full navigation stack from `root` down to `relativePath`
@@ -368,20 +409,64 @@ export default function FileBrowserPane({
   // Whenever the caller's own identity changes (resetKey), or the pane
   // switches roots on its own, start over at that root's starting path
   // (rootPath, or its pinned defaultSubfolder if set).
+  const activeRootIdentity = activeRoot?.key;
   useEffect(() => {
     if (!activeRoot) return;
+    const built = builtForRef.current === activeRoot.key;
+    builtForRef.current = null;
+    if (built) return;
     setStack(buildStack(activeRoot, activeRoot.defaultSubfolder));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRootKey, resetKey]);
+  }, [activeRootIdentity, resetKey]);
+
+  // A new item opens on the first extra tab again.
+  const firstExtraKey = extraTabs[0]?.key ?? null;
+  useEffect(() => {
+    setExtraKey(firstExtraKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
+
+  /** The slot showing `key`: a root itself, or the root whose `alternate` it is. */
+  const findSlot = (key: string): {slot: FileBrowserRoot; root: FileBrowserRoot; alternate: boolean} | null => {
+    const own = roots.find(r => r.key === key);
+    if (own) return {slot: own, root: own, alternate: false};
+    const holder = roots.find(r => r.alternate?.key === key);
+    return holder?.alternate ? {slot: holder, root: holder.alternate, alternate: true} : null;
+  };
+
+  /** Shows `found` and builds its stack here (the reset effect then leaves it alone). */
+  const showSlot = (found: {slot: FileBrowserRoot; root: FileBrowserRoot; alternate: boolean}, levels: StackLevel[]) => {
+    if (found.root.key !== activeRoot?.key) builtForRef.current = found.root.key;
+    setExtraKey(null);
+    setActiveRootKey(found.slot.key);
+    setShowAlternate(found.alternate);
+    setStack(levels);
+  };
+
+  // The alternate (Browse) is shown only while arming: an arm that ends, or
+  // anything but an arm, puts the slot's own root back. An arm leaves an
+  // extra tab for a root and returns to it when it ends.
+  const arming = linkTarget?.mode === 'arming';
+  const extraBeforeArmRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (arming) {
+      extraBeforeArmRef.current = extraKey;
+      setExtraKey(null);
+      return;
+    }
+    setShowAlternate(false);
+    if (extraBeforeArmRef.current) setExtraKey(extraBeforeArmRef.current);
+    extraBeforeArmRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arming]);
 
   // `locating` mode: switch root and drill straight to folderPath whenever
   // linkTarget changes - see the module doc comment.
   useEffect(() => {
     if (!linkTarget || linkTarget.mode !== 'locating') return;
-    const root = roots.find(r => r.key === linkTarget.root);
-    if (!root) return;
-    setActiveRootKey(root.key);
-    setStack(buildStack(root, linkTarget.folderPath));
+    const found = findSlot(linkTarget.root);
+    if (!found) return;
+    showSlot(found, buildStack(found.root, linkTarget.folderPath));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkTarget]);
 
@@ -397,17 +482,17 @@ export default function FileBrowserPane({
   // source's listing - area-assignment's own arm.
   useEffect(() => {
     if (!linkTarget || linkTarget.mode !== 'arming' || !linkTarget.root) return;
-    const root = roots.find(r => r.key === linkTarget.root);
-    if (!root) return;
-    setActiveRootKey(root.key);
+    const found = findSlot(linkTarget.root);
+    if (!found) return;
+    const root = found.root;
     if (linkTarget.startAt && root.sources) {
       const source = root.sources.find(s => s.kind === linkTarget.startAt);
       if (source) {
-        setStack([...buildStack(root, undefined), {name: source.label, path: source.path}]);
+        showSlot(found, [...buildStack(root, undefined), {name: source.label, path: source.path}]);
         return;
       }
     }
-    setStack(buildStack(root, undefined));
+    showSlot(found, buildStack(root, undefined));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkTarget]);
 
@@ -509,7 +594,13 @@ export default function FileBrowserPane({
   // level, or one level below a `sources` root's depth-0 chooser) - a
   // folder entered from there shows its real, unfiltered contents (see
   // FileBrowserRoot's doc comment).
-  const visibleEntries = depth === pickNavigateDepth && activeRoot?.entryFilter ? entries.filter(activeRoot.entryFilter) : entries;
+  const filteredEntries = depth === pickNavigateDepth && activeRoot?.entryFilter ? entries.filter(activeRoot.entryFilter) : entries;
+  // During a file-link arm, the slot's alternate (Browse) is offered as a first row (the Browse merge).
+  const offerAlternate =
+    linkTarget?.mode === 'arming' && (linkTarget.pickKind ?? 'file') === 'file' && !showAlternate && !!slotRoot?.alternate && depth === 0;
+  const visibleEntries: FolderEntry[] = offerAlternate
+    ? [{name: OTHER_ITEMS_ROW_LABEL, path: OTHER_ITEMS_ROW_PATH, isFolder: false}, ...filteredEntries]
+    : filteredEntries;
 
   // Once entries for the locating target's folder have loaded, jump to
   // whichever page holds fileName (ui/pagination.ts's JumpTo/
@@ -535,6 +626,11 @@ export default function FileBrowserPane({
   };
 
   const handleEntryPress = async (entry: FolderEntry) => {
+    if (entry.path === OTHER_ITEMS_ROW_PATH) {
+      setOpenError(null);
+      setShowAlternate(true);
+      return;
+    }
     // The depth-0 chooser on a `sources` root ("Projects"/"Areas") always
     // just drills in, regardless of arm state - see the module doc
     // comment's `sources` note. Picking/navigating only ever happens one
@@ -601,12 +697,28 @@ export default function FileBrowserPane({
 
   return (
     <View style={selfMeasuring ? styles.selfMeasuringRoot : undefined}>
-      {roots.length > 1 ? (
+      {roots.length + extraTabs.length > 1 ? (
         <View style={styles.tabsRow}>
           <MiniTabs
-            tabs={roots.map(r => ({key: r.key, label: r.label, disabled: r.disabled}))}
-            activeKey={activeRoot.key}
-            onChange={key => setActiveRootKey(key)}
+            tabs={[
+              ...extraTabs.map(t => ({key: t.key, label: t.label, disabled: arming})),
+              ...roots.map(r => {
+                const shown = r.key === slotRoot.key && showAlternate && r.alternate ? r.alternate : r;
+                return {key: r.key, label: shown.label, disabled: shown.disabled};
+              }),
+            ]}
+            activeKey={activeExtra ? activeExtra.key : slotRoot.key}
+            onChange={key => {
+              if (extraTabs.some(t => t.key === key)) {
+                setExtraKey(key);
+                return;
+              }
+              setExtraKey(null);
+              // Tapping the slot that shows Browse during a file-link arm goes back to its own files.
+              if (key === slotRoot.key && showAlternate && !linkTarget?.root) setShowAlternate(false);
+              else if (key !== slotRoot.key) setShowAlternate(false);
+              setActiveRootKey(key);
+            }}
             textColor={textColor}
             borderColor={borderColor}
           />
@@ -623,69 +735,73 @@ export default function FileBrowserPane({
           the same fixed-height box via `viewportContent`, so the
           header/breadcrumb/pin stay mounted and stable across a folder-load
           flicker instead of the whole section disappearing and reappearing. */}
-      <PagedSection
-        header={
-          <>
-            {depth > 0 && (
-              <Text onPress={handleUp} style={styles.upTextNested}>
-                {'‹ Up  '}
-              </Text>
-            )}
-            {stack.map(level => level.name).join(' › ')}
-          </>
-        }
-        headerAccessory={
-          showPin ? (
-            <Pressable
-              onPress={() => !pinIsDefault && activeRoot.onSetDefaultSubfolder?.(currentSubfolder)}
-              disabled={pinIsDefault}
-              hitSlop={8}
-              style={styles.pinButton}>
-              <PinIcon color={textColor} filled={pinIsDefault} />
-            </Pressable>
-          ) : undefined
-        }
-        rows={loading || error ? [] : visibleEntries}
-        rowHeight={entry => fileEntryHeight(entry, COLUMN_WIDTH_PX)}
-        viewportHeight={viewportHeight}
-        resetKey={current?.path}
-        jumpTo={jumpTo}
-        renderRow={entry => {
-          const isLocateTarget =
-            linkTarget?.mode === 'locating' && !entry.isFolder && !linkTarget.fileMissing && entry.name === linkTarget.fileName;
-            // Pins the row's real rendered height to the same value its
-            // rowHeight callback above summed toward viewportHeight - same
-            // "reserved and rendered must agree exactly" contract ui/
-            // TaskRow.tsx's/ui/MeetingRow.tsx's own `height` prop documents,
-            // so a 2-line entry can't quietly grow taller than what
-            // PagedSection budgeted for it. A mispredicted line count then
-            // becomes a clip inside the fixed viewport - the safe failure
-            // mode - rather than a page-break mismatch.
-          const rowHeightPx = fileEntryHeight(entry, COLUMN_WIDTH_PX);
-          return (
-            <Pressable
-              key={entry.path}
-              onPress={() => handleEntryPress(entry)}
-              style={[styles.entryRow, {height: rowHeightPx, minHeight: rowHeightPx}, isLocateTarget && styles.entryRowLocated]}>
-              <Text
-                style={[styles.entry, entry.isFolder && styles.entryLink, {color: textColor}]}
-                numberOfLines={fileEntryLines(entry, COLUMN_WIDTH_PX)}>
-                {fileEntryDisplayText(entry)}
-              </Text>
-            </Pressable>
-          );
-        }}
-        emptyHint="This folder is empty."
-        viewportContent={
-          loading ? (
-            <ActivityIndicator style={common.spacer} />
-          ) : error ? (
-            <Text style={[styles.error, {color: textColor}]}>⚠ {error}</Text>
-          ) : undefined
-        }
-        textColor={textColor}
-        borderColor={borderColor}
-      />
+      {activeExtra ? (
+        <View style={selfMeasuring ? styles.selfMeasuringRoot : undefined}>{activeExtra.render(viewportHeight)}</View>
+      ) : (
+        <PagedSection
+          header={
+            <>
+              {depth > 0 && (
+                <Text onPress={handleUp} style={styles.upTextNested}>
+                  {'‹ Up  '}
+                </Text>
+              )}
+              {stack.map(level => level.name).join(' › ')}
+            </>
+          }
+          headerAccessory={
+            showPin ? (
+              <Pressable
+                onPress={() => !pinIsDefault && activeRoot.onSetDefaultSubfolder?.(currentSubfolder)}
+                disabled={pinIsDefault}
+                hitSlop={8}
+                style={styles.pinButton}>
+                <PinIcon color={textColor} filled={pinIsDefault} />
+              </Pressable>
+            ) : undefined
+          }
+          rows={loading || error ? [] : visibleEntries}
+          rowHeight={entry => fileEntryHeight(entry, COLUMN_WIDTH_PX)}
+          viewportHeight={viewportHeight}
+          resetKey={current?.path}
+          jumpTo={jumpTo}
+          renderRow={entry => {
+            const isLocateTarget =
+              linkTarget?.mode === 'locating' && !entry.isFolder && !linkTarget.fileMissing && entry.name === linkTarget.fileName;
+              // Pins the row's real rendered height to the same value its
+              // rowHeight callback above summed toward viewportHeight - same
+              // "reserved and rendered must agree exactly" contract ui/
+              // TaskRow.tsx's/ui/MeetingRow.tsx's own `height` prop documents,
+              // so a 2-line entry can't quietly grow taller than what
+              // PagedSection budgeted for it. A mispredicted line count then
+              // becomes a clip inside the fixed viewport - the safe failure
+              // mode - rather than a page-break mismatch.
+            const rowHeightPx = fileEntryHeight(entry, COLUMN_WIDTH_PX);
+            return (
+              <Pressable
+                key={entry.path}
+                onPress={() => handleEntryPress(entry)}
+                style={[styles.entryRow, {height: rowHeightPx, minHeight: rowHeightPx}, isLocateTarget && styles.entryRowLocated]}>
+                <Text
+                  style={[styles.entry, entry.isFolder && styles.entryLink, {color: textColor}]}
+                  numberOfLines={fileEntryLines(entry, COLUMN_WIDTH_PX)}>
+                  {fileEntryDisplayText(entry)}
+                </Text>
+              </Pressable>
+            );
+          }}
+          emptyHint="This folder is empty."
+          viewportContent={
+            loading ? (
+              <ActivityIndicator style={common.spacer} />
+            ) : error ? (
+              <Text style={[styles.error, {color: textColor}]}>⚠ {error}</Text>
+            ) : undefined
+          }
+          textColor={textColor}
+          borderColor={borderColor}
+        />
+      )}
     </View>
   );
 }

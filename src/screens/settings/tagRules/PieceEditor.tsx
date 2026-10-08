@@ -24,7 +24,7 @@ const ADD_PIECE_ROW_HEIGHT = 50;
 type AddPieceRow = {kind: 'type'; type: PieceType} | {kind: 'text'; item: NoteTextItem};
 
 /** The predefined (non-text) piece types, in list order. Which ones show is still filtered per context by PIECE_CONTEXTS. */
-const PREDEFINED_PIECE_TYPES: PieceType[] = ['title', 'date', 'time', 'related', 'link'];
+const PREDEFINED_PIECE_TYPES: PieceType[] = ['title', 'date', 'time', 'related', 'link', 'sinceLast'];
 
 /**
  * Explanation + example for a predefined piece's right-hand panel. The
@@ -68,6 +68,12 @@ function predefinedPieceInfo(type: PieceType, context: NoteContext): {descriptio
           (context === 'meeting' ? 'meeting' : 'todo') +
           ' (paperclip). Left out when nothing is attached or the file no longer exists.',
         example: linkPieceText('Kickoff deck.pdf'),
+      };
+    case 'sinceLast':
+      return {
+        description:
+          'What happened in this meeting’s thread since its previous meeting: what was agreed then, what you owe, wait for or should raise, and what got done. Each todo once, at most 6 lines per block. Left out without a previous meeting.',
+        example: 'Since last time · Wed 30.9.\nAgreed last time:\n- Send minutes\n✓ Book room\nWaiting for:\n- Signed offer',
       };
     default:
       return {description: '', example: ''};

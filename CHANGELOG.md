@@ -10,6 +10,43 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Tending threads.** The people, teams and series behind nested tags such as `#retro/alpha`
+  (counterparts) are now tended per area (with its projects) or per project without an area. A
+  counterpart you use for the first time is **new**: you decide **Tend** or **Not**, nothing is
+  decided for you. Counterparts used only with `#wf/name` or `#owe/name` are marked `w/f only`,
+  `owe only` or `w/f · owe only`. The Inbox has none.
+- **Threads tab** on the Current page, the first of the Files tabs and open when you open a
+  project or area: new, active and inactive counterparts with their latest and next meeting and
+  what you owe or wait for. Tap a counterpart to show only its todos and meetings (a todo agreed
+  with one person but tagged for another shows under both); **▸** shows its threads with
+  **+ next**; **›** opens its overview. Linking a file, refiling or assigning an area switches
+  to the files and back to Threads when you are done.
+- **Set inactive** first goes through the counterpart's open todos under I owe, Waiting for and
+  Relevant: Done, Cancel or Keep each one. Inactive counterparts leave the Review and the tag
+  suggestions in Quick Add; their overview keeps working. One that gets a new meeting comes back
+  as `back in use`.
+- **Review step "Tending threads"**, after "Meetings to close out": per area and project its
+  counterparts, the new ones on top; on the right Quick Add with **+ Next retro**, Tend / Not or
+  **Open overview ›** and **Set inactive**, and a short summary. The overview opens over the
+  Review and **‹ Review** returns to the step.
+- **Since last time**, a new piece for meeting Tag Rules: on the meeting's note, what was agreed
+  in the thread's previous meeting, what you owe, wait for and should raise, and what got done
+  since - each todo once, at most 6 lines per block.
+
+### Changed
+- The Current page's Files pane has no **Browse** tab any more. While you refile or assign an
+  area, the **Project Files** tab shows Browse; while you link a file, **Other Projects/Areas ›**
+  at the top of Project Files opens it. Open other projects and areas from the Projects and
+  Areas tabs.
+- The Review tab shows its ● mark until you have marked the new step **Reviewed** once.
+
+### Upgrade notes
+- `## Threads` is a new section in `area.txt`, and in `project.txt` of a project without an area,
+  written the first time you tap Tend, Not or Set inactive: one line per counterpart,
+  `- mieke: active`. Older versions keep the section as it is and ignore it. Nothing else in
+  your files changes.
+
 ## [0.11.0] — 2026-10-08
 
 ### New
