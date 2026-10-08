@@ -40,6 +40,8 @@ jest.mock('../../src/supernote/fileSystem', () => {
       '',
       '## Tasks',
       `- [ ] Draft agenda #retro/alpha [due:: ${today}]`,
+      '- [ ] Send minutes [meeting:: 2026-01-07 Retro retro/alpha]',
+      `- [x] Book room #retro/alpha [completion:: ${today}]`,
       '',
       '## Meetings',
       '- 2026-01-07 10:00-11:00 Retro #retro/alpha',
@@ -120,12 +122,36 @@ describe('App with the thread overview', () => {
     expect(rendered(r)).toContain('Ahead');
     expect(rendered(r)).toContain('+ Next retro');
     expect(rendered(r)).toContain('Draft agenda');
+    expect(texts(r)).toEqual(expect.arrayContaining(['I owe', 'Relevant']));
+    expect(texts(r)).not.toContain('Waiting for');
     expect(texts(r)).toContain('Looking back');
+    // The latest past meeting is selected: its agreed todo and its note button.
+    expect(texts(r)).toContain('+ Note');
 
     await pressText(r, '‹ Daily');
     await settle();
     expect(getThreadOverview()).toBeNull();
     expect(texts(r)).not.toContain('Looking back');
+    act(() => r.unmount());
+  });
+
+  it('shows the "Since" row and, selected, the todos done since the latest meeting', async () => {
+    const r = await renderApp();
+    await act(async () => openThreadOverview({tag: 'retro/alpha', ownerPath: AREA}));
+    await settle();
+    const since = texts(r).find(t => t.startsWith('Since '));
+    expect(since).toMatch(/^Since .+ · 1 done$/);
+    await pressText(r, since!);
+    await settle();
+    expect(texts(r)).toContain('1 done since the latest meeting');
+    // The panel's list measures itself on the device; its rows are checked as handed over.
+    const done = r.root.findAll(n => n.props.header === 'Done' && Array.isArray(n.props.rows))[0];
+    expect(done.props.rows.map((row: {kind: string; label?: string; entry?: {task: {text: string}}}) => row.entry?.task.text ?? row.kind)).toEqual([
+      'head',
+      'Book room #retro/alpha',
+    ]);
+    expect(texts(r)).not.toContain('+ Note');
+    expect(texts(r).some(t => t.startsWith('↳ from'))).toBe(false);
     act(() => r.unmount());
   });
 

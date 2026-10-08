@@ -14,7 +14,8 @@ or your project/area files are stored.
 - **Threads.** Tap a nested tag such as `#retro/alpha` in any todo or meeting, or a `#w/f Name`
   label, to open its overview over the screen: next meetings, what you owe (agreed in its
   meetings), what you are waiting for, what is relevant (tagged with it), and every past meeting
-  with what was agreed in it and how much of it is done.
+  with what was agreed in it and how much of it is done. A "Since" row lists what you ticked
+  since the latest meeting.
   A switch shows the whole counterpart (`All alpha`) instead of one thread. The overview covers
   the project or area you tapped in, together with its area and that area's projects. **‹** with
   the tab's name, or any tab, closes it; the screen behind stays as it was.

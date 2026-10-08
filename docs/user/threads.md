@@ -60,13 +60,15 @@ Tap a row to edit it in Quick Add; tick, note and file icons work as on every li
 
 ## Looking back
 
-The lower list on the left has one row per past meeting, newest first. Its second line says what came out of it, for example `3 agreed · 1 done · 2 open, oldest 12 d`: how many todos were agreed in the meeting, how many are done, how many are still open, and how many days the oldest open one has waited.
+The lower list on the left starts with a row such as `Since Wed 30.9. · 4 done`: the todos of this thread you ticked since its latest past meeting, whichever way they relate to it. Tap it to see them on the right, by the day they were done. Only todos ticked with gtdpara 0.10 or later carry the day they were done, so older ones don't show here. Without a past meeting there is no such row.
+
+Below it is one row per past meeting, newest first. Its second line says what came out of it, for example `3 agreed · 1 done · 2 open, oldest 12 d`: how many todos were agreed in the meeting, how many are done, how many are still open, and how many days the oldest open one has waited.
 
 Tap a meeting to look at it on the right; at first the latest one is selected. The right side shows its title and date, **Open note** (or **+ Note** to create one), and the todos agreed in it: the open ones first, then the done ones by the day they were done.
 
 ## Adding from the overview
 
-Quick Add on the right adds to the selected past meeting. A grey line says so, for example:
+Quick Add on the right adds to the selected past meeting (with the **Since** row selected, it adds to the project or area you opened the overview from, without a meeting). A grey line says so, for example:
 
 `↳ from Retro alpha · Wed 30.9.`
 

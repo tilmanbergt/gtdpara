@@ -23,6 +23,11 @@ export function doneGroupLabel(completion: string | null, today: string): string
   return completion ? `Done · ${formatDayHeader(completion, today)}` : 'Done';
 }
 
+/** The "Since" row of Looking back: `Since Tue 6.10. · 3 done`. */
+export function sinceRowLabel(from: string, count: number, today: string): string {
+  return `Since ${formatDayHeader(from, today)} · ${count} done`;
+}
+
 /** The overview header's lens switch labels. */
 export function lensLabels(thread: {tag: string; counterpart: string}): {thread: string; counterpart: string} {
   return {thread: `#${thread.tag}`, counterpart: `All ${thread.counterpart}`};

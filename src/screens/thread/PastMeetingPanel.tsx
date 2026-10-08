@@ -1,13 +1,18 @@
 /**
- * The selected past meeting in the overview's right column
- * (docs/dev/history/technical-design-tending-threads.md §3.5.2): its title,
- * date and counts with "Open note", then the todos agreed in it as one paged
- * list - open ones first, then the done ones grouped by the day they were
- * done. Rows are the normal TaskRow with its actions.
+ * The selected row of Looking back in the overview's right column
+ * (docs/dev/history/technical-design-tending-threads.md §3.5.2).
+ *
+ * - A past meeting: its title, date and counts with "Open note", then the
+ *   todos agreed in it as one paged list - open ones first, then the done
+ *   ones grouped by the day they were done.
+ * - The "Since" row: the todos done since the latest past meeting, grouped
+ *   by the day they were done; no note button.
+ *
+ * Rows are the normal TaskRow with its actions.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {formatDateTime} from '../../domain/dateFormat';
+import {formatDateTime, formatDayHeader} from '../../domain/dateFormat';
 import {meetingDisplayTitle} from '../../domain/meetingTracking';
 import {todayIso} from '../../domain/meetingTime';
 import {doneGroupLabel, pastMeetingSummary} from '../../domain/threadText';
@@ -21,14 +26,12 @@ import {taskEntryKey, ThreadActions} from './useThreadActions';
 
 type PanelRow = {kind: 'head'; key: string; label: string} | {kind: 'task'; key: string; entry: ThreadTaskEntry};
 
-function rowsOf(past: PastMeeting, today: string): PanelRow[] {
+/** The selected Looking back row. */
+export type PanelSelection = {kind: 'meeting'; past: PastMeeting} | {kind: 'since'; from: string; done: ThreadTaskEntry[]};
+
+/** Done todos under one head per day they were done, latest first. */
+function doneRows(done: readonly ThreadTaskEntry[], today: string): PanelRow[] {
   const rows: PanelRow[] = [];
-  const open = past.agreed.filter(a => !a.task.done);
-  const done = past.agreed.filter(a => a.task.done);
-  if (open.length > 0) {
-    rows.push({kind: 'head', key: 'h-open', label: 'Open'});
-    open.forEach(entry => rows.push({kind: 'task', key: taskEntryKey(entry), entry}));
-  }
   let lastLabel: string | null = null;
   [...done]
     .sort((a, b) => (b.task.fields.completion ?? '').localeCompare(a.task.fields.completion ?? ''))
@@ -41,16 +44,26 @@ function rowsOf(past: PastMeeting, today: string): PanelRow[] {
   return rows;
 }
 
+function meetingRows(past: PastMeeting, today: string): PanelRow[] {
+  const rows: PanelRow[] = [];
+  const open = past.agreed.filter(a => !a.task.done);
+  if (open.length > 0) {
+    rows.push({kind: 'head', key: 'h-open', label: 'Open'});
+    open.forEach(entry => rows.push({kind: 'task', key: taskEntryKey(entry), entry}));
+  }
+  return [...rows, ...doneRows(past.agreed.filter(a => a.task.done), today)];
+}
+
 interface Props {
-  past: PastMeeting | null;
+  selection: PanelSelection | null;
   actions: ThreadActions;
   textColor: string;
   borderColor: string;
 }
 
-export default function PastMeetingPanel({past, actions, textColor, borderColor}: Props): React.JSX.Element {
+export default function PastMeetingPanel({selection, actions, textColor, borderColor}: Props): React.JSX.Element {
   const {edit} = actions;
-  if (!past) {
+  if (!selection) {
     return (
       <View style={styles.empty}>
         <Text style={[styles.hint, {color: textColor}]}>No past meeting to look at yet.</Text>
@@ -58,29 +71,43 @@ export default function PastMeetingPanel({past, actions, textColor, borderColor}
     );
   }
   const today = todayIso();
-  const meeting = past.entry.meeting;
+  const past = selection.kind === 'meeting' ? selection.past : null;
+  const {title, sub, rows} =
+    selection.kind === 'meeting'
+      ? {
+          title: meetingDisplayTitle(selection.past.entry.meeting),
+          sub: `${formatDateTime(selection.past.entry.meeting.date, selection.past.entry.meeting.time, today)} · ${pastMeetingSummary(selection.past.counts)}`,
+          rows: meetingRows(selection.past, today),
+        }
+      : {
+          title: `Since ${formatDayHeader(selection.from, today)}`,
+          sub: `${selection.done.length} done since the latest meeting`,
+          rows: doneRows(selection.done, today),
+        };
   return (
     <View style={styles.flex}>
       <View style={styles.headerRow}>
         <View style={styles.flex}>
           <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-            {meetingDisplayTitle(meeting)}
+            {title}
           </Text>
           <Text style={[styles.sub, {color: textColor}]} numberOfLines={1}>
-            {formatDateTime(meeting.date, meeting.time, today)} · {pastMeetingSummary(past.counts)}
+            {sub}
           </Text>
         </View>
-        <Pressable style={[styles.pill, {borderColor}]} onPress={() => actions.meetingNote(past.entry)} hitSlop={8}>
-          <Text style={[styles.pillText, {color: textColor}]}>{meeting.notePath ? 'Open note' : '+ Note'}</Text>
-        </Pressable>
+        {past && (
+          <Pressable style={[styles.pill, {borderColor}]} onPress={() => actions.meetingNote(past.entry)} hitSlop={8}>
+            <Text style={[styles.pillText, {color: textColor}]}>{past.entry.meeting.notePath ? 'Open note' : '+ Note'}</Text>
+          </Pressable>
+        )}
       </View>
       <PagedSection<PanelRow>
-        header="Agreed"
-        rows={rowsOf(past, today)}
-        resetKey={past.key}
+        header={past ? 'Agreed' : 'Done'}
+        rows={rows}
+        resetKey={past ? past.key : 'since'}
         isCountableRow={row => row.kind !== 'head'}
         rowHeight={row => (row.kind === 'head' ? SUB_HEAD_HEIGHT : taskRowHeight(row.entry.task, TASK_COLUMN_WIDTH_PX, 'flat'))}
-        emptyHint="Nothing agreed in this meeting yet - add it above."
+        emptyHint={past ? 'Nothing agreed in this meeting yet - add it above.' : 'Nothing done since then.'}
         renderRow={row => {
           if (row.kind === 'head') {
             return (

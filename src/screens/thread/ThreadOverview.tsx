@@ -6,10 +6,12 @@
  *
  * Header: "‹ <tab>" (closes it), the tag, the owner, the lens switch
  * (thread | all of the counterpart). Left: Ahead above Looking back. Right:
- * Quick Add, then the selected past meeting (the latest by default) with the
- * todos agreed in it. While a past meeting is selected, a new todo records
- * it as provenance and goes to that meeting's item; otherwise new entries go
- * to the owner (the Inbox when there is none). "+ Next <type>" fills Quick
+ * Quick Add, then the selected Looking back row: a past meeting (the latest
+ * by default) with the todos agreed in it, or the "Since" row with the todos
+ * done since that meeting. While a past meeting is selected, a new todo
+ * records it as provenance and goes to that meeting's item; otherwise (the
+ * "Since" row too) new entries go to the owner (the Inbox when there is
+ * none). "+ Next <type>" fills Quick
  * Add's meeting draft from the thread's latest meeting, to that meeting's
  * item.
  */
@@ -31,8 +33,8 @@ import {useCachedItems} from '../../ui/useCachedItems';
 import {getCachedData} from '../../storage/dataCache';
 import {useLinkedFileMissing} from '../usePlanningScreen';
 import AheadSection, {NextOffer} from './AheadSection';
-import LookingBackSection from './LookingBackSection';
-import PastMeetingPanel from './PastMeetingPanel';
+import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
+import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
 import {meetingEntryKey, taskEntryKey, useThreadActions} from './useThreadActions';
 
 /** Ahead's fixed list height (dp), design §3.5.2; Looking back takes the rest of the column. */
@@ -91,15 +93,23 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
   );
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const selected: PastMeeting | null =
-    overview?.past.find(p => meetingEntryKey(p.entry) === selectedKey) ?? overview?.past[0] ?? null;
+  const sinceSelected = selectedKey === SINCE_KEY && !!overview?.since.from;
+  const selected: PastMeeting | null = sinceSelected
+    ? null
+    : overview?.past.find(p => meetingEntryKey(p.entry) === selectedKey) ?? overview?.past[0] ?? null;
+  const panel: PanelSelection | null =
+    sinceSelected && overview?.since.from
+      ? {kind: 'since', from: overview.since.from, done: overview.since.done}
+      : selected
+        ? {kind: 'meeting', past: selected}
+        : null;
   const origin = useProvenance(selected?.entry.meeting ?? null);
   const [seed, setSeed] = useState<MeetingSeed | null>(null);
   const [seedItem, setSeedItem] = useState<ThreadItemRef | null>(null);
 
   // The edited row, found in whichever list shows it.
   const target = edit.target;
-  const taskEntries = overview ? [...overview.ahead.owe, ...overview.ahead.waiting, ...overview.ahead.relevant, ...overview.past.flatMap(p => p.agreed)] : [];
+  const taskEntries = overview ? [...overview.ahead.owe, ...overview.ahead.waiting, ...overview.ahead.relevant, ...overview.since.done, ...overview.past.flatMap(p => p.agreed)] : [];
   const meetingEntries = overview ? [...overview.ahead.meetings, ...overview.past.map(p => p.entry)] : [];
   const editingTask = target?.type === 'task' ? taskEntries.find(e => taskEntryKey(e) === target.key) ?? null : null;
   const editingMeeting = target?.type === 'meeting' ? meetingEntries.find(e => meetingEntryKey(e) === target.key) ?? null : null;
@@ -177,9 +187,9 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
           />
           <View style={styles.gap} />
           <LookingBackSection
-            past={overview.past}
-            selectedKey={selected ? meetingEntryKey(selected.entry) : null}
-            onSelect={p => setSelectedKey(meetingEntryKey(p.entry))}
+            overview={overview}
+            selectedKey={sinceSelected ? SINCE_KEY : selected ? meetingEntryKey(selected.entry) : null}
+            onSelect={setSelectedKey}
             resetKey={`${overview.thread.tag}|${lens}`}
             textColor={textColor}
             borderColor={borderColor}
@@ -210,7 +220,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             borderColor={borderColor}
             placeholderColor={placeholderColor}
           />
-          <PastMeetingPanel past={selected} actions={actions} textColor={textColor} borderColor={borderColor} />
+          <PastMeetingPanel selection={panel} actions={actions} textColor={textColor} borderColor={borderColor} />
         </View>
       </View>
     </View>

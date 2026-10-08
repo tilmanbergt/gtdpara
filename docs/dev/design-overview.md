@@ -88,8 +88,10 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   meetings, I owe, Waiting for, Relevant, with "+ Next <type>" in its header; each open todo in
   the first of Waiting for, I owe, Relevant that applies: agreed in a meeting of the lens or
   `#owe/<counterpart>` is I owe, the lens's tags alone are Relevant) above `LookingBackSection`
-  (one two-line row per past meeting with agreed/done/open counts). Right: Quick Add, then
-  `PastMeetingPanel` (the selected past meeting, the latest by default, and its agreed todos).
+  (a "Since <date> · n done" row for todos done since the latest past meeting, then one two-line
+  row per past meeting with agreed/done/open counts). Right: Quick Add, then `PastMeetingPanel`
+  (the selected past meeting, the latest by default, and its agreed todos; or, for the "Since"
+  row, those done todos by done date, no note button and no provenance in Quick Add).
   Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `useThreadActions.ts`
   (the same write paths as Daily). Detail: `docs/dev/history/technical-design-tending-threads.md`.
 
