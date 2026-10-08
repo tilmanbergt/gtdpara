@@ -9,11 +9,21 @@ jest.mock('../../src/supernote/fileSystem', () => ({
   insertElements: async (path: string, page: number, elements: any[]) => {
     mockInserted.push({path, page, elements});
   },
+  getKeyWords: async () => mockKeywords,
+  deleteKeyWord: async (_path: string, _page: number, index: number) => {
+    mockKeywordCalls.push(`delete ${index}`);
+  },
+  insertKeyWord: async (_path: string, _page: number, keyword: string) => {
+    if (keyword === 'fails') throw new Error('nope');
+    mockKeywordCalls.push(`insert ${keyword}`);
+  },
 }));
+let mockKeywords: Array<{keyword: string; page: number; index: number}> = [];
+const mockKeywordCalls: string[] = [];
 
 import {NOTE_HEADING_USERDATA, notePieceUserData} from '../../src/domain/meetingNoteBlock';
 import {addPieceToRule, createEmptyTagRule, setPieceHeading} from '../../src/domain/tagRules';
-import {applyPieceHeadings, headingPieceIndexes} from '../../src/storage/noteFindability';
+import {applyPieceHeadings, headingPieceIndexes, syncPageKeywords} from '../../src/storage/noteFindability';
 import {logWarn} from '../../src/utils/log';
 
 let rule = createEmptyTagRule('1', 'meeting');
@@ -59,5 +69,18 @@ describe('applyPieceHeadings', () => {
     mockInserted.length = 0;
     await applyPieceHeadings('/n/a.note', 0, setPieceHeading(setPieceHeading(rule, 0, false), 2, false), ['A', '', 'C', ''], 2);
     expect(mockInserted).toHaveLength(0);
+  });
+});
+
+describe('syncPageKeywords', () => {
+  it('deletes the outdated date (high to low) and adds the date and missing tags; a failing insert is skipped', async () => {
+    mockKeywords = [
+      {keyword: '2026-09-30 Retro', page: 2, index: 0},
+      {keyword: '2026-09-30', page: 2, index: 1},
+      {keyword: '2026-09-29', page: 2, index: 2},
+      {keyword: 'retro', page: 2, index: 3},
+    ];
+    await syncPageKeywords('/n/a.note', 2, {date: '2026-10-07', tags: ['retro', 'fails', 'team']});
+    expect(mockKeywordCalls).toEqual(['delete 2', 'delete 1', 'insert 2026-10-07', 'insert team']);
   });
 });

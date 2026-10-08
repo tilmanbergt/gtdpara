@@ -1,20 +1,26 @@
 /**
- * Writes the headings of a note page
- * (docs/dev/history/technical-design-projects-findable-notes.md §2.6, step 5
- * of the writing order): after storage/meetingNoteContent.ts's
- * `populateNoteFromRule` has inserted the rule's textboxes, every piece with
- * the Heading switch on (`pieceIsHeading`) and some text gets a title element
- * over its textbox, so Supernote lists it in the note's table of contents.
+ * Makes note pages findable (docs/dev/history/technical-design-projects-findable-notes.md):
  *
- * Content first, headings second: a heading that can't be written is logged
- * and skipped, the note keeps its content. Logs carry counts only, never
- * heading texts (they hold client names, §2.9).
+ * - **Headings** (§2.6, step 5 of the writing order): after
+ *   storage/meetingNoteContent.ts's `populateNoteFromRule` has inserted the
+ *   rule's textboxes, every piece with the Heading switch on
+ *   (`pieceIsHeading`) and some text gets a title element over its textbox,
+ *   so Supernote lists it in the note's table of contents. Content first,
+ *   headings second: a heading that can't be written is logged and skipped,
+ *   the note keeps its content.
+ * - **Keywords** (§2.7): `syncPageKeywords` gives the page the item's date
+ *   keyword and its tags, and drops an outdated date keyword - on every
+ *   refresh that is not frozen, so a moved meeting's keyword follows on the
+ *   next open.
+ *
+ * Logs carry counts only, never heading or keyword texts (they hold client
+ * names, §2.9).
  */
 import {notePieceUserData} from '../domain/meetingNoteBlock';
-import {isOurHeading} from '../domain/noteFindability';
+import {isOurHeading, planPageKeywords} from '../domain/noteFindability';
 import {NoteHeadingStyle} from '../domain/settings';
 import {pieceIsHeading, TagRule} from '../domain/tagRules';
-import {getElements, insertElements} from '../supernote/fileSystem';
+import {deleteKeyWord, getElements, getKeyWords, insertElements, insertKeyWord} from '../supernote/fileSystem';
 import {buildTitleElement, ELEMENT_TYPE_TITLE, ElementWithTitle} from '../supernote/noteTitles';
 import {recycleElements} from '../supernote/sdkElements';
 import {errorMessage} from '../utils/errorMessage';
@@ -94,5 +100,38 @@ async function logTitleCheckpoint(notePath: string, page: number): Promise<void>
     }
   } catch (e) {
     logWarn('S1-DIAG titles failed', errorMessage(e));
+  }
+}
+
+/**
+ * Brings `page`'s keywords in line with the item (§2.7): one `getKeyWords`,
+ * then the deletes (highest position first) and inserts of
+ * `planPageKeywords`. Each failing call is logged and skipped. Never throws.
+ */
+export async function syncPageKeywords(notePath: string, page: number, item: {date: string | null; tags: readonly string[]}): Promise<void> {
+  try {
+    const onPage = (await getKeyWords(notePath, [page])).filter(k => k.page === page);
+    const plan = planPageKeywords({onPage, date: item.date, tags: item.tags});
+    let deleted = 0;
+    let added = 0;
+    for (const index of plan.deleteIndexes) {
+      try {
+        await deleteKeyWord(notePath, page, index);
+        deleted++;
+      } catch (e) {
+        logWarn('noteFindability: keyword delete failed', errorMessage(e));
+      }
+    }
+    for (const keyword of plan.add) {
+      try {
+        await insertKeyWord(notePath, page, keyword);
+        added++;
+      } catch (e) {
+        logWarn('noteFindability: keyword insert failed', errorMessage(e));
+      }
+    }
+    log('noteFindability: keywords', `page=${page}`, `added=${added}`, `deleted=${deleted}`);
+  } catch (e) {
+    logWarn('noteFindability: keywords failed', errorMessage(e));
   }
 }

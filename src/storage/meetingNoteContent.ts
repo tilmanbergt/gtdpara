@@ -55,7 +55,7 @@
  * the element itself via `supernote/noteElements.ts`'s `buildTextboxElement`.
  */
 import {linkTypeForExtension, notePieceUserData} from '../domain/meetingNoteBlock';
-import {staleManagedNums} from '../domain/noteFindability';
+import {itemDateKeyword, staleManagedNums} from '../domain/noteFindability';
 import {isMeetingAutoUpdateFrozen, todayIso} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {tagsAsWords} from '../domain/markdown';
@@ -117,7 +117,7 @@ import {
   TODOS_SUBFOLDER,
   todoNoteBaseName,
 } from './noteLinks';
-import {applyPieceHeadings} from './noteFindability';
+import {applyPieceHeadings, syncPageKeywords} from './noteFindability';
 import {measureNoteLinkRect, measureNotePieceRect} from './notePieceMetrics';
 import {
   ensureSharedNoteFile,
@@ -389,6 +389,9 @@ export async function refreshMeetingNoteBlock(
   const notePath = await resolveNotePath(itemPath, meeting.notePath);
   const paths = resolvePaths(settings);
 
+  // Keywords don't depend on a rule (§2.7 of the findable-notes design).
+  await syncPageKeywords(notePath, page, {date: itemDateKeyword(meeting), tags: contextTagsOf(meeting.tags)});
+
   const definition = resolveNoteTemplate('meeting', meeting.tags, settings.tagRules);
   if (!definition) return;
 
@@ -460,6 +463,8 @@ export async function refreshTodoNoteBlock(
   const page = options.page ?? 0;
   const notePath = await resolveNotePath(itemPath, task.notePath);
   const paths = resolvePaths(settings);
+
+  await syncPageKeywords(notePath, page, {date: itemDateKeyword(task), tags: contextTagsOf(task.tags)});
 
   const definition = resolveNoteTemplate('todo', task.tags, settings.tagRules);
   if (!definition) return;
