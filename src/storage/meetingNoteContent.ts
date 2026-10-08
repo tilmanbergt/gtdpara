@@ -97,9 +97,11 @@ import {
 import {buildTextboxElement} from '../supernote/noteElements';
 import {log} from '../utils/log';
 import {contextTagsOf} from '../domain/flowState';
-import {getCachedData} from './dataCache';
+import {getCachedData, getCachedInbox} from './dataCache';
+import {ThreadInboxInput} from './threadAggregate';
 import {linkedFileStatus, resolveLinkedFilePath} from './linkedFiles';
 import {MeetingNoteInboxInput, relatedItemsFor} from './meetingNoteAggregate';
+import {buildSinceLast} from './sinceLast';
 import {collisionFreeName} from './fileNaming';
 import {
   classifyNotePath,
@@ -394,9 +396,17 @@ export async function refreshMeetingNoteBlock(
     time: meeting.time || undefined,
     relatedItems: relatedTodos.map(t => ({text: t.task.text})),
     linkedFileName: linked?.fileName,
+    sinceLast: definition.pieces.some(p => p.type === 'sinceLast') ? buildSinceLast(meeting, itemPath, items, sinceLastInbox()) : null,
   };
   const pieceContent = definition.pieces.map(piece => renderPieceText(piece, ctx));
   await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
+}
+
+/** The shared Inbox as the thread aggregates take it (the "Since last time" piece resolves provenance against it too). */
+function sinceLastInbox(): ThreadInboxInput | null {
+  const inbox = getCachedInbox();
+  const path = getCachedData()?.paths.inboxFolder;
+  return inbox && path ? {path, tasks: inbox.tasks, meetings: inbox.meetings} : null;
 }
 
 /**
