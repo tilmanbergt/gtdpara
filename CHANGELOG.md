@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-10-08
+
 ### New
 - **Threads.** Tap a nested tag such as `#retro/alpha` in any todo or meeting, or a `#w/f Name`
   label, to open its overview over the screen: next meetings, what you owe (agreed in its
