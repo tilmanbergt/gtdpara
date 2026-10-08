@@ -62,21 +62,18 @@ Turn the back garden into a vegetable garden before winter.
 - A meeting line is date, then time (`10:00`, `10:00-11:00`) or length (`1d`, `2d`), then the title.
 - On screen, dates are shown as day and month (`4.10.`, with the year when it isn't this year) and times in 24 hours (`9:30`); in the files they stay `2026-10-04` and `09:30`.
 - A linked note appears at the end of a line as `→ [[Meetings/…]]`, a linked file as `+[[…]]`. A link to a page, from a lasso capture, ends in `#page=3`.
-- A todo line ends in fields that gtdpara writes: `[created:: …]`, `[due:: …]` and `[completion:: …]`, in this order, after the links. A field you add yourself at the end of the line, for example `[priority:: high]`, is kept. In the middle of the text, `[key:: value]` is just text.
+- A todo line ends in fields that gtdpara writes: `[meeting:: …]` (the meeting it was agreed in, see [Threads](threads.md)), `[created:: …]`, `[due:: …]` and `[completion:: …]`, in this order, after the links. A field you add yourself at the end of the line, for example `[priority:: high]`, is kept. In the middle of the text, `[key:: value]` is just text.
 - Older lines with `#due:2026-10-03` or `#waiting-for:marco` are read as before. A line gets the new form only when you edit that todo; nothing is converted on its own.
 - A `## Marks` section lists open lasso marks, one per line, see [Lasso](lasso.md).
 - Lines gtdpara doesn't understand are kept as they are.
 
 ## Editing by hand
 
-You can edit these files in any text editor, for example on your computer via Supernote Cloud. (Obsidian only lists `.md` files, so it won't show them without a plugin for other file types.) Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`) as they are.
+You can edit these files in any text editor, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`) as they are.
 
 ## Obsidian
 
-The fields at the end of a todo line are in the format of the Obsidian **Tasks** plugin when its setting **Task Format** is **Dataview**; the **Dataview** plugin reads them too. With the default Task Format, Tasks ignores them.
-
-- Tasks and Dataview only read files that Obsidian treats as Markdown. gtdpara's files stay `project.txt`, `area.txt` and `Inbox.txt`, so Obsidian reads these fields only if something on the Obsidian side presents those files as Markdown.
-- Edits you make in Obsidian reach the Supernote only through the **Paired folder** of the Supernote Cloud Sync plugin, which syncs both ways. Its other, mirrored folders only copy from Supernote Cloud to your vault, so a change made there never reaches the device.
+To read and edit your files in Obsidian, with the Tasks and Dataview plugins, see [Using gtdpara with Obsidian](obsidian.md).
 
 ## What gtdpara keeps elsewhere
 

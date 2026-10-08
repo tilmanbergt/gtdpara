@@ -27,7 +27,7 @@ Past meetings that still need a review appear in the Review step **Meetings to c
 
 ## Cancelling and repeating
 
-The trash icon in the edit form cancels a meeting; it stays in the file, marked as cancelled. gtdpara has no repeating meetings: for a series, use **New from this** to create the next one with the same title, and give the series its own tag (for example `#team-sync`).
+The trash icon in the edit form cancels a meeting; it stays in the file, marked as cancelled. gtdpara has no repeating meetings: for a series, use **New from this** to create the next one with the same title, and give the series its own tag (for example `#team-sync`). With a nested tag such as `#retro/alpha`, the series becomes a thread: its overview offers **+ Next retro**, which picks the next date for you, see [Threads](threads.md).
 
 ## From Google Calendar
 

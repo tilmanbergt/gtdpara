@@ -25,7 +25,7 @@ Pick which projects and areas you are working on today in the focus panel. The n
 
 ## Filtering by a tag
 
-Tap a tag inside a todo or meeting (for example `#lena`) to show only items with that tag. If the tag is the abbreviation of a project or area (for example `#GR`), Daily shows all of that project's items. Tap the tag again to remove the filter.
+Tap a tag inside a todo or meeting (for example `#lena`) to show only items with that tag. A nested tag such as `#retro/alpha` opens its thread overview instead, see [Threads](threads.md). If the tag is the abbreviation of a project or area (for example `#GR`), Daily shows all of that project's items. Tap the tag again to remove the filter.
 
 ## Focus mode
 

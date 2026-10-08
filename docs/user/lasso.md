@@ -21,6 +21,8 @@ The lasso toolbar has two gtdpara buttons:
 
 **Link to this page** (on by default) gives the new item a link to the page you captured from: its clip opens the note at that page. The item's own note icon still creates its own note.
 
+When the page belongs to a meeting - the meeting's own note, a page linked to it, or its page in a shared note - a todo you save records that meeting and gets its thread tag. The grey line in Quick Add shows it first; ✕ drops it. See [Threads](threads.md).
+
 The lasso selection is removed once something is saved. **Mark for later** on this screen turns the selection into a mark instead.
 
 ## Several todos from one selection

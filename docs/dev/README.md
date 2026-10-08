@@ -84,6 +84,7 @@ that don't exist, so `npm test` catches most slips.
 | `src/supernote/` | Thin wrappers around `sn-plugin-lib` and the native modules |
 | `src/screens/` | One component per tab/screen (Daily, Week, Month, Inbox, Current, …) |
 | `src/screens/review/` | Weekly Review: the shell (`ReviewScreen.tsx`: hub, navigation, visit record), shared data (`useReviewData.ts`, `useFrozenStepList.ts`, `reviewVisit.ts`) and one component per step in `steps/` |
+| `src/screens/thread/` | The thread overview overlay: frame (`ThreadOverview.tsx`), its sections and `useThreadActions.ts`; hosted with the help by `screens/useAppOverlays.tsx` |
 | `src/screens/settings/` | Settings: the shell (`Settings.tsx`), the Save-draft (`useSettingsDraft.ts`) and its tabs (`DraftTabs.tsx`), Advanced/About/Profiles, and Tag Rules in `tagRules/` (list, rule form, background, Add piece) |
 | `src/ui/` | Shared components (QuickAddWidget, PagedSection, MeetingRow, …) and styles |
 | `src/utils/` | Logging, performance tracing, e-ink refresh helpers |

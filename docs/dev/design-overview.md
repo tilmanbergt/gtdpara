@@ -55,6 +55,14 @@ Review tab's overdue dot (§2.8) and the one "✕ Close plugin" action. Screens 
 back button and no reload button of their own; reloading is Settings → Advanced → "Reload all
 files".
 
+**Overlays.** `screens/useAppOverlays.tsx` draws at most one overlay over the tab body, inside
+`StatusFrame` (the TabBar and the status slot stay, the tab screens stay mounted underneath):
+the help (`ui/HelpOverlay.tsx`) or the **thread overview** (`screens/thread/ThreadOverview.tsx`).
+Opening one closes the other; a tab tap, leaving the tab shell and the overlay's own close
+(help: ✕ Close; overview: "‹ <tab name>") close it, and closing requests an e-ink refresh. The
+overview is opened from any row through the module store `ui/threadOverlayStore.ts`
+(`openThreadOverview({tag, ownerPath, lens})`), so no list threads props for it.
+
 **Screens.**
 
 - **Projects / Areas** — `screens/ItemsList.tsx` (one component, `kind` prop): Active on the
@@ -73,6 +81,15 @@ files".
 - **Review** — `screens/review/ReviewScreen.tsx` (§2.8). While a close-out is open, the Review
   tab shows `screens/CloseOutWizard.tsx` instead (§2.9).
 - **Settings** — `screens/settings/Settings.tsx` (§2.12).
+- **Thread overview** (an overlay, not a tab) — `screens/thread/`: everything around one nested
+  tag `type/counterpart` inside the owner's scope (domain/threads.ts: the owner's Area plus its
+  Projects; a Project without Area and the Inbox are their own scope). Header: back, tag, owner,
+  lens switch (thread | all of the counterpart). Left: `AheadSection` (one paged list: next
+  meetings, I owe, Waiting for, with "+ Next <type>" in its header) above `LookingBackSection`
+  (one two-line row per past meeting with agreed/done/open counts). Right: Quick Add, then
+  `PastMeetingPanel` (the selected past meeting, the latest by default, and its agreed todos).
+  Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `useThreadActions.ts`
+  (the same write paths as Daily). Detail: `docs/dev/history/technical-design-tending-threads.md`.
 
 **Kept tabs.** With "Keep tabs in memory" on (`settings.keepTabsAlive`, default on), Daily,
 Week, Month, Current, Projects and Areas stay mounted after their first visit, hidden with
@@ -191,7 +208,10 @@ fields}`. `text` holds the typed text with its tags and never a field. `fields` 
 `tags`, `flowState`, `waitingOn` and `now` are derived from `text`; `dueDate` is `fields.due`, or
 an older `#due:` tag in `text` when there is no due field. A new todo gets `created` (today);
 checking it done writes `completion` (today), unchecking removes it; created and completion dates
-are never invented for older todos. `meeting` is read and kept as found. Only
+are never invented for older todos. `meeting` is the todo's **provenance**, the meeting it was
+agreed in: `<date> <display title>` (`domain/provenance.ts`'s `meetingKey`, the shared-page
+keyword without `[`/`]`), written only where Quick Add shows it first (§2.4) and resolved at read
+time (exact key in the todo's scope, then anywhere, then date plus a shared thread tag). Only
 `domain/taskEdit.ts` builds or changes a Task (`newTask`, `withTaskText`, `withTaskDue`,
 `withTaskDone`, `withTaskCancelled`, `applyTaskInput`), so the derived fields always match `text`
 and `fields`; `deriveTaskFields` is used only inside `domain/`.
@@ -231,7 +251,10 @@ repeated known key or one without a value is kept as an unknown field. Dates are
 - **bare state tags** (`RESERVED_BARE_TAGS`): `#now` (focus mode), `#prepped`/`#reviewed`
   (meeting tracking, §2.6), `#monthly` (Month highlight, §2.7).
 - **context tags**: everything else (`isContextTag`), including nested tags `#coaching/sabina`
-  (segments after `/`) and Project/Area abbreviations such as `#AT`.
+  (segments after `/`) and Project/Area abbreviations such as `#AT`. A nested tag is also a
+  **thread** (`domain/threads.ts`): type `coaching`, counterpart `sabina`; the plain leaf
+  `#sabina` belongs to the counterpart, a plain parent `#coaching` to no thread. Matching is
+  read-time only.
 
 Helpers that edit text for a tag (`setFlowStateTag`, `setBareTag`,
 `insertTagAtPosition`, `removeTagFromText`) strip and re-append; whole-tag guards treat `/`, `-`
@@ -286,7 +309,8 @@ Screens read it through `ui/useCachedInbox.ts`; a write anywhere is seen everywh
 `ensureItemCached(kind, name, path)` loads one item on demand when it is not cached yet;
 `findCachedItem(path)` reads one. Cross-project views are pure, synchronous transforms over the
 warm cache (`storage/dailyAggregate.ts`, `weeklyAggregate.ts`, `monthlyAggregate.ts`,
-`reviewAggregate.ts`, `periodFocusCards.ts`), never their own filesystem scans.
+`reviewAggregate.ts`, `periodFocusCards.ts`, `threadAggregate.ts`), never their own filesystem
+scans.
 
 What gtdpara does not cache: the Files pane lists folders live on every visit, and Google
 Calendar and Gmail have their own caches (§2.11). Detail:
@@ -312,6 +336,16 @@ shows uppercase. Typing a recognized abbreviation tag turns "+ Add" into "+ Add 
 Refile into "File: `<Name>`" (§2.5). When a just-added meeting is not visible on the current
 screen, the status message says where it went (`domain/dateLabel.ts`'s `describeAddedDate`, via
 the `isMeetingDateVisible` prop).
+
+**Requests from the screen** (`ui/quickAdd/`). `prefill` appends text to a draft (Gmail);
+`meetingSeed` replaces the meeting draft ("+ Next <type>", `domain/nextMeeting.ts`'s
+`nextMeetingSeed`; it waits until an open edit has closed); both act once per nonce
+(`useDraftRequests.ts`). `provenance` shows one grey line above the actions in create mode on the
+Todo tab (`ProvenanceLine.tsx`, `↳ from <meeting> · <day> · adds #<tags>`, ✕ drops it for one
+todo). The widget only shows it; the screen writes it through `useProvenance.ts`, which applies
+`domain/provenance.ts`'s `applyProvenance` to the composed line (missing thread tags appended,
+`[meeting:: <key>]` set) before `buildTask`. Review's "Meetings to close out", the thread
+overview and capture from a meeting's note page use it.
 
 **One edit and one arm per screen.** `ui/useEditTarget.ts` holds a screen's edit target (the
 row open in the widget) and, where the screen has a Files pane, its arm (a row waiting for a
@@ -339,8 +373,11 @@ the screens go through `domain/taskEdit.ts`.
 **Rows.** `ui/TaskRow.tsx` and `ui/MeetingRow.tsx` are the only row components. A task row shows
 labels after its title (`domain/taskLabels.ts`, `ui/TaskLabels.tsx`, layout in
 `ui/taskRowLayout.ts`: `#next`/`#now`, `#w/f Name`, `#due 5.10.`, overdue `!`), wrapped and
-clamped together with the title; a double tap on the `#next`/`#now` label toggles `#now`. Saved
-tags in a row are tappable where the screen passes a handler (Daily's context filter). Meeting
+clamped together with the title; a double tap on the `#next`/`#now` label toggles `#now`. Tags in
+a row's title go through `ui/TaggableText.tsx`: a nested context tag always opens the thread
+overview with the row's item as owner (rows get `ownerPath`; Inbox lists pass the Inbox folder),
+a plain context tag is tappable only where the screen passes a handler (Daily's context filter);
+the `#w/f Name` label opens the overview of `wf/<name>`. Meeting
 rows have two fixed heights (one line 37 dp, two lines 57 dp); every list has a 1-line/2-line
 switch remembered per list for the session (`ui/listLayout.ts`). Every action (note, file, prep/
 review, highlight, source) is an optional prop, so a list enables features by props, never by
@@ -438,8 +475,9 @@ every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting
   (`noteTarget: 'shared'`): each item gets a page located by keyword (meeting: `<date> <title>`;
   todo: its text without functional tags), inserted chronologically (`storage/sharedNotePages.ts`
   is the page engine, decisions in `domain/sharedNotePages.ts`). The shared file name is a
-  template (`renderSharedFileName`: `{subtag}`, `{year}`, `{quarter}`, `{month}`), so one rule can
-  split into one file per client and year; `ruleSubtag` gives the nested part after the rule tag.
+  template (`renderSharedFileName`: `{tag}`, `{subtag}`, `{year}`, `{quarter}`, `{month}`), so one
+  rule can split into one file per type, client and year; `ruleTypeTag` gives the rule tag the
+  item matched, `ruleSubtag` the nested part after it.
 - **Meeting tracking.** A Meeting rule can switch on *Prepare before* and/or *Review after*.
   State is `#prepped`/`#reviewed` on the meeting line; every meeting row shows one small P/R
   icon (check when done), toggled through `domain/meetingTracking.ts`'s
@@ -599,7 +637,10 @@ scope and where to return). Left: `ui/capture/MarksColumn.tsx` (open marks group
 hidden when empty). Right: the picture, then `QuickAddWidget variant="capture"`: split rows
 (✂ Split at cursor, `domain/captureText.ts`), a "File to" short list
 (`domain/captureFileTo.ts` plus recent destinations from `storage/destinationUsage.ts`), and Save
-buttons. "Link to this page" stores `<note>#page=N` as the item's `linkedFile`.
+buttons. "Link to this page" stores `<note>#page=N` as the item's `linkedFile`. When the source
+page is a meeting's (`storage/threadProvenance.ts`'s `meetingForNotePage`: its own note, a page
+link, or its page in a shared note - one `getKeyWords` call for that page), a saved todo gets
+that meeting as provenance (§2.4).
 
 **Recognition** (`supernote/lassoRead.ts`, `supernote/strokeRecognition.ts`). The lasso's strokes
 are read once, rebuilt as new elements shifted to the top-left (`domain/marks.ts`'s
@@ -892,7 +933,8 @@ place it happens.
 
 - Navigation is the tab model in `App.tsx`. A new persistent screen is a new `AppTab`, not its
   own header or back button; "✕ Close plugin" lives only in `TabBar`. Full-screen modes are
-  `capture` and `focus`; overlays (help, mark outcome) leave the screen behind as it is.
+  `capture` and `focus`; overlays (help, thread overview, mark outcome) leave the screen behind as
+  it is.
 - `reorient()` is the one place that decides where the plugin lands when it opens or comes back,
   and the one place that starts the cache refresh.
 - A kept screen does its "on show" and "on hide" work through `ui/screenActivity.ts`, not

@@ -10,6 +10,33 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Threads.** Tap a nested tag such as `#retro/alpha` in any todo or meeting, or a `#w/f Name`
+  label, to open its overview over the screen: next meetings, what you owe and what you are
+  waiting for, and every past meeting with what was agreed in it and how much of it is done.
+  A switch shows the whole counterpart (`All alpha`) instead of one thread. The overview covers
+  the project or area you tapped in, together with its area and that area's projects. **‹** with
+  the tab's name, or any tab, closes it; the screen behind stays as it was.
+- **+ Next retro** in the overview copies the thread's latest meeting to the next date, keeping
+  the time between the last two meetings.
+- Todos agreed in a meeting record it at the end of the line (`[meeting:: 2026-09-30 Retro
+  alpha #retro/alpha]`) and get the meeting's thread tag: from the overview's Quick Add, from
+  the Review step **Meetings to close out**, and from a lasso capture or mark on a meeting's
+  note page. A grey line in Quick Add shows this before you save; ✕ drops it for that todo.
+- Tag Rules: the shared file name can contain `{tag}`, the rule tag the item matched, so one
+  rule on `sparring` and `retro` names its files `sparring max 2026` and `retro alpha 2026`.
+- New help pages **Threads** and **Using gtdpara with Obsidian**.
+
+### Changed
+- On Daily, a nested tag opens its thread overview instead of filtering the list; plain tags
+  still filter.
+- Tags you tap show as you typed them (upper and lower case kept).
+
+### Upgrade notes
+- New todos agreed in a meeting end in a `[meeting:: …]` field, before `[created:: …]`. 0.10.0
+  already reads and keeps this field, so going back loses nothing. Nothing in your files is
+  converted.
+
 ## [0.10.0] — 2026-10-08
 
 ### Changed
