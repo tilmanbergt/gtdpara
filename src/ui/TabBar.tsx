@@ -50,6 +50,11 @@ const TABS: Array<{key: AppTab; label: string}> = [
   {key: 'settings', label: 'Settings'},
 ];
 
+/** The label of `tab` as the TabBar shows it ("‹ Daily" on an overlay's Back). */
+export function tabLabel(tab: AppTab): string {
+  return TABS.find(t => t.key === tab)?.label ?? tab;
+}
+
 interface Props {
   activeTab: AppTab;
   onSelectTab: (tab: AppTab) => void;

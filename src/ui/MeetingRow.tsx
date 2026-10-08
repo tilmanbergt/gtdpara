@@ -19,8 +19,6 @@
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {isContextTag} from '../domain/flowState';
-import {splitTextWithTags} from '../domain/markdown';
 import {MeetingTimeMode, meetingTimeCell} from '../domain/meetingDisplay';
 import {isHighlight} from '../domain/monthHighlight';
 import {MeetingSpanDay} from '../domain/meetingSpan';
@@ -29,7 +27,8 @@ import HighlightMark from './HighlightMark';
 import {TagRule} from '../domain/tagRules';
 import {Meeting} from '../domain/types';
 import {ClipIcon, TrackingBoxIcon} from './icons';
-import {COLORS, FONT} from './theme';
+import {renderTaggableText} from './TaggableText';
+import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
 
 /**
@@ -44,28 +43,6 @@ import {perfCount} from '../utils/perf';
 export interface MeetingTrackingConfig {
   rules: TagRule[];
   onToggle: (kind: MeetingTrackingKind) => void;
-}
-
-/** Segments `text` into plain runs and tappable tag spans - see ui/TaskRow.tsx's identical helper and module doc comment. */
-function renderTaggableText(
-  text: string,
-  contextTag: string | null | undefined,
-  onToggleContext: ((tag: string) => void) | undefined,
-): React.ReactNode {
-  if (!onToggleContext) return text;
-  return splitTextWithTags(text).map((segment, index) => {
-    if (segment.kind === 'text') return segment.value;
-    if (!isContextTag(segment.value)) return `#${segment.value}`;
-    const selected = segment.value === contextTag;
-    return (
-      <Text
-        key={`tag-${index}`}
-        onPress={() => onToggleContext(segment.value)}
-        style={selected ? styles.tagSelected : styles.tag}>
-        {`#${segment.value}`}
-      </Text>
-    );
-  });
 }
 
 export type MeetingRowLayout = 'oneLine' | 'twoLine';
@@ -105,6 +82,8 @@ export interface MeetingRowProps {
   /** Daily's context filter - see ui/TaskRow.tsx's identical props. */
   contextTag?: string | null;
   onToggleContext?: (tag: string) => void;
+  /** The item this meeting lives in (the Inbox folder for Inbox rows): owner of the overview its nested tags open. */
+  ownerPath?: string | null;
   textColor: string;
   borderColor: string;
 }
@@ -124,6 +103,7 @@ function MeetingRowV2({
   state,
   contextTag,
   onToggleContext,
+  ownerPath,
   textColor,
   borderColor,
 }: MeetingRowProps): React.JSX.Element {
@@ -142,7 +122,7 @@ function MeetingRowV2({
     <Text style={[v2.title, titleWraps && v2.titleWrapped, {color: textColor}]} numberOfLines={titleWraps ? 2 : 1}>
       {done ? '✓ ' : ''}
       {continuesBefore ? '◂ ' : ''}
-      {renderTaggableText(meetingDisplayTitle(meeting), contextTag, onToggleContext)}
+      {renderTaggableText(meetingDisplayTitle(meeting), {contextTag, onToggleContext, ownerPath})}
       {continuesAfter ? ' ▸' : ''}
     </Text>
   );
@@ -297,16 +277,3 @@ export default function MeetingRow(props: MeetingRowProps): React.JSX.Element {
   return <MeetingRowV2 {...props} />;
 }
 
-const styles = StyleSheet.create({
-  tag: {
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  tagSelected: {
-    color: COLORS.accentText,
-    fontWeight: '600',
-    backgroundColor: COLORS.accent,
-    borderRadius: 4,
-    paddingHorizontal: 3,
-  },
-});

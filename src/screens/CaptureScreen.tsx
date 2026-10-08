@@ -40,6 +40,8 @@ import {
   setMarkOutcome,
 } from '../storage/marks';
 import {toLinkedFile} from '../storage/linkedFiles';
+import {ThreadSource, threadSourcesOf} from '../storage/threadAggregate';
+import {meetingForNotePage, NotePageMeeting} from '../storage/threadProvenance';
 import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {FolderEntry, getCurrentNotePath, getPrivateDataDir, getPrivateTempDir, openPath} from '../supernote/fileSystem';
@@ -49,6 +51,7 @@ import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognitio
 import MarksColumn, {LASSO_KEY} from '../ui/capture/MarksColumn';
 import {MarksReturnTo} from '../ui/marksNav';
 import {useRecognitionQueue} from '../ui/capture/useRecognitionQueue';
+import {useProvenance} from '../ui/quickAdd/useProvenance';
 import QuickAddWidget, {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields} from '../ui/QuickAddWidget';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
 import {COLORS, FONT, useThemeColors} from '../ui/theme';
@@ -282,6 +285,37 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
         })()
       : '';
 
+  // Provenance (docs/dev/history/technical-design-tending-threads.md §3.4): a
+  // todo captured from a meeting's note page records that meeting. Resolved
+  // once per source page; at most one keyword read, for a shared note.
+  const [sourceMeeting, setSourceMeeting] = useState<NotePageMeeting | null>(null);
+  const sourceMeetingsRef = useRef(new Map<string, NotePageMeeting | null>());
+  const threadSourcesRef = useRef<ThreadSource[]>([]);
+  threadSourcesRef.current = threadSourcesOf(items, inbox && loaded ? {...inbox, path: loaded.paths.inboxFolder} : null);
+  const sourceKey = sourcePath ? `${sourcePath}#${sourcePage ?? ''}` : null;
+  useEffect(() => {
+    if (!sourcePath || !sourceKey) {
+      setSourceMeeting(null);
+      return;
+    }
+    const known = sourceMeetingsRef.current.get(sourceKey);
+    if (known !== undefined) {
+      setSourceMeeting(known);
+      return;
+    }
+    let alive = true;
+    meetingForNotePage(sourcePath, sourcePage ?? null, threadSourcesRef.current).then(found => {
+      sourceMeetingsRef.current.set(sourceKey, found);
+      if (alive) setSourceMeeting(found);
+      if (found) log('CaptureScreen: source page belongs to a meeting', found.item.kind, found.meetingIndex);
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceKey]);
+  const origin = useProvenance(sourceMeeting?.meeting ?? null);
+
   const inboxContext = async (dest: Destination) => {
     if (!loaded) {throw new Error('Not loaded yet.');}
     const inboxState = dest.type === 'inbox' ? await loadProjectFile('inbox', loaded.paths.inboxFolder) : null;
@@ -289,7 +323,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
   };
 
   const onAddTask = async (text: string, dest: Destination) => {
-    const {nextInbox} = await addTaskToDestination(buildTask(text, {linkedFile: linkedSource}), dest, await inboxContext(dest));
+    const {nextInbox} = await addTaskToDestination(buildTask(origin.apply(text), {linkedFile: linkedSource}), dest, await inboxContext(dest));
     if (nextInbox) {setCachedInbox(nextInbox);}
     log('CaptureScreen: todo saved', destinationLabel(dest), selectedMark ? 'mark' : 'lasso');
   };
@@ -326,6 +360,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
 
   const onCaptureSaved = async (mode: CaptureSaveMode) => {
     const savedTo = destination;
+    origin.added();
     if (selectedMark) {
       const open = selectedMark;
       const next = markAfter(open.mark.id);
@@ -548,6 +583,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
                 onAddMeeting={onAddMeeting}
                 initialDate={selectedMark ? markDate(selectedMark.mark) : undefined}
                 captureExtras={extras}
+                provenance={origin.provenance}
                 placeholder="Todo text"
                 textColor={textColor}
                 borderColor={borderColor}

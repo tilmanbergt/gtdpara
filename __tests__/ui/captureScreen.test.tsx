@@ -43,7 +43,7 @@ jest.mock('../../src/storage/dataCache', () => {
   };
 });
 jest.mock('../../src/ui/useCachedItems', () => ({useCachedItems: () => []}));
-jest.mock('../../src/ui/useCachedInbox', () => ({useCachedInbox: () => ({marks: mockState.marksInbox})}));
+jest.mock('../../src/ui/useCachedInbox', () => ({useCachedInbox: () => ({marks: mockState.marksInbox, tasks: [], meetings: []})}));
 jest.mock('../../src/storage/itemMutations', () => ({
   buildTask: (text: string, opts: {notePath?: string; linkedFile?: string}) => ({
     text,

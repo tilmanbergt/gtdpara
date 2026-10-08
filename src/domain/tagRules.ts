@@ -478,6 +478,23 @@ export function ruleSubtag(itemTags: string[], ruleTags: string[]): string {
 }
 
 /**
+ * The rule tag the item matched (docs/dev/history/technical-design-tending-threads.md
+ * §3.8) - the `{tag}` of a shared file name, so one rule on `sparring` and
+ * `retro` names its files `sparring max 2026` and `retro alpha 2026`. The
+ * first item tag (text order) that is a rule tag or nested under one wins;
+ * lowercased; `""` when none matches.
+ */
+export function ruleTypeTag(itemTags: string[], ruleTags: string[]): string {
+  const rulesLower = ruleTags.map(t => t.toLowerCase()).filter(Boolean);
+  for (const raw of itemTags) {
+    const tag = raw.toLowerCase();
+    const rule = rulesLower.find(ruleTag => tagMatchesRuleTag(tag, ruleTag));
+    if (rule) return rule;
+  }
+  return '';
+}
+
+/**
  * What renderPieceText needs to turn a `NotePiece` into real text - built
  * once per note-creation/refresh call from whatever the caller already has
  * (a Meeting, a Task, an item name), not stored anywhere. `date`/`time` are

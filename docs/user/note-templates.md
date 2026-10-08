@@ -47,12 +47,15 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
 
 The **Shared file name** can contain placeholders. Tap a placeholder under the field to insert it where the cursor is:
 
+- `{tag}`: the rule's tag the item matched - `retro` for `#retro/alpha` when the rule has the tags `sparring` and `retro` (always lowercase)
 - `{subtag}`: the part after the `/` of a nested tag - `sabina` for `#coaching/sabina` (always lowercase)
 - `{year}`: `2026`
 - `{quarter}`: `Q4`
 - `{month}`: `10`
 
 Example: one rule "Coaching" on the tag `coaching`, file name `Coaching {subtag} {year}`. A meeting tagged `#coaching/sabina` goes into `Coaching sabina 2026`, one tagged `#coaching/tom` into `Coaching tom 2026`, and one tagged just `#coaching` into `Coaching 2026`. The line below the field shows an example.
+
+With `{tag}`, one rule serves several kinds of meetings: a rule on the tags `sparring` and `retro` with the file name `{tag} {subtag} {year}` puts `#sparring/max` into `sparring max 2026` and `#retro/alpha` into `retro alpha 2026`.
 
 - A meeting uses its own date; a todo uses the day its note is created.
 - Once a note page exists, it stays where it is. Changing the tag, the date or the rule later does not move it.

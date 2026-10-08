@@ -26,6 +26,7 @@ import MeetingRow, {MEETING_ROW_HEIGHT, MeetingRowLayout} from '../../../ui/Meet
 import {LayoutSwitch} from '../../../ui/MeetingList';
 import {useListLayout} from '../../../ui/listLayout';
 import QuickAddWidget from '../../../ui/QuickAddWidget';
+import {useProvenance} from '../../../ui/quickAdd/useProvenance';
 import ReviewMasterDetail from '../../../ui/ReviewMasterDetail';
 import {common} from '../../../ui/commonStyles';
 import {useErrorStatus} from '../../../ui/status/StatusProvider';
@@ -66,6 +67,7 @@ function CloseOutMeetingRow({
       layout={layout}
       time="dateTime"
       source={{abbrev: current.abbrev ?? entry.item.name, name: entry.item.name}}
+      ownerPath={entry.item.path}
       state={state}
       textColor={textColor}
       borderColor={borderColor}
@@ -87,7 +89,8 @@ const CLOSE_OUT_RELATED_LIMIT = 5;
  * Meetings-to-close-out detail panel: what the meeting was, the one action
  * this step exists for (mark reviewed - toggles back if tapped again), the
  * note if there is one, a task-only quick-add fixed to the meeting's own
- * Project/Area for the follow-ups, and the open todos that share the
+ * Project/Area for the follow-ups (each records the meeting as its
+ * provenance, shown in Quick Add's grey line), and the open todos that share the
  * meeting's context tags (storage/meetingNoteAggregate.ts's relatedItemsFor -
  * the same match the meeting's note block lists), so results can be checked
  * against what's already captured.
@@ -130,6 +133,9 @@ function MeetingCloseOutDetail({
   };
 
   const destination: Destination = {type: 'item', kind: entry.item.kind, name: entry.item.name, path: entry.item.path};
+  // Follow-ups record the meeting they were agreed in (docs/dev/history/technical-design-tending-threads.md §3.4).
+  const origin = useProvenance(meeting);
+  const addWithProvenance = (text: string, dest: Destination) => onAddTask(origin.apply(text), dest).then(origin.added);
   const shownRelated = related.slice(0, CLOSE_OUT_RELATED_LIMIT);
 
   return (
@@ -163,7 +169,8 @@ function MeetingCloseOutDetail({
       <QuickAddWidget
         fixedDestination={destination}
         taskOnly
-        onAddTask={onAddTask}
+        provenance={origin.provenance}
+        onAddTask={addWithProvenance}
         onAddMeeting={noopAddMeeting}
         textColor={textColor}
         borderColor={borderColor}

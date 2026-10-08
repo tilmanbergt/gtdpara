@@ -25,20 +25,24 @@ You type tags; gtdpara writes fields. Besides the due date it records two dates 
 
 Todos added with older versions get no created date, and a todo checked before this version gets no completion date: gtdpara never makes up a date. See [Your files and folders](files-and-folders.md) for how the line is built and how Obsidian reads it.
 
+## Promises: #owe/name
+
+`#owe/name` marks something you promised someone outside a meeting, for example `#owe/lena`. It is not a flow tag: it goes together with `#next`, `#someday` or a due date. The todo shows under **I owe** in Lena's thread overview, see [Threads](threads.md). A plain `#owe` without a name is an ordinary tag.
+
 ## Now
 
 `#now` marks what you are doing right now, on top of `#next`. It drives [focus mode](daily.md).
 
 ## Context tags
 
-Any other tag is a context tag: a person (`#lena`), a topic (`#budget`) or a recurring meeting (`#team-sync`). Tap a context tag on Daily to see only matching items. Note templates can react to context tags - see [Tag Rules](note-templates.md).
+Any other tag is a context tag: a person (`#lena`), a topic (`#budget`) or a recurring meeting (`#team-sync`). Tap a plain context tag on Daily to see only matching items. Note templates can react to context tags - see [Tag Rules](note-templates.md).
 
 ## Nested tags
 
-A tag can have parts separated by `/`, for example `#coaching/sabina`. It is one tag: one chip in Quick Add, one tap target on Daily. Obsidian reads the same syntax as a nested tag.
+A tag can have parts separated by `/`, for example `#coaching/sabina`. It is one tag: one chip in Quick Add. Obsidian reads the same syntax as a nested tag.
 
 - A Tag Rule on `coaching` also applies to `#coaching/sabina`, `#coaching/tom` and so on. The part after the `/` can choose the shared file, see [Tag Rules](note-templates.md).
-- On Daily, tapping `#coaching/sabina` shows only items with exactly that tag; tapping `#coaching` does not include the nested ones.
+- Tapping a nested tag in any list opens its thread overview: everything around `#coaching/sabina` - upcoming meetings, open todos, what you wait for and what was agreed in past meetings. See [Threads](threads.md). On Daily, a nested tag does not filter the list; a plain tag does.
 
 ## Project and area abbreviations
 
@@ -49,4 +53,4 @@ A tag that matches a project's or area's abbreviation (for example `#GR`) is sho
 - `#prepped` and `#reviewed`: meeting preparation and review, see [Meetings](meetings.md)
 - `#monthly`: the meeting is a monthly highlight
 
-These words, the flow words, `wf` and `now` can't be used as abbreviations.
+These words, the flow words, `wf`, `owe` and `now` can't be used as abbreviations.

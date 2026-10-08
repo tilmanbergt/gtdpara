@@ -31,20 +31,12 @@
  * mid-edit or armed at a time - the caller (which owns one shared
  * `editTarget`/`armTarget`, see the tech design doc §8) decides.
  *
- * Tappable inline tags (technical-design-context-tags.md §7):
- * `contextTag`/`onToggleContext` are optional and only passed by Daily's own
- * instances (screens/DailyView.tsx) - without them every `#tag` in the row's
- * text renders as plain, unstyled text. When passed, `displayTaskText`'s
- * output is split into segments
- * (domain/markdown.ts's `splitTextWithTags`) and each context tag (reserved
- * flow-state/due/#now words excluded via `isContextTag` - see that
- * function's doc comment on why a stray `#someday` surviving display-
- * stripping under Daily's 'flat' context must stay inert) becomes its own
- * nested `<Text onPress>`, filled when it matches the active `contextTag`.
- * `onPress` on a tag segment doesn't propagate to the row's own
- * onStartEdit - React Native resolves a touch to the innermost element
- * carrying its own onPress, same mechanism the `#next`/`#now` label's
- * double-tap (ui/TaskLabels.tsx) relies on.
+ * Tappable inline tags (technical-design-context-tags.md §7): the title's
+ * `#tags` go through ui/TaggableText.tsx - nested tags open the thread
+ * overview with `ownerPath` as owner, and so does the `#w/f Name` label
+ * (docs/dev/history/technical-design-tending-threads.md §3.7);
+ * `contextTag`/`onToggleContext` (the plain-tag filter) are passed only by
+ * Daily's own instances (screens/DailyView.tsx).
  *
  * Title and labels are ONE <Text> (docs/dev/history/technical-design-waiting-for-0.7.md
  * §3.3): what's drawn (title, then labels as nested spans) and the height a
@@ -53,14 +45,15 @@
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {isContextTag} from '../domain/flowState';
-import {splitTextWithTags} from '../domain/markdown';
 import {Task} from '../domain/types';
 import {ClipIcon} from './icons';
 import {TaskLabelContext} from '../domain/taskLabels';
 import TaskLabels from './TaskLabels';
 import {TASK_COLUMN_WIDTH_PX, taskRowLayout} from './taskRowLayout';
-import {COLORS, FONT} from './theme';
+import {renderTaggableText} from './TaggableText';
+import {openThreadOverview} from './threadOverlayStore';
+import {WAITING_FOR_TYPE} from '../domain/flowState';
+import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
 
 /** Kept as an alias so callers' `context` props read as before. */
@@ -90,28 +83,6 @@ export function taskRowHeight(task: Task, columnWidthPx: number, context: TaskBa
   return TASK_ROW_CHROME_PX + taskRowLines(task, columnWidthPx, context, contextActive) * TASK_ROW_LINE_HEIGHT_PX;
 }
 
-/** Segments `text` into plain runs and tappable tag spans - see the module doc comment. Returns `text` unchanged (no splitting) when `onToggleContext` isn't passed, since only Daily's instances need this at all. */
-function renderTaggableText(
-  text: string,
-  contextTag: string | null | undefined,
-  onToggleContext: ((tag: string) => void) | undefined,
-): React.ReactNode {
-  if (!onToggleContext) return text;
-  return splitTextWithTags(text).map((segment, index) => {
-    if (segment.kind === 'text') return segment.value;
-    if (!isContextTag(segment.value)) return `#${segment.value}`;
-    const selected = segment.value === contextTag;
-    return (
-      <Text
-        key={`tag-${index}`}
-        onPress={() => onToggleContext(segment.value)}
-        style={selected ? styles.tagSelected : styles.tag}>
-        {`#${segment.value}`}
-      </Text>
-    );
-  });
-}
-
 interface Props {
   task: Task;
   /** Highlights this row (see the module doc comment). The real edit form
@@ -134,6 +105,8 @@ interface Props {
   contextTag?: string | null;
   /** Set only by Daily's own instances - present, every context tag in this row's text becomes its own tap target that calls this instead of onStartEdit; absent, tags render as plain text. */
   onToggleContext?: (tag: string) => void;
+  /** The item this row's todo lives in (the Inbox folder for Inbox rows): owner of the thread overview its nested tags and `#w/f Name` label open. */
+  ownerPath?: string | null;
   context: TaskBadgeContext;
   /** Computed via `taskRowHeight()`/`taskRowLines()` above by a caller
    * building a ui/PagedSection.tsx - overrides this row's default
@@ -163,6 +136,7 @@ export default function TaskRow({
   onToggleNow,
   contextTag,
   onToggleContext,
+  ownerPath,
   context,
   height,
   numberOfLines,
@@ -203,8 +177,14 @@ export default function TaskRow({
             <Text
               style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]}
               numberOfLines={numberOfLines ?? layout.lines}>
-              {renderTaggableText(layout.title, contextTag, onToggleContext)}
-              <TaskLabels labels={layout.labels} onToggleNow={onToggleNow} />
+              {renderTaggableText(layout.title, {contextTag, onToggleContext, ownerPath})}
+              <TaskLabels
+                labels={layout.labels}
+                onToggleNow={onToggleNow}
+                onOpenWaitingFor={
+                  task.waitingOn ? () => openThreadOverview({tag: `${WAITING_FOR_TYPE}/${task.waitingOn}`, ownerPath: ownerPath ?? null}) : undefined
+                }
+              />
             </Text>
           </Pressable>
         </View>
@@ -334,16 +314,5 @@ const styles = StyleSheet.create({
     fontSize: FONT.small,
     fontWeight: '700',
     marginRight: 1,
-  },
-  tag: {
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  tagSelected: {
-    color: COLORS.accentText,
-    fontWeight: '600',
-    backgroundColor: COLORS.accent,
-    borderRadius: 4,
-    paddingHorizontal: 3,
   },
 });

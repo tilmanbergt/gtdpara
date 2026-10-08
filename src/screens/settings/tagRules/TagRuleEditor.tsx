@@ -53,7 +53,7 @@ const PIECE_ROW_HEIGHT = 40;
 
 /**
  * The example line under "Shared file name": what the rule's template
- * produces for an item tagged `#<tag>/client` today, in the chosen location
+ * produces for an item tagged `#<first rule tag>/client` today, in the chosen location
  * (docs/dev/history/technical-design-split-by-tag.md §3.6) - same rendering and
  * sanitizing as storage/meetingNoteContent.ts's real file name.
  */
@@ -62,6 +62,7 @@ function sharedFilePreview(definition: TagRule): string {
     renderSharedFileName({
       template: resolvedSharedFileName(definition),
       ruleName: definition.name.trim() || 'Untitled',
+      tag: definition.tags[0]?.trim().toLowerCase() ?? '',
       subtag: 'client',
       date: todayIso(),
     }),

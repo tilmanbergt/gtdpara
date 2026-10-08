@@ -15,6 +15,7 @@ gtdpara is a calm GTD and PARA workspace for the Supernote. Your projects, areas
 - [Lasso: capture and mark for later](lasso.md)
 - [Tags](tags.md)
 - [Meetings](meetings.md)
+- [Threads](threads.md)
 
 ## Organizing
 
@@ -29,4 +30,5 @@ gtdpara is a calm GTD and PARA workspace for the Supernote. Your projects, areas
 - [Settings](settings.md)
 - [Profiles and the demo space](profiles-and-demo.md)
 - [Google Calendar and Gmail (experimental)](integrations.md)
+- [Using gtdpara with Obsidian](obsidian.md)
 - [Troubleshooting and reporting problems](troubleshooting.md)

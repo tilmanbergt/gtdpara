@@ -128,8 +128,7 @@ const COLUMN_WIDTH_PX = 678;
 // TodosSection and MeetingsSection are each the sole occupant of their own
 // weighted `<View style={{flex: weight}}>` box inside `styles.stackedColumn`
 // below, and self-measure into it (no `viewportHeight` props). 4:3 is the
-// ratio of `PAGE_SIZE.projectTodos`/`projectMeetings` (8:6), a starting
-// point to tune on the real device.
+// ratio of `PAGE_SIZE.projectTodos`/`projectMeetings` (8:6).
 const TODOS_WEIGHT = 4;
 const MEETINGS_WEIGHT = 3;
 
@@ -892,6 +891,7 @@ function TodosSection({
               linkedFile={row.task.linkedFile}
               onOpenLinkedFile={onOpenLinkedFile}
               onArmLink={() => onArmLink(row.index)}
+              ownerPath={itemPath}
               context="grouped"
               height={taskRowHeight(row.task, COLUMN_WIDTH_PX, 'grouped')}
               numberOfLines={taskRowLines(row.task, COLUMN_WIDTH_PX, 'grouped')}
@@ -1062,6 +1062,7 @@ function MeetingsSection({
                 file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile, onArm: () => onArmLink(row.index)}}
                 onPress={() => onStartEdit(row.index)}
                 state={editingIndex === row.index ? 'editing' : armingIndex === row.index ? 'arming' : undefined}
+                ownerPath={itemPath}
                 textColor={textColor}
                 borderColor={borderColor}
               />
@@ -1070,7 +1071,6 @@ function MeetingsSection({
             textColor={textColor}
             borderColor={borderColor}
           />
-
         </>
       ) : (
         <GoogleCalendarPanel

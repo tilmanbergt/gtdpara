@@ -223,13 +223,15 @@ export function recreatedPageNoticeText(isoDate: string): string {
 // ---- Shared file-name placeholders (docs/dev/history/technical-design-split-by-tag.md §3.3) ----
 
 /** The placeholders a Tag Rule's "Shared file name" understands, in the order the Settings chips show them. */
-export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{subtag}', '{year}', '{quarter}', '{month}'];
+export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{year}', '{quarter}', '{month}'];
 
 export interface SharedFileNameInput {
   /** The rule's "Shared file name" (or its rule name when that field is blank) - `resolvedSharedFileName`. */
   template: string;
   /** Fallback when the rendered name comes out empty. */
   ruleName: string;
+  /** `ruleTypeTag(...)` (domain/tagRules.ts) - the rule tag the item matched; `''` when none. */
+  tag?: string;
   /** `ruleSubtag(...)` (domain/tagRules.ts) - `''` when the item has no nested tag under the rule. */
   subtag: string;
   /** `YYYY-MM-DD` - a meeting's own date, today for a todo. */
@@ -238,7 +240,8 @@ export interface SharedFileNameInput {
 
 /**
  * Renders a shared file's base name (no folder, no ".note") from the rule's
- * template: `{subtag}` -> the nested-tag part (lowercased), `{year}` -> `2026`,
+ * template: `{tag}` -> the rule tag the item matched, `{subtag}` -> the
+ * nested-tag part (both lowercased), `{year}` -> `2026`,
  * `{quarter}` -> `Q4`, `{month}` -> `10`. Placeholders are matched
  * case-insensitively; any other `{...}` text is left exactly as typed. Runs
  * of whitespace collapse and the ends are trimmed, so a missing subtag
@@ -254,9 +257,9 @@ export function renderSharedFileName(input: SharedFileNameInput): string {
   const year = match ? match[1] : '';
   const month = match ? match[2] : '';
   const quarter = match ? `Q${Math.floor((Number(month) - 1) / 3) + 1}` : '';
-  const values: Record<string, string> = {subtag: input.subtag, year, quarter, month};
+  const values: Record<string, string> = {tag: input.tag ?? '', subtag: input.subtag, year, quarter, month};
   const rendered = input.template
-    .replace(/\{(subtag|year|quarter|month)\}/gi, (_all, key: string) => values[key.toLowerCase()])
+    .replace(/\{(tag|subtag|year|quarter|month)\}/gi, (_all, key: string) => values[key.toLowerCase()])
     .replace(/\s+/g, ' ')
     .trim();
   return rendered || input.ruleName.trim();

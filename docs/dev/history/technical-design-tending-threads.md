@@ -2,13 +2,25 @@
 
 Status: **design approved (all decisions in §4).** Requirements were clarified in conversation (October
 2026); the UX draft is a design canvas outside the repository. 0.10.0 is implemented on
-`feature/plain-files` (steps 1–3 of §3.1); 0.11.0 and 0.12.0 are not started.
+`feature/plain-files` (steps 1–3 of §3.1, As built §8); 0.11.0 on `feature/threads` (As built §9);
+0.12.0 is not started.
 
 **Revision (device test of 0.10.0):** the data files stay `.txt`. Supernote Cloud accepts `.md`
 files uploaded by the device and lets Obsidian download them, but refuses `.md` uploads from
 anywhere else ("This file cannot be uploaded"), so edits made in Obsidian could never reach the
 device. The `.md` switch, the conversion pass and the raw view/edit were built, tested in the demo
 space and removed again; §3.1.5 records what was learned.
+
+**Revision (review of 0.11.0 before its device test, decisions D12–D15):** a todo relates to a
+thread in up to three ways, each with its own source. *Agreed in* comes from provenance
+(`[meeting:: …]`) and makes **I owe**; *Waiting for* comes from `#wf/<counterpart>` or from bare
+`#wf` on an agreed todo; *Relevant* comes from the thread tag or the plain leaf. Provenance
+therefore no longer adds the meeting's thread tags to a todo: where a todo was agreed and where
+it is to be acted on are different facts (agreed in the 1:1 with Mieke, to be raised in the 1:1
+with Sven). `#owe/<counterpart>` records a promise made outside a meeting. Looking back gets a
+"Since <date>" row for todos done since the latest past meeting. §1.2, §1.4, §1.5, §3.2–§3.4,
+§3.5.2, §3.7, §3.9.2, §3.10, §3.11 and §6 are updated; §9 records what was built before this
+revision.
 
 This document covers one feature delivered in three releases:
 
@@ -54,8 +66,31 @@ Matching is read-time only; nothing is ever written into a line automatically:
 - an item tagged with the plain leaf (`#alpha`) belongs to the counterpart and shows up in every
   thread of that counterpart;
 - `#wf/alpha` is Waiting For, from counterpart `alpha` (Waiting For is just another type);
+- `#owe/alpha` is a promise to counterpart `alpha` made outside a meeting (decision D13);
 - a plain parent tag (`#retro`) does **not** reach down into every retro thread;
 - deeper nesting (`#coaching/client-a/2026`) belongs to thread `coaching/client-a`.
+
+#### 1.2.1 How a todo relates to a thread (decision D12)
+
+A todo can relate to a thread in three ways. Each has its own source, and each source means one
+thing only:
+
+| Relation | Source | Overview section |
+|---|---|---|
+| **Agreed in** the thread: a commitment made there | `[meeting:: …]` resolves to a meeting of the thread | **I owe** |
+| **Promised** to the counterpart outside a meeting | `#owe/<counterpart>` | **I owe** |
+| **Waiting for** the counterpart | `#wf/<counterpart>`; or bare `#wf` on a todo agreed in the thread; or bare `#wf` plus the thread tag or plain leaf | **Waiting for** |
+| **Relevant** for the thread: to be raised or acted on there | the thread tag (`#101/sven`) or the plain leaf (`#sven`) | **Relevant** |
+
+- Precedence: Waiting for, then I owe, then Relevant. A todo shows once, in the first section
+  that applies (agreed in the retro *and* tagged `#retro/alpha` is I owe).
+- Example: agreed in the 1:1 with Mieke to raise something with Sven. The line is
+  `- [ ] Raise budget question #101/sven [meeting:: 2026-09-30 1:1 Mieke 101/mieke]`. Mieke's
+  thread shows it under I owe and under her meeting of 30.9. in Looking back; Sven's thread
+  shows it under Relevant.
+- Provenance never writes tags; tags are only ever set by the user.
+- Todos from before 0.11.0 carry no provenance and appear only through their tags (Relevant,
+  Waiting for) until the user adds `#owe/<counterpart>`.
 
 Lenses: **thread** ("how are retros with alpha going?") and **counterpart** ("how is alpha
 overall?"). A type lens ("all retros") is out of scope.
@@ -90,10 +125,14 @@ from `#retro/alpha` in another Area.
   `[key:: value]`, the format the Obsidian Tasks plugin reads when its "Task Format" setting is
   Dataview, and Dataview itself reads.
 - Waiting For: `#wf/<counterpart>`, bare `#wf` without one (was `#waiting-for:<slug>`).
+- Promise outside a meeting: `#owe/<counterpart>` (from 0.11.0). Not a flow state: an owed todo
+  is still my own action and combines with `#next`, a due date and so on. A bare `#owe` has no
+  meaning and stays a plain tag.
 - Due: `[due:: YYYY-MM-DD]` (was `#due:YYYY-MM-DD`).
 - Created: `[created:: YYYY-MM-DD]` on **every new todo**.
 - Done: `[completion:: YYYY-MM-DD]` when a todo is checked.
-- Provenance: `[meeting:: YYYY-MM-DD <title>]` (§3.4).
+- Provenance: `[meeting:: YYYY-MM-DD <title>]` (§3.4); it records where a todo was agreed and
+  adds no tags.
 - Data files stay `project.txt`, `area.txt`, `Inbox.txt` (see the revision note at the top and
   §3.1.5). Old lines are not converted: every old form keeps being read, and a line gets the new
   syntax the next time gtdpara writes its span. Obsidian's Tasks and Dataview only index `.md`, so
@@ -104,12 +143,14 @@ from `#retro/alpha` in another Area.
 
 - Tapping a **nested** tag opens the overview in the thread lens. A **plain** tag keeps Daily's
   context filter. The overview has no "filter Daily" button.
-- Overview: left column "Ahead" (next meetings with "+ Next <type>", I owe, Waiting for) above
-  "Looking back" (one row per past meeting: agreed / done / open). Right column: Quick Add, then
-  the selected past meeting as a todo list (open, then done with date) and "Open note".
-  Default selection: the latest past meeting. A lens switch: thread | all of the counterpart.
-- Quick Add shows **one** grey line when gtdpara adds context in the background:
-  `↳ from Retro alpha · Tue 30.9. · adds #retro/alpha`, with ✕ to drop it. Nothing else is
+- Overview: left column "Ahead" (next meetings with "+ Next <type>", I owe, Waiting for,
+  Relevant; §1.2.1) above "Looking back" (on top a "Since <date>" row for todos done since the
+  latest past meeting, then one row per past meeting: agreed / done / open). Right column: Quick
+  Add, then the selected row's todos (a meeting: its agreed todos, open then done; the "Since"
+  row: the done todos) and, for a meeting, "Open note". Default selection: the latest past
+  meeting. A lens switch: thread | all of the counterpart.
+- Quick Add shows **one** grey line when gtdpara links a new todo to a meeting in the
+  background: `↳ from Retro alpha · Tue 30.9.`, with ✕ to drop the link. Nothing else is
   explained (the "+ Next" prefill speaks for itself).
 - Current page, Files area: tabs become Project Files | Resources | Area Files | **Threads**
   (Area page: Area Files | Resources | Project Files | **Threads**). Browse merges into
@@ -290,7 +331,9 @@ export function belongsToThread(tags: string[], thread: ThreadRef): boolean;    
 export function belongsToCounterpart(tags: string[], counterpart: string, types: string[]): boolean; // any "<type>/<cp>[/…]" for a known type, or the plain leaf
 ```
 
-`isContextTag` stays as it is; thread tags are context tags (except `wf/…`).
+`isContextTag` stays as it is; thread tags are context tags (except `wf/…`). `owe` is a reserved
+type like `wf`: `OWE` can't be an abbreviation, and `owe/<cp>` tags never make a thread of their
+own (they are never offered for "+ Next" and have no thread lens; §3.7).
 
 **Owner and scope** (decision D9): the overview is always opened with an owner, the item of
 the row whose tag was tapped (rows get an `ownerPath`; every list already knows its entries'
@@ -301,6 +344,11 @@ to entries inside the scope. Only when no owner is known at all (a defensive fal
 planned path) the owner is the item holding the latest meeting of the thread.
 The counterpart lens uses the types used for that counterpart inside the scope plus the plain
 leaf.
+
+Scope applies to where a todo is filed, for all sections (decision D15): an agreed todo filed in
+the Inbox does not appear in its meeting's thread until it is filed into the scope. Close-out,
+the overview's Quick Add and capture already file into the meeting's own Project/Area, so this
+only affects todos the user sends to the Inbox.
 
 ### 3.3 Aggregate (storage, 0.11.0)
 
@@ -313,7 +361,8 @@ export interface ThreadOverview {
   thread: ThreadRef;
   owner: {kind: 'project' | 'area'; name: string; path: string} | null;
   types: string[];                         // counterpart lens: the owner's types for this counterpart
-  ahead: {meetings: MeetingEntry[]; owe: TaskEntry[]; waiting: TaskEntry[]};
+  ahead: {meetings: MeetingEntry[]; owe: TaskEntry[]; waiting: TaskEntry[]; relevant: TaskEntry[]};
+  since: {from: string | null; done: TaskEntry[]};  // from = latest past meeting's date
   past: PastMeeting[];                     // newest first
 }
 export interface PastMeeting {
@@ -325,10 +374,22 @@ export interface PastMeeting {
 export function buildThreadOverview(items, inbox, tag, lens, ownerPath, today): ThreadOverview;
 ```
 
-- Everything below is limited to the scope of the owner (§3.2).
-- Ahead meetings: not cancelled, end date ≥ today, matching the lens. Owe: open, not cancelled
-  tasks matching the lens, flow state not Waiting For (Someday/Maybe included and labelled).
-  Waiting: open Waiting For tasks (`#wf/<cp>`, or a thread/leaf tag plus bare `#wf`).
+- Everything below is limited to the scope of the owner (§3.2), by where the todo is filed.
+- Ahead meetings: not cancelled, not ended, carrying the thread tag (thread lens) or a thread of
+  the counterpart or the plain leaf (counterpart lens). Unchanged by D12.
+- Todos (open, not cancelled) are classified once, in this order (§1.2.1):
+  1. **waiting**: flow state Waiting For and (`#wf/<cp>` for the lens's counterpart, or agreed
+     in a meeting of the lens, or the thread tag / a thread of the counterpart / the plain leaf);
+  2. **owe**: agreed in a meeting of the lens (provenance resolves, §3.4), or `#owe/<cp>` for the
+     lens's counterpart; Someday/Maybe included and labelled;
+  3. **relevant**: the thread tag (thread lens), a thread of the counterpart (counterpart lens),
+     or the plain leaf.
+  "A meeting of the lens" is a meeting with the thread tag (thread lens) or with any thread of
+  the counterpart (counterpart lens), anywhere in the scope, past or ahead.
+- **since**: done todos with `fields.completion` ≥ `from` that belong to the lens in any of the
+  three ways (relevant included). `from` = the date of the latest past meeting; no past meeting
+  → `from: null` and no row. Only todos ticked from 0.10.0 on have a completion date; others
+  never appear here.
 - Past: meetings that have ended, newest first; agreed items via provenance; age = today −
   (`created` ?? meeting date).
 - Entries carry item refs and full-array indexes (the index-safety rule), so every row is
@@ -337,23 +398,27 @@ export function buildThreadOverview(items, inbox, tag, lens, ownerPath, today): 
 ### 3.4 Provenance (0.11.0)
 
 **Key.** `meetingKey(meeting) = meetingPageKeyword(meeting)` (`<date> <display title>`, the
-same string shared note pages use). Written as `[meeting:: <key>]`.
+same string shared note pages use) without `#`, `[` and `]`: Obsidian reads a `#tag` inside an
+inline field as a tag of the task. The tag text stays, so two meetings with the same title on one
+day but different thread tags keep different keys (`2026-10-08 1:1 Mieke mh 101/mieke`). Written
+as `[meeting:: <key>]`; a stored key is normalized the same way before matching.
 
 **Resolution** (`resolveProvenance(task, items)`): exact key match among the meetings of the
-task's own scope, then of all items; if none matches (the meeting was renamed), a match on date
-plus a shared thread tag; else unresolved (shown as plain text "from <key>"). No cross-file
-rewriting when a meeting is renamed.
+task's own scope, then of all items; if none matches (the meeting was renamed), a meeting on the
+key's date whose thread tags (without `#`) appear as words in the key (decision D14; the todo's
+own tags are not consulted, since provenance no longer adds them); else unresolved (shown as
+plain text "from <key>"). No cross-file rewriting when a meeting is renamed.
 
 **Who writes it** (always visible before saving, through Quick Add's provenance line):
 
-| Place | Meeting | Adds tags |
-|---|---|---|
-| Review "Meetings to close out" Quick Add | the selected meeting | its thread tags |
-| Overview Quick Add | the selected past meeting | its thread tags |
-| Capture (lasso) and processing marks | the meeting whose note page the selection came from | its thread tags |
+| Place | Meeting |
+|---|---|
+| Review "Meetings to close out" Quick Add | the selected meeting |
+| Overview Quick Add | the selected past meeting |
+| Capture (lasso) and processing marks | the meeting whose note page the selection came from |
 
-"Adds tags": the meeting's thread tags (`threadsOfTags(meeting.tags)`) not yet in the text are
-appended. ✕ on the line drops both the field and the added tags for this one item.
+Only `[meeting:: key]` is written; no tags are added (D12). ✕ on the line drops the link for
+this one todo. The user adds a thread tag or `#owe/…` by typing it, as anywhere else.
 
 **Capture source → meeting** (`storage/threadProvenance.ts`'s `meetingForNotePage(absPath,
 page)`): own note (a meeting whose resolved `notePath` is that file), page link
@@ -368,7 +433,7 @@ provenance?: {label: string; onClear: () => void} | null;
 
 renders one 34 dp line between the chips row and the actions row. The screen decides what to
 write; the widget only shows the line. `onAddTask(text, destination)` is unchanged; the screen
-appends tags and passes `{meeting: key}` to `buildTask`.
+sets `[meeting:: key]` on the composed line (`applyProvenance`) and hands it to the add path.
 
 ### 3.5 The overview (0.11.0)
 
@@ -394,16 +459,18 @@ overlays.
 |---|---|
 | Header: Back, tag, owner, lens switch | 48 + 8 |
 | **Left**: "Ahead" section, fixed `PagedSection` | 560 |
-| — sub-heads Next meetings / I owe / Waiting for (30 each) | 90 |
-| — meeting rows 37, todo rows 45+ (wrapping accounted) | ≈ 470 |
+| — sub-heads Next meetings / I owe / Waiting for / Relevant (30 each, empty ones left out) | ≤ 120 |
+| — meeting rows 37, todo rows 45+ (wrapping accounted) | ≈ 440 |
 | gap | 18 |
-| **Left**: "Looking back", `PagedSection` of 57 dp two-line rows | ≈ 590 (≈ 9 rows + header) |
+| **Left**: "Looking back", `PagedSection` of 57 dp two-line rows, the "Since <date> · n done" row first | ≈ 590 (≈ 9 rows + header) |
 | **Right**: Quick Add (+ 34 provenance line) | 210 |
 | **Right**: selected meeting header (title, date, counts, "Open note") | 56 |
 | **Right**: Open / Done lists, one `PagedSection` | rest ≈ 900 |
 
-"Ahead" is one paged list with sub-head rows (meetings first, then I owe, then Waiting for),
-so it never clips; when everything fits, no pager shows.
+"Ahead" is one paged list with sub-head rows (meetings first, then I owe, then Waiting for,
+then Relevant), so it never clips; when everything fits, no pager shows. An empty section shows
+no sub-head. Selecting the "Since" row shows its done todos in the right column (grouped by done
+date, as the meeting panel does) with no "Open note" and no provenance line in Quick Add.
 
 #### 3.5.3 Components
 
@@ -446,7 +513,9 @@ The two copies of `renderTaggableText` become one `ui/TaggableText.tsx`:
   entry's item path, Inbox lists the Inbox folder);
 - a plain context tag → tappable only when the screen passes `onToggleContext` (Daily's filter,
   unchanged);
-- `#w/f Name` labels (`ui/TaskLabels.tsx`) open the overview for `wf/<name>`;
+- `#w/f Name` labels (`ui/TaskLabels.tsx`) and `#owe/<name>` tags open the overview in the
+  **counterpart lens** for `<name>` (decision D13): these tags name a counterpart, not a thread.
+  The `wf/<name>` thread lens from the first 0.11.0 build goes away;
 - Daily's filter stays a toggle on plain tags only. A nested tag on Daily no longer filters
   (decided).
 
@@ -478,10 +547,10 @@ editor offers `{tag}` as a tappable placeholder like the others.
 #### 3.9.2 Which counterparts exist
 
 `counterpartsOf(item, ruleTypes)` (pure): every counterpart of a nested tag whose type is in
-`ruleTypes` (Tag Rule tags plus `wf`) in the item's tasks and meetings (not cancelled, done included), plus every line of its `## Threads` section. Each
+`ruleTypes` (Tag Rule tags plus `wf` and `owe`) in the item's tasks and meetings (not cancelled, done included), plus every line of its `## Threads` section. Each
 gets `status: 'active' | 'inactive' | 'new'` (new = in use, no line yet) and its types.
 
-**Decision D2 (decided):** only nested tags whose type is a Tag Rule tag (any enabled rule, any context) or `wf` make counterparts. Other nested tags (`#tax/2026`) stay plain context tags: no confirmation, no Threads line. They still open the overview when tapped (thread lens only).
+**Decision D2 (decided, extended by D13):** only nested tags whose type is a Tag Rule tag (any enabled rule, any context), `wf` or `owe` make counterparts. Other nested tags (`#tax/2026`) stay plain context tags: no confirmation, no Threads line. They still open the overview when tapped (thread lens only).
 
 **Decision D3 (decided):** "reactivate on reuse" is asked where counterparts are tended, not
 while saving: an inactive counterpart that gets a new future meeting appears in Review's and the
@@ -522,24 +591,24 @@ status line. No open items → a single confirmation.
   placed after "Meetings to close out". Count = new + active counterparts.
 - `storage/threadAggregate.ts`'s `buildTendingRoster(items, inbox, today)`: per Project/Area
   (Active and On Hold), its new and active counterparts with signals: last meeting date, next
-  meeting date or none, open I-owe count, oldest Waiting For age. No sorting by urgency: groups in
+  meeting date or none, open I-owe count (§1.2.1: agreed or `#owe`), oldest Waiting For age. No sorting by urgency: groups in
   the Projects/Areas order, counterparts alphabetically.
 - `screens/review/steps/TendingThreadsStep.tsx` with `ReviewMasterDetail`: left the roster
   (frozen list as in other steps; New block on top), right `screens/thread/ThreadSummary.tsx`
-  (next meetings or "+ Next <type>", I owe, Waiting for, the last 3 past meetings, "Open
-  overview ›", "Set inactive"). "Open overview" opens the overlay over Review; Back returns to the
+  (next meetings or "+ Next <type>", I owe, Waiting for, Relevant, the last 3 past meetings,
+  "Open overview ›", "Set inactive"). "Open overview" opens the overlay over Review; Back returns to the
   step as it was.
 - Recap counts: confirmed, set inactive, next meetings added.
 
 ### 3.11 "Since last time" note piece (0.12.0)
 
 - New `PieceType` `'sinceLast'`, meeting context only, default off.
-- `storage/threadAggregate.ts`'s `buildSinceLast(meeting, items, inbox)`: thread = the
-  meeting's first thread tag; previous = the latest meeting of that thread before this one.
-  Returns, for "For this <type>": done since (completion ≥ previous date, thread match or agreed
-  in previous), still open from previous (provenance), open Waiting For of the counterpart; for
-  "Also open with <counterpart>": open items of the counterpart's other threads and the plain
-  leaf.
+- `storage/threadAggregate.ts`'s `buildSinceLast(meeting, items, inbox)`: a printed snapshot of
+  the overview (§3.3) for the meeting's first thread tag, thread lens, owner = the meeting's
+  item, as of the moment the note is written. Blocks: "Agreed last time" (todos agreed in the
+  previous meeting of the thread, open first, then done), "I owe" (other open I-owe todos),
+  "Waiting for", "Relevant", "Done since <date>". Previous = the latest meeting of the thread
+  before this one.
 - `renderPieceText` formats it as in the UX draft; at most **6 lines per block**, then
   "… +N more" (decision D10, decided). Empty blocks are omitted; no previous meeting → the
   piece renders nothing.
@@ -560,7 +629,11 @@ status line. No open items → a single confirmation.
 | D8 | Created/completion dates | **decided:** from 0.10.0 on, never invented for existing todos |
 | D9 | Owner and scope | **decided:** owner = item of the tapped row (Inbox included, no exception); scope = its Area plus the Area's Projects; both lenses scoped (§1.3, §3.2) |
 | D10 | "Since last time" length | **decided:** 6 lines per block, then "… +N more" |
-| D11 | Renamed meetings | **decided:** provenance falls back to date + shared thread tag; no rewriting of other files (§3.4) |
+| D11 | Renamed meetings | **decided:** provenance falls back to date + thread tags; no rewriting of other files (§3.4); refined by D14 |
+| D12 | What provenance and tags mean | **decided:** `[meeting::]` = agreed in (→ I owe, with bare `#wf` → Waiting for); thread tag / leaf = relevant; provenance adds no tags; precedence Waiting for > I owe > Relevant (§1.2.1, §3.3) |
+| D13 | Promises outside meetings | **decided:** `#owe/<counterpart>` → I owe; reserved like `wf`; `#wf/x` and `#owe/x` open the counterpart lens (§1.4, §3.2, §3.7) |
+| D14 | Renamed-meeting fallback | **decided:** date + the meeting's thread tags found in the key, not the todo's tags (§3.4) |
+| D15 | Scope of agreed todos | **decided:** by where the todo is filed, like everything else; an agreed todo in the Inbox shows once it is filed (§3.2) |
 
 ## 5. Files
 
@@ -619,7 +692,13 @@ code-health baseline and must not grow: the provenance line and seed logic go in
 - `nextMeetingSeed`: two meetings, one meeting, base in the future, stepping past today,
   multi-day meetings.
 - Aggregates: overview lists, counts, ages; roster signals; sinceLast blocks and limits.
-- Provenance resolution: exact, renamed (fallback), unresolved.
+- Provenance resolution: exact, renamed (fallback via the key's thread tags), unresolved;
+  applyProvenance adds no tags.
+- Classification (§1.2.1): agreed only → I owe; `#owe/cp` only → I owe; tag only → Relevant;
+  agreed + same thread tag → I owe once; agreed in Mieke's thread + `#101/sven` → I owe for Mieke,
+  Relevant for Sven; `#wf/cp` → Waiting for; bare `#wf` + agreed → Waiting for; counterpart lens
+  collects all threads of the counterpart; "Since" row (completion ≥ latest past meeting, none
+  before 0.10 data, no row without a past meeting).
 - Smoke render: App with the overlay open; ThreadsTab; TendingThreadsStep.
 
 ### On the device (checklist per release)
@@ -633,9 +712,12 @@ code-health baseline and must not grow: the provenance line and seed logic go in
   editing a todo keeps its created date; Daily, Inbox, Current, Week, Month and Review show the
   same todos as in 0.9; a `.txt` edited in Obsidian's Paired folder still syncs to the device.
 - 0.11.0: tap a nested tag in Daily, Current, Week day panel, Review → overlay; Back and tab tap
-  close it; edit a todo in the overlay; close-out Quick Add shows the provenance line and writes
-  the field; capture from a meeting note page gets provenance; "+ Next" in the overlay; `{tag}`
-  file names.
+  close it; edit a todo in the overlay; close-out Quick Add shows the provenance line
+  ("↳ from …", no "adds") and writes only the field; capture from a meeting note page gets
+  provenance; a todo agreed with Mieke and tagged `#101/sven` shows under I owe for Mieke and
+  Relevant for Sven; `#owe/x` shows under I owe; tapping `#w/f X` or `#owe/x` opens the
+  counterpart lens; the "Since" row lists todos ticked since the last meeting; "+ Next" in the
+  overlay; `{tag}` file names.
 - 0.12.0: New counterpart → Tend writes the line; Not writes inactive; Threads tab filter and ✕;
   Browse while refiling and linking; Review step with roster, summary, "Open overview" and back;
   set inactive with open items; "Since last time" on a new meeting note.
@@ -702,3 +784,135 @@ removed before the release (D5, D6 withdrawn); what was learned is in §3.1.5.
 
 Off-device: `npm run check` (tsc, ESLint, 440 Jest tests, script, help-page and code-health
 tests, code health). T0 passed (§7). The device checklist of §6 "0.10.0" is still open.
+
+## 9. As built (0.11.0)
+
+0.11.0 "Threads" is §3.2–§3.8 on `feature/threads`; every commit ends with `npm run check` green.
+The commits below were built before the revision D12–D15 (top of this document); where this
+section says provenance adds thread tags, or that I owe / Waiting for are tag-based, the
+revision replaces it. The rework is recorded at the end of this section.
+
+- `dc60999` Preparation, behaviour unchanged: the overlay hosting moved out of `App.tsx` (now
+  `screens/useAppOverlays.tsx`, so `App.tsx` fell below 1,000 lines and out of the code-health
+  baseline) and one `ui/TaggableText.tsx` replaced the two `renderTaggableText` copies.
+- `d2648a1` `domain/threads.ts` (`threadOf`, `threadsOfTags`, `belongsToThread`,
+  `belongsToCounterpart`, `inThreadLens`, `typesForCounterpart`, `scopeOf`) and
+  `domain/nextMeeting.ts` (`nextMeetingSeed`), with tests.
+- `d23f852` `domain/provenance.ts` (`meetingKey`, `provenanceOf`, `applyProvenance`,
+  `provenanceLabel`, `resolveProvenance`) and `storage/threadAggregate.ts`
+  (`buildThreadOverview`, both lenses, scoped), with tests.
+- `95b6ab9` Quick Add's `provenance` and `meetingSeed` (`ui/quickAdd/ProvenanceLine.tsx`,
+  `useDraftRequests.ts`, `useProvenance.ts`), `storage/threadProvenance.ts`
+  (`meetingForNotePage`), provenance written from "Meetings to close out" and from capture/marks.
+- `ab0399a` The overlay (`ui/threadOverlayStore.ts`, `screens/thread/*`), tap routing
+  (`ownerPath` on `TaskRow`/`MeetingRow` in every list, `#w/f Name` label), App smoke test.
+- `6918894` `{tag}` (`ruleTypeTag`, the placeholder chip, help page Note templates).
+- `69ec06f` Help pages Threads and Using gtdpara with Obsidian, the pages that changed, CHANGELOG,
+  README, design-overview, dev README.
+
+Choices where §3 left a detail open, and deviations:
+
+- **Overlay host.** `App.tsx` calls `useAppOverlays(inTabs, activeTab)` instead of rendering the
+  overview itself; the hook lives in `screens/` because it imports a screen (`ui/` never imports
+  from `screens/`). An overview requested outside the tab shell (a nested tag tapped in focus
+  mode) is dropped, so focus mode never shows it.
+- **Writing provenance.** The screens do not pass `{meeting: key}` to `buildTask`; they run
+  Quick Add's composed line through `applyProvenance` (missing thread tags appended to the text,
+  `[meeting:: key]` set) and hand that line to the unchanged add path. One mechanism for all
+  three writers, and Review's shared `onAddTask` needs no new parameter. The key leaves out `#`,
+  `[` and `]` (§3.4): brackets would break the field, and Obsidian would count the meeting's
+  tags as the todo's.
+- **Past and ahead.** "Past" is a meeting that has ended (`meetingEndMs <= now`), "ahead" one that
+  hasn't, so a meeting earlier today that is over is already in Looking back and can be
+  selected for its follow-ups. `buildThreadOverview` therefore takes `now: Date`, not `today`.
+  Cancelled meetings are in neither list.
+- **Overview shape.** `owner` can be the Inbox (`kind: 'inbox'`); `scope` (the paths) is part of the
+  result; `types` lists the thread's own type first. Agreed todos are found with
+  `resolveProvenance` (D11 fallback included), not only by exact key; cancelled ones are left out.
+- **Waiting for** in the thread lens also lists `#wf/<counterpart>` todos without the thread tag
+  (what I wait for from alpha matters in every alpha thread).
+- **Rows.** Ahead and the meeting panel use the flat `TaskRow` (Someday/Maybe keep their tag in
+  the title as their label); done todos in the panel are grouped under "Done · Tue 6.10." heads
+  instead of a date per row; Looking back uses the two-line `MeetingRow` with the counts in its
+  second line (`3 agreed · 1 done · 2 open, oldest 12 d`). The panel's button is "Open note", or
+  "+ Note" (open-or-create with the usual confirmation) when the meeting has none.
+- **Quick Add in the overview.** Destination: the "+ Next" base meeting's item until a meeting is
+  added, else the selected past meeting's item while the provenance line is on, else the owner
+  (Inbox without one). Quick-file works in edit mode; there is no Refile (no Files pane).
+- **"+ Next".** Offered only for types with a meeting in the overview (`wf` never). A seed that
+  arrives while an edit is open waits until the edit has closed (`useDraftRequests`); a
+  `prefill` keeps being dropped as before. `useDraftRequests` took over the prefill effect, so
+  `QuickAddWidget.tsx` got shorter. No info line after "+ Next".
+- **Provenance line** sits directly above the actions row in both variants (in capture above the
+  Save buttons), only in create mode on the Todo tab.
+- **Capture.** The source page's meeting is resolved once per source page and kept for the
+  screen's lifetime: once for the lasso, once per marked page when marks are processed (so more
+  than one keyword read when marks from several shared-note pages are processed).
+- **Tap routing.** Nested context tags are tappable in every `TaskRow`/`MeetingRow`, also where the
+  row's own tap selects (Review's close-out list). Tags in rows are shown as typed
+  (`TextSegment.raw`), no longer lowercased. The tappable `#w/f Name` label is underlined; a tap
+  on it opens the overview instead of starting an edit.
+- **Header.** Owner as "in <item name>" (the item tapped in, not the widened Area); lens switch
+  labels `#retro/alpha` | `All alpha`.
+- No `domain/helpTopics.ts` mapping (the overview is not a tab; "?" closes it and opens the tab's
+  page) and no debug-bundle line (the overview keeps no state beyond the session).
+
+Off-device: `npm run check` (tsc, ESLint, 502 Jest tests including the App smoke test with the
+overview open, script, help-page and code-health tests, code health). The device checklist of §6
+"0.11.0" and the steps of the help page "Using gtdpara with Obsidian" are still open.
+
+
+### Rework D12–D15
+
+The revision at the top of this document, on `feature/threads`; every commit ends with
+`npm run check` green.
+
+- `b972f16` Write provenance as the meeting field only: `applyProvenance(line, key)` sets
+  `[meeting:: key]` and leaves the text as typed (`provenanceOf`, `provenanceTags` and the
+  `Provenance` type are gone); `provenanceLabel` is `↳ from <title> · <day>`. All three writers
+  go through `ui/quickAdd/useProvenance.ts`, unchanged otherwise. `resolveProvenance` takes only
+  the todo's fields: the fallback (D14) is a meeting on the key's date with one of its thread tags
+  among the key's words. Tests: provenance cases, `useProvenance` (no "adds", ✕ for one todo).
+- `67e8a27` Classify thread todos as waiting, owed or relevant: `buildThreadOverview` per §3.3
+  (`ahead.relevant`, `since`), `OWE_TYPE`, `isCounterpartType` and `owedTo` in
+  `domain/threads.ts`, `OWE` refused in `validateAbbrev`, the "Relevant" sub-list in
+  `AheadSection`; help pages Threads and Tags, design-overview. Tests: §6 "Classification" with
+  the Mieke/Sven example.
+- `1058322` Show what was done since the latest meeting in Looking back: the "Since" row
+  (`LookingBackSection`), `PastMeetingPanel` taking a `PanelSelection` (meeting or since),
+  `sinceRowLabel`; App smoke test selects the row.
+- `42135dd` Open the counterpart lens from `#w/f` labels and `#owe` tags: `openThreadOverview`
+  forces the counterpart lens for `wf`/`owe`; the header shows "All <name>" without the switch.
+- `b42f25c` The help pages Lasso and Review still said a todo from a meeting gets its thread tag;
+  Threads names where a todo counts (D15); README.
+
+Choices where the design left a detail open, and deviations:
+
+- **A meeting of the lens** is one the overview lists: the lens's tags, so in the thread lens
+  also a meeting with only the plain leaf (`#mieke`), and in the counterpart lens any thread of
+  the counterpart or the leaf, inside the scope, past, ahead or cancelled. §3.3 says "thread tag /
+  any thread of the counterpart"; including the leaf keeps every open todo counted under a
+  meeting in Looking back also in I owe or Waiting for.
+- **Waiting for** takes the user's wording of §1.2.1 literally: `#wf/<counterpart>`, or a *bare*
+  `#wf` with the agreement or the lens's tags. A todo agreed with Mieke and tagged `#wf/sven` is
+  Waiting for in Sven's threads and I owe in Mieke's (§3.3's looser list would have made it
+  Waiting for in both).
+- **The lens's tags** in the counterpart lens are the counterpart's thread types without `wf` and
+  `owe`: `#wf/<cp>` and `#owe/<cp>` have their own meaning, so a bare `#wf` next to `#owe/mieke`
+  stays I owe in both lenses.
+- **`#owe/<cp>`** stays a context tag (tag chips, note keywords, tappable); only the bare `owe` is
+  refused as an abbreviation, by `validateAbbrev`, since `isContextTag('owe')` stays true (a bare
+  `#owe` is a plain tag). `wf`/`owe` overviews are forced to the counterpart lens in
+  `openThreadOverview` and again in `buildThreadOverview`, so no caller can open a `wf` thread lens.
+- **Display order** in Ahead is §3.5.2's (Next meetings, I owe, Waiting for, Relevant); the
+  precedence Waiting for > I owe > Relevant decides only where a todo goes.
+- **Since** lists done, not cancelled todos with `completion ≥` the latest past meeting's date,
+  latest first; the panel groups them under the same "Done · <day>" heads as a meeting's done
+  todos, its header reads "Since <day>" / "n done since the latest meeting". The row is drawn at
+  the two-line meeting row's height (57 dp), so the list pages by one height.
+- Point 7 of the rework brief (an Obsidian help page change) carried no content and was left out;
+  `docs/user/obsidian.md` is unchanged.
+
+Off-device: `npm run check` (tsc, ESLint, 526 Jest tests including the App smoke test with the
+overview open, the "Since" row selected and a `#wf/…` overview, script, help-page and
+code-health tests, code health). The device checklist of §6 "0.11.0" is still open.

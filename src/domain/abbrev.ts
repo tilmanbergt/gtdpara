@@ -13,6 +13,7 @@
  * unit-testable via the project's standalone Node scripts without a device.
  */
 import {isContextTag} from './flowState';
+import {OWE_TYPE} from './threads';
 import {extractContextTags} from './markdown';
 import {ItemStatus} from './types';
 
@@ -43,7 +44,9 @@ export interface AbbrevValidation {
  * - Must not collide (case-insensitive) with a reserved flow-state word -
  *   reuses domain/flowState.ts's `isContextTag` exclusion list as-is
  *   (next/someday/maybe/now/wf(/*)/waiting-for(:*)/due(:*)) rather than maintaining
- *   a second reserved-word list that could drift from it.
+ *   a second reserved-word list that could drift from it; plus `owe`, the
+ *   promise type (domain/threads.ts's OWE_TYPE), which stays a plain tag when
+ *   bare and so is not excluded there.
  * - Must not collide (case-insensitive) with any other Project/Area's
  *   abbreviation - global scope across both kinds together, not scoped
  *   per-kind (an Area and a Project can't share one either).
@@ -52,7 +55,7 @@ export function validateAbbrev(candidate: string, existingAbbrevs: ExistingAbbre
   const trimmed = candidate.trim();
   if (trimmed.length === 0) return {valid: false, reason: {kind: 'empty'}};
   const normalized = normalize(trimmed);
-  if (!isContextTag(normalized)) return {valid: false, reason: {kind: 'reserved'}};
+  if (!isContextTag(normalized) || normalized === OWE_TYPE) return {valid: false, reason: {kind: 'reserved'}};
   const collision = existingAbbrevs.find(entry => normalize(entry.value) === normalized);
   if (collision) return {valid: false, reason: {kind: 'duplicate', usedBy: collision.itemName}};
   return {valid: true};

@@ -17,6 +17,10 @@ A row of recently used tags lets you insert a tag with one tap. A space typed ri
 
 Choose the **Meeting** tab, write the title, set the date and the time. For the time field see [Week and Month](week-and-month.md) (for example `15-16.30` or `2d`). The small **M** marks a monthly highlight.
 
+## The grey line: where a todo comes from
+
+Where a todo is agreed in a meeting - in a thread overview, in the Review step **Meetings to close out**, or when you capture from a meeting's note page - Quick Add shows one grey line above its buttons, for example `↳ from Retro alpha · Wed 30.9.`. The new todo then records that meeting at the end of its line; its tags stay as you type them. Tap ✕ on the line to add this one todo without the link. See [Threads](threads.md).
+
 ## Adding a note
 
 On a project's or area's Current tab, the **Note** tab creates a new Supernote note with the title you write. It is created in the folder the Files pane is showing inside the project or area. Tags in the title become the note's keywords.

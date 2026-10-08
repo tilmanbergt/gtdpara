@@ -2,6 +2,7 @@ import {spliceWordAtSelection} from '../../src/domain/clipboardText';
 import {noteCreationConfirmText} from '../../src/domain/fileChangeText';
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
 import {renderSharedFileName} from '../../src/domain/sharedNotePages';
+import {ruleTypeTag} from '../../src/domain/tagRules';
 
 // docs/dev/history/technical-design-split-by-tag.md §3.3, §3.5, §3.6
 
@@ -103,5 +104,23 @@ describe('noteCreationConfirmText', () => {
       expect(t.detail).toContain('Earlier content is not restored');
       expect(t.detail).toContain(full);
     }
+  });
+});
+
+// docs/dev/history/technical-design-tending-threads.md §3.8: one rule for several types.
+describe('{tag} in shared file names', () => {
+  it('names the file after the rule tag the item matched', () => {
+    const tag = ruleTypeTag(['next', 'retro/alpha'], ['sparring', 'retro']);
+    expect(tag).toBe('retro');
+    const rendered = renderSharedFileName({template: '{tag} {subtag} {year}', ruleName: 'Sessions', tag, subtag: 'alpha', date: '2026-10-02'});
+    expect(rendered).toBe('retro alpha 2026');
+    expect(renderSharedFileName({template: '{TAG} {year}', ruleName: 'S', tag: 'sparring', subtag: '', date: '2026-10-02'})).toBe('sparring 2026');
+  });
+  it('leaves {tag} empty when no rule tag matches', () => {
+    expect(ruleTypeTag(['retrox/a', 'other'], ['retro'])).toBe('');
+    expect(renderSharedFileName({template: 'Notes {tag} {year}', ruleName: 'Notes', subtag: '', date: '2026-10-02'})).toBe('Notes 2026');
+  });
+  it('matches a plain rule tag and keeps the first match in text order', () => {
+    expect(ruleTypeTag(['Sparring', 'retro/a'], ['RETRO', 'sparring'])).toBe('sparring');
   });
 });

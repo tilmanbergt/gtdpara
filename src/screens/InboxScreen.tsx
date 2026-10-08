@@ -807,6 +807,7 @@ export default function InboxScreen({
                       isEditing={editingTaskIndex === row.index}
                       isArming={armingTaskIndex === row.index}
                       onStartEdit={() => startEditTarget('task', row.index)}
+                      ownerPath={inboxPath}
                       onToggleDone={() => handleToggleTaskDone(row.index)}
                       onCreateNote={() => handleTaskNote(row.index)}
                       onOpenNote={() => handleTaskNote(row.index)}
@@ -865,6 +866,7 @@ export default function InboxScreen({
                         note={{onOpen: () => handleMeetingNote(row.index), onCreate: () => handleMeetingNote(row.index)}}
                         file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile, onArm: () => armLinkTarget('meeting', row.index)}}
                         onPress={() => startEditTarget('meeting', row.index)}
+                        ownerPath={inboxPath}
                         state={
                           editingMeetingIndex === row.index ? 'editing' : armingMeetingIndex === row.index ? 'arming' : undefined
                         }
