@@ -1075,7 +1075,10 @@ tab with filter and close-out, of the Review step with summary, Tend and the ove
 and of the Browse merge; script, help-page and code-health tests, code health). Open:
 
 - the device checklist of §6 "0.12.0", including the row heights of the Threads tab (44/57/37 dp)
-  and the Review roster (57 dp) and the summary's length on the A5 X;
+  and the Review roster (57 dp) and the summary's length on the A5 X.
+
+Accepted for the 0.12.0 release:
+
 - the help page "Using gtdpara with Obsidian" fix of §5 "Preparation" (verified Tasks setting
   names and example queries) was not done: no verified wording was available here;
 - "Not" on a counterpart back in use lasts for the session only (see Back in use above).

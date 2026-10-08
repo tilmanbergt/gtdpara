@@ -10,7 +10,7 @@ keeps its thread: when you meet next, what you agreed last time, what you owe an
 waiting for. A project or area opens on its Threads tab, and the Weekly Review asks once a week
 which people and series you still tend. See [Threads](docs/user/threads.md).
 
-> Status: hobby project, first public release (0.1.0). Expect rough edges.
+> Status: hobby project. Expect rough edges.
 > Issues and ideas are welcome.
 
 <table>
