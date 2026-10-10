@@ -11,12 +11,14 @@
  * - **Active** - two lines: the counterpart, then "last · next" (or the
  *   one-off label, decision D17) and the open I-owe / oldest Waiting-for
  *   counts. ▸ expands its meeting threads with their next date and "+ next";
- *   `wf`/`owe` are no threads. Tapping the name filters the Todos and
- *   Meetings on the right by the counterpart (§1.2.1); tapping it again, or
- *   the pill above Quick Add, clears the filter. › opens its overview.
- *   "Set inactive" shows on the filtered row and runs the close-out
- *   (ui/CounterpartCloseOut.tsx).
- * - **Inactive** - folded into one row; unfolded, each can be tended again.
+ *   `wf`/`owe` are no threads. Tapping the name opens its overview. The
+ *   "Filter" pill filters the Todos and Meetings on the right by the
+ *   counterpart (§1.2.1); tapping it again ("Filter ✕"), or the pill above
+ *   Quick Add, clears the filter. "Set inactive" shows on the filtered row
+ *   and runs the close-out (ui/CounterpartCloseOut.tsx).
+ * - **Inactive** - folded into one row; unfolded, each can be tended again
+ *   or filtered; its name opens the overview too.
+ * - **New** rows: the name opens the overview as well, to decide Tend / Not.
  *
  * Every status write goes to the scope's owner file (decision D16) through
  * storage/counterparts.ts. The signals are storage/tendingRoster.ts's.
@@ -164,12 +166,22 @@ export default function ThreadsTab({path, selected, onSelect, onNextMeeting, vie
       {label}
     </Text>
   );
-  const nameText = (entry: RosterEntry) => (
+  const isSelected = (entry: RosterEntry) => selected?.leaf === entry.counterpart.leaf;
+  const filterAction = (entry: RosterEntry) => (
     <Text
+      key="filter"
       onPress={() => toggleSelect(entry)}
       suppressHighlighting
+      style={[styles.action, {color: textColor, borderColor}, isSelected(entry) && styles.actionOn]}>
+      {isSelected(entry) ? 'Filter ✕' : 'Filter'}
+    </Text>
+  );
+  const nameText = (entry: RosterEntry) => (
+    <Text
+      onPress={() => openOverview(entry)}
+      suppressHighlighting
       numberOfLines={1}
-      style={[styles.name, {color: textColor}, selected?.leaf === entry.counterpart.leaf && styles.nameSelected]}>
+      style={[styles.name, {color: textColor}, isSelected(entry) && styles.nameSelected]}>
       {entry.counterpart.leaf}
     </Text>
   );
@@ -223,15 +235,13 @@ export default function ThreadsTab({path, selected, onSelect, onNextMeeting, vie
               )}
               {nameText(row.entry)}
               <View style={styles.spacer} />
-              {selected?.leaf === cp.leaf &&
+              {isSelected(row.entry) &&
                 action('Set inactive', () =>
                   setInactive(row.entry).then(result => {
                     if (result === 'closeOut') setCloseOut(row.entry);
                   }),
                 )}
-              <Text onPress={() => openOverview(row.entry)} suppressHighlighting style={[styles.open, {color: textColor}]}>
-                ›
-              </Text>
+              {filterAction(row.entry)}
             </View>
             <Text style={[styles.small, styles.second, {color: textColor}]} numberOfLines={1}>
               {counts ? `${meetingText} · ${counts}` : meetingText}
@@ -263,9 +273,7 @@ export default function ThreadsTab({path, selected, onSelect, onNextMeeting, vie
             {nameText(row.entry)}
             <View style={styles.spacer} />
             {action('Tend', () => tend.setStatus(row.entry, 'active'))}
-            <Text onPress={() => openOverview(row.entry)} suppressHighlighting style={[styles.open, {color: textColor}]}>
-              ›
-            </Text>
+            {filterAction(row.entry)}
           </View>
         );
     }
@@ -304,6 +312,6 @@ const styles = StyleSheet.create({
   spacer: {flex: 1},
   toggle: {fontSize: FONT.medium, width: 28},
   toggleSpace: {width: 28},
-  open: {fontSize: FONT.large, paddingHorizontal: SPACING.sm},
   action: {fontSize: FONT.small, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3, marginLeft: SPACING.sm},
+  actionOn: {fontWeight: '700'},
 });

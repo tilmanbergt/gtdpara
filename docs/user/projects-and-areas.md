@@ -32,6 +32,8 @@ On Hold and Done take the project or area out of focus. Putting an area on hold 
 
 A project can support one area. Tap **Assign to Area…** in the status section, then tap the area in the Files pane (the **Project Files** tab shows **Browse** with the areas while you pick). The area's **Projects** tab then lists the project. The project's files then also offer the area's folder. An area with active or on-hold projects can't be archived.
 
+Once assigned, the button reads **Area: name ✕**. Tap the name to open the area; tap **✕** to remove the assignment. To move the project to another area, tap **✕** and then **Assign to Area…** again.
+
 ## Abbreviations
 
 Every project and area gets a short abbreviation, suggested from its name (for example `GR`). You can change it; it must be unique. The Projects and Areas tabs show it after each name (`Garden renovation #GR`). Use it as a tag to file items directly - see [Quick Add](quick-add.md).
@@ -63,10 +65,12 @@ Tap a row to open the project. To browse the projects' folders, open the project
 The **Threads** tab lists the counterparts of this project or area: the people, teams and series behind nested tags such as `#retro/alpha` (see [Threads](threads.md)). On a project with an area it shows the area's counterparts that this project's todos and meetings use; the tab's heading then names the area (`Threads · Coaching`), because that is where they are kept.
 
 - **New**: counterparts you use but haven't confirmed yet. **Tend** keeps them, **Not** sets them aside. A counterpart you set aside that gets a new meeting comes back here as `back in use: name`.
-- **Active**: the counterpart and, below it, `last 30.9. · next 14.10.` (its latest and next meeting) and what is open: `2 owe · w/f 18 d` (two todos you owe, the oldest thing you wait for has waited 18 days). A counterpart you only use with `#wf/name` or `#owe/name` shows `w/f only`, `owe only` or `w/f · owe only` instead of meeting dates. **▸** shows its threads (`#retro/alpha · next 14.10.`) with **+ next**, which puts the next meeting into Quick Add's Meeting tab like **+ Next retro** in the overview. **›** opens its overview.
+- **Active**: the counterpart and, below it, `last 30.9. · next 14.10.` (its latest and next meeting) and what is open: `2 owe · w/f 18 d` (two todos you owe, the oldest thing you wait for has waited 18 days). A counterpart you only use with `#wf/name` or `#owe/name` shows `w/f only`, `owe only` or `w/f · owe only` instead of meeting dates. **▸** shows its threads (`#retro/alpha · next 14.10.`) with **+ next**, which puts the next meeting into Quick Add's Meeting tab like **+ Next retro** in the overview.
 - **n inactive ▸**: the counterparts set aside, folded. Unfolded, **Tend** takes one back.
 
-Tap a counterpart's name to filter the Todos and Meetings on the right: only todos you owe it, wait for from it or that are relevant for it (the same three ways as in its overview), and only its meetings. A todo agreed in your 1:1 with Mieke but tagged `#101/sven` shows under both mieke and sven. A pill `mieke ✕` above Quick Add shows the filter; tap it, or the name again, to show everything.
+Tap a counterpart's name to open its overview (see [Threads](threads.md)).
+
+Tap **Filter** on its row to filter the Todos and Meetings on the right: only todos you owe it, wait for from it or that are relevant for it (the same three ways as in its overview), and only its meetings. A todo agreed in your 1:1 with Mieke but tagged `#101/sven` shows under both mieke and sven. The row's pill turns into **Filter ✕** and a pill `mieke ✕` above Quick Add shows the filter; tap either to show everything.
 
 While a counterpart is filtered, its row offers **Set inactive**. With open todos you first decide for each one under **I owe**, **Waiting for** and **Relevant**: **Done**, **Cancel** or **Keep** (Keep is preselected); **Set inactive** then applies them. With nothing open, one confirmation is enough. An inactive counterpart leaves the Weekly Review and the tag suggestions; its overview keeps working.
 

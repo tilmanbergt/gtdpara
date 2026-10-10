@@ -17,7 +17,7 @@
  * Add's meeting draft from the thread's latest meeting, to that meeting's
  * item.
  */
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {todayIso} from '../../domain/meetingTime';
@@ -33,6 +33,8 @@ import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useCachedItems} from '../../ui/useCachedItems';
 import {getCachedData} from '../../storage/dataCache';
 import {useLinkedFileMissing} from '../usePlanningScreen';
+import {requestEinkRefresh} from '../../utils/screenRefresh';
+import {log} from '../../utils/log';
 import AheadSection, {NextOffer} from './AheadSection';
 import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
@@ -54,7 +56,17 @@ interface Props {
 
 export default function ThreadOverview(props: Props): React.JSX.Element {
   // A new request (another tag tapped inside) starts fresh.
-  return <ThreadOverviewBody key={`${props.request.tag}|${props.request.ownerPath ?? ''}|${props.request.lens}`} {...props} />;
+  const requestKey = `${props.request.tag}|${props.request.ownerPath ?? ''}|${props.request.lens}`;
+  // The overview replaces the whole tab body in one commit; on a heavy page
+  // (the Current page) that commit can land after the host's touch-driven
+  // e-ink refresh, so the screen would keep showing the page below. Ask for
+  // a refresh once it is drawn (utils/screenRefresh.ts). The log carries no
+  // tag: tags can hold client names.
+  useEffect(() => {
+    log('ThreadOverview: opened', `lens=${props.request.lens}`, `owner=${props.request.ownerPath ? 'item' : 'none'}`);
+    requestEinkRefresh();
+  }, [requestKey, props.request.lens, props.request.ownerPath]);
+  return <ThreadOverviewBody key={requestKey} {...props} />;
 }
 
 function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Element {

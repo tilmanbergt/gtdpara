@@ -81,7 +81,7 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   pane's first tab, open when the page opens, is **Threads** (`screens/thread/ThreadsTab.tsx`,
   §2.6): the scope's counterparts
   (New with Tend / Not, Active with signals and their threads with "+ next", Inactive folded);
-  tapping one sets ItemDetail's `counterpartFilter`, which ProjectDataPanel applies to Todos and
+  a name opens its overview, its "Filter" pill sets ItemDetail's `counterpartFilter`, which ProjectDataPanel applies to Todos and
   Meetings (`screens/projectData/counterpartFilter.tsx`, the overview's §1.2.1 predicate,
   `counterpartMatcher`) with a "<leaf> ✕" pill above Quick Add; "+ next" hands Quick Add a
   meeting seed and the thread's item as destination. Both are view state only. On an Area the
@@ -667,7 +667,9 @@ written only by archiving.
 
 **Area assignment.** A Project can support one Area (`area:` frontmatter, the Area's folder
 name; `storage/areaAssignment.ts`). It is a reference, not a folder move. "Assign to Area…" in
-the status panel arms Browse directly in its Areas list.
+the status panel arms Browse directly in its Areas list. Once assigned, the "Area: <name> ✕" pill
+opens the Area (ItemDetail's `onOpenItem`); ✕ removes the assignment, so reassigning takes ✕ and
+"Assign to Area…" again.
 
 **Archive.** `storage/archive.ts`'s `archiveItem` moves the folder first, then stamps
 `status: archived` and `archivedAt` at the new place, then drops the item from the cache.

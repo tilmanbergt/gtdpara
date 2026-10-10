@@ -556,6 +556,11 @@ export default function ItemDetail({
             onArchived={() => onArchived?.(kind)}
             onStartCloseOut={onStartCloseOut}
             onRequestAreaAssignment={setAreaLinkTarget}
+            onOpenArea={
+              paths && onOpenItem
+                ? (areaName: string) => onOpenItem?.('area', {name: areaName, path: `${paths?.areas}/${areaName}`, isFolder: true})
+                : undefined
+            }
             textColor={textColor}
             borderColor={borderColor}
           />

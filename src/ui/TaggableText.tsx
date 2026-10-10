@@ -26,6 +26,7 @@ import {StyleSheet, Text} from 'react-native';
 import {isContextTag} from '../domain/flowState';
 import {splitTextWithTags} from '../domain/markdown';
 import {threadOf} from '../domain/threads';
+import {log} from '../utils/log';
 import {openThreadOverview} from './threadOverlayStore';
 import {COLORS} from './theme';
 
@@ -49,7 +50,11 @@ export function renderTaggableText(text: string, {contextTag, onToggleContext, o
       return (
         <Text
           key={`tag-${index}`}
-          onPress={() => openThreadOverview({tag: segment.value, ownerPath: ownerPath ?? null})}
+          onPress={() => {
+            // No tag in the log: tags can hold client names.
+            log('TaggableText: thread tag tapped');
+            openThreadOverview({tag: segment.value, ownerPath: ownerPath ?? null});
+          }}
           style={styles.tag}>
           {segment.raw}
         </Text>

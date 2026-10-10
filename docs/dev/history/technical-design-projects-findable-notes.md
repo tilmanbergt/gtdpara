@@ -445,3 +445,22 @@ Details chosen while building:
   to every title written from then on, including the titles of non-frozen pages rewritten on
   their next open (§6 item 8 "existing titles unchanged" holds for frozen pages only).
 - The temporary `S1-DIAG` title log of the checkpoint was removed in S4.
+
+Decided after the alpha device test (beta round):
+
+- **Project → its Area in one tap.** The "Area: <name> ✕" pill in `ui/ItemStatusPanel.tsx`
+  opens the Area (`onOpenArea`, wired by `screens/ItemDetail.tsx` to `onOpenItem` with
+  `<areas>/<name>`); ✕ still removes the assignment. Reassigning is ✕, then "Assign to Area…"
+  again - rare, so the extra step is accepted. Without `onOpenItem` the name is not tappable.
+- **Threads tab: tap opens the overview.** A counterpart's name opens its overview (counterpart
+  lens) on New, Active and Inactive rows. The filter moves to a "Filter" pill on Active and
+  Inactive rows ("Filter ✕" while on); › is gone. "Set inactive" still shows on the filtered
+  row. New rows get no Filter pill (Tend / Not need the space).
+- **Thread tag in a meeting row "does nothing" on the Current page.** Opening the overview
+  replaces the tab body in one commit with no load edge, so on the heavy Current page the
+  e-ink panel could miss it (closing already asked for a refresh for the same reason).
+  `ThreadOverview` now requests an e-ink refresh once per opened request, and logs
+  `TaggableText: thread tag tapped` / `ThreadOverview: opened` (no tag text) so a device log
+  tells a missed tap from a missed redraw if it recurs.
+- **Thread vs. counterpart (alpha note d):** the help pages are clear enough; a list of all
+  counterparts outside the Review stays on the backlog.

@@ -21,7 +21,9 @@
  * **Assign to Area** (technical-design-project-area-assignment.md §4.1,
  * Projects only) sits in the same row as "🗄 Archive…", to its right - a
  * button ("Assign to Area…") when unassigned, a pill ("Area: <name>  ✕")
- * once assigned. Picking works the same way linked-files arming does: this
+ * once assigned: the name opens the Area (`onOpenArea`), ✕ removes the
+ * assignment; changing it is ✕ then "Assign to Area…" again. Picking
+ * works the same way linked-files arming does: this
  * component doesn't own a FileBrowserPane of its own (that's a sibling,
  * owned by screens/ItemDetail.tsx), so pressing the button reports a full
  * `LinkTarget` up via `onRequestAreaAssignment` - the same
@@ -66,6 +68,8 @@ interface Props {
   onStartCloseOut?: (projectPath: string) => void;
   /** Arms (non-null) or cancels (null) the Areas tab for area-assignment - screens/ItemDetail.tsx merges this report with ProjectDataPanel's own onLinkTargetChange, giving this one priority whenever it's non-null (see ItemDetail's module doc comment). Projects only - never called for an Area. */
   onRequestAreaAssignment?: (target: LinkTarget | null) => void;
+  /** Projects only: opens the assigned Area (the "Area: <name>" pill), by its folder name. */
+  onOpenArea?: (areaName: string) => void;
   textColor: string;
   borderColor: string;
 }
@@ -104,6 +108,7 @@ export default function ItemStatusPanel({
   onArchived,
   onStartCloseOut,
   onRequestAreaAssignment,
+  onOpenArea,
   textColor,
   borderColor,
 }: Props): React.JSX.Element | null {
@@ -334,7 +339,7 @@ export default function ItemStatusPanel({
     }
   }, [state, kind, name, path]);
 
-  /** Presses "Assign to Area…" (or re-taps the "Area: <name>" pill to reassign) - arms the Browse tab, landing directly inside its Areas category (`startAt: 'area'`, see ui/FileBrowserPane.tsx's `startAt` doc comment), same way ProjectDataPanel arms a file-link/refile. */
+  /** Presses "Assign to Area…" - arms the Browse tab, landing directly inside its Areas category (`startAt: 'area'`, see ui/FileBrowserPane.tsx's `startAt` doc comment), same way ProjectDataPanel arms a file-link/refile. */
   const handleArmAreaAssignment = useCallback(() => {
     onRequestAreaAssignment?.({
       mode: 'arming',
@@ -379,6 +384,7 @@ export default function ItemStatusPanel({
             <AreaAssignmentAction
               area={state.area}
               onPressAssign={handleArmAreaAssignment}
+              onPressArea={onOpenArea}
               onPressUnassign={handleUnassignArea}
               textColor={textColor}
             />
@@ -482,17 +488,19 @@ function ArchiveAction({
 
 /**
  * "Assign to Area…" when unassigned; a "Area: <name>  ✕" pill once
- * assigned - tapping the name re-arms the picker (to reassign), tapping
- * "✕" clears immediately (no confirmation).
+ * assigned - tapping the name opens the Area, tapping "✕" clears
+ * immediately (no confirmation). Reassigning is ✕, then "Assign to Area…".
  */
 function AreaAssignmentAction({
   area,
   onPressAssign,
+  onPressArea,
   onPressUnassign,
   textColor,
 }: {
   area: string | null;
   onPressAssign: () => void;
+  onPressArea?: (areaName: string) => void;
   onPressUnassign: () => void;
   textColor: string;
 }): React.JSX.Element {
@@ -505,7 +513,7 @@ function AreaAssignmentAction({
   }
   return (
     <View style={[styles.areaPill, {borderColor: textColor}]}>
-      <Pressable onPress={onPressAssign} hitSlop={8}>
+      <Pressable onPress={onPressArea ? () => onPressArea(area) : undefined} disabled={!onPressArea} hitSlop={8}>
         <Text style={[styles.archiveButtonText, {color: textColor}]}>Area: {area}</Text>
       </Pressable>
       <Pressable onPress={onPressUnassign} hitSlop={8} style={styles.areaPillClose}>

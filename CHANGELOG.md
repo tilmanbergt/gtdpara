@@ -31,9 +31,18 @@ or your project/area files are stored.
 - An area page's Files tabs are now **Threads | Projects | Area Files | Resources**. The
   **Project Files** tab of an area is gone; its projects' folders show in the Projects tab while
   you link a file, and Browse while you refile.
+- On a project page, tapping **Area: name** opens the area. To move the project to another
+  area, tap **✕** and then **Assign to Area…** again.
+- **Threads tab**: tapping a counterpart's name opens its overview. The new **Filter** pill on
+  its row shows only its todos and meetings on the right (**Filter ✕** shows everything again).
+  The **›** button is gone.
 - The **Title** piece of a note writes tags as words without `#` (`Retro demand retro/demand`);
   gtdpara's own tags such as `#next` or `#wf/anna` are left out. Todo notes used to leave out
   every tag.
+
+### Fixed
+- Tapping a thread tag such as `#retro/alpha` in a meeting on a project or area page often
+  seemed to do nothing. The screen is now redrawn when the overview opens.
 
 ## [0.12.0] — 2026-10-08
 
