@@ -5,6 +5,7 @@
 const mockFiles = new Set<string>();
 const mockKeywordPages = new Map<string, Map<string, number>>(); // file -> keyword -> page
 
+jest.mock('sn-plugin-lib', () => ({PluginCommAPI: {recycleElement: jest.fn()}}));
 jest.mock('../../src/supernote/fileSystem', () => {
   const listFolderEntries = jest.fn(async (folder: string) =>
     [...mockFiles]

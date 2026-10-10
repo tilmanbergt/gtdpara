@@ -35,6 +35,7 @@ import {
   NotePiece,
   pieceMaxWidthPx,
   pieceWidthPx,
+  pieceIsHeading,
   PieceType,
 } from '../domain/tagRules';
 import {MYSTYLE_FOLDER} from '../supernote/fileSystem';
@@ -48,6 +49,7 @@ export const PIECE_TYPE_LABELS: Record<PieceType, string> = {
   related: 'Related items (by tag)',
   link: 'Linked file',
   sinceLast: 'Since last time',
+  dateTitle: 'Date & title',
 };
 
 /** What a piece's label reads INSIDE the page preview - same as pieceSummaryLabel, except a `link` piece shows a link-looking sample (drawn underlined, see linkLabelText) so it reads as the tappable link it becomes on the page. */
@@ -122,6 +124,9 @@ export default function NoteTemplatePreview({
             // selected: plain `textColor`, no backing, matching the rest of
             // this form.
             const overImage = background !== '' && previewFailedFor !== background;
+            // A heading piece (docs/dev/history/technical-design-projects-findable-notes.md
+            // §2.8) gets a light grey backing, like the title it becomes on the page.
+            const heading = pieceIsHeading(piece);
             const boxWidthPx = Math.min(pieceMaxWidthPx(piece), pieceWidthPx(piece.x));
             return (
               <Pressable
@@ -130,6 +135,7 @@ export default function NoteTemplatePreview({
                 style={[
                   styles.pieceLabel,
                   overImage && styles.pieceLabelBacked,
+                  heading && styles.pieceLabelHeading,
                   {left: piece.x * scale, top: piece.y * scale, width: boxWidthPx * scale},
                   selected && [styles.pieceLabelSelected, {borderColor: COLORS.accent}],
                 ]}>
@@ -137,7 +143,7 @@ export default function NoteTemplatePreview({
                   style={[
                     styles.pieceLabelText,
                     {
-                      color: overImage ? COLORS.textLight : textColor,
+                      color: overImage || heading ? COLORS.textLight : textColor,
                       fontSize: Math.max(MIN_PREVIEW_LABEL_PX, piece.fontSize * scale),
                     },
                     (selected || piece.type === 'link') && styles.pieceLabelTextSelected,
@@ -177,6 +183,10 @@ const styles = StyleSheet.create({
   // judge fit, which is the whole point of showing it here.
   pieceLabelBacked: {
     backgroundColor: 'rgba(255,255,255,0.78)',
+    borderRadius: 2,
+  },
+  pieceLabelHeading: {
+    backgroundColor: '#d0d0d0',
     borderRadius: 2,
   },
   pieceLabelSelected: {

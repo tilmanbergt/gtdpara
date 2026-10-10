@@ -6,7 +6,7 @@
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {todayIso} from '../../../domain/meetingTime';
-import {effectiveNoteTarget, hasUntouchedDefaultPieces, NoteContext, TagRule, NotePiece, NoteTarget, PIECE_CONTEXTS, pieceMaxWidthPx, resolvedSharedFileFolder, resolvedSharedFileName, SharedNoteFolder, withDefaultPieces} from '../../../domain/tagRules';
+import {effectiveNoteTarget, hasUntouchedDefaultPieces, NoteContext, TagRule, NotePiece, NoteTarget, PIECE_CONTEXTS, pieceIsHeading, pieceMaxWidthPx, resolvedSharedFileFolder, resolvedSharedFileName, SharedNoteFolder, withDefaultPieces} from '../../../domain/tagRules';
 import {renderSharedFileName, SHARED_FILE_NAME_PLACEHOLDERS} from '../../../domain/sharedNotePages';
 import {MEETINGS_SUBFOLDER, sanitizeFileNameComponent, TODOS_SUBFOLDER} from '../../../storage/noteLinks';
 import {common} from '../../../ui/commonStyles';
@@ -83,8 +83,13 @@ export default function TagRuleEditor({
   borderColor: string;
   placeholderColor: string;
 }): React.JSX.Element | null {
-  const {editingDefIndex, draftDef, sharedFileNameInputRef, draftTagsText, selectedPieceIndex, setSelectedPieceIndex, setDraftTagsTextStripped, handleCancelDefinitionEdit, handleOpenTemplatePicker, handleOpenAddPiece, handleSaveDefinitionDraft, updateDraftDef, handleRemovePiece, handleNudgeSelectedPiece, handleFontDeltaSelectedPiece, handleStepChangeSelectedPiece, handleMaxWidthDeltaSelectedPiece} = draft;
+  const {editingDefIndex, draftDef, sharedFileNameInputRef, draftTagsText, selectedPieceIndex, setSelectedPieceIndex, setDraftTagsTextStripped, handleCancelDefinitionEdit, handleOpenTemplatePicker, handleOpenAddPiece, handleSaveDefinitionDraft, updateDraftDef, handleRemovePiece, handleNudgeSelectedPiece, handleFontDeltaSelectedPiece, handleStepChangeSelectedPiece, handleMaxWidthDeltaSelectedPiece, handleToggleHeadingSelectedPiece} = draft;
   if (!draftDef) return null;
+  const selectedPiece = selectedPieceIndex !== null ? draftDef.pieces[selectedPieceIndex] ?? null : null;
+  // The Heading switch (docs/dev/history/technical-design-projects-findable-notes.md §2.8):
+  // Meeting and Todo rules only, never on a Linked file (a link can't be a title).
+  const showHeadingToggle =
+    !!selectedPiece && selectedPiece.type !== 'link' && (draftDef.context === 'meeting' || draftDef.context === 'todo');
   return (
     <View style={styles.templatesEditRow}>
       <View style={[common.column, common.columnLeft, styles.formColumnCard, {borderColor}]}>
@@ -317,6 +322,15 @@ export default function TagRuleEditor({
           textColor={textColor}
           borderColor={borderColor}
         />
+
+        {showHeadingToggle && selectedPiece && (
+          <CheckToggle
+            label="Heading (in the note's table of contents)"
+            checked={pieceIsHeading(selectedPiece)}
+            onPress={handleToggleHeadingSelectedPiece}
+            textColor={textColor}
+          />
+        )}
 
         {/* Pushes Background + Save/Cancel to the bottom of this column
             (module doc comment: "at the bottom the background template

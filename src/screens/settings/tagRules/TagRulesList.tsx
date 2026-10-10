@@ -4,7 +4,9 @@
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {trackingSummary} from '../../../domain/meetingTracking';
+import {NoteHeadingStyle} from '../../../domain/settings';
 import {TagRule} from '../../../domain/tagRules';
+import MiniTabs, {MiniTabDef} from '../../../ui/MiniTabs';
 import PagedSection from '../../../ui/PagedSection';
 import {styles} from '../settingsStyles';
 import {TagRuleDraft} from './useTagRuleDraft';
@@ -15,9 +17,19 @@ interface TemplateDefRow {
   index: number;
 }
 import {CONTEXT_TABS} from './TagRuleEditor';
+
+/** sn-plugin-lib's title styles, as the Heading style choice (docs/dev/history/technical-design-projects-findable-notes.md §2.8). */
+const HEADING_STYLE_TABS: MiniTabDef<'1' | '2' | '3' | '4'>[] = [
+  {key: '1', label: 'Black'},
+  {key: '2', label: 'Light grey'},
+  {key: '3', label: 'Dark grey'},
+  {key: '4', label: 'Shadow'},
+];
+
 export default function TagRulesList({
   draft,
   tagRules,
+  headingStyle,
   textColor,
   borderColor,
 }: {
@@ -26,10 +38,19 @@ export default function TagRulesList({
   borderColor: string;
   placeholderColor: string;
   tagRules: TagRule[];
+  headingStyle: NoteHeadingStyle;
 }): React.JSX.Element {
-  const {handleAddDefinition, handleEditDefinition, handleDeleteDefinition} = draft;
+  const {handleAddDefinition, handleEditDefinition, handleDeleteDefinition, handleSetHeadingStyle} = draft;
   return (
     <View style={styles.templatesListBody}>
+      <Text style={[styles.label, {color: textColor}]}>Heading style</Text>
+      <MiniTabs
+        tabs={HEADING_STYLE_TABS}
+        activeKey={String(headingStyle) as '1' | '2' | '3' | '4'}
+        onChange={key => handleSetHeadingStyle(Number(key) as NoteHeadingStyle)}
+        textColor={textColor}
+        borderColor={borderColor}
+      />
       <Pressable onPress={handleAddDefinition} hitSlop={8} style={styles.addDefRow}>
         <Text style={[styles.addDefRowText, {color: textColor}]}>+ New tag rule</Text>
       </Pressable>

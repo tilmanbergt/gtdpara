@@ -18,7 +18,7 @@ Two tabs, only visible when the matching experimental integration is switched on
 
 ## Tag Rules
 
-How new notes look, see [Note templates](note-templates.md). A rule is saved with **Create** or **Save** in its editor; the Save button at the bottom isn't needed here.
+How new notes look, see [Note templates](note-templates.md). A rule is saved with **Create** or **Save** in its editor; the Save button at the bottom isn't needed here. **Heading style** at the top (Black, Light grey, Dark grey, Shadow) is saved as soon as you tap it.
 
 ## Advanced
 

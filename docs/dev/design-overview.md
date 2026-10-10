@@ -81,10 +81,14 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   pane's first tab, open when the page opens, is **Threads** (`screens/thread/ThreadsTab.tsx`,
   §2.6): the scope's counterparts
   (New with Tend / Not, Active with signals and their threads with "+ next", Inactive folded);
-  tapping one sets ItemDetail's `counterpartFilter`, which ProjectDataPanel applies to Todos and
+  a name opens its overview, its "Filter" pill sets ItemDetail's `counterpartFilter`, which ProjectDataPanel applies to Todos and
   Meetings (`screens/projectData/counterpartFilter.tsx`, the overview's §1.2.1 predicate,
   `counterpartMatcher`) with a "<leaf> ✕" pill above Quick Add; "+ next" hands Quick Add a
-  meeting seed and the thread's item as destination. Both are view state only.
+  meeting seed and the thread's item as destination. Both are view state only. On an Area the
+  second tab is **Projects** (`screens/area/ProjectsTab.tsx`): the assigned Projects, Active
+  then a folded On hold group, each with last/next meeting, open, `#next` (or "no next action")
+  and the oldest Waiting For (`storage/projectGlance.ts`'s `buildProjectGlance`); a row opens
+  the Project.
 - **Review** — `screens/review/ReviewScreen.tsx` (§2.8). While a close-out is open, the Review
   tab shows `screens/CloseOutWizard.tsx` instead (§2.9).
 - **Settings** — `screens/settings/Settings.tsx` (§2.12).
@@ -327,7 +331,7 @@ Screens read it through `ui/useCachedInbox.ts`; a write anywhere is seen everywh
 `findCachedItem(path)` reads one. Cross-project views are pure, synchronous transforms over the
 warm cache (`storage/dailyAggregate.ts`, `weeklyAggregate.ts`, `monthlyAggregate.ts`,
 `reviewAggregate.ts`, `periodFocusCards.ts`, `threadAggregate.ts`, `tendingRoster.ts`,
-`sinceLast.ts`), never their own filesystem scans.
+`sinceLast.ts`, `projectGlance.ts`), never their own filesystem scans.
 
 What gtdpara does not cache: the Files pane lists folders live on every visit, and Google
 Calendar and Gmail have their own caches (§2.11). Detail:
@@ -450,14 +454,15 @@ carry Browse as its `alternate` instead of a tab of its own: the slot shows it (
 slot's list starts with "Other Projects/Areas ›", which opens it there. `extraTabs` add tabs with
 their own content before the roots (the Current page's Threads tab); the first is shown when the
 pane opens and when `resetKey` changes. Arming and locating never switch to one and disable them;
-an arm started on one switches to its root and back to the extra tab when it ends. Roots per
-screen:
+an arm started on one switches to its root and back to the extra tab when it ends. An extra tab
+can carry an `armingRoot`: while any arm is active that root takes the tab's slot (with its
+`alternate`), and the slot is the extra tab again when the arm ends. Roots per screen:
 
 - Inbox and Review's Inbox step: Resources, Browse.
 - Current, Project: the Threads tab, then Project Files (Browse as its alternate), Resources,
   Area Files (once assigned).
-- Current, Area: the Threads tab, then Area Files, Resources, Project Files (its assigned
-  Projects; Browse as its alternate).
+- Current, Area: the Threads and Projects tabs, then Area Files, Resources. Project Files (its
+  assigned Projects; Browse as its alternate) is the Projects tab's `armingRoot`.
 
 The Resources root can pin a per-item default subfolder (`defaultResourceFolder`).
 
@@ -488,9 +493,10 @@ folder for auto-locate. Gmail email notes and attachments become linked files un
 
 **Tag Rules.** `domain/tagRules.ts` defines `TagRule`s (stored in `settings.tagRules`, edited in
 Settings → Tag Rules, `screens/settings/tagRules/`): a context (Project, Area, Todo, Meeting), an
-optional tag, a MyStyle background template, and positioned content pieces (`title`, `date`,
-`time`, `text` from the rule's own reusable texts, `related` open todos, `link` to the item's
-linked file, `sinceLast` for meetings). `resolveNoteTemplate` picks the rule for an item; a rule tag matches itself and
+optional tag, a MyStyle background template, and positioned content pieces (`title`,
+`dateTitle` and `date` for meetings, `time`, `text` from the rule's own reusable texts,
+`related` open todos, `link` to the item's linked file, `sinceLast` for meetings). Title and
+Date & title write tags as words (`domain/markdown.ts`'s `tagsAsWords`). `resolveNoteTemplate` picks the rule for an item; a rule tag matches itself and
 every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting (default)" rule.
 
 - **Content.** `populateNoteFromRule` writes one textbox element per piece; pieces are always
@@ -498,6 +504,18 @@ every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting
   (`storage/notePieceMetrics.ts` → native `TextboxMetrics`) and capped at the piece's
   `maxWidthPx`. Re-population on reopen stops once the meeting is over or the todo is done or
   cancelled (`isMeetingAutoUpdateFrozen`, `isTodoAutoUpdateFrozen`); creation always populates.
+  The delete before the insert is planned by `domain/noteFindability.ts`'s `staleManagedNums`:
+  every element with a gtdpara marker plus titles that cover only those.
+- **Headings.** A piece's `heading` switch (`pieceIsHeading`: absent = on for `dateTitle`, off
+  otherwise, never for `link`) makes `storage/noteFindability.ts`'s `applyPieceHeadings` add a
+  title element (type 100, `supernote/noteTitles.ts`) over the piece's textbox after the insert:
+  `title.controlTrailNums = [numInPage]`, `title.style = settings.noteHeadingStyle` (default 3),
+  marker `NOTE_HEADING_USERDATA`, all titles in one `insertElements`. A failure is logged and
+  never fails the note. Supernote builds the table of contents from these titles.
+- **Keywords.** Every non-frozen refresh (and creation) calls `syncPageKeywords` before the rule
+  is resolved: the page gets the item's date keyword (`itemDateKeyword`: meeting date, todo
+  `created`) and its context tags; other bare `YYYY-MM-DD` keywords are deleted
+  (`planPageKeywords`), tag keywords never. `chronologicalInsertIndex` ignores bare dates.
 - **Shared notes.** A Todo/Meeting rule can target one shared `.note` instead of a file per item
   (`noteTarget: 'shared'`): each item gets a page located by keyword (meeting: `<date> <title>`;
   todo: its text without functional tags), inserted chronologically (`storage/sharedNotePages.ts`
@@ -544,7 +562,8 @@ Detail: `docs/dev/history/technical-design-note-templates.md`,
 `docs/dev/history/technical-design-shared-note-pages.md`,
 `docs/dev/history/technical-design-split-by-tag.md`,
 `docs/dev/history/technical-design-meeting-tracking.md`,
-`docs/dev/history/technical-design-textbox-metrics.md`.
+`docs/dev/history/technical-design-textbox-metrics.md`,
+`docs/dev/history/technical-design-projects-findable-notes.md`.
 
 ### 2.7 Daily, Week and Month
 
@@ -648,7 +667,9 @@ written only by archiving.
 
 **Area assignment.** A Project can support one Area (`area:` frontmatter, the Area's folder
 name; `storage/areaAssignment.ts`). It is a reference, not a folder move. "Assign to Area…" in
-the status panel arms Browse directly in its Areas list.
+the status panel arms Browse directly in its Areas list. Once assigned, the "Area: <name> ✕" pill
+opens the Area (ItemDetail's `onOpenItem`); ✕ removes the assignment, so reassigning takes ✕ and
+"Assign to Area…" again.
 
 **Archive.** `storage/archive.ts`'s `archiveItem` moves the folder first, then stamps
 `status: archived` and `archivedAt` at the new place, then drops the item from the cache.
@@ -762,7 +783,7 @@ two only while switched on), Tag Rules, Advanced, About. Folders, Focus, Calenda
 one draft (`useSettingsDraft.ts`) that only Save writes; every Save clears the cache (the next
 screen builds it again) and the Gmail list, and a changed Inbox folder name moves the folder first (`storage/inboxFolder.ts`, refused
 when the target exists, not moved when Base or Areas change in the same save). Tag Rules save
-per rule; the switches on Advanced and About write immediately. Advanced holds Profiles, the
+per rule, and its Heading style (`noteHeadingStyle`) at once; the switches on Advanced and About write immediately. Advanced holds Profiles, the
 experimental switches, "Reload all files", "Run Integrity Check", "Keep tabs in memory" and
 "Performance tracing". About shows version and build, the changelog ("What's new", also offered
 once after an update), Debug logging and "Export debug bundle".

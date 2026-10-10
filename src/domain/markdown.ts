@@ -192,11 +192,9 @@ export function splitTextWithTags(text: string): TextSegment[] {
 
 /**
  * Removes every `#tag` from `text` entirely, collapsing any resulting run of
- * whitespace down to single spaces and trimming the ends (
- * docs/dev/history/technical-design-note-templates.md) - used for a Todo note's `title` piece, where
- * `task.text` routinely carries trailing `#next`/context tags that have no
- * business in a note's title (a Meeting's `title` is used as-is - a meeting
- * title rarely carries tags the way task text always does). Built on
+ * whitespace down to single spaces and trimming the ends - for texts that
+ * compare or show an item's words without any tags (a todo's provenance
+ * label, a meeting's short form). Note pieces use `tagsAsWords` instead. Built on
  * `splitTextWithTags`'s text/tag segment walk - one tokenization, reused,
  * rather than a second ad-hoc regex over `TAG_RE`.
  */
@@ -206,6 +204,21 @@ export function stripAllTags(text: string): string {
     .map(segment => segment.value)
     .join('');
   return stripped.replace(/\s{2,}/g, ' ').trim();
+}
+
+/**
+ * `text` with each context tag kept as a word without its `#` (nested tags
+ * keep their `/`: `#retro/demand` -> `retro/demand`) and gtdpara's own tags
+ * (`#next`, `#wf/anna`, ... - everything `isContextTag` rejects) removed;
+ * whitespace collapsed and trimmed. The text of a note's Title and Date &
+ * title pieces (docs/dev/history/technical-design-projects-findable-notes.md
+ * §2.1), so a heading reads the item's words, tags included.
+ */
+export function tagsAsWords(text: string): string {
+  const joined = splitTextWithTags(text)
+    .map(segment => (segment.kind === 'text' ? segment.value : isContextTag(segment.value) ? segment.raw.slice(1) : ''))
+    .join('');
+  return joined.replace(/\s{2,}/g, ' ').trim();
 }
 
 /**

@@ -54,11 +54,13 @@
  * piece's own `maxWidthPx` - see domain/tagRules.ts's `NotePiece`) and
  * the element itself via `supernote/noteElements.ts`'s `buildTextboxElement`.
  */
-import {isNoteTemplateManagedElement, linkTypeForExtension, notePieceUserData} from '../domain/meetingNoteBlock';
+import {linkTypeForExtension, notePieceUserData} from '../domain/meetingNoteBlock';
+import {itemDateKeyword, staleManagedNums} from '../domain/noteFindability';
 import {isMeetingAutoUpdateFrozen, todayIso} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
-import {stripAllTags} from '../domain/markdown';
+import {tagsAsWords} from '../domain/markdown';
 import {
+  dateTitleText,
   effectiveNoteTarget,
   isTodoAutoUpdateFrozen,
   NoteContext,
@@ -79,7 +81,7 @@ import {
   renderSharedFileName,
   todoPageKeyword,
 } from '../domain/sharedNotePages';
-import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settings';
+import {DEFAULT_SETTINGS, GtdParaSettings, NoteHeadingStyle, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {
   createElement,
@@ -115,6 +117,7 @@ import {
   TODOS_SUBFOLDER,
   todoNoteBaseName,
 } from './noteLinks';
+import {applyPieceHeadings, syncPageKeywords} from './noteFindability';
 import {measureNoteLinkRect, measureNotePieceRect} from './notePieceMetrics';
 import {
   ensureSharedNoteFile,
@@ -210,8 +213,9 @@ async function buildLinkElement(params: {
 
 /**
  * Step 1 of populateNoteFromRule below: reads `page` and deletes every
- * element this feature ever wrote (isNoteTemplateManagedElement), leaving
- * everything else - handwriting, the user's own textboxes - untouched. The
+ * element this feature ever wrote, plus titles that cover only those
+ * (domain/noteFindability.ts's staleManagedNums), leaving everything else -
+ * handwriting, the user's own textboxes and their titles - untouched. The
  * one-line log (ours vs. foreign counts) is deliberate: it is what shows on
  * `adb logcat` whether our `userData` markers actually survive the NOTE app
  * saving the page between two opens (if "ours" stayed 0 on a re-open, pieces
@@ -219,7 +223,7 @@ async function buildLinkElement(params: {
  */
 async function deleteStaleManagedElements(notePath: string, page: number): Promise<void> {
   const existing = await getElements(page, notePath);
-  const staleNums = existing.filter(el => isNoteTemplateManagedElement(el.userData)).map(el => el.numInPage);
+  const staleNums = staleManagedNums(existing);
   log('note refresh: page', page, 'has', existing.length, 'elements - ours (replaced):', staleNums.length, 'foreign (kept):', existing.length - staleNums.length);
   if (staleNums.length > 0) {
     await deleteElements(notePath, page, staleNums);
@@ -251,10 +255,15 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  *
  * Deviates from technical-design-note-templates.md §4's literal signature
  * (`populateNoteFromRule(notePath, definition, pieceContent,
- * settings)`) by dropping the `settings` param: no GtdParaSettings field is
- * needed here - positioning is fully piece-driven, and background selection
- * (storage/noteLinks.ts's resolveNoteBackgroundTemplate) happens at
- * note-*creation* time, not here.
+ * settings)`): of the settings only the heading style is needed
+ * (`headingStyle`) - positioning is fully piece-driven, and background
+ * selection (storage/noteLinks.ts's resolveNoteBackgroundTemplate) happens
+ * at note-*creation* time, not here.
+ *
+ * Last, the pieces with the Heading switch on get their title elements
+ * (storage/noteFindability.ts's applyPieceHeadings,
+ * docs/dev/history/technical-design-projects-findable-notes.md §2.6) - after
+ * the content, and without failing the note when that part goes wrong.
  *
  * `linkedFileAbsolutePath` is only read by a `link` piece (
  * docs/dev/history/technical-design-linked-file-piece.md) - the caller passes it only when the file
@@ -268,6 +277,7 @@ export async function populateNoteFromRule(
   pieceContent: string[],
   linkedFileAbsolutePath: string | null = null,
   page = 0,
+  headingStyle: NoteHeadingStyle = DEFAULT_SETTINGS.noteHeadingStyle,
 ): Promise<void> {
   await deleteStaleManagedElements(notePath, page);
 
@@ -327,6 +337,7 @@ export async function populateNoteFromRule(
       await insertElements(notePath, page, withoutLinks);
     }
   }
+  await applyPieceHeadings(notePath, page, definition, pieceContent, headingStyle);
 }
 
 /**
@@ -378,6 +389,9 @@ export async function refreshMeetingNoteBlock(
   const notePath = await resolveNotePath(itemPath, meeting.notePath);
   const paths = resolvePaths(settings);
 
+  // Keywords don't depend on a rule (§2.7 of the findable-notes design).
+  await syncPageKeywords(notePath, page, {date: itemDateKeyword(meeting), tags: contextTagsOf(meeting.tags)});
+
   const definition = resolveNoteTemplate('meeting', meeting.tags, settings.tagRules);
   if (!definition) return;
 
@@ -386,8 +400,9 @@ export async function refreshMeetingNoteBlock(
   const linked = definition.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, meeting.linkedFile) : null;
 
   const ctx: PieceRenderContext = {
-    title: meetingDisplayTitle(meeting),
+    title: tagsAsWords(meetingDisplayTitle(meeting)),
     date: meeting.date,
+    dateTitle: dateTitleText(meeting.date, tagsAsWords(meetingDisplayTitle(meeting))),
     // '' means "no time given" (Meeting.time's own convention) - left
     // unset on ctx rather than passed through as '', so renderPieceText's
     // `ctx.time ?? ''` for a `time` piece and its "meeting only, only when
@@ -399,7 +414,7 @@ export async function refreshMeetingNoteBlock(
     sinceLast: definition.pieces.some(p => p.type === 'sinceLast') ? buildSinceLast(meeting, itemPath, items, sinceLastInbox()) : null,
   };
   const pieceContent = definition.pieces.map(piece => renderPieceText(piece, ctx));
-  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
+  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page, settings.noteHeadingStyle);
 }
 
 /** The shared Inbox as the thread aggregates take it (the "Since last time" piece resolves provenance against it too). */
@@ -421,10 +436,9 @@ function sinceLastInbox(): ThreadInboxInput | null {
  * Todo definition) means `populateNoteFromRule` is never called at
  * all: the note stays blank - the same rule Meetings follow.
  *
- * `ctx.title` is `stripAllTags(task.text)`, not `task.text` verbatim -
- * unlike a Meeting's title, a task's text routinely ends with `#next`/
- * context tags that don't belong in a note's title (see
- * domain/markdown.ts's `stripAllTags` doc comment). `ctx.relatedItems`
+ * `ctx.title` is `tagsAsWords(task.text)`, as for a Meeting: context tags
+ * stay as words without `#`, gtdpara's own (`#next`, `#wf/…`) go (see
+ * domain/markdown.ts's `tagsAsWords`). `ctx.relatedItems`
  * reuses the same `relatedItemsFor` aggregate the Meeting path uses, tagged
  * with this task's own `tags` and excluding this task's own `notePath` so
  * it never lists itself (see storage/meetingNoteAggregate.ts's doc
@@ -450,6 +464,8 @@ export async function refreshTodoNoteBlock(
   const notePath = await resolveNotePath(itemPath, task.notePath);
   const paths = resolvePaths(settings);
 
+  await syncPageKeywords(notePath, page, {date: itemDateKeyword(task), tags: contextTagsOf(task.tags)});
+
   const definition = resolveNoteTemplate('todo', task.tags, settings.tagRules);
   if (!definition) return;
 
@@ -458,12 +474,12 @@ export async function refreshTodoNoteBlock(
   const linked = definition.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, task.linkedFile) : null;
 
   const ctx: PieceRenderContext = {
-    title: stripAllTags(task.text),
+    title: tagsAsWords(task.text),
     relatedItems: relatedTodos.map(t => ({text: t.task.text})),
     linkedFileName: linked?.fileName,
   };
   const pieceContent = definition.pieces.map(piece => renderPieceText(piece, ctx));
-  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page);
+  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page, settings.noteHeadingStyle);
 }
 
 // ---- Open-or-create entry point (docs/dev/history/technical-design-shared-note-pages.md §6-§8;

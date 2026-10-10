@@ -18,6 +18,7 @@ import {RESERVED_BARE_TAGS, stripBareTags} from './flowState';
 import {setDueInLine} from './markdown';
 import {meetingDisplayTitle} from './meetingTracking';
 import {Meeting, Task} from './types';
+import {isBareDateKeyword} from './noteFindability';
 
 /**
  * A shared-target note's anchor: which file, and which keyword locates this
@@ -192,7 +193,9 @@ export function chronologicalInsertIndex(
 
   const firstDateByPage = new Map<number, string>();
   for (const kw of existingKeywords) {
-    if (firstDateByPage.has(kw.page)) continue;
+    // A bare date keyword (domain/noteFindability.ts) is a page's date keyword, not its anchor:
+    // only anchors order pages, so a todo page carrying its creation date stays unordered.
+    if (firstDateByPage.has(kw.page) || isBareDateKeyword(kw.keyword)) continue;
     const date = parseKeywordLeadingDate(kw.keyword);
     if (date !== null) firstDateByPage.set(kw.page, date);
   }

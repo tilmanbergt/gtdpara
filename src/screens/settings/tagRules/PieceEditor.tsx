@@ -8,7 +8,7 @@
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {formatDayHeader} from '../../../domain/dateFormat';
-import {ruleTexts, isPiecePlaced, linkPieceText, NoteContext, TagRule, NoteTextItem, PIECE_CONTEXTS, PieceType} from '../../../domain/tagRules';
+import {dateTitleText, ruleTexts, isPiecePlaced, linkPieceText, NoteContext, TagRule, NoteTextItem, PIECE_CONTEXTS, PieceType} from '../../../domain/tagRules';
 import {common} from '../../../ui/commonStyles';
 import ClipboardTextInput from '../../../ui/ClipboardTextInput';
 import {PIECE_TYPE_LABELS} from '../../../ui/NoteTemplatePreview';
@@ -24,7 +24,7 @@ const ADD_PIECE_ROW_HEIGHT = 50;
 type AddPieceRow = {kind: 'type'; type: PieceType} | {kind: 'text'; item: NoteTextItem};
 
 /** The predefined (non-text) piece types, in list order. Which ones show is still filtered per context by PIECE_CONTEXTS. */
-const PREDEFINED_PIECE_TYPES: PieceType[] = ['title', 'date', 'time', 'related', 'link', 'sinceLast'];
+const PREDEFINED_PIECE_TYPES: PieceType[] = ['title', 'dateTitle', 'date', 'time', 'related', 'link', 'sinceLast'];
 
 /**
  * Explanation + example for a predefined piece's right-hand panel. The
@@ -47,6 +47,12 @@ function predefinedPieceInfo(type: PieceType, context: NoteContext): {descriptio
             : context === 'project'
             ? 'Website relaunch'
             : 'Health',
+      };
+    case 'dateTitle':
+      return {
+        description:
+          'Inserts the meeting’s date with the year and its title, tags written as words without #. A heading by default: it shows in the note’s table of contents.',
+        example: dateTitleText('2026-09-21', 'Weekly sync team/alpha'),
       };
     case 'date':
       return {description: 'Inserts the meeting’s date.', example: formatDayHeader('2026-09-21')};

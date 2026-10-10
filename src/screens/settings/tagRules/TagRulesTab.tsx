@@ -5,6 +5,7 @@
  * the two pages the form opens (background, Add piece).
  */
 import React from 'react';
+import {NoteHeadingStyle} from '../../../domain/settings';
 import {TagRule} from '../../../domain/tagRules';
 import PieceEditor from './PieceEditor';
 import TagRuleEditor from './TagRuleEditor';
@@ -16,15 +17,16 @@ import {TagRuleDraft} from './useTagRuleDraft';
 export default function TagRulesTab(props: {
   draft: TagRuleDraft;
   tagRules: TagRule[];
+  headingStyle: NoteHeadingStyle;
   myStyle: MyStyleBackgrounds;
   textColor: string;
   borderColor: string;
   placeholderColor: string;
 }): React.JSX.Element | null {
-  const {draft, tagRules, myStyle, ...colors} = props;
+  const {draft, tagRules, headingStyle, myStyle, ...colors} = props;
   switch (draft.templatesView) {
     case 'list':
-      return <TagRulesList draft={draft} tagRules={tagRules} {...colors} />;
+      return <TagRulesList draft={draft} tagRules={tagRules} headingStyle={headingStyle} {...colors} />;
     case 'edit':
       return <TagRuleEditor draft={draft} {...colors} />;
     case 'edit-template':

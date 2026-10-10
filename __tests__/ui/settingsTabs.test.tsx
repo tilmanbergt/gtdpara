@@ -82,6 +82,42 @@ describe('Settings tabs', () => {
     expect(texts(r)).toContain('‹ Back to rule');
   });
 
+  it('offers the Heading style and saves a change at once', async () => {
+    const r = await render('templates');
+    const tabs = r.root.findAll(n => Array.isArray(n.props.tabs) && n.props.tabs.some((t: {label: string}) => t.label === 'Dark grey'))[0];
+    expect(tabs.props.tabs.map((t: {label: string}) => t.label)).toEqual(['Black', 'Light grey', 'Dark grey', 'Shadow']);
+    expect(tabs.props.activeKey).toBe('3');
+    await act(async () => tabs.props.onChange('1'));
+    expect(mockSaved.at(-1)).toMatchObject({noteHeadingStyle: 1});
+  });
+
+  it('shows the Heading switch for a selected piece, and Date & title in Add piece', async () => {
+    const r = await render('templates');
+    const press = async (label: string) => {
+      const node = r.root.findAll(n => n.props.onPress && texts({root: n} as never).some(t => t === label))[0];
+      await act(async () => node.props.onPress());
+    };
+    const headingLabel = "☑ Heading (in the note's table of contents)";
+    await press('+ New tag rule');
+    expect(texts(r)).not.toContain(headingLabel);
+    const preview = r.root.findAll(n => typeof n.props.onSelectPiece === 'function')[0];
+    await act(async () => preview.props.onSelectPiece(0));
+    expect(texts(r)).toContain(headingLabel);
+    await press(headingLabel);
+    expect(texts(r)).toContain("☐ Heading (in the note's table of contents)");
+    await press('+ Add piece');
+    const addRows = r.root.findAll(n => Array.isArray(n.props.rows) && n.props.rows.some((row: {kind: string}) => row.kind === 'type'))[0].props.rows;
+    expect(addRows.filter((row: {kind: string}) => row.kind === 'type').map((row: {type: string}) => row.type)).toEqual([
+      'title',
+      'dateTitle',
+      'date',
+      'time',
+      'related',
+      'link',
+      'sinceLast',
+    ]);
+  });
+
   it('Save writes the edited folder name', async () => {
     const r = await render('folders');
     const input = r.root.findAllByType(TextInput)[1];

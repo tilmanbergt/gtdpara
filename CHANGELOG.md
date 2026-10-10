@@ -10,6 +10,40 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Projects tab** on an area page, after Threads: the area's projects at a glance - active
+  ones, then the ones on hold folded - each with its latest and next meeting, open todos, how
+  many are `#next` (or `no next action`) and the oldest Waiting For. Tap one to open it.
+- **Headings in notes.** A **Heading** switch on every text piece of a todo or meeting Tag Rule
+  writes that piece as a Supernote heading, so it shows in the note's table of contents - on
+  notes of their own and on every page of a shared note. Existing rules don't change until you
+  switch it on.
+- **Date & title** piece for meeting rules: `30.9.2026 · Retro demand retro/demand`, a heading
+  from the start. New meeting rules start with Date & title, Time and Linked file; new todo
+  rules with Title (as a heading) and Linked file.
+- **Heading style** in Settings → Tag Rules: Black, Light grey, Dark grey (default) or Shadow.
+- **Date keywords**: notes and pages of meetings get the meeting's date as a keyword
+  (`2026-10-04`), todos their creation date. When a meeting moves, its keyword follows the next
+  time you open the note.
+- Pages in **shared notes** now also get the item's tags as keywords, like notes of their own.
+
+### Changed
+- An area page's Files tabs are now **Threads | Projects | Area Files | Resources**. The
+  **Project Files** tab of an area is gone; its projects' folders show in the Projects tab while
+  you link a file, and Browse while you refile.
+- On a project page, tapping **Area: name** opens the area. To move the project to another
+  area, tap **✕** and then **Assign to Area…** again.
+- **Threads tab**: tapping a counterpart's name opens its overview. The new **Filter** pill on
+  its row shows only its todos and meetings on the right (**Filter ✕** shows everything again).
+  The **›** button is gone.
+- The **Title** piece of a note writes tags as words without `#` (`Retro demand retro/demand`);
+  gtdpara's own tags such as `#next` or `#wf/anna` are left out. Todo notes used to leave out
+  every tag.
+
+### Fixed
+- Tapping a thread tag such as `#retro/alpha` in a meeting on a project or area page often
+  seemed to do nothing. The screen is now redrawn when the overview opens.
+
 ## [0.12.0] — 2026-10-08
 
 ### New

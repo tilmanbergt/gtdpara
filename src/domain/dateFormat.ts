@@ -34,6 +34,11 @@ export function formatDate(iso: string, today?: string): string {
   return sameYear ? `${p.day}.${p.month}.` : `${p.day}.${p.month}.${p.year}`;
 }
 
+/** `30.9.2026`: always with the year - the date of a note heading (docs/dev/history/technical-design-projects-findable-notes.md §2.1 R2). */
+export function formatHeadingDate(iso: string): string {
+  return formatDate(iso);
+}
+
 /** `9:05`, `14:05` from `09:05` / `14:05`. */
 export function formatTime(hhmm: string): string {
   const m = HH_MM.exec(hhmm);

@@ -86,6 +86,7 @@ import React from 'react';
 import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import App from '../../App';
+import {closeThreadOverview, getThreadOverview} from '../../src/ui/threadOverlayStore';
 
 const AREA_FILE = '/storage/emulated/0/Note/2 Areas/Coaching/area.txt';
 
@@ -138,9 +139,9 @@ async function openCoachingThreads() {
   await settle();
   await pressText(r, /^Coaching /);
   await settle();
-  // Threads comes first and is open; Browse is no tab of its own (it is Project Files' alternate while arming).
+  // Threads comes first and is open, then Projects; the Projects' folders and Browse show only while arming.
   const filesTabs = r.root.findAll(n => Array.isArray(n.props.tabs) && n.props.tabs.some((t: {label: string}) => t.label === 'Threads'))[0];
-  expect(filesTabs.props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Area Files', 'Resources', 'Project Files']);
+  expect(filesTabs.props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Projects', 'Area Files', 'Resources']);
   expect(filesTabs.props.activeKey).toBe('threads');
   return r;
 }
@@ -164,9 +165,18 @@ describe('the Threads tab on the Current page', () => {
     act(() => r.unmount());
   });
 
-  it('filters Todos and Meetings by the counterpart, with a pill to clear it', async () => {
+  it("opens the counterpart's overview from its name", async () => {
     const r = await openCoachingThreads();
     await pressInRow(r, 'Threads', leafIs('alpha'), 'alpha');
+    expect(getThreadOverview()).toEqual(expect.objectContaining({lens: 'counterpart'}));
+    expect(texts(r)).not.toContain('alpha ✕');
+    act(() => closeThreadOverview());
+    act(() => r.unmount());
+  });
+
+  it('filters Todos and Meetings by the counterpart, with a pill to clear it', async () => {
+    const r = await openCoachingThreads();
+    await pressInRow(r, 'Threads', leafIs('alpha'), 'Filter');
     expect(texts(r)).toContain('alpha ✕');
     const todos = listRows(r, 'Todos').filter((row: {kind: string}) => row.kind === 'entry').map((row: {task: {text: string}}) => row.task.text);
     expect(todos).toEqual(['Draft agenda #retro/alpha', 'Agreed point']);
@@ -181,7 +191,7 @@ describe('the Threads tab on the Current page', () => {
 
   it('closes out I owe and Relevant before setting inactive', async () => {
     const r = await openCoachingThreads();
-    await pressInRow(r, 'Threads', leafIs('alpha'), 'alpha');
+    await pressInRow(r, 'Threads', leafIs('alpha'), 'Filter');
     await pressInRow(r, 'Threads', leafIs('alpha'), 'Set inactive');
     expect(texts(r)).toContain('Set alpha inactive');
     const closeRows = listRows(r, 'Open todos').map((row: {kind: string; label?: string; entry?: {task: {text: string}}}) => row.entry?.task.text ?? row.label);
