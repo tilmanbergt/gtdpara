@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-10-10
+
 ### New
 - **Projects tab** on an area page, after Threads: the area's projects at a glance - active
   ones, then the ones on hold folded - each with its latest and next meeting, open todos, how
