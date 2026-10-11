@@ -72,12 +72,16 @@ export default function ProjectsTab({ownerKind, ownerPath, areaName, onOpenItem,
   const [actionError, setActionError] = useState<string | null>(null);
   useErrorStatus('ProjectsTab.action', actionError, () => setActionError(null));
   const today = todayIso();
-  const owner = items.find(i => i.path === ownerPath);
   const projects = useMemo(
     () => (ownerKind === 'area' ? buildProjectGlance(areaName, items, today, new Date()) : []),
     [ownerKind, areaName, items, today],
   );
-  const loops = useMemo(() => (owner ? buildLoopGlance(owner, kinds, today, new Date()) : null), [owner, kinds, today]);
+  // Keyed on `items`, not on the owner: the cache updates an item in place, so
+  // the owner object stays the same when its loops change.
+  const loops = useMemo(() => {
+    const owner = items.find(i => i.path === ownerPath);
+    return owner ? buildLoopGlance(owner, kinds, today, new Date()) : null;
+  }, [items, ownerPath, kinds, today]);
 
   const rows: Row[] = [];
   const fold = (key: Fold, count: number, label: string, children: Row[]) => {
