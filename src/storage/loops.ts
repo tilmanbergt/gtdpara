@@ -17,12 +17,19 @@
  * where it is. A todo whose loop has a line already stays a todo: nothing
  * is ever dropped.
  *
+ * Editing a loop (`updateLoop`, §4.6): a new tag renames the loop in its
+ * owner - every todo and meeting with the tag gets the new one - and a new
+ * loop note name moves the note, with the links into it. Each is asked in
+ * the status slot first; declining one saves nothing.
+ *
  * What happened goes out as a `LoopEvent` (ui/useLoopEvents.ts shows it in
  * the status slot). Logging names kinds and counts only, never a loop.
  */
-import {findLoopLine, LoopLine, newLoopLine, writeLoopsIntoContent} from '../domain/loopsSection';
-import {LoopRef, loopItselfOf, loopNoteBaseName} from '../domain/loops';
-import {ensureSkeleton, writeTasksIntoContent} from '../domain/markdown';
+import {ConfirmText} from '../domain/fileChangeText';
+import {LoopEdit, renameNoteLinks, retagEntries} from '../domain/loopEdit';
+import {findLoopLine, LoopLine, newLoopLine, withLoopLine, writeLoopsIntoContent} from '../domain/loopsSection';
+import {LoopRef, loopItselfOf, loopNoteBaseName, loopOf} from '../domain/loops';
+import {ensureSkeleton, writeMeetingsIntoContent, writeTasksIntoContent} from '../domain/markdown';
 import {Task} from '../domain/types';
 import {fileExists, moveFile, writeTextFile} from '../supernote/fileSystem';
 import {errorMessage} from '../utils/errorMessage';
@@ -35,6 +42,7 @@ import {dataFilePath, saveLoops} from './projectFile';
 export type LoopEvent =
   | {kind: 'started'; tag: string; owner: string; noteMovedTo: string | null}
   | {kind: 'tracked'; tag: string; owner: string}
+  | {kind: 'saved'; tag: string; renamedFrom: string | null; noteRenamedTo: string | null}
   | {kind: 'failed'; text: string};
 
 const listeners = new Set<(event: LoopEvent) => void>();
@@ -149,4 +157,78 @@ export async function trackLoop(ownerPath: string, tag: string): Promise<void> {
   updateItemLoops(item.path, next, loops, item.loopsExtraLines);
   log('Loops: track');
   emit({kind: 'tracked', tag: tag.toLowerCase(), owner: item.name});
+}
+
+/** The loop note's file name in its owner (`<name>.note`). */
+export function loopNoteFile(kinds: LoopKindsState, loop: LoopRef, mainDate: string | null): string {
+  return `${loopNoteName(kinds, loop, mainDate)}.note`;
+}
+
+function ownerFile(item: CachedItem, file: string): string {
+  return `${item.path.replace(/\/+$/, '')}/${file}`;
+}
+
+/**
+ * Saves the loop edit `next` (tag, main date) and `linkedFile` for the loop
+ * `oldTag` of `ownerPath`. `ask` shows a confirm in the status slot; false
+ * from it (or a refused rename) leaves everything as it was and resolves
+ * false.
+ */
+export async function updateLoop(
+  ownerPath: string,
+  oldTag: string,
+  next: LoopEdit,
+  linkedFile: string,
+  ask: (text: ConfirmText) => Promise<boolean>,
+): Promise<boolean> {
+  const item = findCachedItem(ownerPath);
+  if (!item) throw new Error('This Area or Project is not loaded - reload all files.');
+  const line = findLoopLine(item.loops, oldTag);
+  if (!line) throw new Error(`Loop ${oldTag} has no line in ${item.name}.`);
+  const kindsState = getLoopKinds();
+  const oldLoop = loopOf(line.tag, kindsState.kinds) ?? next.loop;
+  const newTag = next.loop.tag;
+  const tagChanged = newTag !== line.tag;
+  if (tagChanged && findLoopLine(item.loops, newTag)) throw new Error(`Loop ${newTag} exists already in ${item.name}.`);
+
+  let tasks = item.tasks;
+  let meetings = item.meetings;
+  if (tagChanged) {
+    const retagged = retagEntries(tasks, meetings, line.tag, newTag);
+    const ok = await ask({
+      text: `Rename loop ${line.tag} to ${newTag}?`,
+      detail: `${retagged.changed} todo${retagged.changed === 1 ? '' : 's'} and meetings in ${item.name} get the new tag.`,
+      actionLabel: 'Rename',
+    });
+    if (!ok) return false;
+    ({tasks, meetings} = retagged);
+  }
+
+  const oldFile = loopNoteFile(kindsState, oldLoop, line.mainDate);
+  const newFile = loopNoteFile(kindsState, next.loop, next.mainDate);
+  let noteRenamedTo: string | null = null;
+  if (oldFile !== newFile && (await fileExists(ownerFile(item, oldFile)))) {
+    if (await fileExists(ownerFile(item, newFile))) throw new Error(`A note named ${newFile} exists already in ${item.name}.`);
+    const ok = await ask({
+      text: `Rename the loop note to ${newFile}?`,
+      detail: `${oldFile} → ${newFile}, in ${item.name}. Links to it follow.`,
+      actionLabel: 'Rename note',
+    });
+    if (!ok) return false;
+    ({tasks, meetings} = renameNoteLinks(tasks, meetings, oldFile, newFile));
+    await moveFile(ownerFile(item, oldFile), ownerFile(item, newFile));
+    noteRenamedTo = newFile;
+    log('Loops: rename note');
+  }
+
+  const loops = withLoopLine(item.loops, line.tag, l => ({...l, tag: newTag, mainDate: next.mainDate, linkedFile: linkedFile || null}));
+  let content = ensureSkeleton(item.rawContent, item.kind);
+  if (tasks !== item.tasks) content = writeTasksIntoContent(content, tasks, item.taskExtraLines);
+  if (meetings !== item.meetings) content = writeMeetingsIntoContent(content, meetings, item.meetingExtraLines);
+  content = writeLoopsIntoContent(content, loops, item.loopsExtraLines);
+  await writeTextFile(dataFilePath(item.kind, item.path), content);
+  applyItemRawContent(item.path, content);
+  if (tagChanged) log('Loops: rename tag');
+  emit({kind: 'saved', tag: newTag, renamedFrom: tagChanged ? line.tag : null, noteRenamedTo});
+  return true;
 }

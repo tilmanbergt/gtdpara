@@ -10,7 +10,8 @@
  *   (storage/projectGlance.ts). Tapping a row opens the Project.
  * - Then, on both: the item's own loops, marked ○, by main date
  *   (storage/loopGlance.ts) - main date and next meeting, then the counts of
- *   the loop's own todos; the clip opens the loop's linked file. Under them
+ *   the loop's own todos; a tap opens the loop overview, the clip the
+ *   loop's linked file. Under them
  *   "New" (loop tags used on an active todo or a meeting without a loop
  *   yet, with Track), and folded rows for the loop ideas (Someday) and the
  *   closed loops.
@@ -36,6 +37,7 @@ import {FONT, SPACING} from '../../ui/theme';
 import TwoLineRow, {TWO_LINE_ROW_HEIGHT} from '../../ui/TwoLineRow';
 import {useCachedItems} from '../../ui/useCachedItems';
 import {useLoopKinds} from '../../ui/useLoopKinds';
+import {openOverview} from '../../ui/overviewStore';
 import {FolderEntry} from '../../supernote/fileSystem';
 import {errorMessage} from '../../utils/errorMessage';
 import {logError} from '../../utils/log';
@@ -170,6 +172,7 @@ export default function ProjectsTab({ownerKind, ownerPath, areaName, onOpenItem,
             }
             line2Left={loopDateText(row.glance, dateOf)}
             line2Right={glanceCountsText(row.glance)}
+            onPress={() => openOverview({tag: line.tag, ownerPath})}
             textColor={textColor}
             borderColor={borderColor}
           />

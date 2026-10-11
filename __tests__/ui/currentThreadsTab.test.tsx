@@ -86,7 +86,7 @@ import React from 'react';
 import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import App from '../../App';
-import {closeThreadOverview, getThreadOverview} from '../../src/ui/threadOverlayStore';
+import {closeOverview, getOverview} from '../../src/ui/overviewStore';
 
 const AREA_FILE = '/storage/emulated/0/Note/2 Areas/Coaching/area.txt';
 
@@ -168,9 +168,9 @@ describe('the Threads tab on the Current page', () => {
   it("opens the counterpart's overview from its name", async () => {
     const r = await openCoachingThreads();
     await pressInRow(r, 'Threads', leafIs('alpha'), 'alpha');
-    expect(getThreadOverview()).toEqual(expect.objectContaining({lens: 'counterpart'}));
+    expect(getOverview()).toEqual(expect.objectContaining({lens: 'counterpart'}));
     expect(texts(r)).not.toContain('alpha ✕');
-    act(() => closeThreadOverview());
+    act(() => closeOverview());
     act(() => r.unmount());
   });
 

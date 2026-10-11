@@ -323,6 +323,8 @@ interface Props {
   /** Mutually exclusive - the caller's own single edit-target state already keeps that invariant (design doc §6). */
   editingTask?: Task;
   editingMeeting?: Meeting;
+  /** `editingTask` stands for a loop (screens/loop/LoopOverview.tsx): no flow chips, no Delete, "Save loop". */
+  editingLoop?: boolean;
   /** Resolve `false` when the save failed (the screen showed its own error) - the widget then keeps the edit open. */
   onSaveEditTask?: (nextText: string, nextLinkedFile: string) => Promise<void | boolean>;
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
@@ -434,6 +436,7 @@ function QuickAddWidget({
   onAddTask,
   onAddMeeting,
   editingTask,
+  editingLoop,
   editingMeeting,
   onSaveEditTask,
   onSaveEditMeeting,
@@ -793,7 +796,7 @@ function QuickAddWidget({
     return (onSaveEditTask ?? (() => Promise.resolve()))(finalText, editFields.fields.linkedFile)
       .then(result => {
         if (result === false) return false;
-        setSavedNote(`Saved todo "${truncateItemName(trimmed, 40)}"`);
+        setSavedNote(`Saved ${loopMode.kind === 'loop' ? 'loop' : 'todo'} "${truncateItemName(trimmed, 40)}"`);
         recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags);
         return true;
       })
@@ -1079,6 +1082,7 @@ function QuickAddWidget({
     active: displayType === 'task' && !isCapture,
     fields: taskFields,
     editing: editFields?.kind === 'task',
+    editingLoop: !!editingLoop && editFields?.kind === 'task',
     fixedDestination,
     editingItemPath,
     abbrevItems: cachedAbbrevItems,
@@ -1146,7 +1150,7 @@ function QuickAddWidget({
           ref={dueInputRef}
           value={taskFields.dueDate}
           onChangeText={setTaskDueDate}
-          placeholder={loopMode.kind === 'add' || loopMode.kind === 'make' ? 'Main date YYYY-MM-DD' : 'Due YYYY-MM-DD'}
+          placeholder={loopMode.kind === 'none' || loopMode.kind === 'exists' ? 'Due YYYY-MM-DD' : 'Main date YYYY-MM-DD'}
           placeholderColor={placeholderColor}
           textColor={textColor}
           borderColor={borderColor}
@@ -1426,7 +1430,7 @@ function QuickAddWidget({
       <View style={[styles.row3, taskRow3Hidden]} onLayout={taskTagBudget.onRowLayout}>
         <View style={styles.row3ChipsGroup}>
           <View style={styles.row3Lead} onLayout={taskTagBudget.onLeadLayout}>
-            <FlowStateChips value={taskFields.flowState} onChange={setTaskFlowState} textColor={textColor} borderColor={borderColor} />
+            {loopMode.kind !== 'loop' && <FlowStateChips value={taskFields.flowState} onChange={setTaskFlowState} textColor={textColor} borderColor={borderColor} />}
           </View>
           {!isCapture && <TagChips
             text={taskFields.text}
@@ -1916,12 +1920,12 @@ function QuickAddWidget({
   const row4 = isCapture && !isEditing ? captureRow4 : isEditing ? (
     <EditActionRow
       pending={pending}
-      onDelete={handleDelete}
+      onDelete={loopMode.kind === 'loop' ? undefined : handleDelete}
       onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
       onRefile={onRefile ? handleRefile : undefined}
       quickFile={onQuickFile && abbrevTarget ? {name: truncateItemName(abbrevTarget.name), onPress: handleQuickFile} : null}
       onCancel={onCancelEdit}
-      saveLabel={loopMode.kind === 'make' ? 'Make loop' : 'Save'}
+      saveLabel={loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : 'Save'}
       onSave={editFields?.kind === 'meeting' ? submitMeetingEdit : submitTaskEdit}
       errorOnSave={!!errorState && errorState.field === null}
       monthlyToggle={monthlyToggle}

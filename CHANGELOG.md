@@ -24,6 +24,9 @@ or your project/area files are stored.
   gets a **Loops** tab - each loop with its main date, next meeting and todo counts, loop tags in
   use without a loop yet under **New** (with **Track**), loop ideas and closed loops folded. The
   page's todos are grouped by loop, the loops first.
+- **The loop overview**: tap a loop, or a loop tag in its Area or Project, to see its meetings and
+  todos ahead and looking back, add to it in Quick Add, and edit it: **Edit** loads its tag, main
+  date and file; renaming the loop or its note is asked in the status line first.
 - `{day}` for shared and loop note names. Without a date, date placeholders are left out with
   the `-`, `.` or `_` between them.
 

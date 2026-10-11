@@ -75,7 +75,7 @@ import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import App from '../../App';
 import TaskRow from '../../src/ui/TaskRow';
-import {getThreadOverview, openThreadOverview} from '../../src/ui/threadOverlayStore';
+import {getOverview, openOverview} from '../../src/ui/overviewStore';
 import {task} from '../../test-helpers/fixtures';
 
 const AREA = '/storage/emulated/0/Note/2 Areas/Coaching';
@@ -114,7 +114,7 @@ describe('App with the thread overview', () => {
   it('draws the overview over Daily and closes it with Back', async () => {
     const r = await renderApp();
     expect(texts(r)).toContain('Today');
-    await act(async () => openThreadOverview({tag: 'retro/alpha', ownerPath: AREA}));
+    await act(async () => openOverview({tag: 'retro/alpha', ownerPath: AREA}));
     await settle();
     expect(texts(r)).toContain('‹ Daily');
     expect(texts(r)).toContain('#retro/alpha');
@@ -131,14 +131,14 @@ describe('App with the thread overview', () => {
 
     await pressText(r, '‹ Daily');
     await settle();
-    expect(getThreadOverview()).toBeNull();
+    expect(getOverview()).toBeNull();
     expect(texts(r)).not.toContain('Looking back');
     act(() => r.unmount());
   });
 
   it('shows the "Since" row and, selected, the todos done since the latest meeting', async () => {
     const r = await renderApp();
-    await act(async () => openThreadOverview({tag: 'retro/alpha', ownerPath: AREA}));
+    await act(async () => openOverview({tag: 'retro/alpha', ownerPath: AREA}));
     await settle();
     const since = texts(r).find(t => t.startsWith('Since '));
     expect(since).toMatch(/^Since .+ · 1 done$/);
@@ -158,7 +158,7 @@ describe('App with the thread overview', () => {
 
   it('shows a #wf/<name> overview as "All <name>" without a lens switch', async () => {
     const r = await renderApp();
-    await act(async () => openThreadOverview({tag: 'wf/alpha', ownerPath: AREA}));
+    await act(async () => openOverview({tag: 'wf/alpha', ownerPath: AREA}));
     await settle();
     expect(texts(r)).toContain('All alpha');
     expect(texts(r)).not.toContain('#wf/alpha');
@@ -172,17 +172,17 @@ describe('App with the thread overview', () => {
 
   it('closes on a tab tap and when the help opens', async () => {
     const r = await renderApp();
-    await act(async () => openThreadOverview({tag: 'retro/alpha', ownerPath: AREA}));
+    await act(async () => openOverview({tag: 'retro/alpha', ownerPath: AREA}));
     await settle();
     await pressText(r, 'Week');
     await settle();
-    expect(getThreadOverview()).toBeNull();
+    expect(getOverview()).toBeNull();
 
-    await act(async () => openThreadOverview({tag: 'retro/alpha', ownerPath: AREA}));
+    await act(async () => openOverview({tag: 'retro/alpha', ownerPath: AREA}));
     await settle();
     await pressText(r, '?');
     await settle();
-    expect(getThreadOverview()).toBeNull();
+    expect(getOverview()).toBeNull();
     expect(texts(r)).not.toContain('Looking back');
     act(() => r.unmount());
   });
@@ -210,16 +210,16 @@ describe('tap routing in a row', () => {
     });
     const tag = r.root.findAll(n => typeof n.props.onPress === 'function' && n.props.children === '#retro/alpha')[0];
     act(() => tag.props.onPress());
-    expect(getThreadOverview()).toEqual({tag: 'retro/alpha', ownerPath: AREA, lens: 'thread'});
+    expect(getOverview()).toEqual({tag: 'retro/alpha', ownerPath: AREA, lens: 'thread'});
     const label = r.root.findAll(n => typeof n.props.onPress === 'function' && n.props.children === '#w/f Max')[0];
     act(() => label.props.onPress());
-    expect(getThreadOverview()).toEqual({tag: 'wf/max', ownerPath: AREA, lens: 'counterpart'});
+    expect(getOverview()).toEqual({tag: 'wf/max', ownerPath: AREA, lens: 'counterpart'});
     const owe = r.root.findAll(n => typeof n.props.onPress === 'function' && n.props.children === '#owe/lena')[0];
     act(() => owe.props.onPress());
-    expect(getThreadOverview()).toEqual({tag: 'owe/lena', ownerPath: AREA, lens: 'counterpart'});
+    expect(getOverview()).toEqual({tag: 'owe/lena', ownerPath: AREA, lens: 'counterpart'});
     // A wf/owe tag never opens a thread lens of its own, whatever is asked for.
-    act(() => openThreadOverview({tag: 'wf/max', lens: 'thread'}));
-    expect(getThreadOverview()?.lens).toBe('counterpart');
+    act(() => openOverview({tag: 'wf/max', lens: 'thread'}));
+    expect(getOverview()?.lens).toBe('counterpart');
   });
 
   it('keeps a plain tag inert without a filter handler', () => {

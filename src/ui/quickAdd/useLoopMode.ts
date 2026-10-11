@@ -11,6 +11,8 @@
  * - `make`: editing such a todo there - "Make loop".
  * - `exists`: the loop has a line already - creating is disabled (a bare tag
  *   would only be an empty todo); an edit saves as a plain todo.
+ * - `loop`: the edit is a loop itself (the loop overview's Edit) - "Save
+ *   loop", no flow chips, no Delete.
  * - `none`: everything else, the Inbox included (filing it there later
  *   starts the loop).
  */
@@ -22,23 +24,27 @@ import {composeTaskText, TaskComposeFields} from '../../domain/quickAddCompose';
 import {CachedItem, findCachedItem} from '../../storage/dataCache';
 import {useLoopKinds} from '../useLoopKinds';
 
-export type LoopMode = {kind: 'none'} | {kind: 'add' | 'make' | 'exists'; loop: LoopRef};
+export type LoopMode = {kind: 'none'} | {kind: 'loop'} | {kind: 'add' | 'make' | 'exists'; loop: LoopRef};
 
 const NONE: LoopMode = {kind: 'none'};
+const LOOP: LoopMode = {kind: 'loop'};
 
 interface Input {
   /** False outside the Todo tab and in the capture panel. */
   active: boolean;
   fields: TaskComposeFields;
   editing: boolean;
+  /** The edited todo stands for a loop (Quick Add's `editingLoop`). */
+  editingLoop: boolean;
   fixedDestination: Destination;
   /** Quick Add's `editingItemPath` prop: where the edited todo lives, when the screen says so. */
   editingItemPath?: string | null;
   abbrevItems: CachedItem[];
 }
 
-export function useLoopMode({active, fields, editing, fixedDestination, editingItemPath, abbrevItems}: Input): LoopMode {
+export function useLoopMode({active, fields, editing, editingLoop, fixedDestination, editingItemPath, abbrevItems}: Input): LoopMode {
   const {kinds} = useLoopKinds();
+  if (editingLoop) return LOOP;
   if (!active || kinds.length === 0) return NONE;
   const fixedPath = fixedDestination.type === 'item' ? fixedDestination.path : null;
   // Where the todo is saved: the edited todo's file, or a typed abbreviation's Project/Area, else the screen's own.

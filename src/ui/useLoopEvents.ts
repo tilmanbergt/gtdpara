@@ -17,6 +17,8 @@ export function loopEventText(event: LoopEvent): string {
       return `Loop ${event.tag} started in ${event.owner}${event.noteMovedTo ? ` - its note is now ${event.noteMovedTo}` : ''}`;
     case 'tracked':
       return `Loop ${event.tag} tracked in ${event.owner}`;
+    case 'saved':
+      return `Loop ${event.tag} saved${event.renamedFrom ? ` (was ${event.renamedFrom})` : ''}${event.noteRenamedTo ? ` - its note is now ${event.noteRenamedTo}` : ''}`;
     case 'failed':
       return event.text;
   }

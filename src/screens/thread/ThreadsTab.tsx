@@ -36,7 +36,7 @@ import {nextMeetingOffers, NextMeetingOffer} from '../../storage/threadAggregate
 import CounterpartCloseOut, {useSetInactive} from '../../ui/CounterpartCloseOut';
 import PagedSection from '../../ui/PagedSection';
 import {FONT, SPACING} from '../../ui/theme';
-import {openThreadOverview} from '../../ui/threadOverlayStore';
+import {openOverview} from '../../ui/overviewStore';
 import {needsConfirm, useTendActions, useTendingData} from './useTending';
 
 const HEAD_HEIGHT = 30;
@@ -160,7 +160,7 @@ export default function ThreadsTab({path, selected, onSelect, onNextMeeting, vie
 
   const toggleSelect = (entry: RosterEntry) =>
     onSelect(selected?.leaf === entry.counterpart.leaf ? null : {leaf: entry.counterpart.leaf, tag: entry.tag});
-  const openOverview = (entry: RosterEntry) => openThreadOverview({tag: entry.tag, ownerPath: path, lens: 'counterpart'});
+  const openEntry = (entry: RosterEntry) => openOverview({tag: entry.tag, ownerPath: path, lens: 'counterpart'});
   const action = (label: string, onPress: () => void) => (
     <Text key={label} onPress={onPress} suppressHighlighting style={[styles.action, {color: textColor, borderColor}]}>
       {label}
@@ -178,7 +178,7 @@ export default function ThreadsTab({path, selected, onSelect, onNextMeeting, vie
   );
   const nameText = (entry: RosterEntry) => (
     <Text
-      onPress={() => openOverview(entry)}
+      onPress={() => openEntry(entry)}
       suppressHighlighting
       numberOfLines={1}
       style={[styles.name, {color: textColor}, isSelected(entry) && styles.nameSelected]}>

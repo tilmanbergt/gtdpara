@@ -34,17 +34,21 @@ interface Props {
   actions: ThreadActions;
   nextOffers: NextOffer[];
   viewportHeight: number;
+  /** Other sub-head labels (the loop overview's); the thread's by default. */
+  sectionLabels?: Partial<Record<TaskSectionKey, string>>;
   textColor: string;
   borderColor: string;
 }
 
-const TASK_SECTIONS: Array<{key: 'waiting' | 'owe' | 'relevant'; label: string}> = [
+type TaskSectionKey = 'waiting' | 'owe' | 'relevant';
+
+const TASK_SECTIONS: Array<{key: TaskSectionKey; label: string}> = [
   {key: 'owe', label: 'I owe'},
   {key: 'waiting', label: 'Waiting for'},
   {key: 'relevant', label: 'Relevant'},
 ];
 
-function rowsOf(overview: ThreadOverview): AheadRow[] {
+function rowsOf(overview: ThreadOverview, labels: Partial<Record<TaskSectionKey, string>>): AheadRow[] {
   const rows: AheadRow[] = [];
   const {meetings} = overview.ahead;
   if (meetings.length > 0) {
@@ -54,15 +58,15 @@ function rowsOf(overview: ThreadOverview): AheadRow[] {
   for (const section of TASK_SECTIONS) {
     const entries = overview.ahead[section.key];
     if (entries.length === 0) continue;
-    rows.push({kind: 'head', key: `h-${section.key}`, label: section.label});
+    rows.push({kind: 'head', key: `h-${section.key}`, label: labels[section.key] ?? section.label});
     entries.forEach(entry => rows.push({kind: 'task', key: `t-${taskEntryKey(entry)}`, entry}));
   }
   return rows;
 }
 
-export default function AheadSection({overview, actions, nextOffers, viewportHeight, textColor, borderColor}: Props): React.JSX.Element {
+export default function AheadSection({overview, actions, nextOffers, viewportHeight, sectionLabels = {}, textColor, borderColor}: Props): React.JSX.Element {
   const {edit} = actions;
-  const rows = rowsOf(overview);
+  const rows = rowsOf(overview, sectionLabels);
   const header = (
     <>
       Ahead
