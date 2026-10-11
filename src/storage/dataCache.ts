@@ -615,6 +615,18 @@ export async function ensureItemCached(
   return item;
 }
 
+/**
+ * Called after every write-through of an item's Tasks span, with the item's
+ * path - storage/loops.ts turns a todo that is a loop itself into its loop
+ * line there (docs/dev/history/technical-design-loops.md §4.3), whichever
+ * screen saved it. Set once at start (`setTasksWrittenHook`).
+ */
+let tasksWrittenHook: ((path: string) => void) | null = null;
+
+export function setTasksWrittenHook(hook: ((path: string) => void) | null): void {
+  tasksWrittenHook = hook;
+}
+
 /** Write-through after saving an item's Tasks span - see the module doc comment. No-op if this item isn't (yet) in the cache. */
 export function updateItemTasks(
   path: string,
@@ -629,6 +641,7 @@ export function updateItemTasks(
   item.taskExtraLines = taskExtraLines;
   item.loadError = undefined;
   notifyCacheChanged();
+  tasksWrittenHook?.(path);
 }
 
 /** Write-through after saving an item's Meetings span - see updateItemTasks. */

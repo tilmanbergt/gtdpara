@@ -132,7 +132,7 @@ import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {FlowState, Meeting, Task} from '../domain/types';
 import {getRecentTags, getRecentTagsSync, recordTagsUsed} from '../storage/tagUsage';
 import {getRecentDestinations, getRecentDestinationsSync, recordDestinationUsed} from '../storage/destinationUsage';
-import {FILE_TO_SHORT, fileToEligible, fileToLabel, fileToShortList} from '../domain/captureFileTo';
+import {FILE_TO_SHORT} from '../domain/captureFileTo';
 import ClipboardTextInput from './ClipboardTextInput';
 import DateInput, {DateInputHandle} from './DateInput';
 import FlowStateChips from './FlowStateChips';
@@ -150,6 +150,8 @@ import {useOnScreenHide} from './screenActivity';
 import {common} from './commonStyles';
 import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
 import {CreateActionRow, EditActionRow, quickAddButtons} from './quickAdd/ActionRow';
+import {useLoopMode} from './quickAdd/useLoopMode';
+import {buildFileToChips} from './quickAdd/fileToChips';
 import ProvenanceLine, {QuickAddProvenance} from './quickAdd/ProvenanceLine';
 import {EditFields, loadEditFields, MeetingEditFields, TaskEditFields} from './quickAdd/editFields';
 import {errorMessage} from '../utils/errorMessage';
@@ -757,12 +759,15 @@ function QuickAddWidget({
     // matched #tag, which did its job picking the destination:
     // domain/quickAddCompose.ts, shared with the lasso capture panel.
     const finalText = composeTaskText(taskDraft, taskAbbrevTarget ? taskAbbrevTarget.tag : null);
+    if (loopMode.kind === 'exists') return;
+    const startsLoop = loopMode.kind === 'add';
     setError(null);
     setPending(true);
     onAddTask(finalText, taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination)
       .then(() => {
         setTaskDraft(d => ({...d, text: '', flowState: null, waitingOnText: '', dueDate: ''}));
         taskLastSelectionRef.current = null;
+        if (startsLoop) return;
         setTaskJustAdded(
           `Added todo "${truncateItemName(trimmed, 40)}" to ${destinationLabel(
             taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination,
@@ -1070,6 +1075,15 @@ function QuickAddWidget({
 
   // ---- Row 2 + Row 3: Task style ----
   const taskFields = editFields?.kind === 'task' ? editFields.fields : taskDraft;
+  // A todo that is only a loop tag starts the loop (ui/quickAdd/useLoopMode.ts).
+  const loopMode = useLoopMode({
+    active: displayType === 'task' && !isCapture,
+    fields: taskFields,
+    editing: editFields?.kind === 'task',
+    fixedDestination,
+    editingItemPath,
+    abbrevItems: cachedAbbrevItems,
+  });
   const setTaskText = (t: string) => {
     captureTouchedRef.current = true;
     const stripped = stripSpaceAfterHash(t);
@@ -1159,7 +1173,7 @@ function QuickAddWidget({
           ref={dueInputRef}
           value={taskFields.dueDate}
           onChangeText={setTaskDueDate}
-          placeholder="Due YYYY-MM-DD"
+          placeholder={loopMode.kind === 'add' || loopMode.kind === 'make' ? 'Main date YYYY-MM-DD' : 'Due YYYY-MM-DD'}
           placeholderColor={placeholderColor}
           textColor={textColor}
           borderColor={borderColor}
@@ -1790,6 +1804,10 @@ function QuickAddWidget({
   useStatus(`${statusId}.error`, error ? {kind: 'error', text: error, onDismiss: () => setError(null)} : null);
   useStatus(`${statusId}.success`, successText ? {kind: 'success', text: successText, onDismiss: dismissSuccess} : null);
   useStatus(`${statusId}.info`, infoText ? {kind: 'info', text: infoText, onDismiss: () => setMeetingCopyNote(null)} : null);
+  useStatus(
+    `${statusId}.loop`,
+    loopMode.kind === 'exists' && !isEditing ? {kind: 'info', text: `Loop ${loopMode.loop.tag} exists - add words for a todo of it`} : null,
+  );
 
   const buttonMark = errorState && errorState.field === null ? ('warning' as const) : successText ? ('success' as const) : null;
 
@@ -1920,55 +1938,20 @@ function QuickAddWidget({
         return {key: tag, label: `#${recognizedAbbrevTags.has(lower) ? tag.toUpperCase() : tag}`, on, onPress};
       })
     : [];
-  // Short list: Inbox, own place, current choice, focused, recent (checkpoint B);
-  // More… shows every Active Project/Area alphabetically, FILE_TO_PAGE per page.
-  const fileToChip = (item: {kind: 'project' | 'area'; name: string; path: string; abbrev: string | null}): GridChip => ({
-    key: item.path,
-    label: fileToLabel(item),
-    on: captureDestination.type === 'item' && captureDestination.path === item.path,
-    onPress: () => onCaptureDestinationChange?.({type: 'item', kind: item.kind, name: item.name, path: item.path}),
-  });
-  const inboxChip: GridChip = {
-    key: 'inbox',
-    label: 'Inbox',
-    on: captureDestination.type === 'inbox',
-    onPress: () => onCaptureDestinationChange?.({type: 'inbox'}),
-  };
-  let fileToChips: GridChip[] = [];
-  if (isCapture && !fileToAll) {
-    const short = fileToShortList(cachedAbbrevItems, captureOwnDestination, captureDestination, recentDestinations);
-    const total = fileToEligible(cachedAbbrevItems).length;
-    fileToChips = [inboxChip, ...short.map(fileToChip)];
-    if (total > short.length) {
-      fileToChips.push({key: 'more', label: 'More…', on: false, onPress: () => setFileToAll(true)});
-    }
-  } else if (isCapture) {
-    const all = fileToEligible(cachedAbbrevItems);
-    const pages = Math.max(1, Math.ceil(all.length / FILE_TO_PAGE));
-    const page = Math.min(fileToPage, pages - 1);
-    fileToChips = [
-      {key: 'less', label: '‹ Short list', on: false, onPress: () => setFileToAll(false)},
-      // A pick goes back to the short list, which always shows the current choice.
-      ...all.slice(page * FILE_TO_PAGE, (page + 1) * FILE_TO_PAGE).map(item => {
-        const chip = fileToChip(item);
-        return {
-          ...chip,
-          onPress: () => {
-            chip.onPress();
-            setFileToAll(false);
-          },
-        };
-      }),
-    ];
-    if (pages > 1) {
-      fileToChips.push({
-        key: 'page',
-        label: `${page + 1}/${pages} ›`,
-        on: false,
-        onPress: () => setFileToPage((page + 1) % pages),
-      });
-    }
-  }
+  const fileToChips: GridChip[] = isCapture
+    ? buildFileToChips({
+        items: cachedAbbrevItems,
+        own: captureOwnDestination,
+        current: captureDestination,
+        recent: recentDestinations,
+        showAll: fileToAll,
+        page: fileToPage,
+        pageSize: FILE_TO_PAGE,
+        onPick: destination => onCaptureDestinationChange?.(destination),
+        setShowAll: setFileToAll,
+        setPage: setFileToPage,
+      })
+    : [];
   const countLabel = captureCount > 1 ? ` ${captureCount}` : '';
   const captureRow4 = (
     <View style={quickAddButtons.row4}>
@@ -2017,7 +2000,7 @@ function QuickAddWidget({
       onRefile={onRefile ? handleRefile : undefined}
       quickFile={onQuickFile && abbrevTarget ? {name: truncateItemName(abbrevTarget.name), onPress: handleQuickFile} : null}
       onCancel={onCancelEdit}
-      saveLabel="Save"
+      saveLabel={loopMode.kind === 'make' ? 'Make loop' : 'Save'}
       onSave={editFields?.kind === 'meeting' ? submitMeetingEdit : submitTaskEdit}
       errorOnSave={!!errorState && errorState.field === null}
       monthlyToggle={monthlyToggle}
@@ -2026,9 +2009,9 @@ function QuickAddWidget({
     />
   ) : (
     <CreateActionRow
-      label={abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
+      label={loopMode.kind === 'add' ? '+ Add loop' : abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
       onPress={displayType === 'meeting' ? submitMeetingCreate : displayType === 'note' ? submitNoteCreate : submitTaskCreate}
-      disabled={pending}
+      disabled={pending || loopMode.kind === 'exists'}
       mark={buttonMark}
       monthlyToggle={monthlyToggle}
       textColor={textColor}

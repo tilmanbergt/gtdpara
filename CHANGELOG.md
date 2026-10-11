@@ -16,6 +16,10 @@ or your project/area files are stored.
   its tag a kind of loop (`#workshop/<name>`); its pieces make the loop note's first page, and
   its **Loop note name** names the note, with the loop's main date in it. See the help page
   "Loops".
+- **Starting a loop in Quick Add**: type only the loop's tag (`#workshop/teamoffsite`, a date
+  for the main date if you like) and the button reads **+ Add loop**. Editing a todo down to a
+  loop tag turns Save into **Make loop** (its due date, file and own note come along); taking
+  `#someday`/`#maybe` off a bare loop tag, or filing one from the Inbox, starts the loop too.
 - `{day}` for shared and loop note names. Without a date, date placeholders are left out with
   the `-`, `.` or `_` between them.
 
