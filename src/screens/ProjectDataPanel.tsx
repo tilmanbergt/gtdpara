@@ -676,6 +676,7 @@ export default function ProjectDataPanel({
             onArmLink={index => armLinkTarget('task', index)}
             onOpenLinkedFile={onOpenLinkedFile}
             filter={predicates?.task}
+            loops={item?.loops}
             textColor={textColor}
             borderColor={borderColor}
           />

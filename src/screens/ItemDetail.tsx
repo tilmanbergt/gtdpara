@@ -480,24 +480,23 @@ export default function ItemDetail({
         />
       ),
     },
-    ...(kind === 'area'
-      ? [
-          {
-            key: 'projects',
-            label: 'Projects',
-            armingRoot: projectFilesRoot,
-            render: (viewportHeight: number | undefined) => (
-              <ProjectsTab
-                areaName={name}
-                onOpenItem={onOpenItem}
-                viewportHeight={viewportHeight}
-                textColor={textColor}
-                borderColor={borderColor}
-              />
-            ),
-          },
-        ]
-      : []),
+    {
+      // An Area's Projects and loops; a Project's loops (docs/dev/history/technical-design-loops.md §4.7).
+      key: 'projects',
+      label: kind === 'area' ? 'Projects' : 'Loops',
+      ...(kind === 'area' ? {armingRoot: projectFilesRoot} : {}),
+      render: (viewportHeight: number | undefined) => (
+        <ProjectsTab
+          ownerKind={kind}
+          ownerPath={path}
+          areaName={name}
+          onOpenItem={onOpenItem}
+          viewportHeight={viewportHeight}
+          textColor={textColor}
+          borderColor={borderColor}
+        />
+      ),
+    },
   ];
 
 

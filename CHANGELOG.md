@@ -20,6 +20,10 @@ or your project/area files are stored.
   for the main date if you like) and the button reads **+ Add loop**. Editing a todo down to a
   loop tag turns Save into **Make loop** (its due date, file and own note come along); taking
   `#someday`/`#maybe` off a bare loop tag, or filing one from the Inbox, starts the loop too.
+- **Loops on the page**: an Area's Projects tab lists its loops under its Projects, a Project
+  gets a **Loops** tab - each loop with its main date, next meeting and todo counts, loop tags in
+  use without a loop yet under **New** (with **Track**), loop ideas and closed loops folded. The
+  page's todos are grouped by loop, the loops first.
 - `{day}` for shared and loop note names. Without a date, date placeholders are left out with
   the `-`, `.` or `_` between them.
 

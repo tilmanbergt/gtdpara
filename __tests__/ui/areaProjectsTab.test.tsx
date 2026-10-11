@@ -138,7 +138,7 @@ describe('the Projects tab on an Area page', () => {
     await act(async () => garden.root.findAll(n => typeof n.props.onPress === 'function')[0].props.onPress());
     await settle();
     expect(texts(r)).toEqual(expect.arrayContaining(['Garden', 'Project']));
-    expect(filesTabs(r).props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Project Files', 'Resources', 'Area Files']);
+    expect(filesTabs(r).props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Loops', 'Project Files', 'Resources', 'Area Files']);
     act(() => r.unmount());
   });
 });
