@@ -53,7 +53,19 @@ Every loop has one note, from start to end, in its Area's or Project's folder. I
 
 - A new name, like `#workshop/offsite` instead of `#workshop/teamoffsite`, renames the loop: the status line asks first, then every todo and meeting of the loop gets the new tag.
 - When the loop note's name changes with it - with the default name, when the main date moves to another month - the status line asks before the note is renamed. Links to it follow.
-- Declining a question saves nothing. Loops are never deleted; closing them is the way out.
+- Declining a question saves nothing.
+
+## Closing a loop
+
+A loop ends as **Done** (it reached its end) or **Dropped** (it stops here). **Close loop** in the overview or in the Weekly Review asks which one.
+
+- A loop closes only when it has no open todo and no meeting ahead. Otherwise the status line says what is still open - `2 open todos, 1 upcoming meeting` - and **Show** opens the loop. Finish or cancel them, file them elsewhere, or take the loop's tag off.
+- Its note and its todos stay where they are. Closed loops stay readable: the Projects tab lists them folded, the overview shows them as closed, and **Reopen** makes one active again.
+- Loops are never deleted.
+
+## In the Weekly Review
+
+The step **Open loops** lists your loops per area and project, and points at the ones without a next action or past their main date. See [Weekly Review](review.md).
 
 ## In your files
 

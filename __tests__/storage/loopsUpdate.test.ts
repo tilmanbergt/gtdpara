@@ -28,7 +28,7 @@ jest.mock('../../src/storage/noteLinks', () => ({sanitizeFileNameComponent: (nam
 
 import {newLoopLine} from '../../src/domain/loopsSection';
 import {parseLoopEdit} from '../../src/domain/loopEdit';
-import {updateLoop} from '../../src/storage/loops';
+import {setLoopStatus, updateLoop} from '../../src/storage/loops';
 import {item, meeting, task} from '../../test-helpers/fixtures';
 
 const owner = () =>
@@ -83,5 +83,20 @@ describe('updateLoop', () => {
     await expect(updateLoop('/Note/2 Areas/Atruvia', 'workshop/offsite', edit('#workshop/team'), '', async () => true)).rejects.toThrow(
       'Loop workshop/team exists already in Atruvia.',
     );
+  });
+});
+
+describe('setLoopStatus', () => {
+  const NOW = new Date('2026-12-01T12:00:00');
+  it('refuses to close while a todo is open', async () => {
+    await expect(setLoopStatus('/Note/2 Areas/Atruvia', 'workshop/offsite', 'done', NOW)).rejects.toThrow('1 open todo - move, retag or finish them first');
+    expect(mockWrites).toEqual([]);
+  });
+  it('closes and reopens a loop with nothing open', async () => {
+    mockItem = {...owner(), tasks: [task('Book room #workshop/offsite', {done: true})]};
+    await setLoopStatus('/Note/2 Areas/Atruvia', 'workshop/offsite', 'dropped', NOW);
+    expect(mockWrites[0][1]).toContain('- workshop/offsite: dropped, 2026-11-14');
+    await setLoopStatus('/Note/2 Areas/Atruvia', 'workshop/offsite', 'active', NOW);
+    expect(mockWrites[1][1]).toContain('- workshop/offsite: active, 2026-11-14');
   });
 });

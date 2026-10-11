@@ -22,13 +22,17 @@
  * loop note name moves the note, with the links into it. Each is asked in
  * the status slot first; declining one saves nothing.
  *
+ * Closing (`setLoopStatus`, §4.9): Done or Dropped only while the loop has
+ * no open todo and no meeting ahead; reopening sets it active again. The
+ * note and the todos stay where they are.
+ *
  * What happened goes out as a `LoopEvent` (ui/useLoopEvents.ts shows it in
  * the status slot). Logging names kinds and counts only, never a loop.
  */
 import {ConfirmText} from '../domain/fileChangeText';
 import {LoopEdit, renameNoteLinks, retagEntries} from '../domain/loopEdit';
-import {findLoopLine, LoopLine, newLoopLine, withLoopLine, writeLoopsIntoContent} from '../domain/loopsSection';
-import {LoopRef, loopItselfOf, loopNoteBaseName, loopOf} from '../domain/loops';
+import {findLoopLine, LoopLine, LoopStatus, newLoopLine, withLoopLine, writeLoopsIntoContent} from '../domain/loopsSection';
+import {closeBlockedText, closeBlockers, LoopRef, loopItselfOf, loopNoteBaseName, loopOf} from '../domain/loops';
 import {ensureSkeleton, writeMeetingsIntoContent, writeTasksIntoContent} from '../domain/markdown';
 import {Task} from '../domain/types';
 import {fileExists, moveFile, writeTextFile} from '../supernote/fileSystem';
@@ -43,6 +47,7 @@ export type LoopEvent =
   | {kind: 'started'; tag: string; owner: string; noteMovedTo: string | null}
   | {kind: 'tracked'; tag: string; owner: string}
   | {kind: 'saved'; tag: string; renamedFrom: string | null; noteRenamedTo: string | null}
+  | {kind: 'status'; tag: string; status: LoopStatus}
   | {kind: 'failed'; text: string};
 
 const listeners = new Set<(event: LoopEvent) => void>();
@@ -231,4 +236,24 @@ export async function updateLoop(
   if (tagChanged) log('Loops: rename tag');
   emit({kind: 'saved', tag: newTag, renamedFrom: tagChanged ? line.tag : null, noteRenamedTo});
   return true;
+}
+
+/** Closes (done, dropped) or reopens (active) the loop `tag` of `ownerPath`; closing throws while something is open. */
+export async function setLoopStatus(ownerPath: string, tag: string, status: LoopStatus, now: Date = new Date()): Promise<void> {
+  const item = findCachedItem(ownerPath);
+  if (!item) throw new Error('This Area or Project is not loaded - reload all files.');
+  const line = findLoopLine(item.loops, tag);
+  if (!line) throw new Error(`Loop ${tag} has no line in ${item.name}.`);
+  if (status !== 'active') {
+    const blockers = closeBlockers(item, line.tag, now.getTime());
+    if (blockers.openTodos.length + blockers.upcomingMeetings.length > 0) {
+      log('Loops: close blocked', blockers.openTodos.length, blockers.upcomingMeetings.length);
+      throw new Error(closeBlockedText(blockers.openTodos.length, blockers.upcomingMeetings.length));
+    }
+  }
+  const loops = withLoopLine(item.loops, line.tag, l => ({...l, status}));
+  const next = await saveLoops(item.kind, item.path, item.rawContent, loops, item.loopsExtraLines);
+  updateItemLoops(item.path, next, loops, item.loopsExtraLines);
+  log('Loops: status', status);
+  emit({kind: 'status', tag: line.tag, status});
 }

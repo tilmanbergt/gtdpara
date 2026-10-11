@@ -54,6 +54,7 @@ jest.mock('../../src/supernote/fileSystem', () => {
       '',
       '## Loops',
       '- workshop/offsite: active, 2026-11-14',
+      '- workshop/old: active',
       '',
     ].join('\n'),
     '/storage/emulated/0/Note/2 Areas/0 Inbox/Inbox.txt': '---\nkind: inbox\n---\n\n## Tasks\n\n## Meetings\n',
@@ -154,6 +155,28 @@ describe('App with a loop overview', () => {
     expect(area).toContain('Book room #workshop/teamoffsite #next');
     expect(area).toContain('Kickoff #workshop/teamoffsite');
     expect(area).toContain('Plain leaf #offsite');
+    act(() => r.unmount());
+  });
+
+  it('closes a loop only when nothing is open', async () => {
+    const r = await renderApp();
+    await act(async () => openOverview({tag: 'workshop/teamoffsite', ownerPath: AREA}));
+    await settle();
+    await pressText(r, 'Close loop');
+    await settle();
+    expect(rendered(r)).toContain('1 open todo - move, retag or finish them first');
+    expect(texts(r)).toContain('Show');
+
+    await act(async () => openOverview({tag: 'workshop/old', ownerPath: AREA}));
+    await settle();
+    await pressText(r, 'Close loop');
+    await settle();
+    expect(rendered(r)).toContain('Close loop workshop/old?');
+    await pressText(r, 'Done');
+    await settle();
+    const area = mockWritten.filter(([path]) => path.endsWith('Coaching/area.txt')).pop()?.[1] ?? '';
+    expect(area).toContain('- workshop/old: done');
+    expect(texts(r)).toContain('Reopen');
     act(() => r.unmount());
   });
 });

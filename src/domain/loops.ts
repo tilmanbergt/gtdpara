@@ -130,6 +130,15 @@ export function closeBlockers(
   };
 }
 
+/** What the status slot says when a loop cannot close yet (§4.9). */
+export function closeBlockedText(openTodos: number, upcomingMeetings: number): string {
+  const parts = [
+    ...(openTodos > 0 ? [`${openTodos} open todo${openTodos === 1 ? '' : 's'}`] : []),
+    ...(upcomingMeetings > 0 ? [`${upcomingMeetings} upcoming meeting${upcomingMeetings === 1 ? '' : 's'}`] : []),
+  ];
+  return `${parts.join(', ')} - move, retag or finish them first`;
+}
+
 /** Whether a todo is active enough to offer its loop under "New": `#next`, `#now` or a due date, open. */
 function isActiveTodo(task: Task): boolean {
   return !task.done && !task.cancelled && (task.flowState === 'next' || task.now || task.dueDate !== null);

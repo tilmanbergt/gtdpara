@@ -20,7 +20,7 @@ export interface StatusMessage {
   text: string;
   /** Full text for the tap-to-expand overlay (§5, D12). Defaults to `text`. */
   detail?: string;
-  /** Right-aligned buttons. 'confirm' has exactly one; 'modal' none (Cancel comes from onCancel). */
+  /** Right-aligned buttons. 'confirm' has one or two (Close loop's Done / Dropped); 'modal' none (Cancel comes from onCancel). */
   actions?: StatusAction[];
   /** Shows a ✕; called on tap. The owner clears its own state here. */
   onDismiss?: () => void;

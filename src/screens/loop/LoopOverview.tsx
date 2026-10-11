@@ -6,7 +6,8 @@
  *
  * Header: "‹ <tab>" (closes it), ○ the loop's name, its kind and owner, the
  * main date with the days to go (or that it is closed), then Note › (the
- * loop note, created from the Loop rule on first use), File › and Edit. Left: Ahead above Looking back, the thread overview's sections over
+ * loop note, created from the Loop rule on first use), File ›, Edit and
+ * Close loop (ui/useCloseLoop.ts) - Reopen for a closed loop. Left: Ahead above Looking back, the thread overview's sections over
  * storage/loopAggregate.ts. Right: Quick Add - a new todo gets the loop's
  * tag and goes to the owner; Edit loads the loop itself (its tag, main date
  * and file) and saves through storage/loops.ts's `updateLoop`, which asks
@@ -21,12 +22,13 @@ import {todayIso} from '../../domain/meetingTime';
 import {daysBetween} from '../../domain/nextMeeting';
 import {getCachedData} from '../../storage/dataCache';
 import {buildLoopOverview} from '../../storage/loopAggregate';
-import {updateLoop} from '../../storage/loops';
+import {setLoopStatus, updateLoop} from '../../storage/loops';
 import {nextMeetingOffers, PastMeeting} from '../../storage/threadAggregate';
 import QuickAddWidget from '../../ui/QuickAddWidget';
 import {MeetingSeed} from '../../ui/quickAdd/useDraftRequests';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useActionError} from '../../ui/useActionError';
+import {useCloseLoop} from '../../ui/useCloseLoop';
 import {useCachedItems} from '../../ui/useCachedItems';
 import {useLoopKinds} from '../../ui/useLoopKinds';
 import {useLoopNote} from '../../ui/useLoopNote';
@@ -73,6 +75,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
   const {edit} = actions;
   const ask = useStatusConfirm('LoopOverview.confirm');
   const openNote = useLoopNote('LoopOverview');
+  const closeLoop = useCloseLoop('LoopOverview');
   const loopAction = useActionError('LoopOverview.loopError', 'LoopOverview: loop save failed');
   const overview = useMemo(
     () => buildLoopOverview(items, request.tag, request.ownerPath, kinds),
@@ -187,6 +190,8 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
         {line && headerAction('Note ›', () => openNote(owner.path, loop.tag))}
         {file && headerAction('File ›', () => actions.openFile(file))}
         {line && headerAction(loopEditing ? 'Editing…' : 'Edit', startLoopEdit)}
+        {line?.status === 'active' && headerAction('Close loop', () => closeLoop(owner.path, loop.tag))}
+        {line && line.status !== 'active' && headerAction('Reopen', () => loopAction.run(() => setLoopStatus(owner.path, loop.tag, 'active')))}
       </View>
       <View style={styles.body}>
         <View style={[styles.column, styles.left]}>

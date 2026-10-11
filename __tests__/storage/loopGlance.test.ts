@@ -1,6 +1,7 @@
 /** The loops of an Area or Project at a glance (docs/dev/history/technical-design-loops.md §4.7). */
 import {newLoopLine} from '../../src/domain/loopsSection';
 import {buildLoopGlance, loopDateText} from '../../src/storage/loopGlance';
+import {buildLoopRoster, loopRosterCount} from '../../src/storage/loopRoster';
 import {item, meeting, task} from '../../test-helpers/fixtures';
 
 const KINDS = ['workshop', 'buy'];
@@ -56,5 +57,24 @@ describe('buildLoopGlance', () => {
     const fmt = (iso: string) => iso.slice(5);
     expect(loopDateText(glance.active[0], fmt)).toBe('11-14 · next 10-20');
     expect(loopDateText(glance.active[1], fmt)).toBe('no main date · next —');
+  });
+});
+
+describe('buildLoopRoster', () => {
+  it('groups active loops per scope and flags the ones needing a look', () => {
+    const area = item('area', 'Atruvia', {loops: [newLoopLine('workshop/past', '2026-10-01'), newLoopLine('workshop/idle')]});
+    const project = item('project', 'Garden', {
+      area: 'Atruvia',
+      loops: [newLoopLine('buy/soil')],
+      tasks: [task('Order #buy/soil #next')],
+    });
+    const roster = buildLoopRoster([area, project], KINDS, TODAY, NOW);
+    expect(roster).toHaveLength(1);
+    expect(roster[0].loops.map(l => [l.glance.line.tag, l.owner.name, l.attention])).toEqual([
+      ['workshop/past', 'Atruvia', 'pastMainDate'],
+      ['workshop/idle', 'Atruvia', 'noNext'],
+      ['buy/soil', 'Garden', null],
+    ]);
+    expect(loopRosterCount(roster)).toBe(2);
   });
 });

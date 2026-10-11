@@ -30,6 +30,11 @@ or your project/area files are stored.
 - **The loop note**: one note per loop in its Area or Project folder, opened with 📓 on the loop
   row or **Note ›** in the overview; its first page comes from the Loop rule, and the loop's
   meetings and todos get their pages in it.
+- **Closing loops**: **Close loop** (in the overview or the Weekly Review) asks Done or Dropped,
+  and only while nothing of the loop is open - otherwise the status line says what is and offers
+  **Show**. **Reopen** makes a closed loop active again.
+- **Weekly Review: Open loops**: a new step after "Stalled projects" lists the loops per area and
+  project and counts the ones without a next action or past their main date.
 - Prep/review tracking of a meeting now applies when any matching meeting rule asks for it, not
   only the first.
 - `{day}` for shared and loop note names. Without a date, date placeholders are left out with

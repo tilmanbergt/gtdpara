@@ -19,6 +19,8 @@ export function loopEventText(event: LoopEvent): string {
       return `Loop ${event.tag} tracked in ${event.owner}`;
     case 'saved':
       return `Loop ${event.tag} saved${event.renamedFrom ? ` (was ${event.renamedFrom})` : ''}${event.noteRenamedTo ? ` - its note is now ${event.noteRenamedTo}` : ''}`;
+    case 'status':
+      return event.status === 'active' ? `Loop ${event.tag} reopened` : `Loop ${event.tag} closed: ${event.status}`;
     case 'failed':
       return event.text;
   }
