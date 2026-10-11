@@ -411,3 +411,30 @@ Each step ends with `npm run check` green and is committed on its own.
 5. **Loop note:** page 1 from the Loop rule, meeting/todo pages, tracking OR.
 6. **Review:** Open loops step; closing with blockers.
 7. **Docs, help, CHANGELOG, debug bundle;** device test; beta.
+
+## 10. As built (steps 0–3)
+
+Where the code differs from the plan above:
+
+- **Conversion is central.** The loop itself becomes its `## Loops` line in one place: a hook
+  after every write of an Area's or Project's todos (`storage/dataCache.ts`
+  `setTasksWrittenHook`, installed by `storage/loops.ts`). Quick Add's "+ Add loop" and
+  "Make loop" only relabel the buttons and save a todo; the someday → loop path, the chips, the
+  Review and filing from the Inbox need no code of their own. The note move is reported after
+  the conversion (status slot), not asked before.
+- **Refactors moved to the step that needs them:** `itemNotePlan.ts` to step 5,
+  `overviewStore.ts` to step 4. `ui/TwoLineRow.tsx` is used by ProjectsTab only; ThreadsTab is
+  unchanged. The File-to chips moved to `ui/quickAdd/fileToChips.ts`, the edit fields to
+  `ui/quickAdd/editFields.ts`, the action rows to `ui/quickAdd/ActionRow.tsx`
+  (QuickAddWidget 2373 → 2213 lines).
+- **Loop kinds** are readable synchronously (`storage/loopKinds.ts`), set on a Tag Rules save
+  and loaded once at start.
+- **Projects tab:** "New" has Track only (no "Not"). A row tap does nothing until the overview
+  (step 4); the note icon on loop rows comes with step 5. A Project page gets a **Loops** tab
+  (same component) for its own loops.
+- **Todo grouping:** the loop tag stays visible inside its group.
+- No "Refile as loop" label: refiling a bare loop tag converts through the hook.
+
+File sizes over 500 lines touched by steps 0–3 (before → after): App.tsx 968 → 971,
+domain/tagRules.ts 671 → 684, screens/ItemDetail.tsx 800 → 799, screens/ProjectDataPanel.tsx
+724 → 725, storage/dataCache.ts 798 → 828, ui/QuickAddWidget.tsx 2373 → 2213 (baseline 2214).
