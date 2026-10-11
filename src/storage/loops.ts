@@ -186,55 +186,67 @@ export async function updateLoop(
   linkedFile: string,
   ask: (text: ConfirmText) => Promise<boolean>,
 ): Promise<boolean> {
-  const item = findCachedItem(ownerPath);
-  if (!item) throw new Error('This Area or Project is not loaded - reload all files.');
-  const line = findLoopLine(item.loops, oldTag);
-  if (!line) throw new Error(`Loop ${oldTag} has no line in ${item.name}.`);
+  const before = findCachedItem(ownerPath);
+  if (!before) throw new Error('This Area or Project is not loaded - reload all files.');
+  const beforeLine = findLoopLine(before.loops, oldTag);
+  if (!beforeLine) throw new Error(`Loop ${oldTag} has no line in ${before.name}.`);
   const kindsState = getLoopKinds();
-  const oldLoop = loopOf(line.tag, kindsState.kinds) ?? next.loop;
+  const oldLoop = loopOf(beforeLine.tag, kindsState.kinds) ?? next.loop;
   const newTag = next.loop.tag;
-  const tagChanged = newTag !== line.tag;
-  if (tagChanged && findLoopLine(item.loops, newTag)) throw new Error(`Loop ${newTag} exists already in ${item.name}.`);
+  const tagChanged = newTag !== beforeLine.tag;
+  if (tagChanged && findLoopLine(before.loops, newTag)) throw new Error(`Loop ${newTag} exists already in ${before.name}.`);
 
-  let tasks = item.tasks;
-  let meetings = item.meetings;
+  // The questions first; the confirms stay open while the file may change elsewhere.
   if (tagChanged) {
-    const retagged = retagEntries(tasks, meetings, line.tag, newTag);
+    const {changed} = retagEntries(before.tasks, before.meetings, beforeLine.tag, newTag);
     const ok = await ask({
-      text: `Rename loop ${line.tag} to ${newTag}?`,
-      detail: `${retagged.changed} todo${retagged.changed === 1 ? '' : 's'} and meetings in ${item.name} get the new tag.`,
+      text: `Rename loop ${beforeLine.tag} to ${newTag}?`,
+      detail: `${changed} todo${changed === 1 ? '' : 's'} and meetings in ${before.name} get the new tag.`,
       actionLabel: 'Rename',
     });
     if (!ok) return false;
-    ({tasks, meetings} = retagged);
   }
-
-  const oldFile = loopNoteFile(kindsState, oldLoop, line.mainDate);
+  const oldFile = loopNoteFile(kindsState, oldLoop, beforeLine.mainDate);
   const newFile = loopNoteFile(kindsState, next.loop, next.mainDate);
-  let noteRenamedTo: string | null = null;
-  if (oldFile !== newFile && (await fileExists(ownerFile(item, oldFile)))) {
-    if (await fileExists(ownerFile(item, newFile))) throw new Error(`A note named ${newFile} exists already in ${item.name}.`);
+  const moveNote = oldFile !== newFile && (await fileExists(ownerFile(before, oldFile)));
+  if (moveNote) {
+    if (await fileExists(ownerFile(before, newFile))) throw new Error(`A note named ${newFile} exists already in ${before.name}.`);
     const ok = await ask({
       text: `Rename the loop note to ${newFile}?`,
-      detail: `${oldFile} → ${newFile}, in ${item.name}. Links to it follow.`,
+      detail: `${oldFile} → ${newFile}, in ${before.name}. Links to it follow.`,
       actionLabel: 'Rename note',
     });
     if (!ok) return false;
-    ({tasks, meetings} = renameNoteLinks(tasks, meetings, oldFile, newFile));
-    await moveFile(ownerFile(item, oldFile), ownerFile(item, newFile));
-    noteRenamedTo = newFile;
-    log('Loops: rename note');
   }
 
+  // Then the edit, on the file as it is now.
+  const item = findCachedItem(ownerPath);
+  const line = item ? findLoopLine(item.loops, beforeLine.tag) : undefined;
+  if (!item || !line) throw new Error(`Loop ${beforeLine.tag} changed in the meantime - open it again.`);
+  let {tasks, meetings} = tagChanged ? retagEntries(item.tasks, item.meetings, line.tag, newTag) : item;
+  if (moveNote) ({tasks, meetings} = renameNoteLinks(tasks, meetings, oldFile, newFile));
   const loops = withLoopLine(item.loops, line.tag, l => ({...l, tag: newTag, mainDate: next.mainDate, linkedFile: linkedFile || null}));
   let content = ensureSkeleton(item.rawContent, item.kind);
   if (tasks !== item.tasks) content = writeTasksIntoContent(content, tasks, item.taskExtraLines);
   if (meetings !== item.meetings) content = writeMeetingsIntoContent(content, meetings, item.meetingExtraLines);
   content = writeLoopsIntoContent(content, loops, item.loopsExtraLines);
-  await writeTextFile(dataFilePath(item.kind, item.path), content);
+
+  // The note moves first; if the file then can't be written, it moves back, so links and note agree.
+  if (moveNote) await moveFile(ownerFile(item, oldFile), ownerFile(item, newFile));
+  try {
+    await writeTextFile(dataFilePath(item.kind, item.path), content);
+  } catch (e) {
+    if (moveNote) {
+      await moveFile(ownerFile(item, newFile), ownerFile(item, oldFile)).catch(back =>
+        logError('Loops: moving the note back failed', errorMessage(back)),
+      );
+    }
+    throw e;
+  }
   applyItemRawContent(item.path, content);
   if (tagChanged) log('Loops: rename tag');
-  emit({kind: 'saved', tag: newTag, renamedFrom: tagChanged ? line.tag : null, noteRenamedTo});
+  if (moveNote) log('Loops: rename note');
+  emit({kind: 'saved', tag: newTag, renamedFrom: tagChanged ? line.tag : null, noteRenamedTo: moveNote ? newFile : null});
   return true;
 }
 

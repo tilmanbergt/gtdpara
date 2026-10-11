@@ -46,6 +46,15 @@ export function buildLoopOverview(
   // Todos count when tagged with the loop or agreed in one of its meetings.
   const agreed = new Set(past.flatMap(p => p.agreed.map(keyOf)));
   const keep = (e: ThreadTaskEntry) => ofLoop(e.task.tags) || agreed.has(keyOf(e));
+  const ref: ThreadItemRef = {kind: owner.kind, name: owner.name, path: owner.path, abbrev: owner.abbrev};
+  // Since the loop's own latest meeting (the thread lists' "since" may start at another meeting).
+  const from = past[0]?.entry.meeting.date ?? null;
+  const since = from
+    ? owner.tasks
+        .map((task, taskIndex) => ({item: ref, taskIndex, task}))
+        .filter(e => e.task.done && !e.task.cancelled && e.task.fields.completion !== null && e.task.fields.completion >= from && keep(e))
+        .sort((a, b) => (b.task.fields.completion ?? '').localeCompare(a.task.fields.completion ?? ''))
+    : [];
   const lists: ThreadOverview = {
     ...all,
     scope: [owner.path],
@@ -56,14 +65,14 @@ export function buildLoopOverview(
       waiting: all.ahead.waiting.filter(keep),
       relevant: all.ahead.relevant.filter(keep),
     },
-    since: {from: past[0]?.entry.meeting.date ?? null, done: past[0] ? all.since.done.filter(keep) : []},
+    since: {from, done: since},
     past,
   };
   const blockers = closeBlockers(owner, loop.tag, now.getTime());
   return {
     loop,
     line: findLoopLine(owner.loops, loop.tag) ?? null,
-    owner: {kind: owner.kind, name: owner.name, path: owner.path, abbrev: owner.abbrev},
+    owner: ref,
     lists,
     blockers: {openTodos: blockers.openTodos.length, upcomingMeetings: blockers.upcomingMeetings.length},
   };

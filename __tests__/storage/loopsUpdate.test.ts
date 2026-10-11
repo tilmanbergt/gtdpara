@@ -3,10 +3,12 @@ const mockWrites: Array<[string, string]> = [];
 const mockMoves: Array<[string, string]> = [];
 const mockExisting = new Set<string>();
 let mockItem: unknown = null;
+let mockFailWrite = false;
 
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 jest.mock('../../src/supernote/fileSystem', () => ({
   writeTextFile: async (path: string, content: string) => {
+    if (mockFailWrite) throw new Error('disk full');
     mockWrites.push([path, content]);
   },
   fileExists: async (path: string) => mockExisting.has(path),
@@ -45,6 +47,7 @@ beforeEach(() => {
   mockMoves.length = 0;
   mockExisting.clear();
   mockItem = owner();
+  mockFailWrite = false;
 });
 
 describe('updateLoop', () => {
@@ -64,6 +67,19 @@ describe('updateLoop', () => {
     expect(ask).toHaveBeenCalledTimes(1);
     expect(mockMoves).toEqual([[NOTE, '/Note/2 Areas/Atruvia/2026-12 workshop offsite.note']]);
     expect(mockWrites[0][1]).toContain('→ [[2026-12 workshop offsite.note#page=2]]');
+  });
+
+  it('moves the note back when the file cannot be written', async () => {
+    mockExisting.add(NOTE);
+    mockFailWrite = true;
+    await expect(
+      updateLoop('/Note/2 Areas/Atruvia', 'workshop/offsite', edit('#workshop/offsite [due:: 2026-12-02]'), '', async () => true),
+    ).rejects.toThrow('disk full');
+    const moved = '/Note/2 Areas/Atruvia/2026-12 workshop offsite.note';
+    expect(mockMoves).toEqual([
+      [NOTE, moved],
+      [moved, NOTE],
+    ]);
   });
 
   it('renames the tag after a confirm; declining saves nothing', async () => {

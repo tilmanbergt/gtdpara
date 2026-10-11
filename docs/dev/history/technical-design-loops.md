@@ -455,6 +455,9 @@ Where the code differs from the plan above:
   with that page; `meetingNoteContent.ts`'s `populateLoopNotePage` fills it.
   `itemNotePlan.ts` carries the loop branch; its result names a newly created loop note
   (`loopPage`) so the open-or-create entry points fill page 1 too.
+- **Saving a loop edit** asks every question first, then rebuilds the edit from the file as it
+  is after the confirms; the note moves before the file is written and moves back when the write
+  fails. A loop tag in a row of an item without its line opens the loop in the item that has it.
 - **Tracking:** `resolveMeetingTracking` takes the OR of every matching meeting rule (or the
   default one), for every meeting, not only loop meetings.
 - **Closing:** a closed loop can be reopened from its overview ("Reopen"). Done / Dropped is one

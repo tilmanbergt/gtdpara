@@ -16,7 +16,8 @@ import React, {useEffect, useRef, useState} from 'react';
 import {helpStartPage, LastHelpPage} from '../domain/helpTopics';
 import {USER_DOCS} from '../generated/userDocs';
 import {loopOf} from '../domain/loops';
-import {findCachedItem} from '../storage/dataCache';
+import {findLoopLine} from '../domain/loopsSection';
+import {findCachedItem, getCachedData} from '../storage/dataCache';
 import {getLoopKinds} from '../storage/loopKinds';
 import LoopOverview, {LoopOverviewRequest} from './loop/LoopOverview';
 import ThreadOverview from './thread/ThreadOverview';
@@ -35,10 +36,18 @@ export interface AppOverlays {
   overlay: React.ReactNode;
 }
 
-/** A loop tag tapped in a Project's or Area's row opens that loop (docs/dev/history/technical-design-loops.md §4.5). */
+/**
+ * A loop tag tapped in a Project's or Area's row opens that loop
+ * (docs/dev/history/technical-design-loops.md §4.5): in the row's item, or
+ * in the item whose `## Loops` has it when the row's item has no line.
+ */
 function loopRequestOf(request: OverviewRequest): LoopOverviewRequest | null {
   const loop = loopOf(request.tag, getLoopKinds().kinds);
-  return loop && request.ownerPath && findCachedItem(request.ownerPath) ? {tag: loop.tag, ownerPath: request.ownerPath} : null;
+  const rowItem = request.ownerPath ? findCachedItem(request.ownerPath) : undefined;
+  if (!loop || !rowItem) return null;
+  if (findLoopLine(rowItem.loops, loop.tag)) return {tag: loop.tag, ownerPath: rowItem.path};
+  const owner = getCachedData()?.items.find(item => findLoopLine(item.loops, loop.tag));
+  return {tag: loop.tag, ownerPath: owner?.path ?? rowItem.path};
 }
 
 export function useAppOverlays(inTabs: boolean, activeTab: AppTab): AppOverlays {
