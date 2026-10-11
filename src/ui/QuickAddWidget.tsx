@@ -118,9 +118,8 @@
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {Keyboard, LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
 import {AbbrevFileMatch, resolveAbbrevFileTarget} from '../domain/abbrev';
-import {copyCutRange, Selection, spliceAtSelection} from '../domain/clipboardText';
+import {Selection} from '../domain/clipboardText';
 import {describeAddedDate} from '../domain/dateLabel';
 import {Destination, destinationLabel} from '../domain/destination';
 import {joinItems, splitAtSelection, splitByHand} from '../domain/captureText';
@@ -133,6 +132,7 @@ import {FlowState, Meeting, Task} from '../domain/types';
 import {getRecentTags, getRecentTagsSync, recordTagsUsed} from '../storage/tagUsage';
 import {getRecentDestinations, getRecentDestinationsSync, recordDestinationUsed} from '../storage/destinationUsage';
 import {FILE_TO_SHORT} from '../domain/captureFileTo';
+import ClipboardStrip, {clipboardActions} from './ClipboardStrip';
 import ClipboardTextInput from './ClipboardTextInput';
 import DateInput, {DateInputHandle} from './DateInput';
 import FlowStateChips from './FlowStateChips';
@@ -147,7 +147,6 @@ import MarkWrap from './status/StatusMark';
 import {usePerfRender} from '../utils/perf';
 import {useAbbrevItems} from './useAbbrevItems';
 import {useOnScreenHide} from './screenActivity';
-import {common} from './commonStyles';
 import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
 import {CreateActionRow, EditActionRow, quickAddButtons} from './quickAdd/ActionRow';
 import {useLoopMode} from './quickAdd/useLoopMode';
@@ -1136,33 +1135,7 @@ function QuickAddWidget({
 
   // Custom Select All/Copy/Cut/Paste (see the module doc comment on
   // spliceAtSelection/copyCutRange for why these exist at all).
-  const handleTaskSelectAll = () => {
-    const selection = {start: 0, end: taskFields.text.length};
-    taskLastSelectionRef.current = selection;
-    setTaskSelectionOverride(selection);
-  };
-  const handleTaskCopy = () => {
-    const {start, end} = copyCutRange(taskFields.text, taskLastSelectionRef.current);
-    Clipboard.setString(taskFields.text.slice(start, end));
-  };
-  const handleTaskCut = () => {
-    const range = copyCutRange(taskFields.text, taskLastSelectionRef.current);
-    Clipboard.setString(taskFields.text.slice(range.start, range.end));
-    const {text, cursor} = spliceAtSelection(taskFields.text, range, '');
-    setTaskText(text);
-    const selection = {start: cursor, end: cursor};
-    taskLastSelectionRef.current = selection;
-    setTaskSelectionOverride(selection);
-  };
-  const handleTaskPaste = async () => {
-    const clip = await Clipboard.getString();
-    if (!clip) return;
-    const {text, cursor} = spliceAtSelection(taskFields.text, taskLastSelectionRef.current, clip);
-    setTaskText(text);
-    const selection = {start: cursor, end: cursor};
-    taskLastSelectionRef.current = selection;
-    setTaskSelectionOverride(selection);
-  };
+  const taskClipboard = clipboardActions(taskFields.text, taskLastSelectionRef, setTaskText, setTaskSelectionOverride);
 
   // The due-date control: in R2 next to the field; in the capture variant
   // in the options row under it (checkpoint B).
@@ -1372,20 +1345,7 @@ function QuickAddWidget({
           `display:none` pattern above (blur fires on touch-down, but the
           already-claimed touch responder keeps receiving the rest of that
           gesture as long as the view instance itself survives). */}
-      <View style={[common.floatingStrip, {borderColor}, !taskInputFocused && styles.hidden]}>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskSelectAll} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskCopy} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskCut} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskPaste} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
-        </Pressable>
-      </View>
+      <ClipboardStrip visible={taskInputFocused} actions={taskClipboard} textColor={textColor} borderColor={borderColor} />
     </View>
   );
 
@@ -1531,34 +1491,8 @@ function QuickAddWidget({
     if (meetingSelectionOverride) setMeetingSelectionOverride(null);
   };
 
-  // Custom Select All/Copy/Cut/Paste - see handleTaskSelectAll's comment above.
-  const handleMeetingSelectAll = () => {
-    const selection = {start: 0, end: meetingFields.title.length};
-    meetingLastSelectionRef.current = selection;
-    setMeetingSelectionOverride(selection);
-  };
-  const handleMeetingCopy = () => {
-    const {start, end} = copyCutRange(meetingFields.title, meetingLastSelectionRef.current);
-    Clipboard.setString(meetingFields.title.slice(start, end));
-  };
-  const handleMeetingCut = () => {
-    const range = copyCutRange(meetingFields.title, meetingLastSelectionRef.current);
-    Clipboard.setString(meetingFields.title.slice(range.start, range.end));
-    const {text, cursor} = spliceAtSelection(meetingFields.title, range, '');
-    setMeetingTitle(text);
-    const selection = {start: cursor, end: cursor};
-    meetingLastSelectionRef.current = selection;
-    setMeetingSelectionOverride(selection);
-  };
-  const handleMeetingPaste = async () => {
-    const clip = await Clipboard.getString();
-    if (!clip) return;
-    const {text, cursor} = spliceAtSelection(meetingFields.title, meetingLastSelectionRef.current, clip);
-    setMeetingTitle(text);
-    const selection = {start: cursor, end: cursor};
-    meetingLastSelectionRef.current = selection;
-    setMeetingSelectionOverride(selection);
-  };
+  // Custom Select All/Copy/Cut/Paste - see taskClipboard's comment above.
+  const meetingClipboard = clipboardActions(meetingFields.title, meetingLastSelectionRef, setMeetingTitle, setMeetingSelectionOverride);
 
   const meetingRow2 = (
     <View style={[styles.row2, displayType !== 'meeting' && styles.hidden]}>
@@ -1590,20 +1524,7 @@ function QuickAddWidget({
         </MarkWrap>
       </View>
       {/* Same hovering overlay as taskRow2's - see its comment for why. */}
-      <View style={[common.floatingStrip, {borderColor}, !meetingInputFocused && styles.hidden]}>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingSelectAll} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingCopy} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingCut} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingPaste} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
-        </Pressable>
-      </View>
+      <ClipboardStrip visible={meetingInputFocused} actions={meetingClipboard} textColor={textColor} borderColor={borderColor} />
     </View>
   );
 
