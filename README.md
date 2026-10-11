@@ -52,6 +52,9 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
   past meetings and what got done since
 - **Tending threads**: confirm the people and series you work with per area, see what you owe and
   wait for on a Threads tab, tend them in the Weekly Review, print "since last time" on a meeting note
+- **Loops**: small projects inside an area or project, named by a tag like `#workshop/teamoffsite` -
+  one tap starts one, its todos are grouped together, it has one note from start to end, and it
+  closes when nothing is open
 - **Daily, Week and Month** views with meetings, due todos and next actions from what you focus on
 - **Focus mode** (`#now`): only the few things you are doing right now
 - **Quick Add** for todos, meetings and notes, with tags, due dates and refiling

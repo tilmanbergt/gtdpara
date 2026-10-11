@@ -1,6 +1,6 @@
 # Technical design: Loops
 
-Status: **approved** (2026-10-10), implementation started. Release: **0.14.0**, branch
+Status: **approved** (2026-10-10), implemented (steps 0–7, §10). Release: **0.14.0**, branch
 `feature/loops`. Requirements and their history: claude.ai project doc `claude/feature-loops.md`.
 UX: canvas "gtdpara Loops — UX draft".
 
@@ -412,7 +412,7 @@ Each step ends with `npm run check` green and is committed on its own.
 6. **Review:** Open loops step; closing with blockers.
 7. **Docs, help, CHANGELOG, debug bundle;** device test; beta.
 
-## 10. As built (steps 0–3)
+## 10. As built
 
 Where the code differs from the plan above:
 
@@ -434,7 +434,37 @@ Where the code differs from the plan above:
   (same component) for its own loops.
 - **Todo grouping:** the loop tag stays visible inside its group.
 - No "Refile as loop" label: refiling a bare loop tag converts through the hook.
+- **Alpha fix:** the Projects/Loops tab did not show a loop that had just started until the tab
+  was switched: its glance was memoised on the owner object, which the cache updates in place.
+  It is keyed on the items list now.
+- **Overview store:** `ui/threadOverlayStore.ts` became `ui/overviewStore.ts` (`openOverview`),
+  but the request has no `kind`: which overview a tag opens is decided where it is drawn
+  (`screens/useAppOverlays.tsx`, a loop tag with a cached Project/Area owner), so the store stays
+  free of storage and every row can import it.
+- **Loop overview** reuses the thread overview's sections and `useThreadActions` over
+  `storage/loopAggregate.ts`, which builds the thread lists for the owner alone and keeps only
+  entries with the full loop tag (or agreed in one of its meetings). Ahead's sub-heads read
+  "Agreed in its meetings" and "Todos" (`AheadSection`'s `sectionLabels`). There is no
+  "LoopEditFields": Quick Add edits the loop as a todo (`domain/loopEdit.ts`'s `loopAsTodo`)
+  with `editingLoop` (no flow chips, no Delete, "Save loop"). Quick Add room for it came from
+  `ui/ClipboardStrip.tsx` (the clipboard strip and its four actions, shared with
+  `ClipboardTextInput`). Renames: the tag question first, then the note question; declining
+  either saves nothing.
+- **Loop note:** page 1 is found by its place (the first page), its keyword `loop <kind>/<name>`
+  is for search only and is not renamed with the tag. `ensureLoopNoteFile` creates the note
+  with that page; `meetingNoteContent.ts`'s `populateLoopNotePage` fills it.
+  `itemNotePlan.ts` carries the loop branch; its result names a newly created loop note
+  (`loopPage`) so the open-or-create entry points fill page 1 too.
+- **Tracking:** `resolveMeetingTracking` takes the OR of every matching meeting rule (or the
+  default one), for every meeting, not only loop meetings.
+- **Closing:** a closed loop can be reopened from its overview ("Reopen"). Done / Dropped is one
+  status-slot confirm with two buttons.
+- **Open loops:** lists every active loop per scope and counts those that need a look (no
+  actionable todo and no meeting ahead, or past their main date); the step is a backlog step on
+  that count. "+ Next action" is not a button: Quick Add in the detail adds the loop's tag to a
+  new todo.
 
-File sizes over 500 lines touched by steps 0–3 (before → after): App.tsx 968 → 971,
-domain/tagRules.ts 671 → 684, screens/ItemDetail.tsx 800 → 799, screens/ProjectDataPanel.tsx
-724 → 725, storage/dataCache.ts 798 → 828, ui/QuickAddWidget.tsx 2373 → 2213 (baseline 2214).
+File sizes over 500 lines touched (before → after): App.tsx 968 → 971, domain/tagRules.ts
+671 → 684, screens/ItemDetail.tsx 800 → 799, screens/ProjectDataPanel.tsx 724 → 725,
+storage/dataCache.ts 798 → 828, storage/meetingNoteContent.ts 905 → 657,
+ui/QuickAddWidget.tsx 2373 → 2138 (baseline 2139).

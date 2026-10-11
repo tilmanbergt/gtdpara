@@ -57,11 +57,14 @@ files".
 
 **Overlays.** `screens/useAppOverlays.tsx` draws at most one overlay over the tab body, inside
 `StatusFrame` (the TabBar and the status slot stay, the tab screens stay mounted underneath):
-the help (`ui/HelpOverlay.tsx`) or the **thread overview** (`screens/thread/ThreadOverview.tsx`).
+the help (`ui/HelpOverlay.tsx`), the **thread overview** (`screens/thread/ThreadOverview.tsx`)
+or the **loop overview** (`screens/loop/LoopOverview.tsx`).
 Opening one closes the other; a tab tap, leaving the tab shell and the overlay's own close
-(help: ✕ Close; overview: "‹ <tab name>") close it, and closing requests an e-ink refresh. The
-overview is opened from any row through the module store `ui/threadOverlayStore.ts`
-(`openThreadOverview({tag, ownerPath, lens})`), so no list threads props for it.
+(help: ✕ Close; overview: "‹ <tab name>") close it, and closing requests an e-ink refresh. An
+overview is opened from any row through the module store `ui/overviewStore.ts`
+(`openOverview({tag, ownerPath, lens})`), so no list threads props for it; useAppOverlays opens
+the loop overview when the tag is a loop tag (§2.6) and the owner a cached Project or Area,
+the thread overview otherwise.
 
 **Screens.**
 
@@ -88,7 +91,11 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   second tab is **Projects** (`screens/area/ProjectsTab.tsx`): the assigned Projects, Active
   then a folded On hold group, each with last/next meeting, open, `#next` (or "no next action")
   and the oldest Waiting For (`storage/projectGlance.ts`'s `buildProjectGlance`); a row opens
-  the Project.
+  the Project. Under the Projects the same tab lists the item's **loops**
+  (`storage/loopGlance.ts`: active by main date, New with Track, folded ideas and closed); a
+  Project page has this tab as **Loops**, with its own loops only. A loop row opens the loop
+  overview, 📓 the loop note, the clip its linked file. `TodosSection` groups the page's todos
+  by loop (`domain/loops.ts`'s `groupTodosByLoop`), the loops first.
 - **Review** — `screens/review/ReviewScreen.tsx` (§2.8). While a close-out is open, the Review
   tab shows `screens/CloseOutWizard.tsx` instead (§2.9).
 - **Settings** — `screens/settings/Settings.tsx` (§2.12).
@@ -105,6 +112,12 @@ overview is opened from any row through the module store `ui/threadOverlayStore.
   row, those done todos by done date, no note button and no provenance in Quick Add).
   Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `useThreadActions.ts`
   (the same write paths as Daily). Detail: `docs/dev/history/technical-design-tending-threads.md`.
+- **Loop overview** (an overlay) — `screens/loop/LoopOverview.tsx`: one loop in its owner. The
+  thread overview's sections over `storage/loopAggregate.ts` (the thread lists limited to the
+  owner and to the loop's full tag); header with main date, Note ›, File ›, Edit, Close loop /
+  Reopen. Quick Add adds the loop's tag to new entries; Edit loads the loop itself (Quick Add's
+  `editingLoop`) and saves through `storage/loops.ts`'s `updateLoop`. Detail:
+  `docs/dev/history/technical-design-loops.md`.
 
 **Kept tabs.** With "Keep tabs in memory" on (`settings.keepTabsAlive`, default on), Daily,
 Week, Month, Current, Projects and Areas stay mounted after their first visit, hidden with
@@ -201,6 +214,7 @@ Ship the tender by end of quarter.
 | `## Weekly Goals`, `## Monthly Goals` | `- 2026-W45: text`, `- 2026-11: text` | `parse*GoalsSpan` / `setGoalForWeek` / `setGoalForMonth` |
 | `## Marks` | open "Mark for later" lines (§2.10) | `parseMarksSpan`, `domain/marks.ts` |
 | `## Threads` | counterpart status lines `- mieke: active` (§2.6); `area.txt`, or `project.txt` of a Project without an Area, never `Inbox.txt` | `domain/threadsSection.ts` (`parseThreadsSpan` / `writeThreadsIntoContent`) |
+| `## Loops` | loop status lines `- workshop/offsite: active, 2026-11-14, [[file]]` (§2.6) | `domain/loopsSection.ts` (`parseLoopsSpan` / `writeLoopsIntoContent`) |
 | `## Close-out` | the close-out plan (§2.9) | `domain/closeOut/plan.ts` via `readSectionLines` |
 
 `ensureSkeleton` writes a new file as frontmatter (`kind`, `status: active`) plus empty
@@ -399,7 +413,7 @@ a row's title go through `ui/TaggableText.tsx`: a nested context tag always open
 overview with the row's item as owner (rows get `ownerPath`; Inbox lists pass the Inbox folder),
 a plain context tag is tappable only where the screen passes a handler (Daily's context filter);
 the `#w/f Name` label and an `#owe/<name>` tag open the counterpart lens for `<name>`
-(`openThreadOverview` forces it for `wf`/`owe`; the header then shows "All <name>" without a
+(`openOverview` forces it for `wf`/`owe`; the header then shows "All <name>" without a
 switch). Meeting
 rows have two fixed heights (one line 37 dp, two lines 57 dp); every list has a 1-line/2-line
 switch remembered per list for the session (`ui/listLayout.ts`). Every action (note, file, prep/
@@ -459,7 +473,7 @@ can carry an `armingRoot`: while any arm is active that root takes the tab's slo
 `alternate`), and the slot is the extra tab again when the arm ends. Roots per screen:
 
 - Inbox and Review's Inbox step: Resources, Browse.
-- Current, Project: the Threads tab, then Project Files (Browse as its alternate), Resources,
+- Current, Project: the Threads and Loops tabs, then Project Files (Browse as its alternate), Resources,
   Area Files (once assigned).
 - Current, Area: the Threads and Projects tabs, then Area Files, Resources. Project Files (its
   assigned Projects; Browse as its alternate) is the Projects tab's `armingRoot`.
@@ -470,7 +484,8 @@ The Resources root can pin a per-item default subfolder (`defaultResourceFolder`
 
 **Linked notes.** Each todo or meeting can have one note. The note icon on every row calls
 `storage/meetingNoteContent.ts`'s `openOrCreateMeetingNote`/`openOrCreateTodoNote`. When the item
-has a link, it always reopens in the linked file. Otherwise the plan (`planItemNote`, read-only,
+has a link, it always reopens in the linked file. Otherwise the plan (`storage/itemNotePlan.ts`'s
+`planItemNote`, read-only,
 `domain/noteCreationPlan.ts`) is one of `new-own-file`, `new-page`, `new-shared-file`,
 `link-page`, `recreate-page`, `recreate-shared-file`, `recreate-own-file`; every screen passes
 `confirmCreate` (`ui/useNoteCreateConfirm.ts`), which shows the plan in the status slot, and ✕
@@ -492,7 +507,8 @@ folder for auto-locate. Gmail email notes and attachments become linked files un
 (§2.11). Detail: `docs/dev/history/technical-design-linked-files.md`.
 
 **Tag Rules.** `domain/tagRules.ts` defines `TagRule`s (stored in `settings.tagRules`, edited in
-Settings → Tag Rules, `screens/settings/tagRules/`): a context (Project, Area, Todo, Meeting), an
+Settings → Tag Rules, `screens/settings/tagRules/`): a context (Project, Area, Todo, Meeting,
+Loop), an
 optional tag, a MyStyle background template, and positioned content pieces (`title`,
 `dateTitle` and `date` for meetings, `time`, `text` from the rule's own reusable texts,
 `related` open todos, `link` to the item's linked file, `sinceLast` for meetings). Title and
@@ -523,7 +539,19 @@ every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting
   template (`renderSharedFileName`: `{tag}`, `{subtag}`, `{year}`, `{quarter}`, `{month}`), so one
   rule can split into one file per type, client and year; `ruleTypeTag` gives the rule tag the
   item matched, `ruleSubtag` the nested part after it.
-- **Meeting tracking.** A Meeting rule can switch on *Prepare before* and/or *Review after*.
+- **Loops.** A Loop rule's tags are loop kinds (`domain/loops.ts`'s `loopKindsOf`, readable at
+  once through `storage/loopKinds.ts`); `#<kind>/<name>` is a loop, its line lives in the owner's
+  `## Loops` section (`domain/loopsSection.ts`, on the generic `domain/statusSection.ts` that
+  `## Threads` uses too). A todo that is only a loop tag becomes its line after every task write
+  of an Area or Project (`storage/loops.ts`, the cache's tasks-written hook), so Quick Add, the
+  chips, the Review and filing from the Inbox all start loops the same way. The loop note
+  (`storage/loopNotes.ts`) is named from the rule's `sharedFileName` with the main date, lives in
+  the owner folder, starts with the loop's own page, and gets a page for each meeting or todo of
+  an active loop unless a rule matched through another tag decides the note. Closing
+  (`setLoopStatus`) refuses while `closeBlockers` finds an open todo or a meeting ahead. Review's
+  "Open loops" (`storage/loopRoster.ts`) lists them per scope. Loop kinds are never counterparts.
+- **Meeting tracking.** A Meeting rule can switch on *Prepare before* and/or *Review after*; a
+  meeting is tracked when any meeting rule it matches asks for it.
   State is `#prepped`/`#reviewed` on the meeting line; every meeting row shows one small P/R
   icon (check when done), toggled through `domain/meetingTracking.ts`'s
   `toggleMeetingTrackingAt`. The phase switches at the real end of the meeting (`meetingEndMs`).
@@ -629,6 +657,7 @@ with its count and last-reviewed date, and the steps themselves, one component e
 | Gmail inbox (experimental) | backlog | `GmailStep` |
 | Inbox to zero | backlog | `InboxStep` (Files pane, Refile, quick-file, marks card) |
 | Stalled projects, Done awaiting review, On Hold reconsideration, Neglected areas | backlog | `ItemListStep` + `ItemDetails` (master/detail, `ui/ReviewMasterDetail.tsx`) |
+| Open loops (after Stalled projects) | backlog | `OpenLoopsStep` (`storage/loopRoster.ts`; counts loops without a next action or past their main date; Close loop via `ui/useCloseLoop.ts`) |
 | Unfocused next items | backlog | `UnfocusedNextStep` |
 | Focus reset | ritual | `FocusResetStep` (monthly and weekly slots) |
 
