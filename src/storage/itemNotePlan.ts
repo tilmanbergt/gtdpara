@@ -20,6 +20,7 @@ import {
   resolveNoteTemplate,
   ruleSubtag,
   ruleTypeTag,
+  TagRule,
 } from '../domain/tagRules';
 import {NoteCreationPlan} from '../domain/noteCreationPlan';
 import {buildSharedNoteAnchor, renderSharedFileName} from '../domain/sharedNotePages';
@@ -28,6 +29,7 @@ import {createNote, displayPath, ensureFolderExists, fileExists} from '../supern
 import {log} from '../utils/log';
 import {contextTagsOf} from '../domain/flowState';
 import {collisionFreeName} from './fileNaming';
+import {ensureLoopNoteFile, LoopNoteTarget, loopNoteTarget} from './loopNotes';
 import {
   classifyNotePath,
   createLinkedNote,
@@ -56,6 +58,8 @@ export interface ItemNoteAnchorResolution {
   isInitialPopulation: boolean;
   absolutePath: string;
   page: number;
+  /** The loop note this created, whose first page (the loop's own) still needs filling. */
+  loopPage?: LoopNoteTarget;
   /**
    * A note gtdpara didn't create (lasso capture's link to its source note):
    * opened as it is, never filled from a Tag Rule - that would put
@@ -223,8 +227,9 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
     };
   }
 
-  // No note link yet.
-  if (params.forceOwnTarget || !definition || effectiveNoteTarget(definition) !== 'shared') {
+  // No note link yet. A todo or meeting of an active loop gets a page in the loop's note.
+  const loopNote = params.forceOwnTarget ? null : loopNoteTarget(itemPath, tags, definition);
+  if (!loopNote && (params.forceOwnTarget || !definition || effectiveNoteTarget(definition) !== 'shared')) {
     const folderPath = relativeFolderPath(itemPath, params.subfolder);
     const fileName = await collisionFreeName(folderPath, params.baseName, '.note');
     const relativePath = `${params.subfolder}/${fileName}`;
@@ -249,16 +254,20 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
   // Shared target. sanitizeFileNameComponent: the rendered name comes from
   // user text (rule field, subtag) - strip illegal characters and '#' (the
   // anchor separator), and turn a deeper subtag's '/' into a space.
-  const fileName = sanitizeFileNameComponent(
-    renderSharedFileName({
-      template: resolvedSharedFileName(definition),
-      ruleName: definition.name,
-      tag: ruleTypeTag(tags, definition.tags),
-      subtag: ruleSubtag(tags, definition.tags),
-      date: params.fileDate,
-    }),
-  );
-  const relativeFolder = resolvedSharedFileFolder(definition) === 'root' ? '' : params.subfolder;
+  // A loop note lives in the owner's own folder.
+  const sharedRule = definition as TagRule;
+  const fileName = loopNote
+    ? loopNote.fileName
+    : sanitizeFileNameComponent(
+        renderSharedFileName({
+          template: resolvedSharedFileName(sharedRule),
+          ruleName: sharedRule.name,
+          tag: ruleTypeTag(tags, sharedRule.tags),
+          subtag: ruleSubtag(tags, sharedRule.tags),
+          date: params.fileDate,
+        }),
+      );
+  const relativeFolder = loopNote || resolvedSharedFileFolder(sharedRule) === 'root' ? '' : params.subfolder;
   const folderPath = relativeFolderPath(itemPath, relativeFolder);
   const relativeFilePath = relativeFolder ? `${relativeFolder}/${fileName}.note` : `${fileName}.note`;
   const absoluteFile = `${folderPath}/${fileName}.note`;
@@ -268,9 +277,11 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
     return {
       plan: {kind: 'new-shared-file', file: relativeFilePath, absolutePath: absoluteFile, ruleName},
       execute: async () => {
-        await ensureSharedNoteFile(folderPath, fileName, background);
+        // A new loop note starts with the loop's own page (filled by the caller).
+        const loopPage = loopNote && (await ensureLoopNoteFile(itemPath, loopNote, settings)) ? loopNote : undefined;
+        if (!loopNote) await ensureSharedNoteFile(folderPath, fileName, background);
         const page = await insertChronologicalPage(absoluteFile, currentKeyword, background, isDated);
-        return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page};
+        return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page, loopPage};
       },
     };
   }

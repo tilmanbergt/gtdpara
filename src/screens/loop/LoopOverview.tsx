@@ -5,8 +5,8 @@
  * (ui/overviewStore.ts).
  *
  * Header: "‹ <tab>" (closes it), ○ the loop's name, its kind and owner, the
- * main date with the days to go (or that it is closed), then File › and
- * Edit. Left: Ahead above Looking back, the thread overview's sections over
+ * main date with the days to go (or that it is closed), then Note › (the
+ * loop note, created from the Loop rule on first use), File › and Edit. Left: Ahead above Looking back, the thread overview's sections over
  * storage/loopAggregate.ts. Right: Quick Add - a new todo gets the loop's
  * tag and goes to the owner; Edit loads the loop itself (its tag, main date
  * and file) and saves through storage/loops.ts's `updateLoop`, which asks
@@ -29,6 +29,7 @@ import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useActionError} from '../../ui/useActionError';
 import {useCachedItems} from '../../ui/useCachedItems';
 import {useLoopKinds} from '../../ui/useLoopKinds';
+import {useLoopNote} from '../../ui/useLoopNote';
 import {useStatusConfirm} from '../../ui/useStatusConfirm';
 import {log} from '../../utils/log';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
@@ -71,6 +72,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
   const actions = useThreadActions();
   const {edit} = actions;
   const ask = useStatusConfirm('LoopOverview.confirm');
+  const openNote = useLoopNote('LoopOverview');
   const loopAction = useActionError('LoopOverview.loopError', 'LoopOverview: loop save failed');
   const overview = useMemo(
     () => buildLoopOverview(items, request.tag, request.ownerPath, kinds),
@@ -182,6 +184,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
             {`${loop.kind} · in ${owner.name} · ${dateText}`}
           </Text>
         </View>
+        {line && headerAction('Note ›', () => openNote(owner.path, loop.tag))}
         {file && headerAction('File ›', () => actions.openFile(file))}
         {line && headerAction(loopEditing ? 'Editing…' : 'Edit', startLoopEdit)}
       </View>

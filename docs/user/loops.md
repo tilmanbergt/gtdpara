@@ -39,6 +39,14 @@ Tap a loop row, or a loop tag in any todo or meeting of its Area or Project, to 
 - **Looking back**: its past meetings, each with what was agreed in it, and what was done since the last one.
 - Quick Add on the right adds to the loop: a new todo or meeting gets the loop's tag on its own and goes to the loop's Area or Project.
 
+## The loop note
+
+Every loop has one note, from start to end, in its Area's or Project's folder. Its name comes from the Loop rule (see [Note templates](note-templates.md)), for example `2026-11 workshop teamoffsite`.
+
+- The 📓 on a loop row, or **Note ›** in the overview, opens it. The first time, the status line asks, then the note is created: its first page is the loop's own, filled from the Loop rule.
+- A meeting or todo of the loop gets its note as a page in the loop note, meetings by date after the loop's page. If a rule on one of its other tags makes its note - a thread rule on `#jf`, say - that rule's note wins, and the meeting still shows in the loop.
+- Prep and review tracking applies when any rule matching the meeting asks for it.
+
 ## Editing a loop
 
 **Edit** in the overview loads the loop into Quick Add: its tag, its main date and its linked file. Change them and tap **Save loop**.

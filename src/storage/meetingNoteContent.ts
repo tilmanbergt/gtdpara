@@ -77,6 +77,7 @@ import {
   deleteElements,
   Element,
   ELEMENT_TYPE_LINK,
+  fileExists,
   getElements,
   insertElements,
   openPath,
@@ -99,7 +100,9 @@ import {
 import {applyPieceHeadings, syncPageKeywords} from './noteFindability';
 import {measureNoteLinkRect, measureNotePieceRect} from './notePieceMetrics';
 import {errorMessage} from '../utils/errorMessage';
-import {resolveItemNote} from './itemNotePlan';
+import {ItemNoteAnchorResolution, resolveItemNote} from './itemNotePlan';
+import {getLoopKinds} from './loopKinds';
+import {ensureLoopNoteFile, loopNoteOf} from './loopNotes';
 
 /**
  * `linkedFile`'s bare file name (e.g. "Kickoff deck.pdf" from
@@ -455,8 +458,60 @@ export async function refreshTodoNoteBlock(
   await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page, settings.noteHeadingStyle);
 }
 
+/**
+ * Fills page 1 of a loop note from its Loop rule
+ * (docs/dev/history/technical-design-loops.md §4.4): the title is the loop
+ * as words (`workshop teamoffsite`), the date-and-title piece puts the main
+ * date in front when there is one, and a `link` piece links the loop's
+ * linked file when it exists. Same population path as every other note.
+ */
+export async function populateLoopNotePage(
+  notePath: string,
+  rule: TagRule,
+  loop: {kind: string; name: string},
+  mainDate: string | null,
+  linkedFile: string | null,
+  settings: GtdParaSettings,
+): Promise<void> {
+  const linked = rule.pieces.some(p => p.type === 'link') ? await existingLinkedFile(resolvePaths(settings), linkedFile ?? undefined) : null;
+  const title = `${loop.kind} ${loop.name.replace(/\//g, ' ')}`;
+  const ctx: PieceRenderContext = {title, dateTitle: dateTitleText(mainDate ?? '', title), linkedFileName: linked?.fileName};
+  const pieceContent = rule.pieces.map(piece => renderPieceText(piece, ctx));
+  await populateNoteFromRule(notePath, rule, pieceContent, linked?.absolutePath ?? null, 0, settings.noteHeadingStyle);
+}
+
 // ---- Open-or-create entry point (docs/dev/history/technical-design-shared-note-pages.md §6-§8;
 // plan-then-confirm and file-name placeholders: docs/dev/history/technical-design-split-by-tag.md §3.3-§3.5) ----
+
+/** Fills the first page of a loop note `anchor`'s plan just created (storage/loopNotes.ts). */
+async function fillLoopPage(anchor: ItemNoteAnchorResolution, settings: GtdParaSettings): Promise<void> {
+  const target = anchor.loopPage;
+  const rule = target ? getLoopKinds().rules[target.loop.kind] : undefined;
+  if (!target || !rule) return;
+  await populateLoopNotePage(anchor.absolutePath, rule, target.loop, target.line.mainDate, target.line.linkedFile, settings);
+}
+
+/**
+ * The loop note's note-icon tap (a loop row, the overview's Note ›): opens
+ * the loop's note at its first page, or - after `confirmCreate` - creates it
+ * with that page filled from the Loop rule. False when the user cancelled.
+ */
+export async function openOrCreateLoopNote(
+  ownerPath: string,
+  tag: string,
+  settings: GtdParaSettings,
+  confirmCreate?: (plan: NoteCreationPlan) => Promise<boolean>,
+): Promise<boolean> {
+  const note = loopNoteOf(ownerPath, tag);
+  if (!(await fileExists(note.absolutePath))) {
+    const plan: NoteCreationPlan = {kind: 'new-shared-file', file: `${note.fileName}.note`, absolutePath: note.absolutePath, ruleName: note.rule?.name ?? null};
+    if (confirmCreate && !(await confirmCreate(plan))) return false;
+    await ensureLoopNoteFile(ownerPath, note, settings);
+    if (note.rule) await populateLoopNotePage(note.absolutePath, note.rule, note.loop, note.line.mainDate, note.line.linkedFile, settings);
+  }
+  await openPath(note.absolutePath, 0);
+  return true;
+}
 
 /** §8's guard, meeting side - does some OTHER meeting cached under `itemPath` still derive `keyword`. Reads the live cache fresh on every call (cheap - one project/area's own meeting list, already in memory), never the `meeting` object `openOrCreateMeetingNote` was called with, so a stale render-time reference can't hide a real collision. */
 function meetingKeywordStillUsed(itemPath: string, keyword: string): boolean {
@@ -533,6 +588,7 @@ export async function openOrCreateMeetingNote(
   if (!anchor) return {meeting, changed: false, cancelled: true, outcome: null};
 
   const updatedMeeting = anchor.changed ? {...meeting, notePath: anchor.notePath} : meeting;
+  await fillLoopPage(anchor, settings);
   if (!anchor.foreign) {
     await refreshMeetingNoteBlock(updatedMeeting, itemPath, settings, inbox, {
       isInitialPopulation: anchor.isInitialPopulation,
@@ -583,6 +639,7 @@ export async function openOrCreateTodoNote(
   if (!anchor) return {task, changed: false, cancelled: true, outcome: null};
 
   const updatedTask = anchor.changed ? {...task, notePath: anchor.notePath} : task;
+  await fillLoopPage(anchor, settings);
   if (!anchor.foreign) {
     await refreshTodoNoteBlock(updatedTask, itemPath, settings, inbox, {
       isInitialPopulation: anchor.isInitialPopulation,

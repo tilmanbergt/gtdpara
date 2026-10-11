@@ -9,6 +9,7 @@ jest.mock('sn-plugin-lib', () => ({NativePluginManager: {}, PluginManager: {}, P
 jest.mock('../../src/storage/dataCache', () => ({getCachedData: () => null}));
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 jest.mock('../../src/storage/linkedFiles', () => ({openLinkedFile: jest.fn()}));
+jest.mock('../../src/ui/useLoopNote', () => ({useLoopNote: () => () => undefined}));
 jest.mock('../../src/storage/loops', () => ({trackLoop: jest.fn(async () => undefined)}));
 jest.mock('../../src/ui/status/StatusProvider', () => ({useErrorStatus: () => undefined}));
 const mockKinds = {kinds: ['workshop'], rules: {}};

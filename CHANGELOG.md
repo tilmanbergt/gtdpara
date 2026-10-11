@@ -27,6 +27,11 @@ or your project/area files are stored.
 - **The loop overview**: tap a loop, or a loop tag in its Area or Project, to see its meetings and
   todos ahead and looking back, add to it in Quick Add, and edit it: **Edit** loads its tag, main
   date and file; renaming the loop or its note is asked in the status line first.
+- **The loop note**: one note per loop in its Area or Project folder, opened with 📓 on the loop
+  row or **Note ›** in the overview; its first page comes from the Loop rule, and the loop's
+  meetings and todos get their pages in it.
+- Prep/review tracking of a meeting now applies when any matching meeting rule asks for it, not
+  only the first.
 - `{day}` for shared and loop note names. Without a date, date placeholders are left out with
   the `-`, `.` or `_` between them.
 
