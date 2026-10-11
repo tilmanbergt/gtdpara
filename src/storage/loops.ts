@@ -48,6 +48,7 @@ export type LoopEvent =
   | {kind: 'tracked'; tag: string; owner: string}
   | {kind: 'saved'; tag: string; renamedFrom: string | null; noteRenamedTo: string | null}
   | {kind: 'status'; tag: string; status: LoopStatus}
+  | {kind: 'linked'; tag: string; file: string}
   | {kind: 'failed'; text: string};
 
 const listeners = new Set<(event: LoopEvent) => void>();
@@ -268,4 +269,17 @@ export async function setLoopStatus(ownerPath: string, tag: string, status: Loop
   updateItemLoops(item.path, next, loops, item.loopsExtraLines);
   log('Loops: status', status);
   emit({kind: 'status', tag: line.tag, status});
+}
+
+/** Links `linkedFile` (as storage/linkedFiles.ts stores it) to the loop `tag` of `ownerPath`: its line's file column. */
+export async function setLoopLinkedFile(ownerPath: string, tag: string, linkedFile: string): Promise<void> {
+  const item = findCachedItem(ownerPath);
+  if (!item) throw new Error('This Area or Project is not loaded - reload all files.');
+  const line = findLoopLine(item.loops, tag);
+  if (!line) throw new Error(`Loop ${tag} has no line in ${item.name}.`);
+  const loops = withLoopLine(item.loops, line.tag, l => ({...l, linkedFile}));
+  const next = await saveLoops(item.kind, item.path, item.rawContent, loops, item.loopsExtraLines);
+  updateItemLoops(item.path, next, loops, item.loopsExtraLines);
+  log('Loops: link file');
+  emit({kind: 'linked', tag: line.tag, file: linkedFile.slice(linkedFile.lastIndexOf('/') + 1)});
 }

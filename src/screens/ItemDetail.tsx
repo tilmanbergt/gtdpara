@@ -124,6 +124,7 @@ import ItemStatusPanel from '../ui/ItemStatusPanel';
 import ProjectDataPanel from './ProjectDataPanel';
 import ThreadsTab, {CounterpartSelection} from './thread/ThreadsTab';
 import ProjectsTab from './area/ProjectsTab';
+import {useLoopLinkArm} from './area/useLoopLinkArm';
 import {Destination} from '../domain/destination';
 import {NextMeetingOffer} from '../storage/threadAggregate';
 import {MeetingSeed} from '../ui/quickAdd/useDraftRequests';
@@ -320,7 +321,8 @@ export default function ItemDetail({
   // rather than one shared setter.
   const [dataPanelLinkTarget, setDataPanelLinkTarget] = useState<LinkTarget | null>(null);
   const [areaLinkTarget, setAreaLinkTarget] = useState<LinkTarget | null>(null);
-  const linkTarget = areaLinkTarget ?? dataPanelLinkTarget;
+  const loopLink = useLoopLinkArm(path, paths, kind === 'project' ? resourceFolderState?.area ?? null : null);
+  const linkTarget = areaLinkTarget ?? loopLink.linkTarget ?? dataPanelLinkTarget;
 
   // Reported up from FileBrowserPane's own onActiveLocationChange (its doc
   // comment) - the Files pane's currently-displayed root/folder, for the
@@ -491,6 +493,7 @@ export default function ItemDetail({
           ownerPath={path}
           areaName={name}
           onOpenItem={onOpenItem}
+          onLinkFile={loopLink.arm}
           viewportHeight={viewportHeight}
           textColor={textColor}
           borderColor={borderColor}

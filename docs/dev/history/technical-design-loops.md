@@ -458,6 +458,13 @@ Where the code differs from the plan above:
 - **Saving a loop edit** asks every question first, then rebuilds the edit from the file as it
   is after the confirms; the note moves before the file is written and moves back when the write
   fails. A loop tag in a row of an item without its line opens the loop in the item that has it.
+- **Linking a file** (§4.7's clip arming, missed in steps 3–7 and added after the alpha test):
+  "+clip" on a loop row without a file arms the page's Files pane (`screens/area/useLoopLinkArm.ts`,
+  a third link target in ItemDetail next to the data panel's and area assignment's); the pick
+  writes the line's file column (`setLoopLinkedFile`). The overview's "Link file" closes it and
+  opens the loop's page, which arms (`ui/loopLinkStore.ts`, App's `useLoopLinkNavigation`).
+  Removing stays the ✕ in Edit; a loop has one linked file. The root-key-to-folder rule is shared
+  (`storage/linkedFiles.ts`'s `linkRootPath`).
 - **Tracking:** `resolveMeetingTracking` takes the OR of every matching meeting rule (or the
   default one), for every meeting, not only loop meetings.
 - **Closing:** a closed loop can be reopened from its overview ("Reopen"). Done / Dropped is one

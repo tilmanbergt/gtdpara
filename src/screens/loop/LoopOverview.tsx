@@ -6,7 +6,8 @@
  *
  * Header: "‹ <tab>" (closes it), ○ the loop's name, its kind and owner, the
  * main date with the days to go (or that it is closed), then Note › (the
- * loop note, created from the Loop rule on first use), File ›, Edit and
+ * loop note, created from the Loop rule on first use), File › - or Link
+ * file, which opens the loop's page with its Files pane armed - Edit and
  * Close loop (ui/useCloseLoop.ts) - Reopen for a closed loop. Left: Ahead above Looking back, the thread overview's sections over
  * storage/loopAggregate.ts. Right: Quick Add - a new todo gets the loop's
  * tag and goes to the owner; Edit loads the loop itself (its tag, main date
@@ -27,6 +28,7 @@ import {nextMeetingOffers, PastMeeting} from '../../storage/threadAggregate';
 import QuickAddWidget from '../../ui/QuickAddWidget';
 import {MeetingSeed} from '../../ui/quickAdd/useDraftRequests';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
+import {requestLoopLink} from '../../ui/loopLinkStore';
 import {useActionError} from '../../ui/useActionError';
 import {useCloseLoop} from '../../ui/useCloseLoop';
 import {useCachedItems} from '../../ui/useCachedItems';
@@ -189,6 +191,10 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
         </View>
         {line && headerAction('Note ›', () => openNote(owner.path, loop.tag))}
         {file && headerAction('File ›', () => actions.openFile(file))}
+        {line?.status === 'active' && !file && headerAction('Link file', () => {
+          requestLoopLink({ownerPath: owner.path, tag: loop.tag});
+          onClose();
+        })}
         {line && headerAction(loopEditing ? 'Editing…' : 'Edit', startLoopEdit)}
         {line?.status === 'active' && headerAction('Close loop', () => closeLoop(owner.path, loop.tag))}
         {line && line.status !== 'active' && headerAction('Reopen', () => loopAction.run(() => setLoopStatus(owner.path, loop.tag, 'active')))}

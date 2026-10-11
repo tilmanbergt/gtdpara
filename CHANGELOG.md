@@ -27,6 +27,8 @@ or your project/area files are stored.
 - **The loop overview**: tap a loop, or a loop tag in its Area or Project, to see its meetings and
   todos ahead and looking back, add to it in Quick Add, and edit it: **Edit** loads its tag, main
   date and file; renaming the loop or its note is asked in the status line first.
+- **A file for a loop**: link a PDF, epub or any file to a loop with **+** and the clip on its row,
+  or **Link file** in its overview - next to its note, which stays the place for your own notes.
 - **The loop note**: one note per loop in its Area or Project folder, opened with 📓 on the loop
   row or **Note ›** in the overview; its first page comes from the Loop rule, and the loop's
   meetings and todos get their pages in it.

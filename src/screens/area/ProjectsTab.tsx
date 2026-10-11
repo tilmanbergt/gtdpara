@@ -11,7 +11,8 @@
  * - Then, on both: the item's own loops, marked ○, by main date
  *   (storage/loopGlance.ts) - main date and next meeting, then the counts of
  *   the loop's own todos; a tap opens the loop overview, 📓 the loop
- *   note (creating it from the Loop rule), the clip the loop's linked file. Under them
+ *   note (creating it from the Loop rule), the clip the loop's linked file -
+ *   "+clip" on a loop without one arms the Files pane to link one. Under them
  *   "New" (loop tags used on an active todo or a meeting without a loop
  *   yet, with Track), and folded rows for the loop ideas (Someday) and the
  *   closed loops.
@@ -63,12 +64,14 @@ interface Props {
   /** The Area's name (what a Project's `area:` holds); unused for a Project. */
   areaName: string;
   onOpenItem?: (kind: 'project' | 'area', entry: FolderEntry) => void;
+  /** Arms the page's Files pane to link a file to the loop `tag` (screens/area/useLoopLinkArm.ts). */
+  onLinkFile?: (tag: string) => void;
   viewportHeight?: number;
   textColor: string;
   borderColor: string;
 }
 
-export default function ProjectsTab({ownerKind, ownerPath, areaName, onOpenItem, viewportHeight, textColor, borderColor}: Props): React.JSX.Element {
+export default function ProjectsTab({ownerKind, ownerPath, areaName, onOpenItem, onLinkFile, viewportHeight, textColor, borderColor}: Props): React.JSX.Element {
   const items = useCachedItems();
   const {kinds} = useLoopKinds();
   const [open, setOpen] = useState<Record<Fold, boolean>>({onHold: false, ideas: false, closed: false});
@@ -172,6 +175,11 @@ export default function ProjectsTab({ownerKind, ownerPath, areaName, onOpenItem,
                 </Pressable>
                 {file ? (
                   <Pressable onPress={() => openFile(file)} hitSlop={8} accessibilityLabel="Open linked file" style={styles.icon}>
+                    <ClipIcon color={textColor} />
+                  </Pressable>
+                ) : !row.closed && onLinkFile ? (
+                  <Pressable onPress={() => onLinkFile(line.tag)} hitSlop={8} accessibilityLabel="Link a file" style={[styles.icon, styles.line]}>
+                    <Text style={[styles.small, {color: textColor}]}>+</Text>
                     <ClipIcon color={textColor} />
                   </Pressable>
                 ) : null}

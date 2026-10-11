@@ -179,4 +179,20 @@ describe('App with a loop overview', () => {
     expect(texts(r)).toContain('Reopen');
     act(() => r.unmount());
   });
+
+  it('links a file to a loop from the overview, through the loop page\'s Files pane', async () => {
+    const r = await renderApp();
+    await act(async () => openOverview({tag: 'workshop/teamoffsite', ownerPath: AREA}));
+    await settle();
+    await pressText(r, 'Link file');
+    await settle();
+    expect(texts(r)).not.toContain('○ teamoffsite');
+    expect(rendered(r)).toContain('Pick a file for loop workshop/teamoffsite');
+    const pane = r.root.findAll(n => n.props.linkTarget && n.props.linkTarget.mode === 'arming')[0];
+    await act(async () => pane.props.linkTarget.onPick('project', 'Brief.pdf'));
+    await settle();
+    const area = mockWritten.filter(([path]) => path.endsWith('Coaching/area.txt')).pop()?.[1] ?? '';
+    expect(area).toContain('- workshop/teamoffsite: active, 2026-11-14, [[2 Areas/Coaching/Brief.pdf]]');
+    act(() => r.unmount());
+  });
 });

@@ -26,6 +26,8 @@ Type only the loop's tag into Quick Add, for example `#workshop/teamoffsite`. Th
 
 On an Area's page, the **Projects** tab lists the loops after the projects; a Project's page has a **Loops** tab for its own loops. Both list them, each marked ○, sorted by main date. Each row shows the main date, the next meeting and the open, next and waiting-for todos; the note icon opens the loop note (or creates it from the Loop rule), the clip opens the linked file. Tap a loop to open its overview.
 
+- **Linking a file** to a loop - the book's PDF or epub, the offer, the brief: tap **+** and the clip on a loop without a file, or **Link file** in its overview. The Files pane asks you to pick a file, like linking a file to a todo; tap it. To link another one, remove the file in **Edit** (✕) first: a loop has one linked file. Its note is separate - the place for your own notes.
+
 - **New** lists loop tags that are used on a `#next` or due todo, or on a meeting, but have no loop yet: **Track** starts the loop.
 - **Someday** lists the loop ideas, **closed** the loops you closed.
 - The page's todos are grouped by loop, the loops first, then the other todos.
@@ -34,7 +36,7 @@ On an Area's page, the **Projects** tab lists the loops after the projects; a Pr
 
 Tap a loop row, or a loop tag in any todo or meeting of its Area or Project, to see everything of the loop:
 
-- The header: the loop's name and kind, where it lives, and its main date with the days to go. **File ›** opens the linked file, **Edit** loads the loop into Quick Add.
+- The header: the loop's name and kind, where it lives, and its main date with the days to go. **File ›** opens the linked file (**Link file** while it has none), **Edit** loads the loop into Quick Add.
 - **Ahead**: the loop's next meetings, then its open todos - first the ones agreed in its meetings, then the ones waiting for someone, then the rest. **+ Next workshop** (the loop's kind) fills Quick Add with the next meeting, copied from the last one.
 - **Looking back**: its past meetings, each with what was agreed in it, and what was done since the last one.
 - Quick Add on the right adds to the loop: a new todo or meeting gets the loop's tag on its own and goes to the loop's Area or Project.
