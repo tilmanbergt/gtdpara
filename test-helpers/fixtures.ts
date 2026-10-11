@@ -49,6 +49,8 @@ export function item(
     marksExtraLines: [],
     threads: [],
     threadsExtraLines: [],
+    loops: [],
+    loopsExtraLines: [],
     status: 'active',
     dailyFocus: false,
     weeklyFocus: false,

@@ -1,15 +1,15 @@
 # Note templates (Tag Rules)
 
-When gtdpara creates a note for a todo, a meeting, a project or an area, a **Tag Rule** decides how it looks: which background it uses and what is written onto the first page.
+When gtdpara creates a note for a todo, a meeting, a project, an area or a loop, a **Tag Rule** decides how it looks: which background it uses and what is written onto the first page.
 
 You find the rules in **Settings → Tag Rules**.
 
 ## How a rule is chosen
 
-- Every rule belongs to one context: **Project**, **Area**, **Todo** or **Meeting**.
+- Every rule belongs to one context: **Project**, **Area**, **Todo**, **Meeting** or **Loop**.
 - A rule has one or more tags. It applies when the item has any of them, or a tag nested under one of them: a rule on `coaching` also applies to `#coaching/sabina`.
 - Rules are checked from top to bottom; the first match wins.
-- One rule per context can be the **Default**: it applies when no tagged rule matches.
+- One rule per context can be the **Default**: it applies when no tagged rule matches (not for Loop rules).
 - Without any matching rule the note starts blank.
 
 ## Editing a rule
@@ -20,7 +20,7 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
 - **Background**: tap **Change…** and pick one of your templates from the MyStyle folder
 - **Pieces**: what is written onto the page. Tap **Add piece** and choose:
   - **Title** of the item; tags are written as words without `#` (`Retro demand retro/demand`), the tags gtdpara uses itself (`#next`, `#wf/anna` …) are left out
-  - **Date & title** (meetings): the date with the year and the title, `30.9.2026 · Retro demand retro/demand`
+  - **Date & title** (meetings and loops): the date with the year and the title, `30.9.2026 · Retro demand retro/demand`; for a loop its main date and name
   - **Date** and **Time** (meetings)
   - **Related items**: open todos and meetings that share a tag with the item
   - **Linked file**: a link to the file linked to the item
@@ -28,7 +28,7 @@ Tap a rule to edit it, or **+ New tag rule** to create one.
   - a **static text** you write once for this rule (**+ New text**) and place on the page, for example "Agenda" or "Decisions"
 - A new meeting rule starts with **Date & title**, **Time** and **Linked file**; a new todo rule with **Title** and **Linked file**.
 - The preview shows where each piece sits. Select a piece and move it with the arrows; change its font size and maximum width.
-- **Heading** (todo and meeting rules): below the arrows, for the selected piece. A piece with Heading on is also written as a Supernote **heading**, so it shows in the note's table of contents - on a note of its own and on each page of a shared note. Date & title has it on from the start, and so has the Title of a new todo rule; for every other piece it is off until you switch it on. Linked file can't be a heading. In the preview a heading piece has a grey backing.
+- **Heading** (todo, meeting and loop rules): below the arrows, for the selected piece. A piece with Heading on is also written as a Supernote **heading**, so it shows in the note's table of contents - on a note of its own and on each page of a shared note. Date & title has it on from the start, and so has the Title of a new todo rule; for every other piece it is off until you switch it on. Linked file can't be a heading. In the preview a heading piece has a grey backing.
 
 **Create** or **Save** stores the rule; it is used for notes created from then on.
 
@@ -70,6 +70,9 @@ The **Shared file name** can contain placeholders. Tap a placeholder under the f
 - `{year}`: `2026`
 - `{quarter}`: `Q4`
 - `{month}`: `10`
+- `{day}`: `07`
+
+Without a date, the date placeholders are left out together with the `-`, `.` or `_` between them: `{year}-{month} {tag}` becomes just the tag.
 
 Example: one rule "Coaching" on the tag `coaching`, file name `Coaching {subtag} {year}`. A meeting tagged `#coaching/sabina` goes into `Coaching sabina 2026`, one tagged `#coaching/tom` into `Coaching tom 2026`, and one tagged just `#coaching` into `Coaching 2026`. The line below the field shows an example.
 
@@ -77,6 +80,14 @@ With `{tag}`, one rule serves several kinds of meetings: a rule on the tags `spa
 
 - A meeting uses its own date; a todo uses the day its note is created.
 - Once a note page exists, it stays where it is. Changing the tag, the date or the rule later does not move it.
+
+## Loop rules
+
+A rule with the context **Loop** makes its tag a kind of loop: with a Loop rule on `workshop`, every `#workshop/<name>` is one loop, for example `#workshop/teamoffsite`. See [Loops](loops.md).
+
+- Its pieces make the first page of the **loop note**, the one note every loop has from start to end. A new Loop rule starts with **Date & title** (the loop's main date and name) and **Linked file** (the file linked to the loop).
+- **Loop note name**: the note's file name, with the same placeholders as a shared file. `{tag}` is the kind (`workshop`), `{subtag}` the loop's name (`teamoffsite`), and the date placeholders take the loop's **main date** - they are left out while the loop has none. The default `{year}-{month} {tag} {subtag}` gives `2026-11 workshop teamoffsite`, or `workshop teamoffsite` without a main date. The note lives in the loop's Area or Project folder.
+- A loop kind is never a thread type: `#workshop/teamoffsite` doesn't make a counterpart, even when a meeting rule also uses `workshop`.
 
 ## Before a note is created
 

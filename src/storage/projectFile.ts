@@ -30,6 +30,7 @@ import {
   writeWeeklyGoalsIntoContent,
 } from '../domain/markdown';
 import {CounterpartLine, parseThreadsSpan, writeThreadsIntoContent} from '../domain/threadsSection';
+import {LoopLine, parseLoopsSpan, writeLoopsIntoContent} from '../domain/loopsSection';
 import {
   AREA_FILE_NAME,
   GtdParaKind,
@@ -78,6 +79,9 @@ export interface ProjectFileState {
   /** From the `## Threads` span (docs/dev/history/technical-design-tending-threads.md §3.9.1) - the confirmed counterparts of the scope this file owns; empty for most files and always for the Inbox. Written only through storage/counterparts.ts. */
   threads: CounterpartLine[];
   threadsExtraLines: string[];
+  /** From the `## Loops` span (docs/dev/history/technical-design-loops.md §3.2) - the loops this file owns; empty for most files and always for the Inbox. Written only through storage/loops.ts. */
+  loops: LoopLine[];
+  loopsExtraLines: string[];
   /** From the frontmatter block's status/dailyFocus/weeklyFocus/monthlyFocus/defaultResourceFolder/area fields - see domain/markdown.ts's parseFrontMatter. */
   status: ItemStatus;
   dailyFocus: boolean;
@@ -125,6 +129,7 @@ export function parseProjectFileContent(rawContent: string): ProjectFileState {
   const {goals: monthlyGoals, extraLines: monthlyGoalsExtraLines} = parseMonthlyGoalsSpan(rawContent);
   const {marks, extraLines: marksExtraLines} = parseMarksSpan(rawContent);
   const {threads, extraLines: threadsExtraLines} = parseThreadsSpan(rawContent);
+  const {loops, extraLines: loopsExtraLines} = parseLoopsSpan(rawContent);
   const {
     status,
     dailyFocus,
@@ -150,6 +155,8 @@ export function parseProjectFileContent(rawContent: string): ProjectFileState {
     marksExtraLines,
     threads,
     threadsExtraLines,
+    loops,
+    loopsExtraLines,
     status,
     dailyFocus,
     weeklyFocus,
@@ -204,6 +211,20 @@ export async function saveThreads(
 ): Promise<string> {
   const base = ensureSkeleton(rawContent, kind);
   const next = writeThreadsIntoContent(base, threads, extraLines);
+  await writeTextFile(dataFilePath(kind, itemPath), next);
+  return next;
+}
+
+/** Saves the Loops span (docs/dev/history/technical-design-loops.md §3.2) - see saveTasks for the shared rawContent/scaffolding behavior. */
+export async function saveLoops(
+  kind: GtdParaKind,
+  itemPath: string,
+  rawContent: string,
+  loops: LoopLine[],
+  extraLines: string[] = [],
+): Promise<string> {
+  const base = ensureSkeleton(rawContent, kind);
+  const next = writeLoopsIntoContent(base, loops, extraLines);
   await writeTextFile(dataFilePath(kind, itemPath), next);
   return next;
 }

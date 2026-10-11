@@ -10,6 +10,18 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Loops**: small projects inside an Area or Project, without a folder of their own - a workshop
+  to prepare, a book to read, a trip, a purchase. A Tag Rule with the new context **Loop** makes
+  its tag a kind of loop (`#workshop/<name>`); its pieces make the loop note's first page, and
+  its **Loop note name** names the note, with the loop's main date in it. See the help page
+  "Loops".
+- `{day}` for shared and loop note names. Without a date, date placeholders are left out with
+  the `-`, `.` or `_` between them.
+
+### Upgrade notes
+- Area and Project files can get a `## Loops` section. Older versions keep it untouched.
+
 ## [0.13.0] — 2026-10-10
 
 ### New

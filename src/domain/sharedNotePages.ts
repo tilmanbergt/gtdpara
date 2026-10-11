@@ -226,7 +226,7 @@ export function recreatedPageNoticeText(isoDate: string): string {
 // ---- Shared file-name placeholders (docs/dev/history/technical-design-split-by-tag.md §3.3) ----
 
 /** The placeholders a Tag Rule's "Shared file name" understands, in the order the Settings chips show them. */
-export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{year}', '{quarter}', '{month}'];
+export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{year}', '{quarter}', '{month}', '{day}'];
 
 export interface SharedFileNameInput {
   /** The rule's "Shared file name" (or its rule name when that field is blank) - `resolvedSharedFileName`. */
@@ -237,15 +237,20 @@ export interface SharedFileNameInput {
   tag?: string;
   /** `ruleSubtag(...)` (domain/tagRules.ts) - `''` when the item has no nested tag under the rule. */
   subtag: string;
-  /** `YYYY-MM-DD` - a meeting's own date, today for a todo. */
+  /** `YYYY-MM-DD` - a meeting's own date, today for a todo, a loop's main date; `''` when there is none. */
   date: string;
 }
+
+/** A run of date placeholders joined by `-`, `.` or `_`, with one such separator before it. */
+const DATE_PLACEHOLDER_RUN = /[-._]?\{(?:year|quarter|month|day)\}(?:[-._]\{(?:year|quarter|month|day)\})*/gi;
 
 /**
  * Renders a shared file's base name (no folder, no ".note") from the rule's
  * template: `{tag}` -> the rule tag the item matched, `{subtag}` -> the
  * nested-tag part (both lowercased), `{year}` -> `2026`,
- * `{quarter}` -> `Q4`, `{month}` -> `10`. Placeholders are matched
+ * `{quarter}` -> `Q4`, `{month}` -> `10`, `{day}` -> `07`. Without a date
+ * the date placeholders are left out together with the `-`, `.` or `_`
+ * joining them (`{year}-{month} {tag}` -> `{tag}`). Placeholders are matched
  * case-insensitively; any other `{...}` text is left exactly as typed. Runs
  * of whitespace collapse and the ends are trimmed, so a missing subtag
  * doesn't leave a double space (`Coaching {subtag} {year}` -> `Coaching 2026`).
@@ -256,13 +261,15 @@ export interface SharedFileNameInput {
  * file name.
  */
 export function renderSharedFileName(input: SharedFileNameInput): string {
-  const match = /^(\d{4})-(\d{2})/.exec(input.date);
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(input.date);
   const year = match ? match[1] : '';
   const month = match ? match[2] : '';
+  const day = match ? match[3] : '';
   const quarter = match ? `Q${Math.floor((Number(month) - 1) / 3) + 1}` : '';
-  const values: Record<string, string> = {tag: input.tag ?? '', subtag: input.subtag, year, quarter, month};
-  const rendered = input.template
-    .replace(/\{(tag|subtag|year|quarter|month)\}/gi, (_all, key: string) => values[key.toLowerCase()])
+  const values: Record<string, string> = {tag: input.tag ?? '', subtag: input.subtag, year, quarter, month, day};
+  const template = match ? input.template : input.template.replace(DATE_PLACEHOLDER_RUN, '');
+  const rendered = template
+    .replace(/\{(tag|subtag|year|quarter|month|day)\}/gi, (_all, key: string) => values[key.toLowerCase()])
     .replace(/\s+/g, ' ')
     .trim();
   return rendered || input.ruleName.trim();
