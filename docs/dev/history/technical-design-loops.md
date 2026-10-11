@@ -1,7 +1,7 @@
 # Technical design: Loops
 
-Status: **ready for approval** (2026-10-10). Release: after 0.13.0 (proposed 0.14.0, branch
-`feature/loops`). Requirements and their history: claude.ai project doc `claude/feature-loops.md`.
+Status: **approved** (2026-10-10), implementation started. Release: **0.14.0**, branch
+`feature/loops`. Requirements and their history: claude.ai project doc `claude/feature-loops.md`.
 UX: canvas "gtdpara Loops — UX draft".
 
 This design builds on:
@@ -317,9 +317,8 @@ No close-out list is needed; `CounterpartCloseOut` is not reused.
 
 - **D-L1:** Loop kind = Tag Rule context `loop`. *Decided.*
 - **D-L2:** Line format with commas, as `## Threads`; no stored start date ("since start" =
-  the earliest created date of a member). *Proposed.*
-- **D-L3:** A loop closes only without open todos and upcoming meetings. *Decided (todos);
-  meetings proposed.*
+  the earliest created date of a member). *Decided.*
+- **D-L3:** A loop closes only without open todos and upcoming meetings. *Decided.*
 - **D-L4:** Review: a separate step "Open loops"; "Tending threads" stays. *Decided.* (This
   replaces the rename to "Tending".)
 - **D-L5:** Phase 2: the note page list from headings in the overview; the "meeting on the
@@ -327,7 +326,7 @@ No close-out list is needed; `CounterpartCloseOut` is not reused.
 - **D-L6:** No deleting a loop. *Decided.*
 - **D-L7:** A Project's loops show only as a count on the Area page. *Decided.*
 - **D-L8:** A Loop rule's note name lives in `sharedFileName`; `{day}` added for all rules;
-  date placeholders vanish without a main date. *Proposed.*
+  date placeholders vanish without a main date. *Decided.*
 
 ## 7. Test plan
 
