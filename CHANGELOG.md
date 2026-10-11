@@ -40,6 +40,11 @@ or your project/area files are stored.
 - `{day}` for shared and loop note names. Without a date, date placeholders are left out with
   the `-`, `.` or `_` between them.
 
+### Fixed
+- Settings → Tag Rules: with more rules than fit on the screen, the last ones were hidden below
+  it without a page arrow. Each rule now takes one fixed row (long names and tag lists are cut),
+  and the list pages.
+
 ### Upgrade notes
 - Area and Project files can get a `## Loops` section. Older versions keep it untouched.
 

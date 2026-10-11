@@ -1,5 +1,7 @@
 /**
- * The list of Tag Rules with "+ New tag rule"; Delete is immediate.
+ * The list of Tag Rules with "+ New tag rule"; Delete is immediate. Paged:
+ * the list fills the space under the heading style and pages from there
+ * (ui/PagedSection.tsx, self-measured).
  */
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
@@ -10,8 +12,14 @@ import MiniTabs, {MiniTabDef} from '../../../ui/MiniTabs';
 import PagedSection from '../../../ui/PagedSection';
 import {styles} from '../settingsStyles';
 import {TagRuleDraft} from './useTagRuleDraft';
-/** Fixed row height for the Templates tab's PagedSection list (two lines: name + context/tags) - hand-picked, not screenshot-measured, same convention as every other row-height constant in this app. The viewport itself is self-measured (no separate viewport-height constant needed) - see this file's module doc comment. */
-const TEMPLATE_DEF_ROW_HEIGHT = 64;
+/**
+ * The height a rule row takes in the list, its bottom margin included. The
+ * row is drawn at exactly this height (two lines, each cut to one line), so
+ * the pager's count of rows per page matches the screen; a row that grew
+ * with its text would push the last rows of a page below the screen.
+ */
+const TEMPLATE_DEF_ROW_HEIGHT = 74;
+const ROW_MARGIN = 8;
 interface TemplateDefRow {
   def: TagRule;
   index: number;
@@ -61,13 +69,13 @@ export default function TagRulesList({
         resetKey={tagRules.length}
         emptyHint="None yet — notes keep getting a blank background and no auto-inserted content, same as today."
         renderRow={({def, index}) => (
-          <View key={def.id} style={[styles.defRow, {borderColor}]}>
+          <View key={def.id} style={[styles.defRow, {borderColor, height: TEMPLATE_DEF_ROW_HEIGHT - ROW_MARGIN, marginBottom: ROW_MARGIN}]}>
             <Pressable onPress={() => handleEditDefinition(index)} hitSlop={4} style={styles.defRowMain}>
-              <Text style={[styles.defRowName, {color: textColor}]}>
+              <Text style={[styles.defRowName, {color: textColor}]} numberOfLines={1}>
                 {def.name || 'Untitled'}
                 {!def.enabled ? '  (off)' : ''}
               </Text>
-              <Text style={[styles.defRowMeta, {color: textColor}]}>
+              <Text style={[styles.defRowMeta, {color: textColor}]} numberOfLines={1}>
                 {CONTEXT_TABS.find(c => c.key === def.context)?.label ?? def.context}
                 {' · '}
                 {def.tags.length > 0
