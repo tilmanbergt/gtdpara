@@ -127,7 +127,7 @@ import {joinItems, splitAtSelection, splitByHand} from '../domain/captureText';
 import {composeTaskText} from '../domain/quickAddCompose';
 import {extractContextTags, insertTagAtPosition, removeTagFromText, stripSpaceAfterHash} from '../domain/markdown';
 import {formatMeetingWhen, MeetingField, todayIso, validateMeetingFields} from '../domain/meetingTime';
-import {isHighlight, setHighlight} from '../domain/monthHighlight';
+import {setHighlight} from '../domain/monthHighlight';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {FlowState, Meeting, Task} from '../domain/types';
 import {getRecentTags, getRecentTagsSync, recordTagsUsed} from '../storage/tagUsage';
@@ -136,7 +136,7 @@ import {FILE_TO_SHORT, fileToEligible, fileToLabel, fileToShortList} from '../do
 import ClipboardTextInput from './ClipboardTextInput';
 import DateInput, {DateInputHandle} from './DateInput';
 import FlowStateChips from './FlowStateChips';
-import {ClipIcon, TrashIcon, WarningIcon} from './icons';
+import {ClipIcon, WarningIcon} from './icons';
 import {COLORS, FONT} from './theme';
 import HighlightMark from './HighlightMark';
 import TagChips from './TagChips';
@@ -149,7 +149,9 @@ import {useAbbrevItems} from './useAbbrevItems';
 import {useOnScreenHide} from './screenActivity';
 import {common} from './commonStyles';
 import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
+import {CreateActionRow, EditActionRow, quickAddButtons} from './quickAdd/ActionRow';
 import ProvenanceLine, {QuickAddProvenance} from './quickAdd/ProvenanceLine';
+import {EditFields, loadEditFields, MeetingEditFields, TaskEditFields} from './quickAdd/editFields';
 import {errorMessage} from '../utils/errorMessage';
 
 /** The fields of a meeting being added or edited; other files import this type from here. */
@@ -196,25 +198,6 @@ interface MeetingDraft {
 interface NoteDraft {
   titleRaw: string;
 }
-
-interface TaskEditFields {
-  text: string;
-  flowState: FlowState;
-  waitingOnText: string;
-  dueDate: string;
-  dueDateOpen: boolean;
-  linkedFile: string;
-}
-
-interface MeetingEditFields {
-  title: string;
-  date: string;
-  time: string;
-  monthly: boolean;
-  linkedFile: string;
-}
-
-type EditFields = {kind: 'task'; fields: TaskEditFields} | {kind: 'meeting'; fields: MeetingEditFields};
 
 function makeTaskDraft(): TaskDraft {
   return {text: '', flowState: null, waitingOnText: '', dueDate: '', dueDateOpen: false};
@@ -645,32 +628,7 @@ function QuickAddWidget({
       // doc comment for why this lives in a ref instead of field state.
       taskLastSelectionRef.current = null;
       meetingLastSelectionRef.current = null;
-      let loaded: EditFields | null = null;
-      if (editingTask) {
-        loaded = {
-          kind: 'task',
-          fields: {
-            text: editingTask.text,
-            flowState: editingTask.flowState,
-            waitingOnText: editingTask.waitingOn ?? '',
-            dueDate: editingTask.dueDate ?? '',
-            dueDateOpen: !!editingTask.dueDate,
-            linkedFile: editingTask.linkedFile ?? '',
-          },
-        };
-      } else if (editingMeeting) {
-        loaded = {
-          kind: 'meeting',
-          fields: {
-            // `#monthly` is edited through the M toggle, not as title text.
-            title: setHighlight(editingMeeting.title, false),
-            date: editingMeeting.date,
-            time: formatMeetingWhen(editingMeeting),
-            monthly: isHighlight(editingMeeting),
-            linkedFile: editingMeeting.linkedFile ?? '',
-          },
-        };
-      }
+      const loaded = loadEditFields(editingTask, editingMeeting);
       setEditFields(loaded);
       loadedFieldsRef.current = loaded ? JSON.stringify(loaded.fields) : null;
       setError(null);
@@ -1294,10 +1252,10 @@ function QuickAddWidget({
         <Pressable onPress={toggleSplit} hitSlop={8} accessibilityRole="checkbox">
           <Text style={[styles.splitToggleText, {color: textColor}]}>{splitRows ? '☑' : '☐'} Split lines</Text>
         </Pressable>
-        <Pressable style={[styles.ghostButton, {borderColor}]} onPress={splitAtCursor} hitSlop={6}>
-          <Text style={[styles.ghostButtonText, {color: textColor}]}>✂ Split at cursor</Text>
+        <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={splitAtCursor} hitSlop={6}>
+          <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>✂ Split at cursor</Text>
         </Pressable>
-        <View style={styles.centerSpacer} />
+        <View style={quickAddButtons.centerSpacer} />
         {taskDueControl}
       </View>
     ) : null;
@@ -2013,19 +1971,19 @@ function QuickAddWidget({
   }
   const countLabel = captureCount > 1 ? ` ${captureCount}` : '';
   const captureRow4 = (
-    <View style={styles.row4}>
+    <View style={quickAddButtons.row4}>
       <Text style={[styles.captureDest, {color: textColor}]} numberOfLines={1}>
         → {truncateItemName(destinationLabel(captureDestination), 24)}
       </Text>
-      <Pressable style={[styles.ghostButton, {borderColor}]} onPress={() => submitCapture('next')} disabled={pending} hitSlop={6}>
-        <Text style={[styles.ghostButtonText, {color: textColor}]}>Save{countLabel} & next</Text>
+      <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={() => submitCapture('next')} disabled={pending} hitSlop={6}>
+        <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>Save{countLabel} & next</Text>
       </Pressable>
-      <Pressable style={[styles.ghostButton, {borderColor}]} onPress={() => submitCapture('view')} disabled={pending} hitSlop={6}>
-        <Text style={[styles.ghostButtonText, {color: textColor}]}>Save{countLabel} & view</Text>
+      <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={() => submitCapture('view')} disabled={pending} hitSlop={6}>
+        <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>Save{countLabel} & view</Text>
       </Pressable>
       <MarkWrap mark={errorState && errorState.field === null ? 'warning' : null} textColor={textColor}>
-        <Pressable style={styles.primaryButton} onPress={() => submitCapture('close')} disabled={pending} hitSlop={6}>
-          <Text style={styles.primaryButtonText}>Save{countLabel} & close</Text>
+        <Pressable style={quickAddButtons.primaryButton} onPress={() => submitCapture('close')} disabled={pending} hitSlop={6}>
+          <Text style={quickAddButtons.primaryButtonText}>Save{countLabel} & close</Text>
         </Pressable>
       </MarkWrap>
       {monthlyToggle}
@@ -2052,77 +2010,29 @@ function QuickAddWidget({
   ) : null;
 
   const row4 = isCapture && !isEditing ? captureRow4 : isEditing ? (
-    <View style={styles.row4}>
-      <View style={styles.actionsLeft}>
-        {/* An icon rather than the word "Delete" - frees ~40px in
-            this crowded row. Leftmost on purpose and hitSlop 4 (not the 8 the
-            text buttons use): delete is one tap with no confirmation, so its
-            touch area must not spill into "New from this" next to it. */}
-        <Pressable
-          style={[styles.ghostButton, styles.trashButton, {borderColor}]}
-          onPress={handleDelete}
-          disabled={pending}
-          hitSlop={4}
-          accessibilityRole="button"
-          accessibilityLabel="Delete">
-          <TrashIcon size={18} color={textColor} />
-        </Pressable>
-        {editFields?.kind === 'meeting' && onCancelEdit && (
-          <Pressable style={[styles.ghostButton, {borderColor}]} onPress={handleNewFromThis} disabled={pending} hitSlop={8}>
-            <Text style={[styles.ghostButtonText, {color: textColor}]} numberOfLines={1}>
-              New from this
-            </Text>
-          </Pressable>
-        )}
-        {onRefile && !abbrevTarget && (
-          <Pressable style={[styles.ghostButton, {borderColor}]} onPress={handleRefile} disabled={pending} hitSlop={8}>
-            <Text style={[styles.ghostButtonText, {color: textColor}]}>Refile</Text>
-          </Pressable>
-        )}
-        {onQuickFile && abbrevTarget && (
-          <Pressable style={[styles.ghostButton, {borderColor}]} onPress={handleQuickFile} disabled={pending} hitSlop={8}>
-            <Text style={[styles.ghostButtonText, {color: textColor}]} numberOfLines={1}>
-              File: {truncateItemName(abbrevTarget.name)}
-            </Text>
-          </Pressable>
-        )}
-      </View>
-      <View style={styles.centerSpacer} />
-      <View style={styles.actionsRight}>
-        <Pressable onPress={onCancelEdit} hitSlop={8}>
-          <Text style={[styles.textButton, {color: textColor}]}>Cancel</Text>
-        </Pressable>
-        {monthlyToggle}
-        <MarkWrap mark={errorState && errorState.field === null ? 'warning' : null} textColor={textColor}>
-          <Pressable
-            style={styles.primaryButton}
-            onPress={editFields?.kind === 'meeting' ? submitMeetingEdit : submitTaskEdit}
-            disabled={pending}
-            hitSlop={8}>
-            <Text style={styles.primaryButtonText}>Save</Text>
-          </Pressable>
-        </MarkWrap>
-      </View>
-    </View>
+    <EditActionRow
+      pending={pending}
+      onDelete={handleDelete}
+      onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
+      onRefile={onRefile ? handleRefile : undefined}
+      quickFile={onQuickFile && abbrevTarget ? {name: truncateItemName(abbrevTarget.name), onPress: handleQuickFile} : null}
+      onCancel={onCancelEdit}
+      saveLabel="Save"
+      onSave={editFields?.kind === 'meeting' ? submitMeetingEdit : submitTaskEdit}
+      errorOnSave={!!errorState && errorState.field === null}
+      monthlyToggle={monthlyToggle}
+      textColor={textColor}
+      borderColor={borderColor}
+    />
   ) : (
-    <View style={styles.row4}>
-      <View style={styles.actionsLeft} />
-      <View style={styles.centerSpacer} />
-      <View style={styles.actionsRight}>
-        {monthlyToggle}
-        <MarkWrap mark={buttonMark} textColor={textColor}>
-          <Pressable
-            style={styles.primaryButton}
-            onPress={displayType === 'meeting' ? submitMeetingCreate : displayType === 'note' ? submitNoteCreate : submitTaskCreate}
-            disabled={pending}
-            hitSlop={8}>
-            <Text style={styles.primaryButtonText} numberOfLines={1}>
-              {abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
-            </Text>
-          </Pressable>
-        </MarkWrap>
-      </View>
-    </View>
+    <CreateActionRow
+      label={abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
+      onPress={displayType === 'meeting' ? submitMeetingCreate : displayType === 'note' ? submitNoteCreate : submitTaskCreate}
+      disabled={pending}
+      mark={buttonMark}
+      monthlyToggle={monthlyToggle}
+      textColor={textColor}
+    />
   );
 
   return (
@@ -2200,11 +2110,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 6,
-  },
-  row4: {
-    minHeight: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   /** Keeps the inactive tab's row2/row3 native views mounted (see taskRow2's comment) instead of unmounting them - Yoga skips display:none entirely, so it contributes no height. */
   hidden: {
@@ -2313,54 +2218,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginLeft: 3,
     paddingHorizontal: 4,
-  },
-  actionsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionsRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  /** Keeps actionsLeft/actionsRight at the row's two ends. */
-  centerSpacer: {
-    flex: 1,
-  },
-  primaryButton: {
-    backgroundColor: COLORS.accent,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  primaryButtonText: {
-    color: COLORS.accentText,
-    fontSize: FONT.small,
-    fontWeight: '600',
-  },
-  ghostButton: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 6,
-  },
-  ghostButtonText: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    opacity: 0.8,
-  },
-  /** Icon-only variant of ghostButton (edit-mode delete): tighter horizontal padding, icon centred; height still matches its text-labelled neighbours (icon 18 + 2x6 padding ~ line height + 2x6). */
-  trashButton: {
-    paddingHorizontal: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textButton: {
-    fontSize: FONT.small,
-    opacity: 0.7,
-    fontWeight: '600',
-    marginRight: 12,
   },
 });
 
