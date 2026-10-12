@@ -62,6 +62,14 @@ describe('placeNoteCandidates', () => {
     expect(placeNoteCandidates(input(['other'])).map(p => [p.candidate.setup, p.shared])).toEqual([[null, null]]);
   });
 
+  it('items no setup matches go into the Default notebook, rendered without tags', () => {
+    const withNotebook = {...settings, noteSetupDefaults: {...settings.noteSetupDefaults, notebook: {name: 'Daily {year}', folder: 'Meetings'}}};
+    const [placed] = placeNoteCandidates(input(['other'], {settings: withNotebook}));
+    expect(placed.candidate).toEqual({setup: null, target: 'notebook'});
+    expect(placed.shared?.relativeFile).toBe('Meetings/Daily 2026.note');
+    expect(layoutForLink({...input(['other'], {settings: withNotebook, pageKind: 'meeting'}), linkedFile: 'Meetings/Daily 2026.note'})).toBe(settings.noteSetupDefaults.pages.meeting);
+  });
+
   it('Inbox: the best setup, its own note', () => {
     const placed = placeNoteCandidates(input(['sparring/peter'], {forceOwn: true}));
     expect(placed.map(p => [p.candidate.setup?.name, p.candidate.target, p.shared])).toEqual([['Sparring', 'own', null]]);

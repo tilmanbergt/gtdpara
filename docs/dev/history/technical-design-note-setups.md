@@ -610,6 +610,21 @@ Each step ends with `npm run check` green and a commit on `feature/note-setups`.
 Built in the steps of §10, one commit each (`note-setups: step N - …`). Steps 0-3 are done;
 this section lists where the code differs from the design above, and why.
 
+### Decided after the step-3 checkpoint
+
+- **The Default has an optional notebook** (`NoteSetupDefaults.notebook`, null = own note
+  per item), reversing §1.1's "no notebook" for the Default. Real 0.14 profiles use shared
+  Default rules; without it, new untagged meetings and todos would have stopped landing in
+  their notebook. `noteCandidates` puts items no setup matches into it (`defaultNotebook`),
+  except Inbox items. The migration fills it from the shared Default rules (the Meeting
+  rule's first; the Todo rule is reported when its items change place, as in rule 6). The
+  Default's page gets a Notes row (Thread-style: own note or one notebook).
+- **"Untitled" setups are named after their tags** (`#tango`): a blank rule name or the old
+  editor's "Untitled".
+- Settings already migrated by an earlier 0.15 build lack the Default's notebook key; the
+  load step completes them once from the kept Tag Rules (`completeMigratedSettings`) and
+  renames their "Untitled" setups.
+
 ### Model and layout (steps 0-1)
 
 - `addPiece(layout, type, text?, textId?)` has no `kind` parameter: where a piece starts

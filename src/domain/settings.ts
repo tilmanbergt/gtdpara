@@ -209,7 +209,7 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   googleCalendarIcsUrl: '',
   focusModeActive: false,
   noteSetups: [],
-  noteSetupDefaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}},
+  noteSetupDefaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}, notebook: null},
   nextNoteSetupId: 1,
   noteSetupsNotice: null,
   noteSetupsMigrated: false,

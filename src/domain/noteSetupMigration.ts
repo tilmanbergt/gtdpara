@@ -8,6 +8,7 @@ import {
   createNoteSetup,
   LOOP_NOTE_NAME_DEFAULT,
   MeetingTracking,
+  Notebook,
   NoteSetup,
   NoteSetupDefaults,
   normalizeSetupTag,
@@ -16,6 +17,7 @@ import {
 import {NotePiece, NoteTextItem, PageKind, PageLayout} from './pageLayout';
 import {
   migrationConflictText,
+  migrationDefaultIntoNotebookText,
   migrationDefaultRemovedText,
   migrationIntoNotebookText,
   migrationLoopKindTagText,
@@ -25,7 +27,6 @@ import {
   migrationNotebookChangedText,
   migrationNoTagsText,
   migrationOffCollisionText,
-  migrationUnmatchedSharedText,
 } from './fileChangeText';
 import type {GtdParaSettings} from './settings';
 
@@ -173,13 +174,43 @@ function trackingOf(members: readonly Member[], fallback: MeetingTracking): Meet
   };
 }
 
+/** A setup's name: the rule's, unless it is blank or the editor's "Untitled" - then its tags (`#tango`). */
+function setupNameOf(ruleName: string | undefined, tags: readonly string[]): string {
+  const name = ruleName?.trim() ?? '';
+  return name && name.toLowerCase() !== 'untitled' ? name : tags.map(t => `#${t}`).join(' ');
+}
+
+/**
+ * The Default's notebook from the Default rules that became Default pages:
+ * the shared one (the Meeting rule's first), else null. The other Default
+ * rule is reported when its items change place, as for a setup (§5 rule 6).
+ */
+function defaultNotebookOf(members: readonly LegacyTagRule[], report: MigrationReport): Notebook | null {
+  const shared = members.filter(isShared);
+  const chosen = shared.find(r => r.context === 'meeting') ?? shared[0];
+  if (!chosen) return null;
+  const notebook = notebookOfRule(chosen);
+  for (const r of members) {
+    if (r === chosen) continue;
+    if (!isShared(r)) {
+      report.push({setup: ruleLabel(r), change: 'intoNotebook', detail: migrationDefaultIntoNotebookText(r.context, notebook.name)});
+      continue;
+    }
+    const own = notebookOfRule(r);
+    if (own.name !== notebook.name || own.folder !== notebook.folder) {
+      report.push({setup: ruleLabel(r), change: 'notebookChanged', detail: migrationNotebookChangedText(r.context, notebook.folder, notebook.name)});
+    }
+  }
+  return notebook;
+}
+
 /** One setup from one component (§5 rules 3-9). */
 function setupOf(group: readonly Member[], id: string, enabled: boolean, defaults: NoteSetupDefaults, report: MigrationReport): NoteSetup {
   const loopMember = group.find(m => m.rule.context === 'loop');
   const meetingMember = group.find(m => m.rule.context === 'meeting');
   const tags: string[] = [];
   for (const m of group) for (const t of m.tags) if (!tags.includes(t)) tags.push(t);
-  const name = (loopMember ?? meetingMember ?? group[0]).rule.name?.trim() || `#${tags[0]}`;
+  const name = setupNameOf((loopMember ?? meetingMember ?? group[0]).rule.name, tags);
   const setup: NoteSetup = {...createNoteSetup(id, loopMember ? 'loop' : 'thread'), name, tags, enabled};
 
   if (group.length > 1) report.push({setup: name, change: 'merged', detail: migrationMergedText(group.map(m => ruleLabel(m.rule)))});
@@ -239,7 +270,8 @@ function setupOf(group: readonly Member[], id: string, enabled: boolean, default
 export function migrateTagRules(rules: readonly LegacyTagRule[], nextId: number): TagRuleMigration {
   const report: MigrationReport = [];
   const seeded = seedNoteSetupDefaults();
-  const defaults: NoteSetupDefaults = {pages: {first: seeded.pages.first}, tracking: {trackPrep: false, trackReview: false}};
+  const defaults: NoteSetupDefaults = {pages: {first: seeded.pages.first}, tracking: {trackPrep: false, trackReview: false}, notebook: null};
+  const defaultMembers: LegacyTagRule[] = [];
   const grouped: Member[] = [];
 
   rules.forEach((rule, index) => {
@@ -250,12 +282,12 @@ export function migrateTagRules(rules: readonly LegacyTagRule[], nextId: number)
       report.push({setup: ruleLabel(rule), change: 'removed', detail: migrationNeverAppliedText()});
       return;
     }
-    // Rule 2: the first enabled Default per context becomes the Default page.
+    // Rule 2: the first enabled Default per context becomes the Default page; a shared one the Default's notebook.
     if (rule.isDefault && context !== 'loop') {
       if (rule.enabled && !defaults.pages[context]) {
         defaults.pages[context] = layoutOf(rule);
+        defaultMembers.push(rule);
         if (context === 'meeting') defaults.tracking = {trackPrep: rule.trackPrep === true, trackReview: rule.trackReview === true};
-        if (isShared(rule)) report.push({setup: ruleLabel(rule), change: 'notebookChanged', detail: migrationUnmatchedSharedText(context)});
       } else {
         report.push({setup: ruleLabel(rule), change: 'removed', detail: migrationDefaultRemovedText()});
       }
@@ -268,6 +300,8 @@ export function migrateTagRules(rules: readonly LegacyTagRule[], nextId: number)
     }
     grouped.push({rule, index, tags});
   });
+
+  defaults.notebook = defaultNotebookOf(defaultMembers, report);
 
   // Rules 3 and 8: enabled rules first; disabled ones only where no enabled setup holds their tags.
   const enabledGroups = components(separateLoopKinds(grouped.filter(m => m.rule.enabled), report));
@@ -291,14 +325,15 @@ export function migrateTagRules(rules: readonly LegacyTagRule[], nextId: number)
 
 /**
  * The load-time step (storage/settingsStorage.ts): runs once per settings
- * blob or profile, when `noteSetupsMigrated` is not set. With Tag Rules it
+ * blob or profile, when `noteSetupsMigrated` is not set (and completes
+ * settings migrated before the Default had a notebook). With Tag Rules it
  * migrates them and keeps the report for the notice; without (a fresh
  * install) it seeds the Default. `tagRules`/`nextTagRuleId` are left as
  * they are. Returns the same object when there is nothing to do.
  */
 export function migrateNoteSetupSettings(settings: GtdParaSettings): GtdParaSettings {
-  if (settings.noteSetupsMigrated) return settings;
   const rules = Array.isArray(settings.tagRules) ? settings.tagRules : [];
+  if (settings.noteSetupsMigrated) return completeMigratedSettings(settings, rules);
   if (rules.length === 0) {
     return {...settings, noteSetups: [], noteSetupDefaults: seedNoteSetupDefaults(), noteSetupsNotice: null, noteSetupsMigrated: true};
   }
@@ -310,6 +345,23 @@ export function migrateNoteSetupSettings(settings: GtdParaSettings): GtdParaSett
     nextNoteSetupId: result.nextId,
     noteSetupsNotice: result.report,
     noteSetupsMigrated: true,
+  };
+}
+
+/**
+ * Settings migrated before the Default had a notebook lack its key: the
+ * notebook is taken from the kept Tag Rules, and setups still named after
+ * the editor's "Untitled" get their tags as name. Runs once (the key is set
+ * afterwards, null when there is no shared Default rule); returns the same
+ * object when there is nothing to do.
+ */
+function completeMigratedSettings(settings: GtdParaSettings, rules: readonly LegacyTagRule[]): GtdParaSettings {
+  if (!settings.noteSetupDefaults || settings.noteSetupDefaults.notebook !== undefined) return settings;
+  const notebook = rules.length > 0 ? migrateTagRules(rules, 1).defaults.notebook ?? null : null;
+  return {
+    ...settings,
+    noteSetupDefaults: {...settings.noteSetupDefaults, notebook},
+    noteSetups: settings.noteSetups.map(s => (s.name.trim().toLowerCase() === 'untitled' ? {...s, name: setupNameOf('', s.tags)} : s)),
   };
 }
 

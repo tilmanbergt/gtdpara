@@ -105,6 +105,12 @@ describe('noteCandidates', () => {
     ]);
   });
 
+  it('no match with a Default notebook: the Default, notebook - but own for the Inbox', () => {
+    const base = {pageKind: 'todo' as const, tags: ['other'], setups: all, activeLoops: [], defaultNotebook: true};
+    expect(noteCandidates({...base, forceOwn: false})).toEqual([{setup: null, target: 'notebook'}]);
+    expect(noteCandidates({...base, forceOwn: true})).toEqual([{setup: null, target: 'own'}]);
+  });
+
   it('forceOwn (Inbox): the first candidate, own', () => {
     const cs = noteCandidates({pageKind: 'todo', tags, setups: all, activeLoops: [workshopLoop], forceOwn: true});
     expect(targets(cs)).toEqual(['3:own']);
@@ -246,6 +252,7 @@ describe('pages and defaults', () => {
     expect(defaults.pages.first?.pieces.map(p => p.type)).toEqual(['dateTitle', 'link']);
     expect(defaults.pages.todo).toBeUndefined();
     expect(defaults.tracking).toEqual({trackPrep: false, trackReview: false});
+    expect(defaults.notebook).toBeNull();
   });
 
   it('a todo page starts with its Title as a heading', () => {

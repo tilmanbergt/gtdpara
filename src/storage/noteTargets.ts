@@ -47,6 +47,9 @@ export interface NoteTargetInput {
   forceOwn: boolean;
 }
 
+/** The Default notebook's file name when its name renders empty. */
+const DEFAULT_NOTEBOOK_FALLBACK = 'Notes';
+
 /** The key two candidates share when they lead to the same note: the relative file, or one key for "the item's own note". */
 const OWN_NOTE_KEY = '\u0000own';
 
@@ -63,20 +66,22 @@ function place(candidate: NoteCandidate, input: NoteTargetInput, loops: ReturnTy
       return {candidate, shared: {relativeFolder: '', fileName: loopNote.fileName, relativeFile: `${loopNote.fileName}.note`}, loopNote};
     }
   }
-  if (candidate.target === 'notebook' && setup?.notebook) {
+  const notebook = setup ? setup.notebook : input.settings.noteSetupDefaults.notebook;
+  if (candidate.target === 'notebook' && notebook) {
+    const name = setup ? setup.name : DEFAULT_NOTEBOOK_FALLBACK;
     // sanitizeFileNameComponent: the rendered name comes from user text (the
     // notebook name, the subtag) - strip illegal characters and '#' (the
     // anchor separator), and turn a deeper subtag's '/' into a space.
     const fileName = sanitizeFileNameComponent(
       renderSharedFileName({
-        template: setup.notebook.name.trim() ? setup.notebook.name : setup.name,
-        fallbackName: setup.name,
-        tag: setupTypeTag(input.tags, setup.tags),
-        subtag: setupSubtag(input.tags, setup.tags),
+        template: notebook.name.trim() ? notebook.name : name,
+        fallbackName: name,
+        tag: setupTypeTag(input.tags, setup?.tags ?? []),
+        subtag: setupSubtag(input.tags, setup?.tags ?? []),
         date: input.fileDate,
       }),
     );
-    const relativeFolder = setup.notebook.folder;
+    const relativeFolder = notebook.folder;
     return {
       candidate,
       shared: {relativeFolder, fileName, relativeFile: relativeFolder ? `${relativeFolder}/${fileName}.note` : `${fileName}.note`},
@@ -95,6 +100,7 @@ export function placeNoteCandidates(input: NoteTargetInput): PlacedCandidate[] {
     setups: config.setups,
     activeLoops: loops.map(l => l.loop),
     forceOwn: input.forceOwn,
+    defaultNotebook: !!config.defaults.notebook,
   });
   return distinctCandidates(
     candidates.map(c => place(c, input, loops)),

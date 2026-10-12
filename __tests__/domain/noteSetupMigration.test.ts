@@ -122,6 +122,7 @@ describe('migrateTagRules - grouping and notebooks', () => {
     expect(migrateTagRules([rule('todo', ['a'], {name: 'T'}), rule('meeting', ['a'], {name: 'M'})], 1).setups[0].name).toBe('M');
     expect(migrateTagRules([rule('todo', ['a'], {name: 'T'})], 1).setups[0].name).toBe('T');
     expect(migrateTagRules([rule('todo', ['a'], {name: ' '})], 1).setups[0].name).toBe('#a');
+    expect(migrateTagRules([rule('meeting', ['tango', 'salsa'], {name: 'Untitled'})], 1).setups[0].name).toBe('#tango #salsa');
   });
 
   it('keeps texts with their page', () => {
@@ -195,9 +196,21 @@ describe('migrateTagRules - defaults, disabled, dropped', () => {
     expect(defaults.pages.todo).toBeUndefined();
   });
 
-  it('a shared Default is reported', () => {
-    const {report} = migrateTagRules([rule('meeting', [], {isDefault: true, noteTarget: 'shared'})], 1);
-    expect(report[0].change).toBe('notebookChanged');
+  it('a shared Default rule becomes the Default notebook; no shared Default, no notebook', () => {
+    const shared = migrateTagRules([rule('meeting', [], {isDefault: true, noteTarget: 'shared', sharedFileName: 'Daily'})], 1);
+    expect(shared.defaults.notebook).toEqual({name: 'Daily', folder: 'Meetings'});
+    expect(shared.report).toEqual([]);
+    expect(migrateTagRules([rule('meeting', [], {isDefault: true})], 1).defaults.notebook).toBeNull();
+  });
+
+  it('the Default Meeting rule decides the notebook; the Default Todo rule is reported when its items change place', () => {
+    const todoShared = rule('todo', [], {isDefault: true, noteTarget: 'shared', sharedFileName: 'Inbox todos', name: 'todo default'});
+    const meetingShared = rule('meeting', [], {isDefault: true, noteTarget: 'shared', sharedFileName: 'Daily', sharedFileFolder: 'root'});
+    const both = migrateTagRules([todoShared, meetingShared], 1);
+    expect(both.defaults.notebook).toEqual({name: 'Daily', folder: ''});
+    expect(both.report).toEqual([{setup: 'todo default', change: 'notebookChanged', detail: 'New todos now go into Daily.'}]);
+    const todoOwn = migrateTagRules([meetingShared, rule('todo', [], {isDefault: true, name: 'todo default'})], 1);
+    expect(todoOwn.report).toEqual([{setup: 'todo default', change: 'intoNotebook', detail: 'New todos without a setup now get pages in Daily.'}]);
   });
 
   it('Project/Area rules are dropped and reported', () => {
@@ -289,6 +302,18 @@ describe('migrateNoteSetupSettings', () => {
     expect(fresh.noteSetupDefaults).toEqual(seedNoteSetupDefaults());
     expect(fresh.noteSetupsNotice).toBeNull();
     expect(fresh.tagRules).toEqual([]);
+  });
+
+  it('completes settings migrated before the Default had a notebook: notebook from the kept rules, Untitled renamed, once', () => {
+    const kept = [rule('meeting', [], {isDefault: true, noteTarget: 'shared', sharedFileName: 'Daily'}), rule('meeting', ['tango'], {name: 'Untitled'})];
+    const migrated = migrateNoteSetupSettings({...old, tagRules: kept});
+    const withoutNotebook = {...migrated.noteSetupDefaults};
+    delete withoutNotebook.notebook;
+    const earlier = {...migrated, noteSetupDefaults: withoutNotebook, noteSetups: migrated.noteSetups.map(x => ({...x, name: 'Untitled'}))};
+    const completed = migrateNoteSetupSettings(earlier);
+    expect(completed.noteSetupDefaults.notebook).toEqual({name: 'Daily', folder: 'Meetings'});
+    expect(completed.noteSetups.map(x => x.name)).toEqual(['#tango']);
+    expect(migrateNoteSetupSettings(completed)).toBe(completed);
   });
 
   it('a profile saved by 0.14 migrates after a switch (the switch fills the new keys from the defaults)', () => {

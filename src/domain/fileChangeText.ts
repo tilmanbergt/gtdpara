@@ -159,9 +159,9 @@ export function migrationLoopOwnText(context: string): string {
   return `New ${itemsOf(context)} outside an active loop now get their own note.`;
 }
 
-/** A shared Default rule: items without a setup get their own note now. */
-export function migrationUnmatchedSharedText(context: string): string {
-  return `New ${itemsOf(context)} without a setup now get their own note; its page became the Default.`;
+/** An own-note Default rule next to a shared one: items without a setup now get pages in the Default's notebook. */
+export function migrationDefaultIntoNotebookText(context: string, notebookName: string): string {
+  return `New ${itemsOf(context)} without a setup now get pages in ${notebookName}.`;
 }
 
 /** Project and Area rules were never applied. */

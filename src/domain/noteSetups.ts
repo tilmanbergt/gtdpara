@@ -50,6 +50,12 @@ export interface NoteSetupDefaults {
   /** The Default page per kind; a missing entry = a blank page with no pieces. */
   pages: Partial<Record<PageKind, PageLayout>>;
   tracking: MeetingTracking;
+  /**
+   * Where the notes of items no setup matches go: a notebook, or null = own
+   * note per item. Absent only in settings migrated before the Default had a
+   * notebook (domain/noteSetupMigration.ts fills it in once); read as null.
+   */
+  notebook?: Notebook | null;
 }
 
 /** What every consumer of setups needs: the list and the Default. */
@@ -64,7 +70,7 @@ export function noteSetupConfig(settings: {noteSetups: readonly NoteSetup[]; not
 }
 
 /** A config with no setups and a Default without pages or tracking - until settings are loaded. */
-export const EMPTY_NOTE_SETUP_CONFIG: NoteSetupConfig = {setups: [], defaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}}};
+export const EMPTY_NOTE_SETUP_CONFIG: NoteSetupConfig = {setups: [], defaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}, notebook: null}};
 
 /** The page rows a setup of `kind` has, in the order the setup page lists them. */
 export function pageKindsOf(kind: SetupKind): PageKind[] {
@@ -167,7 +173,8 @@ function sameTarget(a: NoteCandidate, b: NoteCandidate): boolean {
  * setups; list order within a kind. A Loop setup counts as 'loop' only when
  * the item's tag names an active loop of its file (`activeLoops`); otherwise
  * it is an 'own' candidate with its layout. No match: one candidate, the
- * Default, 'own'. Inbox (`forceOwn`): the first candidate, as 'own'.
+ * Default - its notebook when it has one (`defaultNotebook`), else 'own'.
+ * Inbox (`forceOwn`): the first candidate, as 'own'.
  * Candidates that certainly lead to the same note are merged (the first
  * stays); `distinctCandidates` merges the ones only storage can tell apart.
  */
@@ -177,11 +184,13 @@ export function noteCandidates(input: {
   setups: readonly NoteSetup[];
   activeLoops: readonly LoopRef[];
   forceOwn: boolean;
+  /** Whether the Default has a notebook. */
+  defaultNotebook?: boolean;
 }): NoteCandidate[] {
   const matched = matchingSetups(input.tags, input.setups);
   const first: SetupKind = input.pageKind === 'meeting' ? 'thread' : 'loop';
   const ordered = [...matched.filter(s => s.kind === first), ...matched.filter(s => s.kind !== first)];
-  if (ordered.length === 0) return [{setup: null, target: 'own'}];
+  if (ordered.length === 0) return [{setup: null, target: input.defaultNotebook && !input.forceOwn ? 'notebook' : 'own'}];
   if (input.forceOwn) return [{setup: ordered[0], target: 'own'}];
   const out: NoteCandidate[] = [];
   for (const setup of ordered) {
@@ -310,7 +319,7 @@ export function createDefaultMeetingPage(): PageLayout {
   return addPiece(withDefaultPieces(emptyPageLayout(), 'meeting'), 'related');
 }
 
-/** The Default a fresh install starts with: the standard Meeting page and First page; no Todo page (blank); no tracking. */
+/** The Default a fresh install starts with: the standard Meeting page and First page; no Todo page (blank); no tracking; own notes. */
 export function seedNoteSetupDefaults(): NoteSetupDefaults {
   return {
     pages: {
@@ -318,5 +327,6 @@ export function seedNoteSetupDefaults(): NoteSetupDefaults {
       first: withDefaultPieces(emptyPageLayout(), 'first'),
     },
     tracking: {...NO_TRACKING},
+    notebook: null,
   };
 }

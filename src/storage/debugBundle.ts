@@ -68,7 +68,7 @@ export function summarizeSettings(s: GtdParaSettings): string[] {
 }
 
 /**
- * "note setups: thread 3 · loop 1 · off 1 · notebook 2 · default pages 2 · migrated yes"
+ * "note setups: thread 3 · loop 1 · off 1 · notebook 2 · default pages 2 · default notebook no · migrated yes"
  * (docs/dev/history/technical-design-note-setups.md §8) - counts only, never names or tags.
  * `migrated`: yes when the setups came from Tag Rules, no for a fresh start, failed when
  * the migration failed in this session.
@@ -80,7 +80,8 @@ export function noteSetupsLine(s: GtdParaSettings, migrationFailed: boolean): st
   return (
     `note setups: thread ${on.filter(x => x.kind === 'thread').length} · loop ${on.filter(x => x.kind === 'loop').length}` +
     ` · off ${setups.length - on.length} · notebook ${on.filter(x => x.kind === 'thread' && x.notebook).length}` +
-    ` · default pages ${Object.keys(s.noteSetupDefaults?.pages ?? {}).length} · migrated ${migrated}`
+    ` · default pages ${Object.keys(s.noteSetupDefaults?.pages ?? {}).length} · default notebook ${s.noteSetupDefaults?.notebook ? 'yes' : 'no'}` +
+    ` · migrated ${migrated}`
   );
 }
 
