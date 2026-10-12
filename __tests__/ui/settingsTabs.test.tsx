@@ -65,7 +65,7 @@ describe('Settings tabs', () => {
     ['focus', 'Daily focus — Projects'],
     ['calendar', 'Google Calendar ICS link'],
     ['gmail', 'Gmail address'],
-    ['templates', 'Note setups - editor follows'],
+    ['templates', '+ New note setup'],
     ['advanced', 'Reload all files'],
   ])('%s renders', async (tab, expected) => {
     const r = await render(tab);

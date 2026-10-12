@@ -20,7 +20,7 @@ import {collectPerfStats} from './perfStats';
 import {counterpartScopes} from '../domain/counterparts';
 import {getCachedData} from './dataCache';
 import {errorMessage} from '../utils/errorMessage';
-import {didNoteSetupMigrationFail} from './settingsStorage';
+import {didNoteSetupMigrationFail} from './noteSetupMigrationState';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');

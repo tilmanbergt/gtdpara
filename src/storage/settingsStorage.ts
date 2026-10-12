@@ -4,6 +4,7 @@ import {migrateNoteSetupSettings, migrationCounts} from '../domain/noteSetupMigr
 import {seedNoteSetupDefaults} from '../domain/noteSetups';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
+import {markNoteSetupMigrationFailed} from './noteSetupMigrationState';
 import {ReviewStepsMap} from '../domain/reviewSteps';
 import {perfEnd, perfStart} from '../utils/perf';
 import {migrateExperimentalFlags} from '../domain/features';
@@ -50,13 +51,6 @@ async function readSettings(): Promise<GtdParaSettings> {
   return migrated;
 }
 
-let noteSetupMigrationFailed = false;
-
-/** Whether the Tag Rules -> Note setups migration failed in this session (the app then runs on the Default only). */
-export function didNoteSetupMigrationFail(): boolean {
-  return noteSetupMigrationFailed;
-}
-
 /**
  * The Note setups migration with its log line (counts only). A failure
  * leaves `noteSetupsMigrated` unset, so the next load tries again, and runs
@@ -68,7 +62,7 @@ function migrateNoteSetups(settings: GtdParaSettings): GtdParaSettings {
     if (migrated !== settings) log('NoteSetupMigration: migrated', migrationCounts(migrated));
     return migrated;
   } catch (e) {
-    noteSetupMigrationFailed = true;
+    markNoteSetupMigrationFailed();
     logError('NoteSetupMigration: failed', errorMessage(e));
     return {...settings, noteSetups: [], noteSetupDefaults: seedNoteSetupDefaults(), noteSetupsNotice: null};
   }

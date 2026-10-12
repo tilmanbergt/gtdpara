@@ -17,7 +17,7 @@ import React, {useState} from 'react';
 import {ActivityIndicator, Pressable, Text, View} from 'react-native';
 import {featuresOf} from '../../domain/features';
 import {FileFix, fileNameFixConfirmText, fileNameFixDoneText} from '../../domain/fileNameFix';
-import {GtdParaSettings, NoteHeadingStyle} from '../../domain/settings';
+import {GtdParaSettings} from '../../domain/settings';
 import {rebuildCache} from '../../storage/dataCache';
 import {applyFileNameFixes} from '../../storage/fileNameFix';
 import {runIntegrityCheck} from '../../storage/integrityCheck';
@@ -38,6 +38,7 @@ import {CalendarTab, FocusTab, FoldersTab, GmailTab} from './DraftTabs';
 import {styles} from './settingsStyles';
 import NoteSetupsTab from './noteSetups/NoteSetupsTab';
 import {useMyStylePngs} from './noteSetups/useMyStylePngs';
+import {useNoteSetupDraft} from './noteSetups/useNoteSetupDraft';
 import {useSettingsDraft} from './useSettingsDraft';
 
 export type SettingsTab = 'folders' | 'focus' | 'calendar' | 'gmail' | 'templates' | 'advanced' | 'about';
@@ -76,6 +77,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
 
   const draft = useSettingsDraft();
   const {values, setValues, setSaveError} = draft;
+  const noteSetups = useNoteSetupDraft(values, setValues);
   const myStyle = useMyStylePngs();
 
   // Integrity Check and Fix file names (Advanced) - result and its action in the status slot.
@@ -191,16 +193,6 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     }
   };
 
-  /** The heading style writes at once (Note setups tab). */
-  const handleSetHeadingStyle = async (noteHeadingStyle: NoteHeadingStyle) => {
-    setValues(v => ({...v, noteHeadingStyle}));
-    try {
-      await patchSettings({noteHeadingStyle});
-    } catch (e) {
-      setSaveError(errorMessage(e));
-    }
-  };
-
   if (draft.loading) {
     return (
       <View style={styles.container}>
@@ -221,13 +213,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
           {activeTab === 'calendar' && <CalendarTab draft={draft} {...tabProps} />}
           {activeTab === 'gmail' && <GmailTab draft={draft} {...tabProps} />}
           {activeTab === 'templates' && (
-            <NoteSetupsTab
-              headingStyle={values.noteHeadingStyle}
-              onSetHeadingStyle={handleSetHeadingStyle}
-              setupCount={values.noteSetups.length}
-              textColor={textColor}
-              borderColor={borderColor}
-            />
+            <NoteSetupsTab draft={noteSetups} values={values} myStyle={myStyle} {...tabProps} />
           )}
           {activeTab === 'advanced' && (
             <AdvancedTab
@@ -262,6 +248,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
             <Pressable
               onPress={() => {
                 draft.handleResetDefaults();
+                noteSetups.handleCancel();
               }}
               style={styles.resetButton}>
               <Text style={[styles.resetText, {color: textColor}]}>Reset to defaults</Text>

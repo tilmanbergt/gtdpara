@@ -693,3 +693,30 @@ this section lists where the code differs from the design above, and why.
   loop) - "In Team" would not say that no notebook is involved.
 - At most four places are planned (`MAX_PLACES`), each with a file check and a keyword
   lookup; the detail lists the planned ones.
+
+### Settings UI (step 5)
+
+- The list keeps the heading style on top (as the Tag Rules list had it). The Default row
+  is pinned above the paged setups; a new setup starts as a Thread setup with an own note
+  per item, and the kind is switched on its page (a Loop setup gets the default loop note
+  name; switching back to Thread drops the notebook).
+- A setup saved without a name is named after its tags.
+- Tag picker: "tags in use" are the recently used tags (`storage/tagUsage.ts`), their
+  types first (`setupTagChoices` in the new `domain/noteSetupText.ts`, which holds every
+  text the tab shows). The new-tag field and its Add button sit on top.
+- Add panel: rows only, without the old page's per-piece explanation and example; the
+  text composer opens on top of the panel (not below the list), so its fields stay in the
+  upper two thirds of the screen.
+- The folder preview's "(new folder)" mark is not built: it needs a folder listing of
+  every Project/Area with items of the setup's tags, for an informational hint. The
+  preview line shows the folder in front of the file name.
+- The status slot says "Tag Rules are now Note setups · Show" once per start while the
+  report is kept (OK on the card clears it), so it also reaches a start that was cut short.
+  A failed migration shows an error instead (`ui/useNoteSetupsNotice.ts`); the flag lives
+  in `storage/noteSetupMigrationState.ts`.
+- `useLayoutDraft.ts` holds the layout page's actions from the start (the draft hook
+  would otherwise pass 450 lines). The old editor's styles left `settingsStyles.ts`.
+- Budget (design-device-rendering §5-6): setup page ≈ header 45 + fields ≈ 470 (inputs
+  end at ≈ 440 of ≈ 1227 dp) + pages header 31 + 3 rows × 92; layout page = header 45,
+  preview 473 × 631 dp, right column mini-tabs 45 + self-measuring panel; tag picker and
+  composer fields at the top.

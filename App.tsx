@@ -35,6 +35,7 @@ import {activeReviewSteps, isReviewOverdue} from './src/domain/reviewSteps';
 import {featuresOf, shouldShowWhatsNew} from './src/domain/features';
 import {setFeatures, useFeatures} from './src/ui/featureStore';
 import {useStatus} from './src/ui/status/StatusProvider';
+import {useNoteSetupsNotice} from './src/ui/useNoteSetupsNotice';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
 import {decideLanding} from './src/domain/returnContext';
@@ -605,6 +606,11 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     log('App: switched to profile', next.activeProfileId);
     onProfileSwitched();
   };
+  useNoteSetupsNotice(settings, () => {
+    setSettingsTab('templates');
+    setActiveTab('settings');
+    setMode('tabs');
+  });
   const showWhatsNew =
     settings !== null && !whatsNewAcknowledged && shouldShowWhatsNew(settings.lastSeenVersion, BUILD_INFO);
   useStatus(
