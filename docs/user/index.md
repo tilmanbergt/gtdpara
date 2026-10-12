@@ -23,7 +23,7 @@ gtdpara is a calm GTD and PARA workspace for the Supernote. Your projects, areas
 - [Projects and Areas](projects-and-areas.md)
 - [Closing out a project](close-out.md)
 - [Weekly Review](review.md)
-- [Note templates (Tag Rules)](note-templates.md)
+- [Note setups](note-setups.md)
 - [Your files and folders](files-and-folders.md)
 
 ## Setup and help

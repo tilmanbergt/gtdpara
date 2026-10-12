@@ -10,6 +10,42 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- **Tag Rules are now Note setups** (Settings → **Note setups**): one setup per thing you keep
+  notes about - your sparring sessions, a coaching client, a kind of workshop. A setup has its
+  tags, a kind (**Thread** or **Loop**), where its notes go (**Own note per item** or **One
+  notebook**, with a free **Folder** inside the Area or Project), **Prepare before** / **Review
+  after**, and a **Meeting page** and **Todo page** (plus a **First page** for loops). Each page
+  uses the **Default** layout or its own. See the help page "Note setups".
+- **Shared means shared**: a setup with a notebook puts all its meetings *and* todos into that
+  notebook.
+- **The Default** is pinned at the top of the list: its pages, its tracking and, if you like, one
+  notebook for every todo and meeting no setup covers.
+- **Page layouts** have a page of their own: the page preview on the left, **Pieces**, **Add** and
+  **Background** on the right - the preview stays visible while you add pieces or pick a
+  background.
+- **Tags** are picked from the tags you use (+ tag), types first; a tag belongs to one setup only,
+  and saving a tag another setup has is refused with a message.
+- **When several setups match** (a todo of a loop that also carries `#sparring/peter`), a meeting
+  goes to the thread first and a todo to the loop first; the question before the note is created
+  offers the other place as a second button (**In Sparring**). Your choice is kept, so it is
+  asked once.
+- The question before a note is created names the setup ("Sparring: new page in …").
+
+### Removed
+- Tag Rules for **Projects** and **Areas**: they never had an effect.
+
+### Upgrade notes
+- On the first start of 0.15.0 your Tag Rules become Note setups by themselves; a card above the
+  list says what was merged and what changed for new notes (**OK** clears it). Rules that share a
+  tag become one setup; their pieces, texts and backgrounds become the pages' own layouts, so
+  notes look as before. Shared Default rules become the Default's notebook.
+- **Every note you have stays where it is** and keeps opening; nothing is moved or renamed.
+- In a setup with a notebook, todos (or meetings) that used to get a note of their own get pages
+  in the notebook from now on.
+- Your Tag Rules stay stored unchanged, so going back to 0.14 still works (changes made to Note
+  setups don't reach 0.14). Profiles saved with 0.14 are converted when you switch to them.
+
 ## [0.14.0] — 2026-10-12
 
 ### New

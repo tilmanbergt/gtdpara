@@ -35,15 +35,15 @@ Todos added with older versions get no created date, and a todo checked before t
 
 ## Context tags
 
-Any other tag is a context tag: a person (`#lena`), a topic (`#budget`) or a recurring meeting (`#team-sync`). Tap a plain context tag on Daily to see only matching items. Note templates can react to context tags - see [Tag Rules](note-templates.md).
+Any other tag is a context tag: a person (`#lena`), a topic (`#budget`) or a recurring meeting (`#team-sync`). Tap a plain context tag on Daily to see only matching items. Note setups can react to context tags - see [Note setups](note-setups.md).
 
 ## Nested tags
 
 A tag can have parts separated by `/`, for example `#coaching/sabina`. It is one tag: one chip in Quick Add. Obsidian reads the same syntax as a nested tag.
 
-- A Tag Rule on `coaching` also applies to `#coaching/sabina`, `#coaching/tom` and so on. The part after the `/` can choose the shared file, see [Tag Rules](note-templates.md).
+- A Note setup on `coaching` also covers `#coaching/sabina`, `#coaching/tom` and so on. The part after the `/` can choose the notebook, see [Note setups](note-setups.md).
 - Tapping a nested tag in any list opens its thread overview: everything around `#coaching/sabina` - upcoming meetings, open todos, what you wait for and what was agreed in past meetings. See [Threads](threads.md). On Daily, a nested tag does not filter the list; a plain tag does.
-- When the first part is the tag of one of your Tag Rules (here `coaching`), or `wf` or `owe`, the second part (`sabina`) is a counterpart you are asked to tend. One you set inactive no longer appears among the suggested tags in Quick Add, neither `#coaching/sabina` nor `#sabina`; you can still type it. See [Threads](threads.md).
+- When the first part is a tag of one of your Thread setups (here `coaching`), or `wf` or `owe`, the second part (`sabina`) is a counterpart you are asked to tend. One you set inactive no longer appears among the suggested tags in Quick Add, neither `#coaching/sabina` nor `#sabina`; you can still type it. See [Threads](threads.md).
 
 ## Project and area abbreviations
 

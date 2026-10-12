@@ -480,7 +480,7 @@ can carry an `armingRoot`: while any arm is active that root takes the tab's slo
 
 The Resources root can pin a per-item default subfolder (`defaultResourceFolder`).
 
-### 2.6 Notes, linked files and Tag Rules
+### 2.6 Notes, linked files and Note setups
 
 **Linked notes.** Each todo or meeting can have one note. The note icon on every row calls
 `storage/meetingNoteContent.ts`'s `openOrCreateMeetingNote`/`openOrCreateTodoNote`. When the item
@@ -506,16 +506,28 @@ by arming the Files pane from the row and tapping a file. `locateLinkedFile` fin
 folder for auto-locate. Gmail email notes and attachments become linked files under Resources
 (§2.11). Detail: `docs/dev/history/technical-design-linked-files.md`.
 
-**Tag Rules.** `domain/tagRules.ts` defines `TagRule`s (stored in `settings.tagRules`, edited in
-Settings → Tag Rules, `screens/settings/tagRules/`): a context (Project, Area, Todo, Meeting,
-Loop), an
-optional tag, a MyStyle background template, and positioned content pieces (`title`,
-`dateTitle` and `date` for meetings, `time`, `text` from the rule's own reusable texts,
-`related` open todos, `link` to the item's linked file, `sinceLast` for meetings). Title and
-Date & title write tags as words (`domain/markdown.ts`'s `tagsAsWords`). `resolveNoteTemplate` picks the rule for an item; a rule tag matches itself and
-every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting (default)" rule.
+**Note setups.** `domain/noteSetups.ts` defines `NoteSetup`s (stored in `settings.noteSetups`,
+edited in Settings → Note setups, `screens/settings/noteSetups/`): one per thing tracked - a
+name, one or more tags (each tag in one setup only, `validateSetupTags`), a kind (**Thread** or
+**Loop**), where notes go (`notebook`: own note per item when null; a Loop setup's is the loop
+note), meeting tracking, and `pages`: an own `PageLayout` per `PageKind` (`meeting`, `todo`,
+`first` for loops) where the page doesn't use the Default's. The Default
+(`settings.noteSetupDefaults`) has a page per kind, tracking and an optional notebook for items
+no setup matches. A page's content is a `PageLayout` (`domain/pageLayout.ts`): a MyStyle
+background and positioned pieces (`title`, `dateTitle`, `date`, `time`, `text` from the layout's
+own texts, `related` open todos, `link` to the item's linked file, `sinceLast`; `PIECE_PAGES`
+says which page offers which). Title and Date & title write tags as words
+(`domain/markdown.ts`'s `tagsAsWords`). A setup tag matches itself and every nested tag under it
+(`tagMatchesSetupTag`). `noteCandidates` lists where a first note can go, best first: Thread
+setups first for a meeting, Loop setups first for a todo (an active loop's note; outside one the
+item's own note), list order within a kind, the Default without a match; `storage/noteTargets.ts`
+places them in the file system and `planItemNote` turns the others into `alternatives`, offered
+as a second button in the confirm (`ui/useStatusChoice.ts`). An existing link decides; its
+layout is the one of the candidate whose file it is (`layoutForLink`). A fresh install gets the
+Default with the standard Meeting and First pages; 0.14's Tag Rules are migrated once
+(`domain/noteSetupMigration.ts`, kept unchanged in `settings.tagRules` for a downgrade).
 
-- **Content.** `populateNoteFromRule` writes one textbox element per piece; pieces are always
+- **Content.** `storage/meetingNoteContent.ts`'s `populatePage` writes one textbox element per piece; pieces are always
   regenerated, never merged. Each textbox is sized by on-device text measurement
   (`storage/notePieceMetrics.ts` → native `TextboxMetrics`) and capped at the piece's
   `maxWidthPx`. Re-population on reopen stops once the meeting is over or the todo is done or
@@ -528,36 +540,37 @@ every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting
   `title.controlTrailNums = [numInPage]`, `title.style = settings.noteHeadingStyle` (default 3),
   marker `NOTE_HEADING_USERDATA`, all titles in one `insertElements`. A failure is logged and
   never fails the note. Supernote builds the table of contents from these titles.
-- **Keywords.** Every non-frozen refresh (and creation) calls `syncPageKeywords` before the rule
+- **Keywords.** Every non-frozen refresh (and creation) calls `syncPageKeywords` before the layout
   is resolved: the page gets the item's date keyword (`itemDateKeyword`: meeting date, todo
   `created`) and its context tags; other bare `YYYY-MM-DD` keywords are deleted
   (`planPageKeywords`), tag keywords never. `chronologicalInsertIndex` ignores bare dates.
-- **Shared notes.** A Todo/Meeting rule can target one shared `.note` instead of a file per item
-  (`noteTarget: 'shared'`): each item gets a page located by keyword (meeting: `<date> <title>`;
+- **Notebooks.** A setup with a notebook puts every meeting and todo it covers into one `.note`
+  per Project/Area (in the notebook's folder, created on first use): each item gets a page located by keyword (meeting: `<date> <title>`;
   todo: its text without functional tags), inserted chronologically (`storage/sharedNotePages.ts`
   is the page engine, decisions in `domain/sharedNotePages.ts`). The shared file name is a
-  template (`renderSharedFileName`: `{tag}`, `{subtag}`, `{year}`, `{quarter}`, `{month}`), so one
-  rule can split into one file per type, client and year; `ruleTypeTag` gives the rule tag the
-  item matched, `ruleSubtag` the nested part after it.
-- **Loops.** A Loop rule's tags are loop kinds (`domain/loops.ts`'s `loopKindsOf`, readable at
+  template (`renderSharedFileName`: `{tag}`, `{subtag}`, `{year}`, `{quarter}`, `{month}`, `{day}`),
+  so one setup can split into one file per type, client and year; `setupTypeTag` gives the setup
+  tag the item matched, `setupSubtag` the nested part after it.
+- **Loops.** A Loop setup's tags are loop kinds (`domain/loops.ts`'s `loopKindsOf`, readable at
   once through `storage/loopKinds.ts`); `#<kind>/<name>` is a loop, its line lives in the owner's
   `## Loops` section (`domain/loopsSection.ts`, on the generic `domain/statusSection.ts` that
   `## Threads` uses too). A todo that is only a loop tag becomes its line after every task write
   of an Area or Project (`storage/loops.ts`, the cache's tasks-written hook), so Quick Add, the
   chips, the Review and filing from the Inbox all start loops the same way. The loop note
-  (`storage/loopNotes.ts`) is named from the rule's `sharedFileName` with the main date, lives in
-  the owner folder, starts with the loop's own page, and gets a page for each meeting or todo of
-  an active loop unless a rule matched through another tag decides the note. Closing
+  (`storage/loopNotes.ts`) is named from the setup's note name with the main date, lives in the
+  owner folder, starts with the loop's own page (the setup's First page), and gets a page for each
+  meeting or todo of an active loop it is chosen for (`noteCandidates`). Closing
   (`setLoopStatus`) refuses while `closeBlockers` finds an open todo or a meeting ahead. Review's
   "Open loops" (`storage/loopRoster.ts`) lists them per scope. Loop kinds are never counterparts.
-- **Meeting tracking.** A Meeting rule can switch on *Prepare before* and/or *Review after*; a
-  meeting is tracked when any meeting rule it matches asks for it.
+- **Meeting tracking.** A setup (or the Default) can switch on *Prepare before* and/or *Review
+  after*; a meeting is tracked when any setup it matches asks for it, or, matching none, when the
+  Default does (`resolveMeetingTracking`).
   State is `#prepped`/`#reviewed` on the meeting line; every meeting row shows one small P/R
   icon (check when done), toggled through `domain/meetingTracking.ts`'s
   `toggleMeetingTrackingAt`. The phase switches at the real end of the meeting (`meetingEndMs`).
   Review's "Meetings to close out" lists outstanding reviews of the last
   `REVIEW_LOOKBACK_DAYS` (7) days.
-- **Since last time.** A Meeting rule can place the `sinceLast` piece (never in a rule's
+- **Since last time.** A Meeting page can place the `sinceLast` piece (never in a page's
   defaults): `storage/sinceLast.ts`'s `buildSinceLast` takes the meeting's first thread tag, the
   thread lens with the meeting's item as owner, and the previous meeting of the thread, and lists
   Agreed last time (open, then done), I owe, Waiting for, Relevant and Done since then, each todo
@@ -567,8 +580,8 @@ every nested tag under it (`tagMatchesRuleTag`). A fresh install gets a "Meeting
 **Counterparts and tending.** A counterpart (the second segment of a nested tag) belongs to a
 **scope**: an Area with its assigned Projects, or a Project without an Area
 (`domain/counterparts.ts`: `counterpartScopes`, `scopeOwnerOf`, `scopeMembers`; a Project whose
-`area:` names no known Area counts as one without). Only nested tags whose type is a Tag Rule tag
-(`ruleTypesOf`: the first segment of every enabled rule's tags) or `wf`/`owe` make counterparts.
+`area:` names no known Area counts as one without). Only nested tags whose type is a Thread setup tag
+(`threadTypesOf`: the first segment of every enabled Thread setup's tags) or `wf`/`owe` make counterparts.
 `counterpartsOf` lists them per scope with `status` `new` (in use, no line) / `active` /
 `inactive`, their meeting threads, the one-off marker (`wf`/`owe` only, labelled "w/f only",
 "owe only", "w/f · owe only") and `backInUse` (inactive with an upcoming meeting of one of its
@@ -586,7 +599,8 @@ open. "Not" on a counterpart back in use only hides that offer for the session
 (`storage/tagUsage.ts`); the debug bundle counts status lines. Detail:
 `docs/dev/history/technical-design-tending-threads.md`.
 
-Detail: `docs/dev/history/technical-design-note-templates.md`,
+Detail: `docs/dev/history/technical-design-note-setups.md`,
+`docs/dev/history/technical-design-note-templates.md`,
 `docs/dev/history/technical-design-shared-note-pages.md`,
 `docs/dev/history/technical-design-split-by-tag.md`,
 `docs/dev/history/technical-design-meeting-tracking.md`,
@@ -808,18 +822,18 @@ at its old place with an error. Credentials: `gmailEmail`, `gmailAppPassword` (s
 ### 2.12 Settings, profiles and diagnostics
 
 **Settings screen** (`screens/settings/`): mini-tabs Folders, Focus, Calendar, Gmail (the last
-two only while switched on), Tag Rules, Advanced, About. Folders, Focus, Calendar and Gmail edit
+two only while switched on), Note setups, Advanced, About. Folders, Focus, Calendar and Gmail edit
 one draft (`useSettingsDraft.ts`) that only Save writes; every Save clears the cache (the next
 screen builds it again) and the Gmail list, and a changed Inbox folder name moves the folder first (`storage/inboxFolder.ts`, refused
-when the target exists, not moved when Base or Areas change in the same save). Tag Rules save
-per rule, and its Heading style (`noteHeadingStyle`) at once; the switches on Advanced and About write immediately. Advanced holds Profiles, the
+when the target exists, not moved when Base or Areas change in the same save). Note setups save
+per setup (and the Default on its own), and its Heading style (`noteHeadingStyle`) at once; the switches on Advanced and About write immediately. Advanced holds Profiles, the
 experimental switches, "Reload all files", "Run Integrity Check", "Keep tabs in memory" and
 "Performance tracing". About shows version and build, the changelog ("What's new", also offered
 once after an update), Debug logging and "Export debug bundle".
 
 **Persistence.** `GtdParaSettings` (`domain/settings.ts`, defaults in `DEFAULT_SETTINGS`) is one
 JSON blob in AsyncStorage (`storage/settingsStorage.ts`); load fills missing fields from the
-defaults and runs idempotent migrations (Tag Rule key names, the default meeting rule,
+defaults and runs idempotent migrations (Tag Rule key names, Tag Rules to Note setups,
 experimental-switch defaults). Recent tags, recent capture destinations and the Google Calendar
 cache are AsyncStorage entries per profile (`storage/profileKeys.ts`'s `profileScopedKey`). PARA
 content never goes into AsyncStorage.
@@ -1124,6 +1138,13 @@ so a partial review still counts, and empty backlog steps count as done.
 the app never shows an "archived" item in Projects. Nothing reads Archive back, which keeps scans
 small and the active lists clean; the close-out PDF is the long-term, device-independent record of
 a finished project.
+
+**One setup per thing.** What a user keeps notes about - a sparring partner, a client, a kind of
+workshop - is one Note setup with a page per kind of item, not one rule per kind of item: the
+tags, where notes go and tracking are said once, and most pages simply follow the Default.
+Notebooks are shared for everything a setup covers. When several setups match, a fixed order
+(thread first for meetings, loop first for todos) gives the default and the confirm offers the
+other place once; the note link then decides for good, so nothing moves.
 
 **Integrations stay optional and one-way.** Google Calendar and Gmail depend on outside
 services, so they sit behind experimental switches, fetch only on request, and copy into

@@ -1,6 +1,6 @@
 # Profiles and the demo space
 
-A **profile** is a complete configuration: which folders gtdpara uses, your focus counts, Tag Rules, review dates, the calendar and Gmail setup and the experimental switches. You can keep several and switch between them - for example your real setup and a demo setup for trying things out.
+A **profile** is a complete configuration: which folders gtdpara uses, your focus counts, Note setups, review dates, the calendar and Gmail setup and the experimental switches. You can keep several and switch between them - for example your real setup and a demo setup for trying things out.
 
 ## Profiles
 
@@ -14,13 +14,13 @@ The first time you open the list, your current setup is saved as `production.jso
 
 ## What switches and what doesn't
 
-Switches with the profile: folders, focus counts, Tag Rules, review state, focus mode, calendar and Gmail setup, experimental switches, recent tags.
+Switches with the profile: folders, focus counts, Note setups, review state, focus mode, calendar and Gmail setup, experimental switches, recent tags.
 
 Stays the same for all profiles: keep tabs in memory, performance tracing, debug logging.
 
 ## Profile files
 
-Profiles are files in `EXPORT/gtdpara/profiles`, one `.json` file per profile. To import a profile, copy its file into that folder and tap **Refresh list**. To share your Tag Rules or folder setup, share the file.
+Profiles are files in `EXPORT/gtdpara/profiles`, one `.json` file per profile. To import a profile, copy its file into that folder and tap **Refresh list**. To share your Note setups or folder setup, share the file.
 
 The Gmail app password and the calendar link are never written into these files. They stay inside the plugin, separately for each profile.
 
@@ -33,5 +33,5 @@ Existing files are never overwritten. To start the demo from scratch, delete the
 The demo space is useful for:
 
 - trying out gtdpara before using it with your own data
-- testing Tag Rules or new features without touching your real notes
+- testing Note setups or new features without touching your real notes
 - reproducing a problem, so that others can see exactly the same thing

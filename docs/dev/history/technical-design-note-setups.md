@@ -1,6 +1,6 @@
 # Technical design: Note setups
 
-Status: **draft for approval** (2026-10-12, revised after the UX draft). Release: **0.15.0**, branch `feature/note-setups`.
+Status: **implemented** (steps 0-6, see §12 As built); full device checklist (§9.2) open. Release: **0.15.0**, branch `feature/note-setups`.
 Requirements and their history: claude.ai project doc `claude/feature-tag-rule-model.md`.
 UX: canvas "gtdpara Note setups — UX draft" (setup page, page layout with Pieces · Add · Background).
 
@@ -607,8 +607,9 @@ Each step ends with `npm run check` green and a commit on `feature/note-setups`.
 
 ## 12. As built
 
-Built in the steps of §10, one commit each (`note-setups: step N - …`). Steps 0-3 are done;
-this section lists where the code differs from the design above, and why.
+Built in the steps of §10, one commit each (`note-setups: step N - …`); steps 0-3 were
+device-tested at their checkpoint. This section lists where the code differs from the design
+above, and why.
 
 ### Decided after the step-3 checkpoint
 
@@ -720,3 +721,11 @@ this section lists where the code differs from the design above, and why.
   end at ≈ 440 of ≈ 1227 dp) + pages header 31 + 3 rows × 92; layout page = header 45,
   preview 473 × 631 dp, right column mini-tabs 45 + self-measuring panel; tag picker and
   composer fields at the top.
+
+### Docs (step 6)
+
+- The help page is `docs/user/note-setups.md` (it replaces `note-templates.md`; every link
+  follows). It ends with "Coming from Tag Rules" for users updating from 0.14. The Settings
+  tab keeps its help mapping (`settings.md`, which links the page).
+- design-overview: §2.6 describes Note setups; the decision entry is in §4 ("One setup per
+  thing"), the document's section for reasons.

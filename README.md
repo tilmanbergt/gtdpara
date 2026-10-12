@@ -62,8 +62,9 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
 - **Inbox + lasso capture** from handwriting, or **Mark for later** in one tap and process the marks later
 - **Weekly Review** hub with one clear step at a time
 - Works with **Obsidian** (Tasks and Dataview) through the Supernote Cloud Sync plugin
-- **Note templates** (Tag Rules): new notes come with a background and pre-filled context; shared
-  notes can be split by tag, nested tag and date, e.g. one file per coaching client and year;
+- **Note setups**: one setup per thing you keep notes about - its tags, Thread or Loop, one
+  notebook or a note per item, meeting tracking, and a page layout per kind of item (or the
+  Default's); notebooks can be split by tag, nested tag and date, e.g. one file per coaching client and year;
   headings for the note's table of contents and date and tag keywords make notes easy to find
 - **Project close-out**: a short wizard before archiving, with an optional PDF of all notes
 - Experimental **Google Calendar** (ICS link) and **Gmail** (IMAP, in the Weekly Review) integrations

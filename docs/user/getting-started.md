@@ -29,7 +29,7 @@ Want to look around first without touching your own files? Go to **Settings → 
 - **Inbox**: everything captured but not yet filed
 - **Current**: the project or area you opened last, with its todos, meetings, files and notes
 - **Review**: the Weekly Review, one step at a time
-- **Settings**: folders, focus counts, Tag Rules, advanced options, About
+- **Settings**: folders, focus counts, Note setups, advanced options, About
 
 **?** opens this help, starting at the page for the tab you are on. **✕ Close** in the help closes it again; the tab behind it stays exactly as it was. ✕ closes the plugin. When you open gtdpara, it reads the files you changed outside it again. To read all files again, use **Reload all files** in Settings → Advanced.
 

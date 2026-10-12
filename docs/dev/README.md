@@ -86,7 +86,7 @@ that don't exist, so `npm test` catches most slips.
 | `src/screens/review/` | Weekly Review: the shell (`ReviewScreen.tsx`: hub, navigation, visit record), shared data (`useReviewData.ts`, `useFrozenStepList.ts`, `reviewVisit.ts`) and one component per step in `steps/` |
 | `src/screens/thread/` | The thread overview overlay: frame (`ThreadOverview.tsx`), its sections and `useThreadActions.ts`; hosted with the help by `screens/useAppOverlays.tsx`. Also tending: the Current page's `ThreadsTab.tsx`, Review's `ThreadSummary.tsx` and their shared `useTending.ts` |
 | `src/screens/projectData/` | The Current page's Todos and Meetings lists and the counterpart filter, used by `screens/ProjectDataPanel.tsx` |
-| `src/screens/settings/` | Settings: the shell (`Settings.tsx`), the Save-draft (`useSettingsDraft.ts`) and its tabs (`DraftTabs.tsx`), Advanced/About/Profiles, and Tag Rules in `tagRules/` (list, rule form, background, Add piece) |
+| `src/screens/settings/` | Settings: the shell (`Settings.tsx`), the Save-draft (`useSettingsDraft.ts`) and its tabs (`DraftTabs.tsx`), Advanced/About/Profiles, and Note setups in `noteSetups/` (list, setup page, tag picker, page layout with its Pieces/Add/Background panels, draft hooks) |
 | `src/ui/` | Shared components (QuickAddWidget, PagedSection, MeetingRow, …) and styles |
 | `src/utils/` | Logging, performance tracing, e-ink refresh helpers |
 | `android/…/eu/embodyagile/gtdpara/` | Native modules: file access, Gmail IMAP, PDF, text measurement, runtime guard |

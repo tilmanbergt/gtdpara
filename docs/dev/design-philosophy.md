@@ -103,7 +103,7 @@ by the optional prep/review marks rather than by extra tasks.
 ## 6. Artifact wholeness
 
 The "whole and complete" quality extends to what the app creates for you. A note created for a
-todo, meeting, project or area doesn't open as a blank orphan page: Tag Rules give it a background
+todo, meeting or loop doesn't open as a blank orphan page: Note setups give it a background
 and pre-filled context (title, date, related items, a link back to where it came from), so the
 note is already whole rather than a fragment whose context you'd have to reconstruct later.
 Closing out a project carries the same idea to its end: one consolidated, readable record.

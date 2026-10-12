@@ -16,7 +16,7 @@
   The screen is about **994 × 1325 dp**.
 - **Where real pixels matter:**
   - Note and PDF pages: a `.note` page is 1404 × 1872 px (`NOTE_PAGE_WIDTH_PX` /
-    `NOTE_PAGE_HEIGHT_PX` in `domain/tagRules.ts`). Note-template pieces, text boxes and lasso
+    `NOTE_PAGE_HEIGHT_PX` in `domain/pageLayout.ts`). Note-template pieces, text boxes and lasso
     coordinates use these real pixels, not dp.
   - Screenshots: a device screenshot is 1404 px wide. Divide a measurement taken from a
     screenshot by 1.41 before comparing it with a style value.
