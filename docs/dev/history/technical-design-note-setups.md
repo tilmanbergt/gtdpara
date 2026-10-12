@@ -604,3 +604,65 @@ Each step ends with `npm run check` green and a commit on `feature/note-setups`.
 - Deleting a setup or changing its notebook name/folder: existing pages and their links stay
   where they are (the link decides); only new notes follow the new setting. Pages whose setup
   is gone refresh with the Default layout.
+
+## 12. As built
+
+Built in the steps of §10, one commit each (`note-setups: step N - …`). Steps 0-3 are done;
+this section lists where the code differs from the design above, and why.
+
+### Model and layout (steps 0-1)
+
+- `addPiece(layout, type, text?, textId?)` has no `kind` parameter: where a piece starts
+  does not depend on the page kind; `PIECE_PAGES` only decides what the Add panel offers.
+  `addTextItem` returns `{layout, id}`.
+- `hasUntouchedDefaultPieces` is gone: only the old editor's context switch used it.
+- Matching is named after setups: `tagMatchesSetupTag`, `setupSubtag`, `setupTypeTag`;
+  `ruleTypesOf` is `threadTypesOf`, `LoopKindRule` is `SetupTagSource`, and
+  `SharedFileNameInput.ruleName` is `fallbackName`.
+- `noteCandidates` merges the candidates it can tell apart itself (every own note of an
+  item is the same file, one loop has one note); `distinctCandidates(candidates, fileOf)`
+  merges the rest once storage knows the files.
+
+### Migration (step 2)
+
+- Trigger: a new per-profile key `noteSetupsMigrated` (false in `DEFAULT_SETTINGS`)
+  instead of "`noteSetups` absent". A profile switch fills every key a profile file lacks
+  from `DEFAULT_SETTINGS` and saves the result, so `noteSetups` is never absent after a
+  switch; the flag is false for every blob and profile file written by 0.14, so they
+  migrate once, on load or after a switch.
+- Tracking: a setup without a Meeting member takes the Default's tracking. 0.14 tracked
+  those meetings through the Default Meeting rule; OR over no Meeting members would have
+  switched their tracking off.
+- Name: a Loop setup is named after its Loop rule (rule 9 would take a Meeting member's
+  name first).
+- More report cases than §5 lists, all with existing `change` values: a shared Default
+  rule (`notebookChanged`: items without a setup get their own note now), a shared
+  Meeting/Todo rule on a loop kind (`notebookChanged`: outside an active loop its items get
+  their own note), a rule without tags (`removed`).
+- A Loop rule marked Default is migrated like any other Loop rule (0.14 used its tags as
+  loop kinds either way).
+- The anonymized copy of real rules in `__tests__` is a representative fixture written
+  for the test; the real export stays local (`NOTE_SETUPS_FIXTURE`).
+
+### Wiring (step 3)
+
+- `storage/noteTargets.ts` (new) places the candidates in the file system
+  (`placeNoteCandidates`: notebook file, loop note, own note) and finds the layout of an
+  existing link (`layoutForLink`). Both the planner (`storage/itemNotePlan.ts`) and the
+  page refresh (`storage/meetingNoteContent.ts`) need it, so it is not inside the planner.
+- `layoutForLink` finds a notebook page's setup by its rendered file name. A todo's name
+  is rendered with today's date, so a page in a notebook of an earlier year falls back to
+  the best candidate - in practice the same setup.
+- Backgrounds: `storage/noteLinks.ts`'s `backgroundOf(layout)`; `createLinkedNote` takes
+  the background instead of settings and tags.
+- `ui/MeetingRow.tsx` exports `trackingSetups(settings)`, so the screens that pass
+  `tracking` change one line each and `DailyView.tsx` does not grow.
+- The debug bundle line also counts switched-off setups (`off n`).
+- The old Tag Rules editor is removed in step 3, not step 5: it is built on `TagRule`,
+  which step 3 removes. Until step 5 the tab shows the heading style and a placeholder;
+  `NoteNameField.tsx` and `useMyStylePngs.ts` moved to `screens/settings/noteSetups/`.
+  Step 5 rebuilds the Add and Background panels from `PieceEditor.tsx` and
+  `TemplateEditor.tsx` as they are in git history.
+- The status-slot messages of §6.6 and §8 (migration notice, migration failed) come with
+  the Settings UI in step 5; until then a failure is logged and shows in the debug bundle
+  (`migrated failed`).

@@ -22,12 +22,11 @@ let mockKeywords: Array<{keyword: string; page: number; index: number}> = [];
 const mockKeywordCalls: string[] = [];
 
 import {NOTE_HEADING_USERDATA, notePieceUserData} from '../../src/domain/meetingNoteBlock';
-import {createEmptyTagRule} from '../../src/domain/tagRules';
-import {addPiece, setPieceHeading} from '../../src/domain/pageLayout';
+import {addPiece, emptyPageLayout, setPieceHeading} from '../../src/domain/pageLayout';
 import {applyPieceHeadings, headingPieceIndexes, syncPageKeywords} from '../../src/storage/noteFindability';
 import {logWarn} from '../../src/utils/log';
 
-let rule = createEmptyTagRule('1', 'meeting');
+let rule = emptyPageLayout();
 for (const type of ['dateTitle', 'time', 'title', 'link'] as const) rule = addPiece(rule, type);
 rule = setPieceHeading(rule, 2, true);
 const rect = {left: 100, top: 100, right: 500, bottom: 150};

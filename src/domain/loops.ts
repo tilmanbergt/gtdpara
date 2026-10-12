@@ -2,7 +2,7 @@
  * Loops (docs/dev/history/technical-design-loops.md): a loop is a todo that
  * needed more than one step - a small project inside an Area or a Project,
  * named by the tag `#<kind>/<name>`. The kinds are the tags of the enabled
- * Tag Rules with context `loop`. Its status line lives in the owner's
+ * Loop setups (domain/noteSetups.ts). Its status line lives in the owner's
  * `## Loops` section (domain/loopsSection.ts). Pure.
  *
  * - Only the full tag counts (no plain-leaf matching, unlike counterparts).
@@ -14,7 +14,7 @@
 import {stripAllTags} from './markdown';
 import {meetingEndMs} from './meetingTime';
 import {renderSharedFileName} from './sharedNotePages';
-import {LOOP_NOTE_NAME_DEFAULT} from './tagRules';
+import {LOOP_NOTE_NAME_DEFAULT} from './noteSetups';
 import {newTask, parseTaskInput} from './taskEdit';
 import {threadOf} from './threads';
 import {LoopLine} from './loopsSection';
@@ -27,20 +27,20 @@ export interface LoopRef {
   tag: string;
 }
 
-/** What a rule needs for `loopKindsOf` (a TagRule fits). */
-export interface LoopKindRule {
+/** What `loopKindsOf` and `threadTypesOf` read of a setup (a NoteSetup fits). */
+export interface SetupTagSource {
   enabled: boolean;
-  /** Absent counts as not a Loop rule. */
-  context?: string;
+  /** Absent counts as a Thread setup. */
+  kind?: string;
   tags: readonly string[];
 }
 
-/** The loop kinds: the tags of every enabled Loop rule, lowercased, without `#`, once each. */
-export function loopKindsOf(rules: readonly LoopKindRule[]): string[] {
+/** The loop kinds: the tags of every enabled Loop setup, lowercased, without `#`, once each. */
+export function loopKindsOf(setups: readonly SetupTagSource[]): string[] {
   const kinds: string[] = [];
-  for (const rule of rules) {
-    if (!rule.enabled || rule.context !== 'loop') continue;
-    for (const raw of rule.tags) {
+  for (const setup of setups) {
+    if (!setup.enabled || setup.kind !== 'loop') continue;
+    for (const raw of setup.tags) {
       const kind = raw.replace(/^#/, '').trim().toLowerCase();
       if (kind && !kind.includes('/') && !kinds.includes(kind)) kinds.push(kind);
     }
@@ -180,7 +180,7 @@ export function loopIdeas(
 }
 
 /**
- * The loop note's base name (no folder, no ".note"): the Loop rule's note
+ * The loop note's base name (no folder, no ".note"): the Loop setup's note
  * name with `{tag}` = kind, `{subtag}` = name and the date placeholders from
  * the main date (left out without one). Sanitizing is the caller's job, as
  * for every file name.
@@ -188,7 +188,7 @@ export function loopIdeas(
 export function loopNoteBaseName(template: string | undefined, loop: LoopRef, mainDate: string | null): string {
   return renderSharedFileName({
     template: template?.trim() ? template : LOOP_NOTE_NAME_DEFAULT,
-    ruleName: `${loop.kind} ${loop.name}`,
+    fallbackName: `${loop.kind} ${loop.name}`,
     tag: loop.kind,
     subtag: loop.name,
     date: mainDate ?? '',

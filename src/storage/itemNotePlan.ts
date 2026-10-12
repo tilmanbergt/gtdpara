@@ -7,38 +7,23 @@
  * storage/meetingNoteContent.ts's open-or-create entry points call
  * `resolveItemNote` and then fill and open the page.
  *
- * A todo or meeting of a loop gets a page in its loop's note
- * (docs/dev/history/technical-design-loops.md §4.4, storage/loopNotes.ts),
- * unless a rule that matched through another tag defines its note.
+ * Where a first note goes is decided by the Note setups
+ * (docs/dev/history/technical-design-note-setups.md §4.4,
+ * storage/noteTargets.ts): the item's own note, a setup's notebook, or the
+ * note of an active loop (docs/dev/history/technical-design-loops.md §4.4).
  */
 import {todayIso} from '../domain/meetingTime';
-import {
-  effectiveNoteTarget,
-  NoteContext,
-  resolvedSharedFileFolder,
-  resolvedSharedFileName,
-  resolveNoteTemplate,
-  ruleSubtag,
-  ruleTypeTag,
-  TagRule,
-} from '../domain/tagRules';
+import {layoutFor} from '../domain/noteSetups';
 import {NoteCreationPlan} from '../domain/noteCreationPlan';
-import {buildSharedNoteAnchor, renderSharedFileName} from '../domain/sharedNotePages';
+import {buildSharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaSettings} from '../domain/settings';
 import {createNote, displayPath, ensureFolderExists, fileExists} from '../supernote/fileSystem';
 import {log} from '../utils/log';
 import {contextTagsOf} from '../domain/flowState';
 import {collisionFreeName} from './fileNaming';
-import {ensureLoopNoteFile, LoopNoteTarget, loopNoteTarget} from './loopNotes';
-import {
-  classifyNotePath,
-  createLinkedNote,
-  insertNoteKeywords,
-  MEETINGS_SUBFOLDER,
-  resolveNoteBackgroundTemplate,
-  sanitizeFileNameComponent,
-  TODOS_SUBFOLDER,
-} from './noteLinks';
+import {ensureLoopNoteFile, LoopNoteTarget} from './loopNotes';
+import {backgroundOf, classifyNotePath, createLinkedNote, insertNoteKeywords, MEETINGS_SUBFOLDER, TODOS_SUBFOLDER} from './noteLinks';
+import {layoutForLink, NoteTargetInput, PlacedCandidate, placeNoteCandidates} from './noteTargets';
 import {ensureSharedNoteFile, findKeywordPage, insertChronologicalPage, renameKeywordAt, writeRecreatedNotice} from './sharedNotePages';
 
 /**
@@ -62,7 +47,7 @@ export interface ItemNoteAnchorResolution {
   loopPage?: LoopNoteTarget;
   /**
    * A note gtdpara didn't create (lasso capture's link to its source note):
-   * opened as it is, never filled from a Tag Rule - that would put
+   * opened as it is, never filled from a page layout - that would put
    * gtdpara's pieces onto the user's own handwritten page.
    */
   foreign?: boolean;
@@ -74,13 +59,13 @@ export interface ItemNoteParams {
   subfolder: typeof MEETINGS_SUBFOLDER | typeof TODOS_SUBFOLDER;
   settings: GtdParaSettings;
   tags: string[];
-  context: NoteContext;
+  pageKind: 'meeting' | 'todo';
   currentKeyword: string;
   baseName: string;
   isDated: boolean;
   /** YYYY-MM-DD for the `{year}`/`{quarter}`/`{month}` placeholders - a meeting's own date, today for a todo. */
   fileDate: string;
-  /** Inbox items: always an own note, whatever the matched rule says (no shared files for Inbox items - see the split-by-tag design §4). */
+  /** Inbox items: always an own note, whatever the matched setup says (no shared files for Inbox items - see the split-by-tag design §4). */
   forceOwnTarget: boolean;
   /** Does some OTHER item in this Project/Area still derive this exact keyword (shared-note design §8) - see `meetingKeywordStillUsed`/`todoKeywordStillUsed`. */
   collisionCheck: (oldKeyword: string) => boolean;
@@ -138,19 +123,23 @@ async function recreateSharedPage(
  *   no such page -> `recreate-page`.
  * - shared, file missing -> `recreate-shared-file`.
  *
- * No note link yet - the matched Tag Rule decides:
- * - no rule, an own-target rule, or an Inbox item -> `new-own-file`.
- * - shared-target rule -> file name from the rule's placeholders; file
+ * No note link yet - the best note candidate decides (storage/noteTargets.ts):
+ * - the item's own note (no setup, a setup without a notebook, a Loop setup
+ *   outside an active loop, or an Inbox item) -> `new-own-file`.
+ * - a notebook or loop note -> file name from its placeholders; file
  *   missing -> `new-shared-file`; file there and a page with this keyword
  *   already on it -> `link-page`; otherwise `new-page`.
+ *
+ * The background of every new or recreated page is the one of the layout
+ * it gets filled from (for a link: `layoutForLink`).
  */
 export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
-  const {itemPath, settings, tags, context, currentKeyword, isDated} = params;
-  const definition = resolveNoteTemplate(context, tags, settings.tagRules);
-  const background = resolveNoteBackgroundTemplate(settings, context, tags);
-  const ruleName = definition ? definition.name : null;
-
+  const {itemPath, tags, currentKeyword, isDated} = params;
   const existing = await classifyNotePath(itemPath, params.notePath);
+  if (existing.kind === 'none') return planNewNote(params, placeNoteCandidates(targetInput(params))[0]);
+  const background = backgroundOf(
+    layoutForLink({...targetInput(params), linkedFile: existing.kind === 'shared' ? existing.anchor.filePath : null}),
+  );
 
   if (existing.kind === 'own') {
     if (existing.exists) {
@@ -170,7 +159,7 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
       throw new Error(`Linked note not found: ${displayPath(existing.absolutePath)}`);
     }
     return {
-      plan: {kind: 'recreate-own-file', file: params.notePath, absolutePath: existing.absolutePath, ruleName: null},
+      plan: {kind: 'recreate-own-file', file: params.notePath, absolutePath: existing.absolutePath, setupName: null},
       execute: async () => {
         await ensureFolderExists(parentFolder(existing.absolutePath));
         await createNote(existing.absolutePath, background, true);
@@ -196,7 +185,7 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
 
     if (!existing.exists) {
       return {
-        plan: {kind: 'recreate-shared-file', file: anchor.filePath, absolutePath: absoluteFile, ruleName: null},
+        plan: {kind: 'recreate-shared-file', file: anchor.filePath, absolutePath: absoluteFile, setupName: null},
         execute: async () => {
           const page = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, isDated);
           return {notePath: newNotePath, changed: keywordChanged, isInitialPopulation: true, absolutePath: absoluteFile, page};
@@ -219,7 +208,7 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
       };
     }
     return {
-      plan: {kind: 'recreate-page', file: anchor.filePath, absolutePath: absoluteFile, ruleName: null},
+      plan: {kind: 'recreate-page', file: anchor.filePath, absolutePath: absoluteFile, setupName: null},
       execute: async () => {
         const newPage = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, isDated);
         return {notePath: newNotePath, changed: keywordChanged, isInitialPopulation: true, absolutePath: absoluteFile, page: newPage};
@@ -227,58 +216,55 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
     };
   }
 
-  // No note link yet. A todo or meeting of an active loop gets a page in the loop's note.
-  const loopNote = params.forceOwnTarget ? null : loopNoteTarget(itemPath, tags, definition);
-  if (!loopNote && (params.forceOwnTarget || !definition || effectiveNoteTarget(definition) !== 'shared')) {
+  // A note link that is neither own nor shared does not exist (classifyNotePath).
+  throw new Error('Unknown note link.');
+}
+
+function targetInput(params: ItemNoteParams): NoteTargetInput {
+  return {
+    itemPath: params.itemPath,
+    tags: params.tags,
+    pageKind: params.pageKind,
+    settings: params.settings,
+    fileDate: params.fileDate,
+    forceOwn: params.forceOwnTarget,
+  };
+}
+
+/** The plan for an item's first note at `placed` (one note candidate). */
+async function planNewNote(params: ItemNoteParams, placed: PlacedCandidate): Promise<ItemNotePlan> {
+  const {itemPath, settings, tags, currentKeyword, isDated} = params;
+  const setup = placed.candidate.setup;
+  const setupName = setup ? setup.name : null;
+  const background = backgroundOf(layoutFor(setup, params.pageKind, settings.noteSetupDefaults));
+
+  if (!placed.shared) {
     const folderPath = relativeFolderPath(itemPath, params.subfolder);
     const fileName = await collisionFreeName(folderPath, params.baseName, '.note');
     const relativePath = `${params.subfolder}/${fileName}`;
     const absolutePath = `${folderPath}/${fileName}`;
     return {
-      plan: {kind: 'new-own-file', file: relativePath, absolutePath, ruleName},
+      plan: {kind: 'new-own-file', file: relativePath, absolutePath, setupName},
       execute: async () => {
-        const notePath = await createLinkedNote(
-          itemPath,
-          params.subfolder,
-          params.baseName,
-          settings,
-          tags,
-          fileName,
-          contextTagsOf(tags),
-        );
+        const notePath = await createLinkedNote(itemPath, params.subfolder, params.baseName, background, fileName, contextTagsOf(tags));
         return {notePath, changed: true, isInitialPopulation: true, absolutePath, page: 0};
       },
     };
   }
 
-  // Shared target. sanitizeFileNameComponent: the rendered name comes from
-  // user text (rule field, subtag) - strip illegal characters and '#' (the
-  // anchor separator), and turn a deeper subtag's '/' into a space.
-  // A loop note lives in the owner's own folder.
-  const sharedRule = definition as TagRule;
-  const fileName = loopNote
-    ? loopNote.fileName
-    : sanitizeFileNameComponent(
-        renderSharedFileName({
-          template: resolvedSharedFileName(sharedRule),
-          ruleName: sharedRule.name,
-          tag: ruleTypeTag(tags, sharedRule.tags),
-          subtag: ruleSubtag(tags, sharedRule.tags),
-          date: params.fileDate,
-        }),
-      );
-  const relativeFolder = loopNote || resolvedSharedFileFolder(sharedRule) === 'root' ? '' : params.subfolder;
+  // A notebook (folder from the setup, created on first use) or the loop note (the owner's own folder).
+  const {relativeFolder, fileName, relativeFile: relativeFilePath} = placed.shared;
+  const loopNote = placed.loopNote;
   const folderPath = relativeFolderPath(itemPath, relativeFolder);
-  const relativeFilePath = relativeFolder ? `${relativeFolder}/${fileName}.note` : `${fileName}.note`;
   const absoluteFile = `${folderPath}/${fileName}.note`;
   const notePath = buildSharedNoteAnchor(relativeFilePath, currentKeyword);
 
   if (!(await fileExists(absoluteFile))) {
     return {
-      plan: {kind: 'new-shared-file', file: relativeFilePath, absolutePath: absoluteFile, ruleName},
+      plan: {kind: 'new-shared-file', file: relativeFilePath, absolutePath: absoluteFile, setupName},
       execute: async () => {
         // A new loop note starts with the loop's own page (filled by the caller).
-        const loopPage = loopNote && (await ensureLoopNoteFile(itemPath, loopNote, settings)) ? loopNote : undefined;
+        const loopPage = loopNote && (await ensureLoopNoteFile(itemPath, loopNote, settings.noteSetupDefaults)) ? loopNote : undefined;
         if (!loopNote) await ensureSharedNoteFile(folderPath, fileName, background);
         const page = await insertChronologicalPage(absoluteFile, currentKeyword, background, isDated);
         return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page, loopPage};
@@ -292,12 +278,12 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
   const existingPage = await findKeywordPage(absoluteFile, currentKeyword);
   if (existingPage !== null) {
     return {
-      plan: {kind: 'link-page', file: relativeFilePath, absolutePath: absoluteFile, ruleName, keyword: currentKeyword},
+      plan: {kind: 'link-page', file: relativeFilePath, absolutePath: absoluteFile, setupName, keyword: currentKeyword},
       execute: async () => ({notePath, changed: true, isInitialPopulation: false, absolutePath: absoluteFile, page: existingPage}),
     };
   }
   return {
-    plan: {kind: 'new-page', file: relativeFilePath, absolutePath: absoluteFile, ruleName},
+    plan: {kind: 'new-page', file: relativeFilePath, absolutePath: absoluteFile, setupName},
     execute: async () => {
       const page = await insertChronologicalPage(absoluteFile, currentKeyword, background, isDated);
       return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page};

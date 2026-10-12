@@ -114,7 +114,7 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
         {busy && <ActivityIndicator style={styles.spinner} />}
       </View>
       <Text style={[styles.intro, {color: textColor}]}>
-        A profile holds folders, focus counts, Tag Rules, review state, integrations and the experimental switches. Use a
+        A profile holds folders, focus counts, Note setups, review state, integrations and the experimental switches. Use a
         demo or test profile to try things without touching your real data.
       </Text>
       {profiles === null ? (

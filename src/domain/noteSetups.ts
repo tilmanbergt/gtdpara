@@ -58,6 +58,14 @@ export interface NoteSetupConfig {
   defaults: NoteSetupDefaults;
 }
 
+/** The setups and the Default out of the settings. */
+export function noteSetupConfig(settings: {noteSetups: readonly NoteSetup[]; noteSetupDefaults: NoteSetupDefaults}): NoteSetupConfig {
+  return {setups: settings.noteSetups, defaults: settings.noteSetupDefaults};
+}
+
+/** A config with no setups and a Default without pages or tracking - until settings are loaded. */
+export const EMPTY_NOTE_SETUP_CONFIG: NoteSetupConfig = {setups: [], defaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}}};
+
 /** The page rows a setup of `kind` has, in the order the setup page lists them. */
 export function pageKindsOf(kind: SetupKind): PageKind[] {
   return kind === 'loop' ? ['meeting', 'todo', 'first'] : ['meeting', 'todo'];

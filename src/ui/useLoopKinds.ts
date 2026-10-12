@@ -1,4 +1,4 @@
-/** The loop kinds of the current Tag Rules (storage/loopKinds.ts), re-rendering when they change. */
+/** The loop kinds of the current Note setups (storage/loopKinds.ts), re-rendering when they change. */
 import {useSyncExternalStore} from 'react';
 import {getLoopKinds, LoopKindsState, subscribeLoopKinds} from '../storage/loopKinds';
 

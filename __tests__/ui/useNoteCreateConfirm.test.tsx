@@ -15,7 +15,7 @@ const plan: NoteCreationPlan = {
   kind: 'new-page',
   file: 'Meetings/Coaching sabina 2026.note',
   absolutePath: '/storage/emulated/0/Note/2 Areas/Coaching/Meetings/Coaching sabina 2026.note',
-  ruleName: 'Coaching',
+  setupName: 'Coaching',
 };
 
 let confirm: (p: NoteCreationPlan) => Promise<boolean> = async () => false;
@@ -47,7 +47,7 @@ describe('useNoteCreateConfirm', () => {
       result = confirm(plan);
     });
     expect(list).toHaveLength(1);
-    expect(list[0].msg).toMatchObject({kind: 'confirm', text: 'Rule Coaching: new page in Meetings/Coaching sabina 2026.note'});
+    expect(list[0].msg).toMatchObject({kind: 'confirm', text: 'Coaching: new page in Meetings/Coaching sabina 2026.note'});
     expect(list[0].msg.detail).toContain('Note/2 Areas/Coaching/Meetings/Coaching sabina 2026.note');
     act(() => list[0].msg.actions![0].onPress());
     await expect(result).resolves.toBe(true);

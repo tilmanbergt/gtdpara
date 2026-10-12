@@ -1,5 +1,6 @@
-// docs/dev/history/technical-design-loops.md §4.4: a todo's or meeting's first note goes into its
-// loop's note, which starts with the loop's own page; a rule matched through another tag wins.
+// docs/dev/history/technical-design-loops.md §4.4, note-setups §1.2: a todo's or meeting's first
+// note goes into its loop's note, which starts with the loop's own page; for a meeting a Thread
+// setup matched through another tag comes first, for a todo the loop does.
 
 const mockFiles = new Set<string>();
 const mockKeywordPages = new Map<string, Map<string, number>>(); // file -> keyword -> page
@@ -55,11 +56,11 @@ jest.mock('../../src/storage/dataCache', () => ({
   findCachedItem: (path: string) => ({path, name: 'Coaching', kind: 'area', tasks: [], meetings: [], loops: mockLoops}),
 }));
 jest.mock('../../src/storage/loopKinds', () => {
-  const rules = jest.requireActual('../../src/domain/tagRules');
+  const setups = jest.requireActual('../../src/domain/noteSetups');
   return {
     getLoopKinds: () => ({
       kinds: ['workshop'],
-      rules: {workshop: {...rules.createEmptyTagRule('w', 'loop'), name: 'Workshops', tags: ['workshop'], pieces: []}},
+      setups: {workshop: {...setups.createNoteSetup('w', 'loop'), name: 'Workshops', tags: ['workshop']}},
     }),
   };
 });
@@ -70,19 +71,21 @@ jest.mock('../../src/supernote/noteElements', () => ({buildTextboxElement: jest.
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 
 import {newLoopLine} from '../../src/domain/loopsSection';
-import {createEmptyTagRule, TagRule} from '../../src/domain/tagRules';
+import {createNoteSetup, NoteSetup} from '../../src/domain/noteSetups';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
-import {Meeting} from '../../src/domain/types';
-import {deriveMeetingFields} from '../../src/domain/markdown';
+import {Meeting, Task} from '../../src/domain/types';
+import {deriveMeetingFields, deriveTaskFields} from '../../src/domain/markdown';
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
-import {openOrCreateLoopNote, openOrCreateMeetingNote} from '../../src/storage/meetingNoteContent';
+import {openOrCreateLoopNote, openOrCreateMeetingNote, openOrCreateTodoNote} from '../../src/storage/meetingNoteContent';
 import * as fs from '../../src/supernote/fileSystem';
 
 const AREA = '/storage/emulated/0/Note/2 Areas/Coaching';
 const LOOP_NOTE = `${AREA}/2026-11 workshop offsite.note`;
 
-function settingsWith(rules: TagRule[]): GtdParaSettings {
-  return {...DEFAULT_SETTINGS, tagRules: rules};
+const WORKSHOPS: NoteSetup = {...createNoteSetup('w', 'loop'), name: 'Workshops', tags: ['workshop']};
+
+function settingsWith(setups: NoteSetup[]): GtdParaSettings {
+  return {...DEFAULT_SETTINGS, noteSetups: [WORKSHOPS, ...setups]};
 }
 
 function meeting(title: string, date = '2026-10-02'): Meeting {
@@ -119,18 +122,25 @@ describe('loop notes', () => {
     expect(fs.insertKeyWord).not.toHaveBeenCalled();
   });
 
-  it('leaves the note to a rule matched through another tag, and to the usual path without an active loop', async () => {
-    const jf: TagRule = {...createEmptyTagRule('1', 'meeting'), name: 'JF', tags: ['jf'], enabled: true, pieces: [], noteTarget: 'shared', sharedFileName: 'JF {subtag}'};
+  it('a meeting goes to a Thread setup matched through another tag first; without an active loop the item gets its own note', async () => {
+    const jf: NoteSetup = {...createNoteSetup('1', 'thread'), name: 'JF', tags: ['jf'], notebook: {name: 'JF {subtag}', folder: 'Meetings'}};
     await openOrCreateMeetingNote(meeting('Demand #jf/demand #workshop/offsite'), AREA, settingsWith([jf]), null, {confirmCreate: confirm});
-    expect(plans[0]).toMatchObject({kind: 'new-shared-file', file: 'Meetings/JF demand.note'});
+    expect(plans[0]).toMatchObject({kind: 'new-shared-file', file: 'Meetings/JF demand.note', setupName: 'JF'});
     mockLoops = [{...newLoopLine('workshop/offsite'), status: 'done'}];
     await openOrCreateMeetingNote(meeting('Late #workshop/offsite'), AREA, settingsWith([]), null, {confirmCreate: confirm});
     expect(plans[1].kind).toBe('new-own-file');
   });
 
+  it('a todo goes to its active loop first, even with a Thread setup tag', async () => {
+    const jf: NoteSetup = {...createNoteSetup('1', 'thread'), name: 'JF', tags: ['jf'], notebook: {name: 'JF {subtag}', folder: 'Meetings'}};
+    const todo = {text: 'Draft #jf/demand #workshop/offsite', notePath: '', done: false, cancelled: false, ...deriveTaskFields('Draft #jf/demand #workshop/offsite')};
+    await openOrCreateTodoNote(todo as unknown as Task, AREA, settingsWith([jf]), null, {confirmCreate: confirm});
+    expect(plans[0]).toMatchObject({kind: 'new-shared-file', file: '2026-11 workshop offsite.note', setupName: 'Workshops'});
+  });
+
   it('opens the loop note at its first page, creating it after a confirm', async () => {
     expect(await openOrCreateLoopNote(AREA, 'workshop/offsite', settingsWith([]), confirm)).toBe(true);
-    expect(plans[0]).toMatchObject({kind: 'new-shared-file', file: '2026-11 workshop offsite.note', ruleName: 'Workshops'});
+    expect(plans[0]).toMatchObject({kind: 'new-shared-file', file: '2026-11 workshop offsite.note', setupName: 'Workshops'});
     expect(fs.openPath).toHaveBeenCalledWith(LOOP_NOTE, 0);
     plans.length = 0;
     await openOrCreateLoopNote(AREA, 'workshop/offsite', settingsWith([]), confirm);

@@ -64,7 +64,8 @@ describe('demo space', () => {
   it('profile settings point at the demo folders and survive the profile file filter', () => {
     const s = demoProfileSettings();
     expect(s.baseRoot).toBe(DEMO_BASE_ROOT);
-    expect(s.tagRules).toHaveLength(2);
+    expect(s.noteSetups.map(x => x.tags)).toEqual([['1on1']]);
+    expect(s.noteSetupsMigrated).toBe(true);
     expect(sanitizeProfileSettings(profileSettingsOf(s))).toEqual(profileSettingsOf(s));
   });
 });

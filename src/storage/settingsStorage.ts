@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {DEFAULT_SETTINGS, GtdParaSettings, renameLegacyTagRuleKeys} from '../domain/settings';
-import {migrateTagRuleDefaults} from '../domain/tagRules';
 import {migrateNoteSetupSettings, migrationCounts} from '../domain/noteSetupMigration';
 import {seedNoteSetupDefaults} from '../domain/noteSetups';
 import {errorMessage} from '../utils/errorMessage';
@@ -22,13 +21,11 @@ const SETTINGS_KEY = 'gtdpara:settings:v1';
  * The loaded settings then pass through the load-time migrations, each of
  * which returns the SAME object when it has nothing to do:
  * - `renameLegacyTagRuleKeys` moves Tag Rules stored under their 0.8 key
- *   names (`noteCreationDefinitions`, `nextNoteDefinitionId`) to the current
- *   ones - first, so the default rule below isn't seeded over them.
+ *   names (`noteCreationDefinitions`, `nextNoteDefinitionId`) to the 0.14
+ *   ones - first, so the migration below finds them.
  * - `migrateNoteSetups` turns 0.14's Tag Rules into Note setups once per
  *   settings blob or profile (domain/noteSetupMigration.ts), or seeds the
  *   Default on a fresh install. The Tag Rules stay stored as they are.
- * - `migrateTagRuleDefaults` seeds the "Meeting (default)" Tag Rule
- *   when there are no rules yet (fresh install).
  * - `migrateExperimentalFlags` sets the experimental switches and the
  *   What's-new marker for an install that predates them; it needs the raw
  *   stored blob to tell a fresh install from an update.
@@ -41,7 +38,7 @@ async function readSettings(): Promise<GtdParaSettings> {
   const stored: Record<string, unknown> = raw ? JSON.parse(raw) : {};
   const parsed = renameLegacyTagRuleKeys(stored);
   const merged: GtdParaSettings = {...DEFAULT_SETTINGS, ...parsed};
-  const noteMigrated = migrateTagRuleDefaults(migrateNoteSetups(merged));
+  const noteMigrated = migrateNoteSetups(merged);
   const migrated = migrateExperimentalFlags(noteMigrated, parsed, BUILD_INFO.version);
   if (migrated !== merged || parsed !== stored) {
     try {

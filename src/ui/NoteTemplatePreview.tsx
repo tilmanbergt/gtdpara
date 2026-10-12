@@ -70,7 +70,7 @@ interface Props {
   pieces: NotePiece[];
   selectedIndex: number | null;
   onSelectPiece: (index: number) => void;
-  /** '' = blank/no template picked - same convention TagRule.template uses; renders no <Image> at all. */
+  /** '' = blank/no template picked - same convention PageLayout.template uses; renders no <Image> at all. */
   background: string;
   textColor: string;
   borderColor: string;

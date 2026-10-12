@@ -113,7 +113,7 @@ export function resolveMarkPath(ownerFolder: string, notePath: string): string {
 
 /**
  * Which file a new mark goes into (§3.2): the project/area whose folder holds
- * the note (any depth - Todos/, Meetings/, shared Tag Rule notes), else the
+ * the note (any depth - Todos/, Meetings/, notebooks), else the
  * Inbox (Inbox folder, Resources, Archive, PDFs in Document/, loose notes).
  * `hasItem` says whether that project/area is known (its data file exists);
  * an unknown one falls back to the Inbox too.

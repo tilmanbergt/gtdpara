@@ -21,7 +21,7 @@
  * than the one next to it, so every save (saveEntryTasks/saveEntryMeetings
  * below) re-fetches that entry's own source item from the cache by path
  * before mutating it. Meeting rows also carry the prep/review checkpoint icon
- * when the meeting's Tag Rule tracks it
+ * when the meeting's Note setup tracks it
  * (docs/dev/history/technical-design-meeting-tracking.md - `trackingFor` /
  * `handleToggleMeetingTracking` below; row sizing goes through
  * `meetingHeightFor` so the icon's width is always accounted for).
@@ -127,7 +127,7 @@ import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import DailyFocusPanel from '../ui/DailyFocusPanel';
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import {useFeatures} from '../ui/featureStore';
-import MeetingRow, {MeetingRowLayout, MeetingTrackingConfig} from '../ui/MeetingRow';
+import MeetingRow, {MeetingRowLayout, MeetingTrackingConfig, trackingSetups} from '../ui/MeetingRow';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
 import {useEditTarget} from '../ui/useEditTarget';
 import {MiniTabDef} from '../ui/MiniTabs';
@@ -946,7 +946,7 @@ export default function DailyView({
   // MeetingTrackingConfig), so height/lines always agree with the icon the
   // row renders.
   const trackingFor = (entry: DailyMeetingEntry): MeetingTrackingConfig => ({
-    rules: settings?.tagRules ?? [],
+    setups: trackingSetups(settings),
     onToggle: kind => handleToggleMeetingTracking(entry, kind),
   });
 

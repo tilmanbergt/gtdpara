@@ -1,5 +1,5 @@
 /**
- * The MyStyle `.png` backgrounds a Tag Rule can use, listed once when
+ * The MyStyle `.png` backgrounds a page layout can use, listed once when
  * Settings opens. `reload` lists them again (Settings → Advanced → Reload
  * all files).
  */

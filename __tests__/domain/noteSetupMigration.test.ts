@@ -239,6 +239,14 @@ describe('migrateTagRules - defaults, disabled, dropped', () => {
     expect(setups[0].tracking).toEqual({trackPrep: true, trackReview: true});
   });
 
+  it("a setup without a meeting member takes the Default's tracking (0.14 tracked its meetings by the Default)", () => {
+    const {setups} = migrateTagRules([rule('meeting', [], {isDefault: true, trackPrep: true}), rule('todo', ['a']), rule('meeting', ['b'])], 1);
+    expect(setups.map(s => s.tracking)).toEqual([
+      {trackPrep: true, trackReview: false},
+      {trackPrep: false, trackReview: false},
+    ]);
+  });
+
   it('order follows the first member; ids count up from nextId', () => {
     const {setups, nextId} = migrateTagRules([rule('todo', ['b']), rule('meeting', ['a']), rule('meeting', ['b'])], 7);
     expect(setups.map(s => [s.id, s.tags])).toEqual([

@@ -2,7 +2,7 @@
  * The draft of the settings edited on the Folders, Focus, Calendar and Gmail
  * tabs: loaded once, edited freely, written only by Save (or thrown away by
  * Reset to defaults). Focus counts are edited as text and parsed on save.
- * Settings that take effect at once (switches on Advanced/About, Tag Rules)
+ * Settings that take effect at once (switches on Advanced/About, Note setups)
  * write themselves and also update this draft, so a later Save keeps them.
  */
 import {useEffect, useState} from 'react';

@@ -1,5 +1,5 @@
 /**
- * Review step "Meetings to close out": past meetings whose Tag Rule asks for
+ * Review step "Meetings to close out": past meetings whose Note setup asks for
  * a review afterwards and that aren't `#reviewed` yet (storage/
  * reviewAggregate.ts's meetingsToClose, last REVIEW_LOOKBACK_DAYS days).
  * Ticking "reviewed" keeps the meeting listed with a checkmark until the
@@ -22,7 +22,7 @@ import {loadSettings} from '../../../storage/settingsStorage';
 import {openPath} from '../../../supernote/fileSystem';
 import {log} from '../../../utils/log';
 import {requestEinkRefresh} from '../../../utils/screenRefresh';
-import MeetingRow, {MEETING_ROW_HEIGHT, MeetingRowLayout} from '../../../ui/MeetingRow';
+import MeetingRow, {MEETING_ROW_HEIGHT, MeetingRowLayout, trackingSetups} from '../../../ui/MeetingRow';
 import {LayoutSwitch} from '../../../ui/MeetingList';
 import {useListLayout} from '../../../ui/listLayout';
 import QuickAddWidget from '../../../ui/QuickAddWidget';
@@ -223,7 +223,7 @@ export default function MeetingsCloseOutStep({
     if (!cachedItem || !current) {
       throw new Error(`"${meetingDisplayTitle(entry.meeting)}" changed on disk - Settings → Advanced → Reload all files.`);
     }
-    const wasReviewed = resolveMeetingTracking(current, settings?.tagRules ?? [])?.done ?? false;
+    const wasReviewed = resolveMeetingTracking(current, trackingSetups(settings))?.done ?? false;
     const nextMeetings = cachedItem.meetings.slice();
     nextMeetings[entry.meetingIndex] = toggleMeetingTracking(current, 'review');
     const nextRaw = await saveMeetings(entry.item.kind, entry.item.path, cachedItem.rawContent, nextMeetings, cachedItem.meetingExtraLines);
@@ -259,7 +259,7 @@ export default function MeetingsCloseOutStep({
       return (
         <ReviewEmptyDetail
           title="No meeting selected"
-          text={`These meetings are over, their Tag Rule asks for a review, and you haven't ticked it yet (last ${REVIEW_LOOKBACK_DAYS} days). Note down follow-ups as todos, then mark the meeting reviewed.`}
+          text={`These meetings are over, their Note setup asks for a review, and you haven't ticked it yet (last ${REVIEW_LOOKBACK_DAYS} days). Note down follow-ups as todos, then mark the meeting reviewed.`}
           hint="Tap a meeting on the left to get started."
           textColor={textColor}
         />
@@ -268,7 +268,7 @@ export default function MeetingsCloseOutStep({
     const entry = frozen.list.find(e => closeOutKey(e) === selectedKey);
     if (!entry) return null;
     const live = reviewCurrentItem(entry.item, items).meetings[entry.meetingIndex] ?? entry.meeting;
-    const reviewed = resolveMeetingTracking(live, settings?.tagRules ?? [])?.done ?? false;
+    const reviewed = resolveMeetingTracking(live, trackingSetups(settings))?.done ?? false;
     const related = relatedItemsFor(items, inbox ? {tasks: inbox.tasks} : null, live.tags.filter(isContextTag));
     return (
       <MeetingCloseOutDetail

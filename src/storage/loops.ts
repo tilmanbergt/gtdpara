@@ -40,6 +40,7 @@ import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
 import {applyItemRawContent, CachedItem, findCachedItem, setTasksWrittenHook, updateItemLoops} from './dataCache';
 import {getLoopKinds, LoopKindsState} from './loopKinds';
+import {NoteSetup} from '../domain/noteSetups';
 import {classifyNotePath, sanitizeFileNameComponent} from './noteLinks';
 import {dataFilePath, saveLoops} from './projectFile';
 
@@ -94,9 +95,14 @@ export function conversionsOf(item: Pick<CachedItem, 'tasks' | 'loops'>, kinds: 
   return out;
 }
 
-/** The loop note's base name for `loop` under its kind's Loop rule. */
+/** The loop note's base name for `loop` under its kind's Loop setup. */
 export function loopNoteName(kinds: LoopKindsState, loop: LoopRef, mainDate: string | null): string {
-  return sanitizeFileNameComponent(loopNoteBaseName(kinds.rules[loop.kind]?.sharedFileName, loop, mainDate));
+  return loopNoteFileName(kinds.setups[loop.kind] ?? null, loop, mainDate);
+}
+
+/** The loop note's base name for `loop` under `setup` (its note name; the default name without one). */
+export function loopNoteFileName(setup: Pick<NoteSetup, 'notebook'> | null, loop: LoopRef, mainDate: string | null): string {
+  return sanitizeFileNameComponent(loopNoteBaseName(setup?.notebook?.name, loop, mainDate));
 }
 
 async function carryNote(item: CachedItem, task: Task, name: string): Promise<string | null> {

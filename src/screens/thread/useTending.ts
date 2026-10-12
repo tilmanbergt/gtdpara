@@ -11,7 +11,7 @@
  * one.
  */
 import {useCallback, useEffect, useMemo, useState} from 'react';
-import {ruleTypesOf} from '../../domain/counterparts';
+import {threadTypesOf} from '../../domain/counterparts';
 import {CounterpartStatus} from '../../domain/threadsSection';
 import {setCounterpartStatus} from '../../storage/counterparts';
 import {CachedItem, getCachedData} from '../../storage/dataCache';
@@ -41,7 +41,7 @@ export interface TendingData {
   items: CachedItem[];
   inbox: ThreadInboxInput | null;
   ruleTypes: string[];
-  /** Whether the Tag Rules have loaded (the rule types are only `wf`/`owe` until then). */
+  /** Whether the Note setups have loaded (the thread types are only `wf`/`owe` until then). */
   ready: boolean;
 }
 
@@ -53,13 +53,13 @@ export function useTendingData(): TendingData {
     () => (inboxState && inboxPath ? {path: inboxPath, tasks: inboxState.tasks, meetings: inboxState.meetings} : null),
     [inboxState, inboxPath],
   );
-  const [ruleTypes, setRuleTypes] = useState<string[]>(() => ruleTypesOf([]));
+  const [ruleTypes, setRuleTypes] = useState<string[]>(() => threadTypesOf([]));
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
     loadSettings().then(s => {
       if (cancelled) return;
-      setRuleTypes(ruleTypesOf(s.tagRules));
+      setRuleTypes(threadTypesOf(s.noteSetups));
       setReady(true);
     });
     return () => {

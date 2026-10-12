@@ -9,7 +9,7 @@
  *   scope's `## Threads` section (domain/threadsSection.ts). The Inbox is no
  *   scope here (decision D18).
  * - **Which counterparts exist** (decision D2): the counterpart of every
- *   nested tag whose type is a rule type (the Tag Rule tags, plus `wf` and
+ *   nested tag whose type is a thread type (the Thread setup tags, plus `wf` and
  *   `owe`) on a todo or meeting of the scope (not cancelled, done included),
  *   plus every status line of the scope. A section found in a member Project
  *   (a hand edit, or a Project assigned to an Area later) is read too; the
@@ -22,7 +22,7 @@
  *   upcoming meeting of one of its threads.
  */
 import {WAITING_FOR_TYPE} from './flowState';
-import {LoopKindRule, loopKindsOf} from './loops';
+import {loopKindsOf, SetupTagSource} from './loops';
 import {meetingEndMs} from './meetingTime';
 import {isCounterpartType, OWE_TYPE, ScopeItem, threadOf, ThreadRef} from './threads';
 import {CounterpartLine, CounterpartStatus} from './threadsSection';
@@ -59,17 +59,16 @@ export interface Counterpart {
 
 /**
  * The types that make counterparts (D2): the first segment of every enabled
- * Tag Rule's tags, then `wf` and `owe`. Loop kinds (the tags of Loop rules,
- * docs/dev/history/technical-design-loops.md §3.1) never do, whatever other
- * rule shares their tag: `#workshop/teamoffsite` is a loop, not a
- * counterpart "teamoffsite".
+ * Thread setup's tags, then `wf` and `owe`. Loop kinds (the tags of Loop
+ * setups, docs/dev/history/technical-design-loops.md §3.1) never do:
+ * `#workshop/teamoffsite` is a loop, not a counterpart "teamoffsite".
  */
-export function ruleTypesOf(rules: ReadonlyArray<LoopKindRule>): string[] {
-  const kinds = loopKindsOf(rules);
+export function threadTypesOf(setups: ReadonlyArray<SetupTagSource>): string[] {
+  const kinds = loopKindsOf(setups);
   const types: string[] = [];
-  for (const rule of rules) {
-    if (!rule.enabled || rule.context === 'loop') continue;
-    for (const raw of rule.tags) {
+  for (const setup of setups) {
+    if (!setup.enabled || setup.kind === 'loop') continue;
+    for (const raw of setup.tags) {
       const type = raw.replace(/^#/, '').toLowerCase().split('/')[0].trim();
       if (type && !kinds.includes(type) && !types.includes(type)) types.push(type);
     }

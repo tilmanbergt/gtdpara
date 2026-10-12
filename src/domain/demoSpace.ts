@@ -5,7 +5,7 @@
  * files are written by storage/demoSpace.ts. Everything here is written in
  * the normal project-file format, so it is also a readable example of it.
  */
-import {createDefaultMeetingRule} from './tagRules';
+import {createNoteSetup, seedNoteSetupDefaults} from './noteSetups';
 import {monthKeyOf} from './period';
 import {DEFAULT_SETTINGS, GtdParaSettings} from './settings';
 import {INBOX_FILE_NAME} from './types';
@@ -184,22 +184,21 @@ export function buildDemoFiles(today: Date): DemoFile[] {
   return files;
 }
 
-/** Per-profile settings of the demo profile: the demo folders, two Tag Rules, integrations off. */
+/** Per-profile settings of the demo profile: the demo folders, one Note setup (1:1 meetings, tracked), integrations off. */
 export function demoProfileSettings(): GtdParaSettings {
-  const meeting = createDefaultMeetingRule('1');
   const oneOnOne = {
-    ...createDefaultMeetingRule('2'),
+    ...createNoteSetup('1', 'thread'),
     name: '1:1 meetings',
     tags: ['1on1'],
-    isDefault: false,
-    trackPrep: true,
-    trackReview: true,
+    tracking: {trackPrep: true, trackReview: true},
   };
   return {
     ...DEFAULT_SETTINGS,
     baseRoot: DEMO_BASE_ROOT,
-    tagRules: [meeting, oneOnOne],
-    nextTagRuleId: 3,
+    noteSetups: [oneOnOne],
+    noteSetupDefaults: seedNoteSetupDefaults(),
+    nextNoteSetupId: 2,
+    noteSetupsMigrated: true,
     experimentalGoogleCalendar: false,
     experimentalGmail: false,
     activeProfileId: DEMO_PROFILE_ID,

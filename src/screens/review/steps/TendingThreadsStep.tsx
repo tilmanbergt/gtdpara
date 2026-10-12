@@ -18,7 +18,7 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {Destination} from '../../../domain/destination';
-import {oneOffLabel, ruleTypesOf} from '../../../domain/counterparts';
+import {oneOffLabel, threadTypesOf} from '../../../domain/counterparts';
 import {todayIso} from '../../../domain/meetingTime';
 import {rosterCountsText, rosterMeetingText} from '../../../domain/threadText';
 import {CounterpartStatus} from '../../../domain/threadsSection';
@@ -48,13 +48,13 @@ type RosterRow = {kind: 'head'; key: string; label: string} | {kind: 'cp'; key: 
 
 const entryKey = (e: RosterEntry) => `${e.owner.path}|${e.counterpart.leaf}`;
 
-/** The live roster of every scope, or null until settings (the Tag Rules) are loaded. */
+/** The live roster of every scope, or null until settings (the Note setups) are loaded. */
 export function useTendingRoster(data: ReviewData): RosterScope[] | null {
   const {items, inbox, inboxPath, settings} = data;
   return useMemo(() => {
     if (!settings) return null;
     const inboxInput = inbox && inboxPath ? {path: inboxPath, tasks: inbox.tasks, meetings: inbox.meetings} : null;
-    return buildTendingRoster(items, inboxInput, ruleTypesOf(settings.tagRules));
+    return buildTendingRoster(items, inboxInput, threadTypesOf(settings.noteSetups));
   }, [items, inbox, inboxPath, settings]);
 }
 
@@ -226,7 +226,7 @@ export default function TendingThreadsStep({data, stepEntryToken, onAddTask, tex
       renderDetail={renderDetail}
       actedOnKeys={frozen.actedOn}
       resetKey={stepEntryToken}
-      emptyHint="No counterparts yet. Nested tags of your Tag Rules (#retro/alpha), #wf/<name> and #owe/<name> make them."
+      emptyHint="No counterparts yet. Nested tags of your Thread setups (#retro/alpha), #wf/<name> and #owe/<name> make them."
       textColor={textColor}
       borderColor={borderColor}
     />

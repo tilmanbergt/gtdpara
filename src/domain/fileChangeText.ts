@@ -45,11 +45,11 @@ const RECREATE_DETAIL =
 /**
  * The confirm text for a note plan. `fullDisplay` is the plan's file as a
  * display path (e.g. "Note/2 Areas/Coaching/Meetings/Coaching sabina 2026.note").
- * First-time notes name the deciding Tag Rule, so a misspelt tag (which picks a
- * different rule, file or none) is visible before anything is created.
+ * First-time notes name the deciding Note setup, so a misspelt tag (which picks a
+ * different setup, file or none) is visible before anything is created.
  */
 export function noteCreationConfirmText(plan: NoteCreationPlan, fullDisplay: string): NoteCreationConfirmText {
-  const rule = plan.ruleName ? `Rule ${plan.ruleName}: ` : '';
+  const rule = plan.setupName ? `${plan.setupName}: ` : '';
   switch (plan.kind) {
     case 'new-shared-file':
       return {text: `${rule}new file ${plan.file}`, detail: `Creates ${fullDisplay} with a first page for this item.`, actionLabel: 'Create'};
@@ -57,7 +57,7 @@ export function noteCreationConfirmText(plan: NoteCreationPlan, fullDisplay: str
       return {text: `${rule}new page in ${plan.file}`, detail: `Adds a page for this item to ${fullDisplay}.`, actionLabel: 'Add page'};
     case 'new-own-file':
       return {
-        text: plan.ruleName ? `${rule}new note ${plan.file}` : `New note ${plan.file}`,
+        text: plan.setupName ? `${rule}new note ${plan.file}` : `New note ${plan.file}`,
         detail: `Creates ${fullDisplay}.`,
         actionLabel: 'Create',
       };

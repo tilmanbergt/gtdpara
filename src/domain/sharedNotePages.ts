@@ -2,8 +2,8 @@
  * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md).
  *
  * Pure domain layer for the "file this Todo/Meeting's note as a PAGE in one
- * shared `.note` per Project/Area, located by keyword" Tag Rule option
- * (`TagRule.noteTarget === 'shared'`, domain/tagRules.ts).
+ * shared `.note` per Project/Area, located by keyword" mechanism behind a
+ * Note setup's notebook and the loop note (domain/noteSetups.ts).
  * Covers everything this feature needs that doesn't touch the device:
  * encoding/decoding the anchor stored in `Task.notePath`/`Meeting.notePath`,
  * deriving a page's keyword from the item it belongs to, and the pure array
@@ -86,7 +86,7 @@ export function buildSharedNoteAnchor(filePath: string, keyword: string): string
  * This relies on `filePath` never containing `#`:
  * `sanitizeFileNameComponent` (storage/noteLinks.ts) strips `#` from every
  * file name it builds - own todo/meeting note names (which would otherwise
- * keep context tags like `#daily`) and a shared rule's file name alike.
+ * keep context tags like `#daily`) and a notebook's file name alike.
  * `keyword` stays untouched.
  */
 export function parseSharedNoteAnchor(notePath: string): SharedNoteAnchor | null {
@@ -225,17 +225,17 @@ export function recreatedPageNoticeText(isoDate: string): string {
 
 // ---- Shared file-name placeholders (docs/dev/history/technical-design-split-by-tag.md §3.3) ----
 
-/** The placeholders a Tag Rule's "Shared file name" understands, in the order the Settings chips show them. */
+/** The placeholders a notebook name understands, in the order the Settings chips show them. */
 export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{year}', '{quarter}', '{month}', '{day}'];
 
 export interface SharedFileNameInput {
-  /** The rule's "Shared file name" (or its rule name when that field is blank) - `resolvedSharedFileName`. */
+  /** The notebook name (or the setup name when that field is blank). */
   template: string;
-  /** Fallback when the rendered name comes out empty. */
-  ruleName: string;
-  /** `ruleTypeTag(...)` (domain/tagRules.ts) - the rule tag the item matched; `''` when none. */
+  /** Fallback when the rendered name comes out empty (the setup name). */
+  fallbackName: string;
+  /** `setupTypeTag(...)` (domain/noteSetups.ts) - the setup tag the item matched; `''` when none. */
   tag?: string;
-  /** `ruleSubtag(...)` (domain/tagRules.ts) - `''` when the item has no nested tag under the rule. */
+  /** `setupSubtag(...)` (domain/noteSetups.ts) - `''` when the item has no nested tag under the setup's tags. */
   subtag: string;
   /** `YYYY-MM-DD` - a meeting's own date, today for a todo, a loop's main date; `''` when there is none. */
   date: string;
@@ -245,8 +245,8 @@ export interface SharedFileNameInput {
 const DATE_PLACEHOLDER_RUN = /[-._]?\{(?:year|quarter|month|day)\}(?:[-._]\{(?:year|quarter|month|day)\})*/gi;
 
 /**
- * Renders a shared file's base name (no folder, no ".note") from the rule's
- * template: `{tag}` -> the rule tag the item matched, `{subtag}` -> the
+ * Renders a shared file's base name (no folder, no ".note") from the
+ * notebook name: `{tag}` -> the setup tag the item matched, `{subtag}` -> the
  * nested-tag part (both lowercased), `{year}` -> `2026`,
  * `{quarter}` -> `Q4`, `{month}` -> `10`, `{day}` -> `07`. Without a date
  * the date placeholders are left out together with the `-`, `.` or `_`
@@ -254,7 +254,7 @@ const DATE_PLACEHOLDER_RUN = /[-._]?\{(?:year|quarter|month|day)\}(?:[-._]\{(?:y
  * case-insensitively; any other `{...}` text is left exactly as typed. Runs
  * of whitespace collapse and the ends are trimmed, so a missing subtag
  * doesn't leave a double space (`Coaching {subtag} {year}` -> `Coaching 2026`).
- * An empty result falls back to `ruleName` (e.g. the field is just
+ * An empty result falls back to `fallbackName` (e.g. the field is just
  * `{subtag}` and the item has no subtag). Filename sanitizing (illegal
  * characters, `#`, the `/` of a deeper subtag) is the caller's job -
  * storage/noteLinks.ts's `sanitizeFileNameComponent`, as for every other
@@ -272,5 +272,5 @@ export function renderSharedFileName(input: SharedFileNameInput): string {
     .replace(/\{(tag|subtag|year|quarter|month|day)\}/gi, (_all, key: string) => values[key.toLowerCase()])
     .replace(/\s+/g, ' ')
     .trim();
-  return rendered || input.ruleName.trim();
+  return rendered || input.fallbackName.trim();
 }

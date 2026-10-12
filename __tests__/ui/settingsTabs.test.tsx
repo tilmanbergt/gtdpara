@@ -19,14 +19,16 @@ jest.mock('../../src/supernote/fileSystem', () => ({
 }));
 jest.mock('../../src/storage/settingsStorage', () => {
   const s = jest.requireActual('../../src/domain/settings');
-  const tagRules = jest.requireActual('../../src/domain/tagRules');
-  const stored = {...s.DEFAULT_SETTINGS, tagRules: [tagRules.createDefaultMeetingRule('1')], experimentalGoogleCalendar: true, experimentalGmail: true};
+  const stored = {...s.DEFAULT_SETTINGS, experimentalGoogleCalendar: true, experimentalGmail: true};
   return {
     loadSettings: async () => stored,
     saveSettings: async (v: unknown) => {
       mockSaved.push(v);
     },
-    patchSettings: async () => stored,
+    patchSettings: async (patch: object) => {
+      mockSaved.push(patch);
+      return {...stored, ...patch};
+    },
   };
 });
 jest.mock('../../src/storage/dataCache', () => ({clearCachedData: jest.fn(), rebuildCache: jest.fn()}));
@@ -63,23 +65,11 @@ describe('Settings tabs', () => {
     ['focus', 'Daily focus — Projects'],
     ['calendar', 'Google Calendar ICS link'],
     ['gmail', 'Gmail address'],
-    ['templates', '+ New tag rule'],
+    ['templates', 'Note setups - editor follows'],
     ['advanced', 'Reload all files'],
   ])('%s renders', async (tab, expected) => {
     const r = await render(tab);
     expect(texts(r).some(t => t.includes(expected))).toBe(true);
-  });
-
-  it('opens a tag rule for editing and the Add piece page', async () => {
-    const r = await render('templates');
-    const press = async (label: string) => {
-      const node = r.root.findAll(n => n.props.onPress && texts({root: n} as never).some(t => t === label))[0];
-      await act(async () => node.props.onPress());
-    };
-    await press('+ New tag rule');
-    expect(texts(r)).toContain('+ Add piece');
-    await press('+ Add piece');
-    expect(texts(r)).toContain('‹ Back to rule');
   });
 
   it('offers the Heading style and saves a change at once', async () => {
@@ -89,33 +79,6 @@ describe('Settings tabs', () => {
     expect(tabs.props.activeKey).toBe('3');
     await act(async () => tabs.props.onChange('1'));
     expect(mockSaved.at(-1)).toMatchObject({noteHeadingStyle: 1});
-  });
-
-  it('shows the Heading switch for a selected piece, and Date & title in Add piece', async () => {
-    const r = await render('templates');
-    const press = async (label: string) => {
-      const node = r.root.findAll(n => n.props.onPress && texts({root: n} as never).some(t => t === label))[0];
-      await act(async () => node.props.onPress());
-    };
-    const headingLabel = "☑ Heading (in the note's table of contents)";
-    await press('+ New tag rule');
-    expect(texts(r)).not.toContain(headingLabel);
-    const preview = r.root.findAll(n => typeof n.props.onSelectPiece === 'function')[0];
-    await act(async () => preview.props.onSelectPiece(0));
-    expect(texts(r)).toContain(headingLabel);
-    await press(headingLabel);
-    expect(texts(r)).toContain("☐ Heading (in the note's table of contents)");
-    await press('+ Add piece');
-    const addRows = r.root.findAll(n => Array.isArray(n.props.rows) && n.props.rows.some((row: {kind: string}) => row.kind === 'type'))[0].props.rows;
-    expect(addRows.filter((row: {kind: string}) => row.kind === 'type').map((row: {type: string}) => row.type)).toEqual([
-      'title',
-      'dateTitle',
-      'date',
-      'time',
-      'related',
-      'link',
-      'sinceLast',
-    ]);
   });
 
   it('Save writes the edited folder name', async () => {

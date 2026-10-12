@@ -38,7 +38,7 @@ export const NOTE_HEADING_USERDATA = 'gtdpara:note-heading:v1';
 /** Prefix for a definition-driven piece's own per-index userData marker (docs/dev/history/technical-design-note-templates.md §4: one marker per index, since piece count and order are data-driven). See notePieceUserData below. */
 const NOTE_PIECE_USERDATA_PREFIX = 'gtdpara:note-piece:';
 
-/** The userData marker `storage/meetingNoteContent.ts`'s populateNoteFromRule writes on the textbox element for `definition.pieces[index]` - one marker per piece, not one shared block marker, so a definition's pieces can be found/replaced/reordered independently. */
+/** The userData marker `storage/meetingNoteContent.ts`'s populatePage writes on the textbox element for `definition.pieces[index]` - one marker per piece, not one shared block marker, so a definition's pieces can be found/replaced/reordered independently. */
 export function notePieceUserData(index: number): string {
   return `${NOTE_PIECE_USERDATA_PREFIX}${index}:v1`;
 }
@@ -47,7 +47,7 @@ export function notePieceUserData(index: number): string {
  * True for any element this feature has ever written - the two LEGACY
  * markers (fixed block, auto-link), a per-piece marker or the heading
  * marker.
- * populateNoteFromRule deletes every element matching this before
+ * populatePage deletes every element matching this before
  * inserting its fresh set, so notes written by an older version get their
  * legacy block/link cleaned up on the next refresh instead of keeping a
  * stale duplicate.
@@ -127,7 +127,7 @@ const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']);
  * document link (2). A note-file link to a non-note (e.g. a `.txt`) makes
  * the host reject the whole insertElements call ("Destination file is not a
  * note file. Cannot call the API!"), so the note would get no content.
- * storage/meetingNoteContent.ts's populateNoteFromRule also retries without
+ * storage/meetingNoteContent.ts's populatePage also retries without
  * the link if the host still rejects one. Pure lookup, no I/O.
  */
 export function linkTypeForExtension(path: string): number {

@@ -1,48 +1,48 @@
 /**
- * The loop kinds of the current Tag Rules, readable without waiting
+ * The loop kinds of the current Note setups, readable without waiting
  * (docs/dev/history/technical-design-loops.md §3.1): Quick Add decides its
  * button label on every keystroke, and the loop conversion after a task save
  * (storage/loops.ts) runs outside any screen. Loaded from the settings once,
- * replaced when the Tag Rules are saved (`setLoopRules`) and reloaded on a
+ * replaced when the Note setups are saved (`setLoopSetups`) and reloaded on a
  * profile switch (`reloadLoopKinds`).
  */
 import {loopKindsOf} from '../domain/loops';
-import {TagRule} from '../domain/tagRules';
+import {NoteSetup} from '../domain/noteSetups';
 import {loadSettings} from './settingsStorage';
 
 export interface LoopKindsState {
   kinds: string[];
-  /** Each kind's Loop rule (the first enabled one). */
-  rules: Record<string, TagRule>;
+  /** Each kind's Loop setup (one tag belongs to one setup; the first enabled one if stored data says otherwise). */
+  setups: Record<string, NoteSetup>;
 }
 
-const EMPTY: LoopKindsState = {kinds: [], rules: {}};
+const EMPTY: LoopKindsState = {kinds: [], setups: {}};
 
 let current: LoopKindsState = EMPTY;
 let loaded: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
-function stateOf(rules: readonly TagRule[]): LoopKindsState {
-  const kinds = loopKindsOf(rules);
-  const byKind: Record<string, TagRule> = {};
+function stateOf(setups: readonly NoteSetup[]): LoopKindsState {
+  const kinds = loopKindsOf(setups);
+  const byKind: Record<string, NoteSetup> = {};
   for (const kind of kinds) {
-    const rule = rules.find(r => r.enabled && r.context === 'loop' && r.tags.some(t => t.replace(/^#/, '').toLowerCase() === kind));
-    if (rule) byKind[kind] = rule;
+    const setup = setups.find(s => s.enabled && s.kind === 'loop' && s.tags.some(t => t.replace(/^#/, '').toLowerCase() === kind));
+    if (setup) byKind[kind] = setup;
   }
-  return {kinds, rules: byKind};
+  return {kinds, setups: byKind};
 }
 
-/** Sets the kinds from a Tag Rules list (after a save in Settings). */
-export function setLoopRules(rules: readonly TagRule[]): void {
-  const next = stateOf(rules);
+/** Sets the kinds from the Note setups (after a save in Settings). */
+export function setLoopSetups(setups: readonly NoteSetup[]): void {
+  const next = stateOf(setups);
   if (JSON.stringify(next) === JSON.stringify(current)) return;
   current = next;
   listeners.forEach(listener => listener());
 }
 
-/** Reads the Tag Rules from the settings again (start, profile switch). */
+/** Reads the Note setups from the settings again (start, profile switch). */
 export function reloadLoopKinds(): Promise<void> {
-  loaded = loadSettings().then(settings => setLoopRules(settings.tagRules));
+  loaded = loadSettings().then(settings => setLoopSetups(settings.noteSetups));
   return loaded;
 }
 

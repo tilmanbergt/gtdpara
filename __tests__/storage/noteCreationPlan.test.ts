@@ -58,7 +58,7 @@ jest.mock('../../src/supernote/noteElements', () => ({buildTextboxElement: jest.
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
-import {createEmptyTagRule, TagRule} from '../../src/domain/tagRules';
+import {createNoteSetup, NoteSetup} from '../../src/domain/noteSetups';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
 import {Meeting, Task} from '../../src/domain/types';
 import {deriveMeetingFields, deriveTaskFields} from '../../src/domain/markdown';
@@ -68,21 +68,18 @@ import * as fs from '../../src/supernote/fileSystem';
 
 const AREA = '/storage/emulated/0/Note/2 Areas/Coaching';
 
-function coachingRule(extra: Partial<TagRule> = {}): TagRule {
+function coachingRule(extra: Partial<NoteSetup> = {}): NoteSetup {
   return {
-    ...createEmptyTagRule('1', 'meeting'),
+    ...createNoteSetup('1', 'thread'),
     name: 'Coaching',
     tags: ['coaching'],
-    enabled: true,
-    pieces: [],
-    noteTarget: 'shared',
-    sharedFileName: 'Coaching {subtag} {year}',
+    notebook: {name: 'Coaching {subtag} {year}', folder: 'Meetings'},
     ...extra,
   };
 }
 
-function settingsWith(rules: TagRule[]): GtdParaSettings {
-  return {...DEFAULT_SETTINGS, tagRules: rules};
+function settingsWith(setups: NoteSetup[]): GtdParaSettings {
+  return {...DEFAULT_SETTINGS, noteSetups: setups};
 }
 
 function meeting(title: string, date = '2026-10-02', notePath = ''): Meeting {
@@ -117,7 +114,7 @@ describe('first-time note on a split-by-tag rule', () => {
       confirmCreate: r.confirm,
     });
     expect(r.plans).toHaveLength(1);
-    expect(r.plans[0]).toMatchObject({kind: 'new-shared-file', file: 'Meetings/Coaching sabina 2026.note', ruleName: 'Coaching'});
+    expect(r.plans[0]).toMatchObject({kind: 'new-shared-file', file: 'Meetings/Coaching sabina 2026.note', setupName: 'Coaching'});
     expect(result.changed).toBe(true);
     expect(result.cancelled).toBe(false);
     expect(result.meeting.notePath).toBe('Meetings/Coaching sabina 2026.note#2026-10-02 Session #coaching/sabina');
@@ -171,7 +168,7 @@ describe('first-time note on a split-by-tag rule', () => {
       confirmCreate: r.confirm,
       forceOwnTarget: true,
     });
-    expect(r.plans[0]).toMatchObject({kind: 'new-own-file', ruleName: 'Coaching'});
+    expect(r.plans[0]).toMatchObject({kind: 'new-own-file', setupName: 'Coaching'});
   });
 });
 
@@ -180,7 +177,7 @@ describe('first-time own note', () => {
     mockFiles.add(`${AREA}/Todos/Call Sabina.note`);
     const r = recorder(true);
     const result = await openOrCreateTodoNote(task('Call Sabina #next'), AREA, settingsWith([]), null, {confirmCreate: r.confirm});
-    expect(r.plans[0]).toMatchObject({kind: 'new-own-file', file: 'Todos/Call Sabina (2).note', ruleName: null});
+    expect(r.plans[0]).toMatchObject({kind: 'new-own-file', file: 'Todos/Call Sabina (2).note', setupName: null});
     expect(result.task.notePath).toBe('Todos/Call Sabina (2).note');
     expect(mockFiles.has(`${AREA}/Todos/Call Sabina (2).note`)).toBe(true);
   });

@@ -2,12 +2,12 @@ import {spliceWordAtSelection} from '../../src/domain/clipboardText';
 import {noteCreationConfirmText} from '../../src/domain/fileChangeText';
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
 import {renderSharedFileName} from '../../src/domain/sharedNotePages';
-import {ruleTypeTag} from '../../src/domain/tagRules';
+import {setupTypeTag} from '../../src/domain/noteSetups';
 
 // docs/dev/history/technical-design-split-by-tag.md §3.3, §3.5, §3.6
 
 describe('renderSharedFileName', () => {
-  const base = {template: 'Coaching {subtag} {year}', ruleName: 'Coaching', subtag: 'sabina', date: '2026-10-02'};
+  const base = {template: 'Coaching {subtag} {year}', fallbackName: 'Coaching', subtag: 'sabina', date: '2026-10-02'};
 
   it('fills every placeholder', () => {
     expect(renderSharedFileName({...base, template: '{subtag} {year}-{quarter} {month}'})).toBe('sabina 2026-Q4 10');
@@ -69,24 +69,24 @@ describe('noteCreationConfirmText', () => {
     kind,
     file: 'Meetings/Coaching sabina 2026.note',
     absolutePath: '/x',
-    ruleName: 'Coaching',
+    setupName: 'Coaching',
     ...extra,
   });
   const full = 'Note/2 Areas/Coaching/Meetings/Coaching sabina 2026.note';
 
   it('names the rule and the file for first-time notes', () => {
     expect(noteCreationConfirmText(plan('new-shared-file'), full)).toMatchObject({
-      text: 'Rule Coaching: new file Meetings/Coaching sabina 2026.note',
+      text: 'Coaching: new file Meetings/Coaching sabina 2026.note',
       actionLabel: 'Create',
     });
     expect(noteCreationConfirmText(plan('new-page'), full)).toMatchObject({
-      text: 'Rule Coaching: new page in Meetings/Coaching sabina 2026.note',
+      text: 'Coaching: new page in Meetings/Coaching sabina 2026.note',
       actionLabel: 'Add page',
     });
     expect(noteCreationConfirmText(plan('new-own-file', {file: 'Todos/Call.note'}), full).text).toBe(
-      'Rule Coaching: new note Todos/Call.note',
+      'Coaching: new note Todos/Call.note',
     );
-    expect(noteCreationConfirmText(plan('new-own-file', {file: 'Todos/Call.note', ruleName: null}), full).text).toBe(
+    expect(noteCreationConfirmText(plan('new-own-file', {file: 'Todos/Call.note', setupName: null}), full).text).toBe(
       'New note Todos/Call.note',
     );
   });
@@ -99,7 +99,7 @@ describe('noteCreationConfirmText', () => {
 
   it('says a recreate does not bring content back', () => {
     for (const kind of ['recreate-page', 'recreate-shared-file', 'recreate-own-file'] as const) {
-      const t = noteCreationConfirmText(plan(kind, {ruleName: null}), full);
+      const t = noteCreationConfirmText(plan(kind, {setupName: null}), full);
       expect(t.text).toContain('(deleted?)');
       expect(t.detail).toContain('Earlier content is not restored');
       expect(t.detail).toContain(full);
@@ -110,17 +110,17 @@ describe('noteCreationConfirmText', () => {
 // docs/dev/history/technical-design-tending-threads.md §3.8: one rule for several types.
 describe('{tag} in shared file names', () => {
   it('names the file after the rule tag the item matched', () => {
-    const tag = ruleTypeTag(['next', 'retro/alpha'], ['sparring', 'retro']);
+    const tag = setupTypeTag(['next', 'retro/alpha'], ['sparring', 'retro']);
     expect(tag).toBe('retro');
-    const rendered = renderSharedFileName({template: '{tag} {subtag} {year}', ruleName: 'Sessions', tag, subtag: 'alpha', date: '2026-10-02'});
+    const rendered = renderSharedFileName({template: '{tag} {subtag} {year}', fallbackName: 'Sessions', tag, subtag: 'alpha', date: '2026-10-02'});
     expect(rendered).toBe('retro alpha 2026');
-    expect(renderSharedFileName({template: '{TAG} {year}', ruleName: 'S', tag: 'sparring', subtag: '', date: '2026-10-02'})).toBe('sparring 2026');
+    expect(renderSharedFileName({template: '{TAG} {year}', fallbackName: 'S', tag: 'sparring', subtag: '', date: '2026-10-02'})).toBe('sparring 2026');
   });
   it('leaves {tag} empty when no rule tag matches', () => {
-    expect(ruleTypeTag(['retrox/a', 'other'], ['retro'])).toBe('');
-    expect(renderSharedFileName({template: 'Notes {tag} {year}', ruleName: 'Notes', subtag: '', date: '2026-10-02'})).toBe('Notes 2026');
+    expect(setupTypeTag(['retrox/a', 'other'], ['retro'])).toBe('');
+    expect(renderSharedFileName({template: 'Notes {tag} {year}', fallbackName: 'Notes', subtag: '', date: '2026-10-02'})).toBe('Notes 2026');
   });
   it('matches a plain rule tag and keeps the first match in text order', () => {
-    expect(ruleTypeTag(['Sparring', 'retro/a'], ['RETRO', 'sparring'])).toBe('sparring');
+    expect(setupTypeTag(['Sparring', 'retro/a'], ['RETRO', 'sparring'])).toBe('sparring');
   });
 });

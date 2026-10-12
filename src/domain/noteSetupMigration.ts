@@ -159,8 +159,14 @@ function separateLoopKinds(members: readonly Member[], report: MigrationReport):
   return out;
 }
 
-function trackingOf(members: readonly Member[]): MeetingTracking {
+/**
+ * OR of the Meeting members' flags (0.14 OR'd the matching meeting rules).
+ * Without a Meeting member, 0.14 tracked these meetings by the Default
+ * Meeting rule, so the setup takes the Default's tracking.
+ */
+function trackingOf(members: readonly Member[], fallback: MeetingTracking): MeetingTracking {
   const meetings = members.filter(m => m.rule.context === 'meeting');
+  if (meetings.length === 0) return {...fallback};
   return {
     trackPrep: meetings.some(m => m.rule.trackPrep === true),
     trackReview: meetings.some(m => m.rule.trackReview === true),
@@ -168,7 +174,7 @@ function trackingOf(members: readonly Member[]): MeetingTracking {
 }
 
 /** One setup from one component (§5 rules 3-9). */
-function setupOf(group: readonly Member[], id: string, enabled: boolean, report: MigrationReport): NoteSetup {
+function setupOf(group: readonly Member[], id: string, enabled: boolean, defaults: NoteSetupDefaults, report: MigrationReport): NoteSetup {
   const loopMember = group.find(m => m.rule.context === 'loop');
   const meetingMember = group.find(m => m.rule.context === 'meeting');
   const tags: string[] = [];
@@ -189,7 +195,7 @@ function setupOf(group: readonly Member[], id: string, enabled: boolean, report:
     setup.pages[kind] = layoutOf(m.rule);
   }
 
-  setup.tracking = trackingOf(group);
+  setup.tracking = trackingOf(group, defaults.tracking);
 
   if (loopMember) {
     const field = loopMember.rule.sharedFileName?.trim();
@@ -279,7 +285,7 @@ export function migrateTagRules(rules: readonly LegacyTagRule[], nextId: number)
   ].sort((a, b) => a.group[0].index - b.group[0].index);
 
   let id = nextId;
-  const setups = ordered.map(({group, enabled}) => setupOf(group, String(id++), enabled, report));
+  const setups = ordered.map(({group, enabled}) => setupOf(group, String(id++), enabled, defaults, report));
   return {setups, defaults, nextId: id, report};
 }
 

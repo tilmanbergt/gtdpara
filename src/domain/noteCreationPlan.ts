@@ -9,7 +9,7 @@
  */
 
 export type NoteCreationPlanKind =
-  /** First-time note in its own file (no rule, an own-target rule, or an Inbox item). */
+  /** First-time note in its own file (no setup, a setup without a notebook, or an Inbox item). */
   | 'new-own-file'
   /** First-time note as a new page in a shared file that already exists. */
   | 'new-page'
@@ -30,8 +30,8 @@ export interface NoteCreationPlan {
   file: string;
   /** The same file as an absolute path (for the detail text's full location). */
   absolutePath: string;
-  /** The Tag Rule that decided this, if any - shown as "Rule <name>: ..." for first-time notes. */
-  ruleName: string | null;
+  /** The Note setup that decided this, if any - shown as "<name>: ..." for first-time notes. */
+  setupName: string | null;
   /** `link-page` only: the keyword of the existing page. */
   keyword?: string;
 }

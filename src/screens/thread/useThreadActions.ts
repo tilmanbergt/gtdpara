@@ -32,7 +32,7 @@ import {openLinkedFile} from '../../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../storage/meetingNoteContent';
 import {loadSettings} from '../../storage/settingsStorage';
 import {ThreadMeetingEntry, ThreadTaskEntry} from '../../storage/threadAggregate';
-import {MeetingTrackingConfig} from '../../ui/MeetingRow';
+import {MeetingTrackingConfig, trackingSetups} from '../../ui/MeetingRow';
 import {MeetingQuickAddFields, QuickFilePayload} from '../../ui/QuickAddWidget';
 import {useActionError} from '../../ui/useActionError';
 import {useCachedInbox} from '../../ui/useCachedInbox';
@@ -189,7 +189,7 @@ export function useThreadActions() {
     });
 
   const tracking = (entry: ThreadMeetingEntry): MeetingTrackingConfig => ({
-    rules: settings?.tagRules ?? [],
+    setups: trackingSetups(settings),
     onToggle: (kind: MeetingTrackingKind) =>
       rowAction.run(async () => {
         await saveMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));

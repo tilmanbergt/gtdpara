@@ -254,7 +254,7 @@ export async function renameKeywordAt(
  * freshly recreated page - one plain text element, positioned/sized the same
  * way a definition's own first piece would be (`DEFAULT_PIECE_X/Y/FONT_SIZE`,
  * `estimatePieceTextHeight` - the same constants and height estimate
- * `storage/meetingNoteContent.ts`'s `populateNoteFromRule` uses for a
+ * `storage/meetingNoteContent.ts`'s `populatePage` uses for a
  * page's first piece), since the recreated page is otherwise blank at the
  * moment this runs (the caller writes it before populating the page's real
  * content, so this notice ends up first, unlike the pieces which follow at

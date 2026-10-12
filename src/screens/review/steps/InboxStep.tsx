@@ -27,7 +27,7 @@ import {log, logError} from '../../../utils/log';
 import {requestEinkRefresh} from '../../../utils/screenRefresh';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../../../ui/FileBrowserPane';
 import {COLUMN_WIDTH_PX} from '../../../ui/itemEntryRow';
-import MeetingRow, {MeetingTrackingConfig} from '../../../ui/MeetingRow';
+import MeetingRow, {MeetingTrackingConfig, trackingSetups} from '../../../ui/MeetingRow';
 import MeetingList from '../../../ui/MeetingList';
 import {useEditTarget} from '../../../ui/useEditTarget';
 import PagedSection from '../../../ui/PagedSection';
@@ -257,7 +257,7 @@ export default function InboxStep({
   };
 
   const inboxMeetingTrackingFor = (meetingIndex: number): MeetingTrackingConfig => ({
-    rules: settings?.tagRules ?? [],
+    setups: trackingSetups(settings),
     onToggle: kind =>
       action.run(async () => {
         await writeMeetings(meetingIndex, meetings => toggleMeetingTrackingAt(meetings, meetingIndex, kind));
