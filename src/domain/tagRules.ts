@@ -29,6 +29,13 @@ import {
   pieceMaxWidthPx,
   PieceType,
 } from './pageLayout';
+import {LOOP_NOTE_NAME_DEFAULT, setupSubtag, setupTypeTag, tagMatchesSetupTag} from './noteSetups';
+
+export {LOOP_NOTE_NAME_DEFAULT};
+/** Rule-named aliases of the setup matching functions (domain/noteSetups.ts), used until the rules are gone. */
+export const tagMatchesRuleTag = tagMatchesSetupTag;
+export const ruleSubtag = (itemTags: string[], ruleTags: string[]): string => setupSubtag(itemTags, ruleTags);
+export const ruleTypeTag = (itemTags: string[], ruleTags: string[]): string => setupTypeTag(itemTags, ruleTags);
 
 /**
  * `loop` (docs/dev/history/technical-design-loops.md §3.1): a Loop rule's
@@ -39,8 +46,6 @@ import {
  */
 export type NoteContext = 'project' | 'area' | 'todo' | 'meeting' | 'loop';
 
-/** A Loop rule's note name when its field is blank. */
-export const LOOP_NOTE_NAME_DEFAULT = '{year}-{month} {tag} {subtag}';
 
 /**
  * Where a Meeting/Todo definition's note content ends up (
@@ -217,55 +222,6 @@ export function resolveNoteTemplate(
     }
   }
   return inContext.find(d => d.isDefault) ?? null;
-}
-
-/**
- * Whether an item's tag matches a Tag Rule's tag (docs/dev/technical-design-
- * split-by-tag.md §3.2): the tag itself, or a tag nested under it - a rule on
- * `coaching` matches `coaching` and `coaching/sabina`, never `coachingx`, and a
- * rule on `coaching/sabina` never matches plain `coaching` (matching only goes
- * from parent to child). Both sides are expected lowercased; callers already
- * lowercase (see resolveNoteTemplate above).
- */
-export function tagMatchesRuleTag(itemTag: string, ruleTag: string): boolean {
-  return itemTag === ruleTag || itemTag.startsWith(`${ruleTag}/`);
-}
-
-/**
- * The part of the first item tag nested under any of `ruleTags`, with that
- * rule-tag prefix removed (technical-design-split-by-tag.md §3.2) -
- * `['coaching/sabina']` under rule `coaching` gives `"sabina"`; deeper nesting
- * keeps the rest (`coaching/sabina/2026` -> `"sabina/2026"`). Item tags are
- * scanned in their own order (text order, as extracted), so the first nested
- * tag wins. Lowercased; `""` when no item tag is nested under a rule tag
- * (including when the item only carries the plain rule tag).
- */
-export function ruleSubtag(itemTags: string[], ruleTags: string[]): string {
-  const rulesLower = ruleTags.map(t => t.toLowerCase()).filter(Boolean);
-  for (const raw of itemTags) {
-    const tag = raw.toLowerCase();
-    for (const ruleTag of rulesLower) {
-      if (tag.startsWith(`${ruleTag}/`)) return tag.slice(ruleTag.length + 1);
-    }
-  }
-  return '';
-}
-
-/**
- * The rule tag the item matched (docs/dev/history/technical-design-tending-threads.md
- * §3.8) - the `{tag}` of a shared file name, so one rule on `sparring` and
- * `retro` names its files `sparring max 2026` and `retro alpha 2026`. The
- * first item tag (text order) that is a rule tag or nested under one wins;
- * lowercased; `""` when none matches.
- */
-export function ruleTypeTag(itemTags: string[], ruleTags: string[]): string {
-  const rulesLower = ruleTags.map(t => t.toLowerCase()).filter(Boolean);
-  for (const raw of itemTags) {
-    const tag = raw.toLowerCase();
-    const rule = rulesLower.find(ruleTag => tagMatchesRuleTag(tag, ruleTag));
-    if (rule) return rule;
-  }
-  return '';
 }
 
 /**

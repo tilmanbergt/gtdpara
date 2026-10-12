@@ -98,6 +98,55 @@ export interface PageLayout {
 }
 
 /**
+ * Which page kinds each piece type is offered on - drives the Add panel of
+ * the layout page. `related` carries no per-piece tag override - it always
+ * matches by whichever tags the note being created actually has (see
+ * storage/meetingNoteAggregate.ts's relatedItemsFor), so it can never drift
+ * out of sync with the note's own tags.
+ */
+export const PIECE_PAGES: Record<PieceType, PageKind[]> = {
+  title: ['todo', 'meeting', 'first'],
+  date: ['meeting'],
+  time: ['meeting'],
+  text: ['todo', 'meeting', 'first'],
+  related: ['todo', 'meeting'],
+  link: ['todo', 'meeting', 'first'],
+  sinceLast: ['meeting'],
+  dateTitle: ['meeting', 'first'],
+};
+
+/**
+ * The pieces a fresh page starts with, in top-to-bottom order
+ * (docs/dev/history/technical-design-projects-findable-notes.md §2.1 R3):
+ * a meeting page Date & title, Time, Linked file; a todo page Title and
+ * Linked file; a loop's first page Date & title and Linked file.
+ */
+export const DEFAULT_PIECE_TYPES: Record<PageKind, PieceType[]> = {
+  meeting: ['dateTitle', 'time', 'link'],
+  todo: ['title', 'link'],
+  first: ['dateTitle', 'link'],
+};
+
+/** Default pieces seeded with the Heading switch set on explicitly (a todo's heading is its Title, §2.1 R3). */
+const DEFAULT_HEADING_PIECES: Partial<Record<PageKind, PieceType[]>> = {todo: ['title']};
+
+/** Adds `DEFAULT_PIECE_TYPES[kind]` to `layout`, stacked below its existing pieces. */
+export function withDefaultPieces<T extends PageLayout>(layout: T, kind: PageKind): T {
+  const seeded = DEFAULT_PIECE_TYPES[kind].reduce((l, type) => addPiece(l, type), layout);
+  const headings = DEFAULT_HEADING_PIECES[kind] ?? [];
+  const start = layout.pieces.length;
+  return {
+    ...seeded,
+    pieces: seeded.pieces.map((p, i) => (i >= start && headings.includes(p.type) ? {...p, heading: true} : p)),
+  };
+}
+
+/** An empty page: blank background, no pieces, no texts. */
+export function emptyPageLayout(): PageLayout {
+  return {template: '', pieces: []};
+}
+
+/**
  * Whether `piece` is written as a heading (docs/dev/history/
  * technical-design-projects-findable-notes.md §2.1 R1/R3): its own switch,
  * else the type's default - on for `dateTitle`, off otherwise. Never for a
