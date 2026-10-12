@@ -14,7 +14,7 @@
  */
 import {todayIso} from '../domain/meetingTime';
 import {layoutFor} from '../domain/noteSetups';
-import {NoteCreationPlan} from '../domain/noteCreationPlan';
+import {NoteCreateConfirm, NoteCreationPlan} from '../domain/noteCreationPlan';
 import {buildSharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaSettings} from '../domain/settings';
 import {createNote, displayPath, ensureFolderExists, fileExists} from '../supernote/fileSystem';
@@ -79,8 +79,12 @@ export interface ItemNoteParams {
  */
 interface ItemNotePlan {
   plan: NoteCreationPlan | null;
-  execute: () => Promise<ItemNoteAnchorResolution>;
+  /** Carries out the chosen place: 0 = `plan`, n = `plan.alternatives[n - 1]`. */
+  execute: (choice: number) => Promise<ItemNoteAnchorResolution>;
 }
+
+/** At most this many places are planned for a first note (each costs a file check and a keyword lookup). */
+const MAX_PLACES = 4;
 
 function relativeFolderPath(itemPath: string, relativeFolder: string): string {
   const base = itemPath.replace(/\/+$/, '');
@@ -136,7 +140,7 @@ async function recreateSharedPage(
 export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
   const {itemPath, tags, currentKeyword, isDated} = params;
   const existing = await classifyNotePath(itemPath, params.notePath);
-  if (existing.kind === 'none') return planNewNote(params, placeNoteCandidates(targetInput(params))[0]);
+  if (existing.kind === 'none') return planFirstNote(params);
   const background = backgroundOf(
     layoutForLink({...targetInput(params), linkedFile: existing.kind === 'shared' ? existing.anchor.filePath : null}),
   );
@@ -220,6 +224,22 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
   throw new Error('Unknown note link.');
 }
 
+/**
+ * A first note: the plan for the best place, with the other places as
+ * `alternatives` (docs/dev/history/technical-design-note-setups.md §4.4).
+ */
+async function planFirstNote(params: ItemNoteParams): Promise<ItemNotePlan> {
+  const placed = placeNoteCandidates(targetInput(params)).slice(0, MAX_PLACES);
+  const plans: ItemNotePlan[] = [];
+  for (const p of placed) plans.push(await planNewNote(params, p));
+  const [best, ...others] = plans;
+  const alternatives = others.map(o => o.plan).filter((p): p is NoteCreationPlan => p !== null);
+  return {
+    plan: best.plan && alternatives.length > 0 ? {...best.plan, alternatives} : best.plan,
+    execute: choice => (plans[choice] ?? best).execute(0),
+  };
+}
+
 function targetInput(params: ItemNoteParams): NoteTargetInput {
   return {
     itemPath: params.itemPath,
@@ -293,23 +313,26 @@ async function planNewNote(params: ItemNoteParams, placed: PlacedCandidate): Pro
 
 /**
  * Plans, asks for confirmation when the plan creates, recreates or links
- * something, then carries it out. `null` = the user cancelled: nothing was
+ * something - for a first note with the choice of its alternatives - then
+ * carries out the chosen place. `null` = the user cancelled: nothing was
  * written, and the item's existing link (if any) is untouched, so the next
  * tap asks again.
  */
 export async function resolveItemNote(
   params: ItemNoteParams,
-  confirmCreate: ((plan: NoteCreationPlan) => Promise<boolean>) | undefined,
+  confirmCreate: NoteCreateConfirm | undefined,
   logTag: string,
 ): Promise<ItemNoteAnchorResolution | null> {
   const {plan, execute} = await planItemNote(params);
-  // Kind only - file names carry client/meeting names (DEVELOPMENT-POLICY §5).
-  log(`${logTag}: plan`, plan?.kind ?? 'open');
-  if (plan && confirmCreate && !(await confirmCreate(plan))) {
+  // Kind and counts only - file names carry client/meeting names (DEVELOPMENT-POLICY §5).
+  log(`${logTag}: plan`, plan?.kind ?? 'open', `(alternatives ${plan?.alternatives?.length ?? 0})`);
+  const choice = plan && confirmCreate ? await confirmCreate(plan) : 0;
+  if (plan && choice === null) {
     log(`${logTag}: cancelled`, plan.kind);
     return null;
   }
-  const resolution = await execute();
-  if (plan) log(`${logTag}: done`, plan.kind);
+  const chosen = choice ?? 0;
+  const resolution = await execute(chosen);
+  if (plan) log(`${logTag}: done`, plan.kind, `(choice ${chosen})`);
   return resolution;
 }

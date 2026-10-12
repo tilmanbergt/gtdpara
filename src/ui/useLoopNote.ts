@@ -1,7 +1,7 @@
 /**
  * The loop note's icon (docs/dev/history/technical-design-loops.md §4.4):
  * opens the loop's note at its first page, or - after a confirm in the
- * status slot - creates it from the Loop rule. Errors show in the status
+ * status slot - creates it from the Loop setup. Errors show in the status
  * slot.
  */
 import {useCallback} from 'react';

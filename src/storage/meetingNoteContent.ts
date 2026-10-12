@@ -70,7 +70,7 @@ import {
   renderPieceText,
 } from '../domain/pageLayout';
 import {layoutFor} from '../domain/noteSetups';
-import {NoteCreationPlan} from '../domain/noteCreationPlan';
+import {NoteCreateConfirm, NoteCreationPlan} from '../domain/noteCreationPlan';
 import {joinNotePath, meetingPageKeyword, parseSharedNoteAnchor, todoPageKeyword} from '../domain/sharedNotePages';
 import {DEFAULT_SETTINGS, GtdParaSettings, NoteHeadingStyle, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
@@ -515,12 +515,12 @@ export async function openOrCreateLoopNote(
   ownerPath: string,
   tag: string,
   settings: GtdParaSettings,
-  confirmCreate?: (plan: NoteCreationPlan) => Promise<boolean>,
+  confirmCreate?: NoteCreateConfirm,
 ): Promise<boolean> {
   const note = loopNoteOf(ownerPath, tag);
   if (!(await fileExists(note.absolutePath))) {
     const plan: NoteCreationPlan = {kind: 'new-shared-file', file: `${note.fileName}.note`, absolutePath: note.absolutePath, setupName: note.setup?.name ?? null};
-    if (confirmCreate && !(await confirmCreate(plan))) return false;
+    if (confirmCreate && (await confirmCreate(plan)) === null) return false;
     await ensureLoopNoteFile(ownerPath, note, settings.noteSetupDefaults);
     const layout = layoutFor(note.setup, 'first', settings.noteSetupDefaults);
     await populateLoopNotePage(note.absolutePath, layout, note.loop, note.line.mainDate, note.line.linkedFile, settings);
@@ -554,10 +554,11 @@ export interface OpenOrCreateNoteOptions {
   /**
    * Asked before anything is created, recreated or linked (split-by-tag
    * design §3.5) - every screen passes `ui/useNoteCreateConfirm.ts`'s
-   * callback. Resolving `false` cancels: nothing is written, nothing opened.
+   * callback. It resolves the chosen place (0 = the plan, n = alternative n,
+   * note-setups design §4.4); `null` cancels: nothing is written, nothing opened.
    * Without it the plan is carried out directly (non-UI callers).
    */
-  confirmCreate?: (plan: NoteCreationPlan) => Promise<boolean>;
+  confirmCreate?: NoteCreateConfirm;
 }
 
 /**

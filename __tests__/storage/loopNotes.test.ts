@@ -95,7 +95,7 @@ function meeting(title: string, date = '2026-10-02'): Meeting {
 const plans: NoteCreationPlan[] = [];
 const confirm = async (plan: NoteCreationPlan) => {
   plans.push(plan);
-  return true;
+  return 0;
 };
 
 beforeEach(() => {
@@ -136,6 +136,31 @@ describe('loop notes', () => {
     const todo = {text: 'Draft #jf/demand #workshop/offsite', notePath: '', done: false, cancelled: false, ...deriveTaskFields('Draft #jf/demand #workshop/offsite')};
     await openOrCreateTodoNote(todo as unknown as Task, AREA, settingsWith([jf]), null, {confirmCreate: confirm});
     expect(plans[0]).toMatchObject({kind: 'new-shared-file', file: '2026-11 workshop offsite.note', setupName: 'Workshops'});
+  });
+
+  it('offers the notebook as the alternative; picking it puts the page there, and reopening does not ask', async () => {
+    const jf: NoteSetup = {...createNoteSetup('1', 'thread'), name: 'JF', tags: ['jf'], notebook: {name: 'JF {subtag}', folder: 'Meetings'}};
+    const todo = {text: 'Draft #jf/demand #workshop/offsite', notePath: '', done: false, cancelled: false, ...deriveTaskFields('Draft #jf/demand #workshop/offsite')};
+    const pickSecond = async (plan: NoteCreationPlan) => {
+      plans.push(plan);
+      return 1;
+    };
+    const first = await openOrCreateTodoNote(todo as unknown as Task, AREA, settingsWith([jf]), null, {confirmCreate: pickSecond});
+    expect(plans[0].alternatives?.map(a => [a.kind, a.file, a.setupName])).toEqual([['new-shared-file', 'Meetings/JF demand.note', 'JF']]);
+    expect(first.task.notePath).toBe('Meetings/JF demand.note#Draft #jf/demand #workshop/offsite');
+    expect(mockFiles.has(LOOP_NOTE)).toBe(false);
+    plans.length = 0;
+    await openOrCreateTodoNote(first.task, AREA, settingsWith([jf]), null, {confirmCreate: pickSecond});
+    expect(plans).toEqual([]);
+  });
+
+  it('places that lead to the same file are one choice; no alternative, no second button', async () => {
+    const shared = {name: 'Team notes', folder: ''};
+    const a: NoteSetup = {...createNoteSetup('1', 'thread'), name: 'A', tags: ['a'], notebook: shared};
+    const b: NoteSetup = {...createNoteSetup('2', 'thread'), name: 'B', tags: ['b'], notebook: shared};
+    await openOrCreateMeetingNote(meeting('Sync #a #b'), AREA, settingsWith([a, b]), null, {confirmCreate: confirm});
+    expect(plans[0]).toMatchObject({file: 'Team notes.note', setupName: 'A'});
+    expect(plans[0].alternatives).toBeUndefined();
   });
 
   it('opens the loop note at its first page, creating it after a confirm', async () => {

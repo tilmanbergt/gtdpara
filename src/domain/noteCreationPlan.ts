@@ -34,4 +34,18 @@ export interface NoteCreationPlan {
   setupName: string | null;
   /** `link-page` only: the keyword of the existing page. */
   keyword?: string;
+  /**
+   * First-time notes only: the other places this note could go, best first
+   * (docs/dev/history/technical-design-note-setups.md §1.2, §4.4) - other
+   * setups that match and lead to a different file. Absent when there is
+   * no other place.
+   */
+  alternatives?: NoteCreationPlan[];
 }
+
+/**
+ * Asks before a note is created, recreated or linked: resolves the chosen
+ * place - 0 = the plan itself, n = `plan.alternatives[n - 1]` - or `null`
+ * (✕: nothing is written). ui/useNoteCreateConfirm.ts shows it in the status slot.
+ */
+export type NoteCreateConfirm = (plan: NoteCreationPlan) => Promise<number | null>;

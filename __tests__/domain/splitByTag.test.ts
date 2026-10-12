@@ -1,5 +1,5 @@
 import {spliceWordAtSelection} from '../../src/domain/clipboardText';
-import {noteCreationConfirmText} from '../../src/domain/fileChangeText';
+import {noteChoiceText, noteCreationConfirmText} from '../../src/domain/fileChangeText';
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
 import {renderSharedFileName} from '../../src/domain/sharedNotePages';
 import {setupTypeTag} from '../../src/domain/noteSetups';
@@ -122,5 +122,28 @@ describe('{tag} in shared file names', () => {
   });
   it('matches a plain rule tag and keeps the first match in text order', () => {
     expect(setupTypeTag(['Sparring', 'retro/a'], ['RETRO', 'sparring'])).toBe('sparring');
+  });
+});
+
+describe('note choice text (docs/dev/history/technical-design-note-setups.md §4.4)', () => {
+  const full = 'Note/2 Areas/Coaching/2026-11 workshop offsite.note';
+  const loopPlan: NoteCreationPlan = {kind: 'new-page', file: '2026-11 workshop offsite.note', absolutePath: '/x', setupName: 'Workshop'};
+  const notebook: NoteCreationPlan = {kind: 'new-shared-file', file: 'Sparring/sparring peter 2026.note', absolutePath: '/y', setupName: 'Sparring'};
+  const own: NoteCreationPlan = {kind: 'new-own-file', file: 'Todos/Draft.note', absolutePath: '/z', setupName: 'Team'};
+
+  it('one place: the plain confirm', () => {
+    expect(noteChoiceText(loopPlan, full)).toEqual({
+      text: 'Workshop: new page in 2026-11 workshop offsite.note',
+      detail: `Adds a page for this item to ${full}.`,
+      labels: ['Add page'],
+    });
+  });
+
+  it('more places: one button for the best other one, every place in the detail', () => {
+    const t = noteChoiceText({...loopPlan, alternatives: [notebook, own]}, full);
+    expect(t.labels).toEqual(['Add page', 'In Sparring']);
+    expect(t.detail).toContain('Or: Sparring: new file Sparring/sparring peter 2026.note');
+    expect(t.detail).toContain('Or: Team: new note Todos/Draft.note');
+    expect(noteChoiceText({...loopPlan, alternatives: [own]}, full).labels).toEqual(['Add page', 'Own note']);
   });
 });

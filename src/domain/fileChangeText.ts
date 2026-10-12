@@ -83,6 +83,41 @@ export function noteCreationConfirmText(plan: NoteCreationPlan, fullDisplay: str
   }
 }
 
+/** A note confirm with its choice of places: the buttons, the first one the plan's own action. */
+export interface NoteChoiceText {
+  text: string;
+  detail: string;
+  labels: string[];
+}
+
+/** One place in the choice's detail: "Sparring: new page in Sparring/sparring peter 2026.note". */
+function placeLine(plan: NoteCreationPlan): string {
+  return noteCreationConfirmText(plan, plan.file).text;
+}
+
+/** The button of an alternative: "In Sparring", or "Own note" for the item's own note. */
+export function alternativeLabel(plan: NoteCreationPlan): string {
+  return plan.kind === 'new-own-file' ? 'Own note' : `In ${plan.setupName ?? 'Default'}`;
+}
+
+/**
+ * The note confirm with its alternatives (docs/dev/history/technical-design-note-setups.md
+ * §4.4): the plan's text and button, plus one button for the best
+ * alternative; the detail lists every place with its file. `fullDisplay`
+ * as for `noteCreationConfirmText`.
+ */
+export function noteChoiceText(plan: NoteCreationPlan, fullDisplay: string): NoteChoiceText {
+  const own = noteCreationConfirmText(plan, fullDisplay);
+  const alternatives = plan.alternatives ?? [];
+  if (alternatives.length === 0) return {text: own.text, detail: own.detail, labels: [own.actionLabel]};
+  const places = [plan, ...alternatives].map((p, i) => `${i === 0 ? 'Default here' : 'Or'}: ${placeLine(p)}`).join(' · ');
+  return {
+    text: own.text,
+    detail: `${own.detail} ${places}. More than one setup matches; the button "${alternativeLabel(alternatives[0])}" picks the next one.`,
+    labels: [own.actionLabel, alternativeLabel(alternatives[0])],
+  };
+}
+
 /** A status-slot confirm: one line, tap-to-expand detail, the confirm button (✕ cancels). */
 export interface ConfirmText {
   text: string;

@@ -681,3 +681,15 @@ this section lists where the code differs from the design above, and why.
 - The status-slot messages of §6.6 and §8 (migration notice, migration failed) come with
   the Settings UI in step 5; until then a failure is logged and shows in the debug bundle
   (`migrated failed`).
+
+### Alternatives (step 4)
+
+- `confirmCreate` is `NoteCreateConfirm` (`domain/noteCreationPlan.ts`): it resolves the
+  chosen place's index or `null`. `useStatusChoice` is the one implementation;
+  `useStatusConfirm` resolves `choice === 0`, `useNoteCreateConfirm` passes
+  `noteChoiceText` (`domain/fileChangeText.ts`).
+- The second button reads "In <setup name>", or "Own note" when the alternative is the
+  item's own note (a Thread setup without a notebook, or a Loop setup outside an active
+  loop) - "In Team" would not say that no notebook is involved.
+- At most four places are planned (`MAX_PLACES`), each with a file check and a keyword
+  lookup; the detail lists the planned ones.

@@ -90,13 +90,14 @@ function task(text: string, notePath = ''): Task {
   return {text, notePath, done: false, cancelled: false, ...deriveTaskFields(text)} as unknown as Task;
 }
 
-function recorder(answer: boolean) {
+/** Records every plan; answers `true` = the plan itself (0), `false` = ✕ (null), or a number = that place. */
+function recorder(answer: boolean | number) {
   const plans: NoteCreationPlan[] = [];
   return {
     plans,
     confirm: async (plan: NoteCreationPlan) => {
       plans.push(plan);
-      return answer;
+      return answer === true ? 0 : answer === false ? null : answer;
     },
   };
 }
