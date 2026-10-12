@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-10-12
+
 ### New
 - **Loops**: small projects inside an Area or Project, without a folder of their own - a workshop
   to prepare, a book to read, a trip, a purchase. A Tag Rule with the new context **Loop** makes
