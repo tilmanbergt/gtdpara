@@ -20,7 +20,7 @@
  * `refreshMeetingNoteBlock` and `refreshTodoNoteBlock` resolve a definition,
  * render its pieces and call `populateNoteFromRule`. Both gate the
  * *re*-populate-on-open path on a freeze rule (domain/meetingTime.ts's
- * `isMeetingAutoUpdateFrozen` / domain/tagRules.ts's
+ * `isMeetingAutoUpdateFrozen` / domain/pageLayout.ts's
  * `isTodoAutoUpdateFrozen`) via an `isInitialPopulation` option that only
  * the note-*creation* call sites set - see either freeze function's own doc
  * comment for why creation always bypasses it.
@@ -51,7 +51,7 @@
  * (docs/dev/history/technical-design-textbox-metrics.md): `populateNoteFromRule`
  * builds each rect via `storage/notePieceMetrics.ts`'s `measureNotePieceRect`
  * (real on-device text measurement, content-fit width, capped at each
- * piece's own `maxWidthPx` - see domain/tagRules.ts's `NotePiece`) and
+ * piece's own `maxWidthPx` - see domain/pageLayout.ts's `NotePiece`) and
  * the element itself via `supernote/noteElements.ts`'s `buildTextboxElement`.
  */
 import {linkTypeForExtension, notePieceUserData} from '../domain/meetingNoteBlock';
@@ -60,14 +60,16 @@ import {isMeetingAutoUpdateFrozen, todayIso} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {tagsAsWords} from '../domain/markdown';
 import {
+  TagRule,
+  resolveNoteTemplate,
+} from '../domain/tagRules';
+import {
   dateTitleText,
   isTodoAutoUpdateFrozen,
-  TagRule,
   pieceMaxWidthPx,
   PieceRenderContext,
   renderPieceText,
-  resolveNoteTemplate,
-} from '../domain/tagRules';
+} from '../domain/pageLayout';
 import {NoteCreationPlan} from '../domain/noteCreationPlan';
 import {meetingPageKeyword, todoPageKeyword} from '../domain/sharedNotePages';
 import {DEFAULT_SETTINGS, GtdParaSettings, NoteHeadingStyle, ResolvedParaPaths, resolvePaths} from '../domain/settings';
@@ -222,7 +224,7 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  *
  * `pieceContent[i]` is `definition.pieces[i]` already rendered to text (the
  * caller - refreshMeetingNoteBlock below - builds this via
- * domain/tagRules.ts's renderPieceText, since which fields feed a piece
+ * domain/pageLayout.ts's renderPieceText, since which fields feed a piece
  * is context-specific and this function shouldn't need to know that). A
  * piece whose rendered text is `''` (an unset `time`, a `related` piece
  * with nothing to show) gets no element at all - same "omit rather than
@@ -322,7 +324,7 @@ export async function populateNoteFromRule(
  *
  * Resolves `resolveNoteTemplate('meeting', meeting.tags,
  * settings.tagRules)`. When it finds a
- * definition, renders every piece via domain/tagRules.ts's
+ * definition, renders every piece via domain/pageLayout.ts's
  * renderPieceText (building a PieceRenderContext from this Meeting + its
  * related todos) and calls populateNoteFromRule. When it returns
  * `null` (no matching/enabled Meeting definition) nothing is written, same
@@ -382,7 +384,7 @@ export async function refreshMeetingNoteBlock(
     // '' means "no time given" (Meeting.time's own convention) - left
     // unset on ctx rather than passed through as '', so renderPieceText's
     // `ctx.time ?? ''` for a `time` piece and its "meeting only, only when
-    // set" contract (domain/tagRules.ts §4) both read the same way
+    // set" contract (domain/pageLayout.ts) both read the same way
     // whether the meeting has no time or the definition has no time piece.
     time: meeting.time || undefined,
     relatedItems: relatedTodos.map(t => ({text: t.task.text})),
@@ -419,7 +421,7 @@ function sinceLastInbox(): ThreadInboxInput | null {
  * with this task's own `tags` and excluding this task's own `notePath` so
  * it never lists itself (see storage/meetingNoteAggregate.ts's doc
  * comment on `excludeNotePath`). No `date`/`time` fields are set on `ctx` -
- * those piece types are meeting-only (domain/tagRules.ts's
+ * those piece types are meeting-only (domain/pageLayout.ts's
  * `PIECE_CONTEXTS`), so a Todo definition's Add-piece list never offers them
  * in the first place.
  *

@@ -19,7 +19,8 @@
 import {notePieceUserData} from '../domain/meetingNoteBlock';
 import {planPageKeywords} from '../domain/noteFindability';
 import {NoteHeadingStyle} from '../domain/settings';
-import {pieceIsHeading, TagRule} from '../domain/tagRules';
+import {TagRule} from '../domain/tagRules';
+import {pieceIsHeading} from '../domain/pageLayout';
 import {deleteKeyWord, getElements, getKeyWords, insertElements, insertKeyWord} from '../supernote/fileSystem';
 import {buildTitleElement, ElementWithTitle} from '../supernote/noteTitles';
 import {recycleElements} from '../supernote/sdkElements';

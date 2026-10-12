@@ -37,7 +37,7 @@ import {
   pieceWidthPx,
   pieceIsHeading,
   PieceType,
-} from '../domain/tagRules';
+} from '../domain/pageLayout';
 import {MYSTYLE_FOLDER} from '../supernote/fileSystem';
 import {COLORS, FONT} from './theme';
 

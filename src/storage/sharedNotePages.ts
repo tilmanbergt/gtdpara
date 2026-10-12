@@ -33,7 +33,7 @@ import {
   DEFAULT_PIECE_X,
   DEFAULT_PIECE_Y,
   pieceWidthPx,
-} from '../domain/tagRules';
+} from '../domain/pageLayout';
 import {estimatePieceTextHeight} from '../domain/meetingNoteBlock';
 import {
   createElement,

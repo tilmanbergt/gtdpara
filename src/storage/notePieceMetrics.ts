@@ -6,7 +6,7 @@
  * native-backed measureTextHeight, so it lives in storage/ like every other
  * file that touches the native bridge.
  *
- * The max width is per piece (domain/tagRules.ts's NotePiece.maxWidthPx /
+ * The max width is per piece (domain/pageLayout.ts's NotePiece.maxWidthPx /
  * pieceMaxWidthPx is the resolved value callers pass in as `maxWidthPx`).
  * This function takes plain primitives, not a NotePiece, so
  * storage/meetingNoteContent.ts's populateMeetingNoteBlockFallback (a fixed
@@ -25,7 +25,7 @@
  * widen their boxes. `measurement.heightPx` already reflects whichever width
  * was requested, so no separate fallback height calculation is needed here.
  */
-import {pieceWidthPx} from '../domain/tagRules';
+import {pieceWidthPx} from '../domain/pageLayout';
 import {measureTextHeight, TEXT_MEASURE_WIDTH_ADJUSTMENT_PX} from '../supernote/textboxMetrics';
 
 /**
@@ -45,7 +45,7 @@ export interface NotePieceRect {
 /**
  * `x`/`fontSizePx` come straight off a NotePiece (or the fallback block's own
  * fixed position/font); `maxWidthPx` is the resolved cap - domain/
- * tagRules.ts's `pieceMaxWidthPx(piece)` for a real piece, or
+ * pageLayout.ts's `pieceMaxWidthPx(piece)` for a real piece, or
  * FALLBACK_BLOCK_MAX_WIDTH for the fixed fallback block. Never throws -
  * delegates to measureTextHeight, which never does.
  */

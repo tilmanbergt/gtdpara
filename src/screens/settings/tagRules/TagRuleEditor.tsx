@@ -6,7 +6,8 @@
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {todayIso} from '../../../domain/meetingTime';
-import {effectiveNoteTarget, hasUntouchedDefaultPieces, LOOP_NOTE_NAME_DEFAULT, NoteContext, TagRule, NotePiece, NoteTarget, PIECE_CONTEXTS, pieceIsHeading, pieceMaxWidthPx, resolvedSharedFileFolder, resolvedSharedFileName, SharedNoteFolder, withDefaultPieces} from '../../../domain/tagRules';
+import {effectiveNoteTarget, hasUntouchedDefaultPieces, LOOP_NOTE_NAME_DEFAULT, NoteContext, TagRule, NoteTarget, PIECE_CONTEXTS, resolvedSharedFileFolder, resolvedSharedFileName, SharedNoteFolder, withDefaultPieces} from '../../../domain/tagRules';
+import {NotePiece, pieceIsHeading, pieceMaxWidthPx} from '../../../domain/pageLayout';
 import {renderSharedFileName} from '../../../domain/sharedNotePages';
 import {loopNoteBaseName} from '../../../domain/loops';
 import {MEETINGS_SUBFOLDER, sanitizeFileNameComponent, TODOS_SUBFOLDER} from '../../../storage/noteLinks';

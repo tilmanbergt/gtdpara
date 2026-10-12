@@ -5,20 +5,22 @@ import {NOTE_HEADING_USERDATA, notePieceUserData} from '../../src/domain/meeting
 import {staleManagedNums, TITLE_ELEMENT_TYPE} from '../../src/domain/noteFindability';
 import {DEFAULT_SETTINGS} from '../../src/domain/settings';
 import {
-  addPieceToRule,
   createDefaultMeetingRule,
   createEmptyTagRule,
-  dateTitleText,
   hasUntouchedDefaultPieces,
   PIECE_CONTEXTS,
+  withDefaultPieces,
+} from '../../src/domain/tagRules';
+import {
+  addPiece,
+  dateTitleText,
   pieceIsHeading,
   renderPieceText,
   setPieceHeading,
-  withDefaultPieces,
-} from '../../src/domain/tagRules';
+} from '../../src/domain/pageLayout';
 
-const piece = (type: Parameters<typeof addPieceToRule>[1], heading?: boolean) => ({
-  ...addPieceToRule(createEmptyTagRule('1', 'meeting'), type).pieces[0],
+const piece = (type: Parameters<typeof addPiece>[1], heading?: boolean) => ({
+  ...addPiece(createEmptyTagRule('1', 'meeting'), type).pieces[0],
   ...(heading === undefined ? {} : {heading}),
 });
 

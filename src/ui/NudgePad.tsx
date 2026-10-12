@@ -4,14 +4,14 @@
  * the preview, acting on whichever piece `selectedPiece` points at
  * (selected on the preview or in the list below) - not repeated per piece row.
  *
- * Kept dumb/reusable (plain callbacks in, no domain/tagRules.ts import)
+ * Kept dumb/reusable (plain callbacks in, no domain/pageLayout.ts import)
  * rather than baked into screens/Settings.tsx, so other piece kinds (design
  * doc §4) can use the same controls.
  *
  * Max-width ± control (docs/dev/history/technical-design-textbox-metrics.md): same
  * shape as the Font ± control above it, fixed ±25 step, independent of the
  * x/y STEPS toggle. screens/Settings.tsx resolves `piece.maxWidthPx` via
- * domain/tagRules.ts's `pieceMaxWidthPx` before passing it down here, so
+ * domain/pageLayout.ts's `pieceMaxWidthPx` before passing it down here, so
  * this component never imports that domain module itself.
  */
 import React from 'react';
@@ -25,7 +25,7 @@ interface SelectedPiece {
   step: number;
   /**
    * Resolved max width (device px) for this piece - always a concrete
-   * number here even though domain/tagRules.ts's NotePiece.maxWidthPx
+   * number here even though domain/pageLayout.ts's NotePiece.maxWidthPx
    * itself is optional (screens/Settings.tsx resolves it via
    * `pieceMaxWidthPx` before handing the piece to this component, same as
    * every other field here). docs/dev/history/technical-design-textbox-metrics.md.

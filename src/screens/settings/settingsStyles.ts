@@ -1,6 +1,6 @@
 /** Styles shared by the Settings screen and its tabs. */
 import {StyleSheet} from 'react-native';
-import {NOTE_PAGE_HEIGHT_PX, NOTE_PAGE_WIDTH_PX} from '../../domain/tagRules';
+import {NOTE_PAGE_HEIGHT_PX, NOTE_PAGE_WIDTH_PX} from '../../domain/pageLayout';
 import {COLORS, FONT, RADII, SPACING} from '../../ui/theme';
 
 export const styles = StyleSheet.create({

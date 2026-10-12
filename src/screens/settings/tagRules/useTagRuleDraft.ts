@@ -10,9 +10,13 @@ import {Dispatch, SetStateAction, useRef, useState} from 'react';
 import {stripSpaceAfterHash} from '../../../domain/markdown';
 import {GtdParaSettings, NoteHeadingStyle} from '../../../domain/settings';
 import {
-  addPieceToRule,
-  addTextItem,
   createEmptyTagRule,
+  TagRule,
+  withDefaultPieces,
+} from '../../../domain/tagRules';
+import {
+  addPiece,
+  addTextItem,
   findPlacedPieceIndex,
   isPiecePlaced,
   migrateLegacyTextPieces,
@@ -20,19 +24,17 @@ import {
   nudgePieceAt,
   pieceMaxWidthPx,
   PieceType,
-  removePieceFromRule,
+  removePiece,
   removePlacedPiece,
   removeTextItem,
-  ruleTexts,
+  layoutTexts,
   pieceIsHeading,
   setPieceFontSize,
   setPieceHeading,
   setPieceMaxWidth,
   setPieceStep,
-  TagRule,
   updateTextItem,
-  withDefaultPieces,
-} from '../../../domain/tagRules';
+} from '../../../domain/pageLayout';
 import {loadSettings, saveSettings} from '../../../storage/settingsStorage';
 import {ClipboardTextInputHandle} from '../../../ui/ClipboardTextInput';
 import {PIECE_TYPE_LABELS} from '../../../ui/NoteTemplatePreview';
@@ -264,8 +266,8 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
         type === 'text' ? `Removed “${label}” from the rule - the text stays in the list.` : `Removed ${label} from the rule.`,
       );
     } else {
-      const body = type === 'text' ? ruleTexts(draftDef).find(t => t.id === textId)?.text ?? '' : undefined;
-      const updated = addPieceToRule(draftDef, type, body, type === 'text' ? textId : undefined);
+      const body = type === 'text' ? layoutTexts(draftDef).find(t => t.id === textId)?.text ?? '' : undefined;
+      const updated = addPiece(draftDef, type, body, type === 'text' ? textId : undefined);
       setDraftDef(updated);
       setSelectedPieceIndex(updated.pieces.length - 1);
       setAddNotice(`Added ${type === 'text' ? `“${label}”` : label} to the rule.`);
@@ -274,7 +276,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
 
   /** Row label for a text id in the current draft ('Text' if it can't be found - shouldn't happen). */
   const textLabel = (textId?: string): string =>
-    (draftDef && ruleTexts(draftDef).find(t => t.id === textId)?.name) || 'Text';
+    (draftDef && layoutTexts(draftDef).find(t => t.id === textId)?.name) || 'Text';
 
   /** Create (new) or Save (existing). Saving an existing text also updates its placed piece in place - position and font stay (updateTextItem). */
   const handleSaveText = () => {
@@ -282,7 +284,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
     const name = textDraftName.trim() || 'Untitled';
     setConfirmDeleteTextId(null);
     if (addSelection.kind === 'new') {
-      const {definition, id} = addTextItem(draftDef, name, textDraftBody);
+      const {layout: definition, id} = addTextItem(draftDef, name, textDraftBody);
       setDraftDef(definition);
       setTextDraftName(name);
       setAddSelection({kind: 'text', id});
@@ -329,7 +331,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
 
   const handleRemovePiece = (index: number) => {
     if (!draftDef) return;
-    setDraftDef(removePieceFromRule(draftDef, index));
+    setDraftDef(removePiece(draftDef, index));
     setSelectedPieceIndex(prev => (prev === index ? null : prev !== null && prev > index ? prev - 1 : prev));
   };
 

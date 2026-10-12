@@ -8,7 +8,8 @@
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {formatDayHeader} from '../../../domain/dateFormat';
-import {dateTitleText, ruleTexts, isPiecePlaced, linkPieceText, NoteContext, TagRule, NoteTextItem, PIECE_CONTEXTS, PieceType} from '../../../domain/tagRules';
+import {NoteContext, TagRule, PIECE_CONTEXTS} from '../../../domain/tagRules';
+import {dateTitleText, layoutTexts, isPiecePlaced, linkPieceText, NoteTextItem, PieceType} from '../../../domain/pageLayout';
 import {common} from '../../../ui/commonStyles';
 import ClipboardTextInput from '../../../ui/ClipboardTextInput';
 import {PIECE_TYPE_LABELS} from '../../../ui/NoteTemplatePreview';
@@ -28,7 +29,7 @@ const PREDEFINED_PIECE_TYPES: PieceType[] = ['title', 'dateTitle', 'date', 'time
 
 /**
  * Explanation + example for a predefined piece's right-hand panel. The
- * examples mirror what domain/tagRules.ts's `renderPieceText` really
+ * examples mirror what domain/pageLayout.ts's `renderPieceText` really
  * produces (the date example even runs the real `formatDayHeader`), so this
  * can't drift into promising a format the note won't have. Options (e.g. a
  * date format) would slot in below the example later - they would belong to
@@ -99,7 +100,7 @@ function buildAddPieceRows(def: TagRule): AddPieceRow[] {
   const types: AddPieceRow[] = PREDEFINED_PIECE_TYPES.filter(t => PIECE_CONTEXTS[t].includes(def.context)).map(
     type => ({kind: 'type', type}),
   );
-  const texts: AddPieceRow[] = ruleTexts(def).map(item => ({kind: 'text', item}));
+  const texts: AddPieceRow[] = layoutTexts(def).map(item => ({kind: 'text', item}));
   return [...types, ...texts];
 }
 
