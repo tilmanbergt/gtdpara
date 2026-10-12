@@ -46,14 +46,22 @@ function predefinedPieceInfo(type: PieceType, context: NoteContext): {descriptio
             ? 'Call supplier about invoice'
             : context === 'project'
             ? 'Website relaunch'
+            : context === 'loop'
+            ? 'workshop teamoffsite'
             : 'Health',
       };
     case 'dateTitle':
-      return {
-        description:
-          'Inserts the meeting’s date with the year and its title, tags written as words without #. A heading by default: it shows in the note’s table of contents.',
-        example: dateTitleText('2026-09-21', 'Weekly sync team/alpha'),
-      };
+      return context === 'loop'
+        ? {
+            description:
+              'Inserts the loop’s main date with the year and its name; just the name while it has no main date. A heading by default: it shows in the note’s table of contents.',
+            example: dateTitleText('2026-11-14', 'workshop teamoffsite'),
+          }
+        : {
+            description:
+              'Inserts the meeting’s date with the year and its title, tags written as words without #. A heading by default: it shows in the note’s table of contents.',
+            example: dateTitleText('2026-09-21', 'Weekly sync team/alpha'),
+          };
     case 'date':
       return {description: 'Inserts the meeting’s date.', example: formatDayHeader('2026-09-21')};
     case 'time':
@@ -71,7 +79,7 @@ function predefinedPieceInfo(type: PieceType, context: NoteContext): {descriptio
       return {
         description:
           'Tappable link to the file attached to this ' +
-          (context === 'meeting' ? 'meeting' : 'todo') +
+          (context === 'meeting' ? 'meeting' : context === 'loop' ? 'loop' : 'todo') +
           ' (paperclip). Left out when nothing is attached or the file no longer exists.',
         example: linkPieceText('Kickoff deck.pdf'),
       };

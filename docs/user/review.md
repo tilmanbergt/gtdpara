@@ -20,6 +20,7 @@ Tap a step to open it. Inside a step:
 - **Gmail inbox**: only with the experimental Gmail integration, see [integrations](integrations.md)
 - **Inbox to zero**: file or finish everything in the Inbox. Open lasso marks count too; the card **n marks to process** opens them, see [Lasso](lasso.md)
 - **Stalled projects**: active projects without any open todo you can act on. Someday and Maybe todos don't count (Waiting for does); you can promote one of them to Next with one tap.
+- **Open loops**: your loops (see [Loops](loops.md)), per area or project. See below.
 - **Done awaiting review**: projects marked Done - close them out or archive them
 - **On Hold reconsideration**: paused projects and areas - keep them paused or reactivate them
 - **Neglected areas**: the same for areas - no open todo you can act on
@@ -46,3 +47,12 @@ The recap counts counterparts confirmed, set inactive and next meetings added.
 ## The recap
 
 Each step remembers what you did in it (items filed, todos done, focus changed). The overview shows the total of your last visits.
+
+## Open loops
+
+This step goes through your active loops, one block per area (with its projects) and per project without an area. Each row has two lines: ○ the loop and its kind (and its project), then its main date, next meeting and todos (`14.11. · next 20.10. · 2 open · 1 next`).
+
+The step counts the loops that need a look: those without a todo you can act on and without a meeting ahead (`no next action`), and those past their main date (`was 14.11. · close?`). When none needs a look, the step counts as reviewed.
+
+Tap a loop to see it on the right: Quick Add (a todo you add gets the loop's tag), its summary, **Open overview ›** and **Close loop**. Closing asks **Done** or **Dropped**, and only works while the loop has no open todo and no meeting ahead - otherwise the status line says what is still open, and **Show** opens the loop. The recap counts the loops closed.
+

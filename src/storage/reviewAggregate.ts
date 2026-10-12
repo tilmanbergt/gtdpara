@@ -306,6 +306,7 @@ export function buildReviewStepCounts(
   gmailInboxCount: number,
   weekAheadInboxCount = 0,
   tendingCount = 0,
+  openLoopsCount = 0,
 ): Record<ReviewStepId, ReviewStepCount> {
   return {
     weekAhead: {n: aggregate.weekMeetings.length + weekAheadInboxCount},
@@ -315,6 +316,8 @@ export function buildReviewStepCounts(
     gmailInbox: {n: gmailInboxCount},
     inbox: {n: inboxOpenCount},
     stalled: {n: aggregate.stalledProjects.length},
+    // Loops that need a look (storage/loopRoster.ts).
+    openLoops: {n: openLoopsCount},
     done: {n: aggregate.doneProjects.length},
     onHold: {n: aggregate.onHoldItems.length},
     neglected: {n: aggregate.neglectedAreas.length},

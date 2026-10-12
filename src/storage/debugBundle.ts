@@ -95,6 +95,7 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
   lines.push(`data: ${data}`);
   lines.push(await marksLine());
   lines.push(counterpartsLine());
+  lines.push(loopsLine(settings));
   lines.push(`log file: ${isFileLoggingOn() ? `ON (${LOG_FILE_NAME})` : 'OFF'}`);
   const errors = getRecentErrors(10);
   lines.push(`recent errors (${errors.length}):`);
@@ -120,6 +121,15 @@ function counterpartsLine(): string {
     }
   }
   return `counterparts: active ${active} · inactive ${inactive} (${withSection} scopes with a ## Threads section)`;
+}
+
+/** "loops: rules 1 · active 4 · done 2 · dropped 1" (docs/dev/history/technical-design-loops.md §5) - counts only, never names or tags. */
+function loopsLine(settings: GtdParaSettings): string {
+  const rules = settings.tagRules.filter(r => r.enabled && r.context === 'loop').length;
+  const items = getCachedData()?.items;
+  if (!items) return `loops: rules ${rules} · lines not available (no cache)`;
+  const count = (status: string) => items.reduce((sum, item) => sum + item.loops.filter(l => l.status === status).length, 0);
+  return `loops: rules ${rules} · active ${count('active')} · done ${count('done')} · dropped ${count('dropped')}`;
 }
 
 /** "marks: open 3 (inbox 1 · items 2) · data 3 · pending icons 0" (lasso 0.8 §3.10) - counts only. */

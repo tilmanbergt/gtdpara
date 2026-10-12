@@ -10,8 +10,8 @@
  * Same mechanics as QuickAddWidget's fields: the field's own selection is
  * tracked in a ref (`lastSelectionRef`), never React state - see
  * domain/clipboardText.ts's `Selection` doc comment for why. The overlay
- * itself stays mounted at all times, toggling visibility via
- * `styles.hidden` (`display:'none'`) on blur/focus rather than being
+ * itself (ui/ClipboardStrip.tsx) stays mounted at all times, hidden
+ * (`display:'none'`) on blur rather than being
  * conditionally rendered, so a tap on one of its buttons isn't lost to the
  * native-view-torn-out-from-under-the-gesture race a conditionally-
  * rendered overlay would hit (blur fires on touch-down, but the already-
@@ -34,11 +34,10 @@
  * the same tracked selection Paste uses.
  */
 import React, {useImperativeHandle, useRef, useState} from 'react';
-import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
-import {copyCutRange, Selection, spliceAtSelection, spliceWordAtSelection} from '../domain/clipboardText';
+import {StyleSheet, TextInput, View} from 'react-native';
+import {Selection, spliceWordAtSelection} from '../domain/clipboardText';
+import ClipboardStrip, {clipboardActions} from './ClipboardStrip';
 import {FONT} from './theme';
-import {common} from './commonStyles';
 
 interface Props {
   value: string;
@@ -87,24 +86,7 @@ export default function ClipboardTextInput({
     if (selectionOverride) setSelectionOverride(null);
   };
 
-  const handleSelectAll = () => {
-    const selection = {start: 0, end: value.length};
-    lastSelectionRef.current = selection;
-    setSelectionOverride(selection);
-  };
-  const handleCopy = () => {
-    const {start, end} = copyCutRange(value, lastSelectionRef.current);
-    Clipboard.setString(value.slice(start, end));
-  };
-  const handleCut = () => {
-    const range = copyCutRange(value, lastSelectionRef.current);
-    Clipboard.setString(value.slice(range.start, range.end));
-    const {text, cursor} = spliceAtSelection(value, range, '');
-    onChangeText(text);
-    const selection = {start: cursor, end: cursor};
-    lastSelectionRef.current = selection;
-    setSelectionOverride(selection);
-  };
+  const actions = clipboardActions(value, lastSelectionRef, onChangeText, setSelectionOverride);
   useImperativeHandle(handleRef, () => ({
     insertAtCursor: (word: string) => {
       const {text, cursor} = spliceWordAtSelection(value, lastSelectionRef.current, word);
@@ -114,16 +96,6 @@ export default function ClipboardTextInput({
       setSelectionOverride(selection);
     },
   }));
-
-  const handlePaste = async () => {
-    const clip = await Clipboard.getString();
-    if (!clip) return;
-    const {text, cursor} = spliceAtSelection(value, lastSelectionRef.current, clip);
-    onChangeText(text);
-    const selection = {start: cursor, end: cursor};
-    lastSelectionRef.current = selection;
-    setSelectionOverride(selection);
-  };
 
   return (
     <View style={styles.wrap}>
@@ -144,20 +116,7 @@ export default function ClipboardTextInput({
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
       />
-      <View style={[common.floatingStrip, {borderColor}, !focused && styles.hidden]}>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleSelectAll} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleCopy} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleCut} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handlePaste} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
-        </Pressable>
-      </View>
+      <ClipboardStrip visible={focused} actions={actions} textColor={textColor} borderColor={borderColor} />
     </View>
   );
 }
@@ -177,8 +136,5 @@ const styles = StyleSheet.create({
   inputMultiline: {
     minHeight: 76,
     paddingTop: 6,
-  },
-  hidden: {
-    display: 'none',
   },
 });

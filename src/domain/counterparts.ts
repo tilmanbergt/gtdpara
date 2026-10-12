@@ -22,6 +22,7 @@
  *   upcoming meeting of one of its threads.
  */
 import {WAITING_FOR_TYPE} from './flowState';
+import {LoopKindRule, loopKindsOf} from './loops';
 import {meetingEndMs} from './meetingTime';
 import {isCounterpartType, OWE_TYPE, ScopeItem, threadOf, ThreadRef} from './threads';
 import {CounterpartLine, CounterpartStatus} from './threadsSection';
@@ -56,14 +57,21 @@ export interface Counterpart {
   backInUse: boolean;
 }
 
-/** The types that make counterparts (D2): the first segment of every enabled Tag Rule's tags, then `wf` and `owe`. */
-export function ruleTypesOf(rules: ReadonlyArray<{enabled: boolean; tags: readonly string[]}>): string[] {
+/**
+ * The types that make counterparts (D2): the first segment of every enabled
+ * Tag Rule's tags, then `wf` and `owe`. Loop kinds (the tags of Loop rules,
+ * docs/dev/history/technical-design-loops.md §3.1) never do, whatever other
+ * rule shares their tag: `#workshop/teamoffsite` is a loop, not a
+ * counterpart "teamoffsite".
+ */
+export function ruleTypesOf(rules: ReadonlyArray<LoopKindRule>): string[] {
+  const kinds = loopKindsOf(rules);
   const types: string[] = [];
   for (const rule of rules) {
-    if (!rule.enabled) continue;
+    if (!rule.enabled || rule.context === 'loop') continue;
     for (const raw of rule.tags) {
       const type = raw.replace(/^#/, '').toLowerCase().split('/')[0].trim();
-      if (type && !types.includes(type)) types.push(type);
+      if (type && !kinds.includes(type) && !types.includes(type)) types.push(type);
     }
   }
   for (const type of [WAITING_FOR_TYPE, OWE_TYPE]) if (!types.includes(type)) types.push(type);

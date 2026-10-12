@@ -48,6 +48,7 @@ import {GtdParaSettings, ResolvedParaPaths, resolvePaths} from '../domain/settin
 import {FrontMatterFields} from '../domain/markdown';
 import {ItemStatus, Mark, Meeting, MonthlyGoal, Task, WeeklyGoal} from '../domain/types';
 import {CounterpartLine} from '../domain/threadsSection';
+import {LoopLine} from '../domain/loopsSection';
 import {FileStat, listFolderEntries, statFiles} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
@@ -78,6 +79,9 @@ export interface CachedItem {
   /** From the `## Threads` span (docs/dev/history/technical-design-tending-threads.md §3.9.1) - the confirmed counterparts of the scope this item owns. Written only through storage/counterparts.ts. */
   threads: CounterpartLine[];
   threadsExtraLines: string[];
+  /** From the `## Loops` span (docs/dev/history/technical-design-loops.md §3.2) - the loops this item owns. Written only through storage/loops.ts. */
+  loops: LoopLine[];
+  loopsExtraLines: string[];
   /** From the frontmatter block - see domain/markdown.ts's parseFrontMatter, storage/focusSlots.ts and storage/statusControl.ts. */
   status: ItemStatus;
   dailyFocus: boolean;
@@ -268,6 +272,8 @@ async function loadOneItem(kind: 'project' | 'area', name: string, path: string)
       marksExtraLines: [],
       threads: [],
       threadsExtraLines: [],
+      loops: [],
+      loopsExtraLines: [],
       status: 'active',
       dailyFocus: false,
       weeklyFocus: false,
@@ -609,6 +615,18 @@ export async function ensureItemCached(
   return item;
 }
 
+/**
+ * Called after every write-through of an item's Tasks span, with the item's
+ * path - storage/loops.ts turns a todo that is a loop itself into its loop
+ * line there (docs/dev/history/technical-design-loops.md §4.3), whichever
+ * screen saved it. Set once at start (`setTasksWrittenHook`).
+ */
+let tasksWrittenHook: ((path: string) => void) | null = null;
+
+export function setTasksWrittenHook(hook: ((path: string) => void) | null): void {
+  tasksWrittenHook = hook;
+}
+
 /** Write-through after saving an item's Tasks span - see the module doc comment. No-op if this item isn't (yet) in the cache. */
 export function updateItemTasks(
   path: string,
@@ -623,6 +641,7 @@ export function updateItemTasks(
   item.taskExtraLines = taskExtraLines;
   item.loadError = undefined;
   notifyCacheChanged();
+  tasksWrittenHook?.(path);
 }
 
 /** Write-through after saving an item's Meetings span - see updateItemTasks. */
@@ -663,6 +682,17 @@ export function updateItemThreads(
   item.rawContent = rawContent;
   item.threads = threads;
   item.threadsExtraLines = threadsExtraLines;
+  item.loadError = undefined;
+  notifyCacheChanged();
+}
+
+/** Write-through after saving an item's Loops span - see updateItemTasks. */
+export function updateItemLoops(path: string, rawContent: string, loops: LoopLine[], loopsExtraLines: string[]): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.loops = loops;
+  item.loopsExtraLines = loopsExtraLines;
   item.loadError = undefined;
   notifyCacheChanged();
 }

@@ -1,7 +1,8 @@
 /**
  * The overlays App.tsx draws over the tab body (design-overview.md §2.1): the
  * in-app help (docs/dev/history/technical-design-in-app-help.md §3.3) and the
- * thread overview (docs/dev/history/technical-design-tending-threads.md §3.5).
+ * thread overview (docs/dev/history/technical-design-tending-threads.md §3.5)
+ * or the loop overview (docs/dev/history/technical-design-loops.md §4.5).
  * An overlay sits inside StatusFrame, so the TabBar and the status slot stay
  * visible and the tab screens stay mounted underneath, exactly as they were.
  *
@@ -14,11 +15,16 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {helpStartPage, LastHelpPage} from '../domain/helpTopics';
 import {USER_DOCS} from '../generated/userDocs';
+import {loopOf} from '../domain/loops';
+import {findLoopLine} from '../domain/loopsSection';
+import {findCachedItem, getCachedData} from '../storage/dataCache';
+import {getLoopKinds} from '../storage/loopKinds';
+import LoopOverview, {LoopOverviewRequest} from './loop/LoopOverview';
 import ThreadOverview from './thread/ThreadOverview';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 import HelpOverlay from '../ui/HelpOverlay';
 import {AppTab, tabLabel} from '../ui/TabBar';
-import {closeThreadOverview, useThreadOverview} from '../ui/threadOverlayStore';
+import {closeOverview, OverviewRequest, useOverview} from '../ui/overviewStore';
 
 export interface AppOverlays {
   helpOpen: boolean;
@@ -30,22 +36,36 @@ export interface AppOverlays {
   overlay: React.ReactNode;
 }
 
+/**
+ * A loop tag tapped in a Project's or Area's row opens that loop
+ * (docs/dev/history/technical-design-loops.md §4.5): in the row's item, or
+ * in the item whose `## Loops` has it when the row's item has no line.
+ */
+function loopRequestOf(request: OverviewRequest): LoopOverviewRequest | null {
+  const loop = loopOf(request.tag, getLoopKinds().kinds);
+  const rowItem = request.ownerPath ? findCachedItem(request.ownerPath) : undefined;
+  if (!loop || !rowItem) return null;
+  if (findLoopLine(rowItem.loops, loop.tag)) return {tag: loop.tag, ownerPath: rowItem.path};
+  const owner = getCachedData()?.items.find(item => findLoopLine(item.loops, loop.tag));
+  return {tag: loop.tag, ownerPath: owner?.path ?? rowItem.path};
+}
+
 export function useAppOverlays(inTabs: boolean, activeTab: AppTab): AppOverlays {
   // The page shown in the help overlay, or null while it's closed. The last
   // page read per tab is remembered for this session only.
   const [helpPage, setHelpPage] = useState<string | null>(null);
   const lastHelpRef = useRef<LastHelpPage | null>(null);
-  const thread = useThreadOverview();
+  const thread = useOverview();
 
   useEffect(() => {
     if (!inTabs) setHelpPage(null);
   }, [inTabs]);
   useEffect(() => {
-    if (!inTabs && thread) closeThreadOverview();
+    if (!inTabs && thread) closeOverview();
   }, [inTabs, thread]);
   useEffect(() => {
     setHelpPage(null);
-    closeThreadOverview();
+    closeOverview();
   }, [activeTab]);
   // An overview opened while the help shows replaces it.
   useEffect(() => {
@@ -59,7 +79,7 @@ export function useAppOverlays(inTabs: boolean, activeTab: AppTab): AppOverlays 
   };
   const closeThread = () => {
     if (!thread) return;
-    closeThreadOverview();
+    closeOverview();
     requestEinkRefresh();
   };
 
@@ -68,7 +88,7 @@ export function useAppOverlays(inTabs: boolean, activeTab: AppTab): AppOverlays 
       closeHelp();
       return;
     }
-    closeThreadOverview();
+    closeOverview();
     const page = helpStartPage(activeTab, lastHelpRef.current, new Set(Object.keys(USER_DOCS.pages)));
     lastHelpRef.current = {tab: activeTab, pageId: page};
     setHelpPage(page);
@@ -82,7 +102,14 @@ export function useAppOverlays(inTabs: boolean, activeTab: AppTab): AppOverlays 
   if (helpPage !== null) {
     overlay = <HelpOverlay pageId={helpPage} onSelectPage={selectHelpPage} onClose={closeHelp} />;
   } else if (thread && inTabs) {
-    overlay = <ThreadOverview request={thread} backLabel={`‹ ${tabLabel(activeTab)}`} onClose={closeThread} />;
+    const backLabel = `‹ ${tabLabel(activeTab)}`;
+    const loop = loopRequestOf(thread);
+    overlay =
+      loop ? (
+        <LoopOverview request={loop} backLabel={backLabel} onClose={closeThread} />
+      ) : (
+        <ThreadOverview request={thread} backLabel={backLabel} onClose={closeThread} />
+      );
   }
 
   return {

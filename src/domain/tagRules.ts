@@ -37,7 +37,17 @@ import type {GtdParaSettings} from './settings';
 import type {Task} from './types';
 import {renderSinceLast, SinceLast} from './sinceLastText';
 
-export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
+/**
+ * `loop` (docs/dev/history/technical-design-loops.md §3.1): a Loop rule's
+ * tags are kinds of loops - `#<kind>/<name>` is one loop - and its pieces
+ * make the loop note's first page. Its `sharedFileName` is the loop note's
+ * name (`LOOP_NOTE_NAME_DEFAULT` when blank); the note always lives in the
+ * owner's own folder.
+ */
+export type NoteContext = 'project' | 'area' | 'todo' | 'meeting' | 'loop';
+
+/** A Loop rule's note name when its field is blank. */
+export const LOOP_NOTE_NAME_DEFAULT = '{year}-{month} {tag} {subtag}';
 /**
  * `link` (docs/dev/history/technical-design-linked-file-piece.md): a tappable
  * Supernote link element to the item's own `linkedFile` (the paperclip
@@ -52,9 +62,10 @@ export type NoteContext = 'project' | 'area' | 'todo' | 'meeting';
  */
 /**
  * `dateTitle` (docs/dev/history/technical-design-projects-findable-notes.md
- * §2.1 R2): Meeting only - `30.9.2026 · Retro demand retro/demand`, the date
- * with the year and the display title with its tags as words (no `#`). A
- * heading unless switched off.
+ * §2.1 R2): `30.9.2026 · Retro demand retro/demand`, the date with the year
+ * and the display title with its tags as words (no `#`). A heading unless
+ * switched off. Meeting rules, and Loop rules for the loop note's first
+ * page (main date + loop name; the name alone without a main date).
  */
 export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link' | 'sinceLast' | 'dateTitle';
 
@@ -160,14 +171,14 @@ export interface TagRule {
 
 /** Which note contexts each piece type is meaningful for - drives the Add-piece list in the Settings UI (todo/meeting-only pieces filtered out for Project/Area, same shape abbreviation/quick-file matching already filters by context elsewhere in this codebase). `related` carries no per-piece tag override - it always matches by whichever tags the note being created actually has (see storage/meetingNoteAggregate.ts's relatedItemsFor), so it can never drift out of sync with the note's own tags. */
 export const PIECE_CONTEXTS: Record<PieceType, NoteContext[]> = {
-  title: ['project', 'area', 'todo', 'meeting'],
+  title: ['project', 'area', 'todo', 'meeting', 'loop'],
   date: ['meeting'],
   time: ['meeting'],
-  text: ['project', 'area', 'todo', 'meeting'],
+  text: ['project', 'area', 'todo', 'meeting', 'loop'],
   related: ['todo', 'meeting'],
-  link: ['todo', 'meeting'],
+  link: ['todo', 'meeting', 'loop'],
   sinceLast: ['meeting'],
-  dateTitle: ['meeting'],
+  dateTitle: ['meeting', 'loop'],
 };
 
 /**
@@ -182,6 +193,7 @@ export const DEFAULT_PIECE_TYPES: Record<NoteContext, PieceType[]> = {
   todo: ['title', 'link'],
   project: ['title'],
   area: ['title'],
+  loop: ['dateTitle', 'link'],
 };
 
 /** Default pieces seeded with the Heading switch set on explicitly (a todo's heading is its Title, §2.1 R3). */
@@ -302,6 +314,7 @@ export function createEmptyTagRule(id: string, context: NoteContext): TagRule {
     trackPrep: false,
     trackReview: false,
     noteTarget: 'own',
+    ...(context === 'loop' ? {sharedFileName: LOOP_NOTE_NAME_DEFAULT} : {}),
   };
 }
 

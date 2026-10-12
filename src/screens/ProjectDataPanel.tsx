@@ -80,7 +80,7 @@ import {resolveFilingPick} from '../storage/inboxFiling';
 import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {useEntryMoveUi} from '../ui/useEntryMoveUi';
 import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, buildTask} from '../storage/itemMutations';
-import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
+import {linkedFileStatus, linkRootPath, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {createStandaloneNote} from '../storage/standaloneNotes';
@@ -332,13 +332,7 @@ export default function ProjectDataPanel({
    * (ui/ItemStatusPanel.tsx's handleArmAreaAssignment).
    */
   const rootPathFor = useCallback(
-    (rootKey: string): string => {
-      if (rootKey === 'resources') return paths?.resources ?? '';
-      if (rootKey === 'area') return paths && state?.area ? `${paths.areas}/${state.area}` : '';
-      if (rootKey === 'projectFiles') return paths?.projects ?? '';
-      if (rootKey === 'browse') return paths?.base ?? '';
-      return path;
-    },
+    (rootKey: string): string => (paths ? linkRootPath(rootKey, paths, path, state?.area ?? null) : ''),
     [paths, path, state?.area],
   );
 
@@ -676,6 +670,7 @@ export default function ProjectDataPanel({
             onArmLink={index => armLinkTarget('task', index)}
             onOpenLinkedFile={onOpenLinkedFile}
             filter={predicates?.task}
+            loops={item?.loops}
             textColor={textColor}
             borderColor={borderColor}
           />

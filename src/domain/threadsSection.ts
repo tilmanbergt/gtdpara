@@ -15,9 +15,9 @@
  * is room for later columns: kept verbatim, not read. Lines that are not a
  * status line are kept and written after the status lines, like every other
  * section's unknown lines. A line nobody changed is written back exactly as
- * it was read.
+ * it was read. The line format itself is domain/statusSection.ts.
  */
-import {readSectionLines, writeSectionLines} from './markdown';
+import {parseStatusLine, parseStatusSection, serializeStatusLine, StatusLine, StatusSectionSpec, writeStatusSection} from './statusSection';
 
 export const THREADS_HEADING = '## Threads';
 
@@ -34,44 +34,35 @@ export interface CounterpartLine {
   raw: string | null;
 }
 
-const LINE_RE = /^-\s+([a-z0-9][\w-]*)\s*:\s*(active|inactive)\s*(?:,(.*))?$/i;
+const SPEC: StatusSectionSpec<CounterpartStatus> = {
+  heading: THREADS_HEADING,
+  statuses: ['active', 'inactive'],
+  keyPattern: '[a-z0-9][\\w-]*',
+};
+
+const toLine = (e: CounterpartLine): StatusLine<CounterpartStatus> => ({key: e.leaf, status: e.status, rest: e.rest, raw: e.raw});
+const fromLine = (l: StatusLine<CounterpartStatus>): CounterpartLine => ({leaf: l.key, status: l.status, rest: l.rest, raw: l.raw});
 
 /** One status line, or null when `line` is not one. */
 export function parseCounterpartLine(line: string): CounterpartLine | null {
-  const m = LINE_RE.exec(line.trim());
-  if (!m) return null;
-  return {leaf: m[1].toLowerCase(), status: m[2].toLowerCase() as CounterpartStatus, rest: m[3] ?? null, raw: line};
-}
-
-function canonicalLine(entry: CounterpartLine): string {
-  return `- ${entry.leaf}: ${entry.status}${entry.rest !== null ? `,${entry.rest}` : ''}`;
+  const parsed = parseStatusLine(SPEC, line);
+  return parsed ? fromLine(parsed) : null;
 }
 
 /** The line to write: the line as read while it still says the same, else the canonical form. */
 export function serializeCounterpartLine(entry: CounterpartLine): string {
-  if (entry.raw !== null) {
-    const reread = parseCounterpartLine(entry.raw);
-    if (reread && reread.leaf === entry.leaf && reread.status === entry.status && reread.rest === entry.rest) return entry.raw;
-  }
-  return canonicalLine(entry);
+  return serializeStatusLine(SPEC, toLine(entry));
 }
 
 /** The status lines of `content`'s `## Threads` section, in file order, and its other non-blank lines. */
 export function parseThreadsSpan(content: string): {threads: CounterpartLine[]; extraLines: string[]} {
-  const threads: CounterpartLine[] = [];
-  const extraLines: string[] = [];
-  for (const line of readSectionLines(content, THREADS_HEADING).lines) {
-    if (line.trim() === '') continue;
-    const entry = parseCounterpartLine(line);
-    if (entry) threads.push(entry);
-    else extraLines.push(line);
-  }
-  return {threads, extraLines};
+  const {lines, extraLines} = parseStatusSection(SPEC, content);
+  return {threads: lines.map(fromLine), extraLines};
 }
 
 /** Rewrites only the `## Threads` section (appended when missing): status lines, then the kept lines. */
 export function writeThreadsIntoContent(content: string, threads: readonly CounterpartLine[], extraLines: readonly string[] = []): string {
-  return writeSectionLines(content, THREADS_HEADING, [...threads.map(serializeCounterpartLine), ...extraLines]);
+  return writeStatusSection(SPEC, content, threads.map(toLine), extraLines);
 }
 
 /** The status `threads` give `leaf` (the first line for it wins), or null when there is no line. */

@@ -26,6 +26,8 @@ import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
+import {useLoopEvents} from './src/ui/useLoopEvents';
+import {useLoopLinkNavigation} from './src/screens/area/useLoopLinkArm';
 import {StatusProvider} from './src/ui/status/StatusProvider';
 import StatusFrame from './src/ui/status/StatusFrame';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
@@ -195,6 +197,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // Help and the other overlays over the tab body (screens/useAppOverlays.tsx).
   const overlays = useAppOverlays(mode === 'tabs', activeTab);
+  // Loops: a todo that is only a loop tag becomes its loop after the save (storage/loops.ts).
+  useLoopEvents();
+  useLoopLinkNavigation(stableOpenItem);
   // Leftovers of an interrupted PDF export live only in the plugin's private
   // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - clear
   // them once per start. Best-effort: older native builds lack the call.

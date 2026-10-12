@@ -8,7 +8,7 @@
  * - A nested context tag (`#retro/alpha`) is always a tap target: it opens
  *   the thread overview (thread lens) with the row's item as owner
  *   (`ownerPath`; null when the row doesn't know it). `#owe/<name>` opens
- *   the counterpart lens for `<name>` instead (ui/threadOverlayStore.ts).
+ *   the counterpart lens for `<name>` instead (ui/overviewStore.ts).
  * - A plain context tag is a tap target only when the screen passes
  *   `onToggleContext` (Daily's filter); it is drawn filled when it is the
  *   active `contextTag`.
@@ -27,7 +27,7 @@ import {isContextTag} from '../domain/flowState';
 import {splitTextWithTags} from '../domain/markdown';
 import {threadOf} from '../domain/threads';
 import {log} from '../utils/log';
-import {openThreadOverview} from './threadOverlayStore';
+import {openOverview} from './overviewStore';
 import {COLORS} from './theme';
 
 export interface TaggableTextOptions {
@@ -53,7 +53,7 @@ export function renderTaggableText(text: string, {contextTag, onToggleContext, o
           onPress={() => {
             // No tag in the log: tags can hold client names.
             log('TaggableText: thread tag tapped');
-            openThreadOverview({tag: segment.value, ownerPath: ownerPath ?? null});
+            openOverview({tag: segment.value, ownerPath: ownerPath ?? null});
           }}
           style={styles.tag}>
           {segment.raw}

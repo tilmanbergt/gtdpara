@@ -52,6 +52,19 @@ export function openLinkedFile(paths: ResolvedParaPaths, linkedFile: string): Pr
  * specifically - any absolute path under `paths.base` resolves, since the
  * armed pane can be browsing either root when the tap happens.
  */
+/**
+ * The folder a Files-pane root key stands for on an item's page
+ * (ui/FileBrowserPane.tsx's roots there): an arm's pick is relative to it.
+ * 'project' and any other key: the item's own folder.
+ */
+export function linkRootPath(rootKey: string, paths: ResolvedParaPaths, itemPath: string, area: string | null): string {
+  if (rootKey === 'resources') return paths.resources;
+  if (rootKey === 'area') return area ? `${paths.areas}/${area}` : '';
+  if (rootKey === 'projectFiles') return paths.projects;
+  if (rootKey === 'browse') return paths.base;
+  return itemPath;
+}
+
 export function toLinkedFile(paths: ResolvedParaPaths, absolutePath: string): string {
   const basePrefix = `${paths.base.replace(/\/+$/, '')}/`;
   if (!absolutePath.startsWith(basePrefix)) return absolutePath;

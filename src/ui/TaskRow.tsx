@@ -51,7 +51,7 @@ import {TaskLabelContext} from '../domain/taskLabels';
 import TaskLabels from './TaskLabels';
 import {TASK_COLUMN_WIDTH_PX, taskRowLayout} from './taskRowLayout';
 import {renderTaggableText} from './TaggableText';
-import {openThreadOverview} from './threadOverlayStore';
+import {openOverview} from './overviewStore';
 import {WAITING_FOR_TYPE} from '../domain/flowState';
 import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
@@ -182,7 +182,7 @@ export default function TaskRow({
                 labels={layout.labels}
                 onToggleNow={onToggleNow}
                 onOpenWaitingFor={
-                  task.waitingOn ? () => openThreadOverview({tag: `${WAITING_FOR_TYPE}/${task.waitingOn}`, ownerPath: ownerPath ?? null}) : undefined
+                  task.waitingOn ? () => openOverview({tag: `${WAITING_FOR_TYPE}/${task.waitingOn}`, ownerPath: ownerPath ?? null}) : undefined
                 }
               />
             </Text>

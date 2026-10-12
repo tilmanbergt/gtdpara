@@ -38,6 +38,7 @@ import {ClipboardTextInputHandle} from '../../../ui/ClipboardTextInput';
 import {PIECE_TYPE_LABELS} from '../../../ui/NoteTemplatePreview';
 import {useErrorStatus, useStatus} from '../../../ui/status/StatusProvider';
 import {errorMessage} from '../../../utils/errorMessage';
+import {setLoopRules} from '../../../storage/loopKinds';
 
 /** What the Add-piece page's right panel is showing/editing; null = nothing selected. */
 export type AddPieceSelection = {kind: 'type'; type: PieceType} | {kind: 'text'; id: string} | {kind: 'new'} | null;
@@ -168,6 +169,7 @@ export function useTagRuleDraft(values: GtdParaSettings, setValues: Dispatch<Set
       tagRules,
       ...(nextTagRuleId !== undefined ? {nextTagRuleId} : {}),
     });
+    setLoopRules(tagRules);
   };
 
   /** Parses the free-text tags field (space-separated, not comma) back into `TagRule.tags` and writes the draft into `values`, then persists immediately (see persistTagRules above). These tags are OR'd by domain/tagRules.ts's resolveNoteTemplate - a note matches this definition if it carries ANY one of them, not all at once. Lowercased here so the config's stored tags are always lowercase regardless of how the user typed them - resolveNoteTemplate additionally matches case-insensitively, so a note's own mixed-case tags still match either way. */

@@ -71,6 +71,8 @@ export interface ReviewSummaryCounts {
   counterpartsSetInactive: number;
   /** "Tending threads": meetings added from "+ Next <type>". */
   nextMeetingsAdded: number;
+  /** "Open loops" (docs/dev/history/technical-design-loops.md §4.8): loops closed (done or dropped). Absent in older saved stats - every reader uses `?? 0`. */
+  loopsClosed: number;
 }
 
 export const ZERO_REVIEW_SUMMARY: ReviewSummaryCounts = {
@@ -91,6 +93,7 @@ export const ZERO_REVIEW_SUMMARY: ReviewSummaryCounts = {
   counterpartsConfirmed: 0,
   counterpartsSetInactive: 0,
   nextMeetingsAdded: 0,
+  loopsClosed: 0,
 };
 
 /** Stable ids - the persisted key of a step. Adding a step: one id here, one REVIEW_STEPS entry, one entry in storage/reviewAggregate.ts's buildReviewStepCounts (the `Record<ReviewStepId, ...>` type makes the compiler insist), one renderer in screens/ReviewScreen.tsx. */
@@ -101,6 +104,7 @@ export type ReviewStepId =
   | 'gmailInbox'
   | 'inbox'
   | 'stalled'
+  | 'openLoops'
   | 'done'
   | 'onHold'
   | 'neglected'
@@ -141,6 +145,8 @@ export const REVIEW_STEPS: ReviewStepDef[] = [
   {id: 'gmailInbox', title: 'Gmail inbox', kind: 'backlog'},
   {id: 'inbox', title: 'Inbox to zero', kind: 'backlog'},
   {id: 'stalled', title: 'Stalled projects', kind: 'backlog'},
+  // Loops with nothing moving them or past their main date (docs/dev/history/technical-design-loops.md §4.8).
+  {id: 'openLoops', title: 'Open loops', kind: 'backlog'},
   {id: 'done', title: 'Done awaiting review', kind: 'backlog'},
   {id: 'onHold', title: 'On Hold reconsideration', kind: 'backlog'},
   {id: 'neglected', title: 'Neglected areas', kind: 'backlog'},
@@ -375,6 +381,7 @@ export function summaryLines(counts: ReviewSummaryCounts): string[] {
   if ((counts.counterpartsConfirmed ?? 0) > 0) lines.push(`${pluralize(counts.counterpartsConfirmed, 'counterpart')} confirmed`);
   if ((counts.counterpartsSetInactive ?? 0) > 0) lines.push(`${pluralize(counts.counterpartsSetInactive, 'counterpart')} set inactive`);
   if ((counts.nextMeetingsAdded ?? 0) > 0) lines.push(`${pluralize(counts.nextMeetingsAdded, 'next meeting')} added`);
+  if ((counts.loopsClosed ?? 0) > 0) lines.push(`${pluralize(counts.loopsClosed, 'loop')} closed`);
   if (counts.gmailItemsCreated > 0) lines.push(`${pluralize(counts.gmailItemsCreated, 'item')} created from email`);
   if (counts.gmailArchived > 0) lines.push(`${pluralize(counts.gmailArchived, 'email')} archived`);
   if (counts.inboxCleared > 0) lines.push(`${pluralize(counts.inboxCleared, 'inbox item')} cleared`);

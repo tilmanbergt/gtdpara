@@ -92,7 +92,7 @@ import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import App from '../../App';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
-import {getThreadOverview} from '../../src/ui/threadOverlayStore';
+import {getOverview} from '../../src/ui/overviewStore';
 
 const AREA = '/storage/emulated/0/Note/2 Areas/Coaching';
 const AREA_FILE = `${AREA}/area.txt`;
@@ -147,7 +147,7 @@ describe('Review: Tending threads', () => {
     expect(texts(alpha)).toEqual(expect.arrayContaining(['alpha', 'Open overview ›', 'Set inactive', 'I owe · 1', 'Relevant · 1']));
     expect(texts(alpha)).toContain('+ Next retro');
     await pressText(alpha, 'Open overview ›');
-    expect(getThreadOverview()).toEqual({tag: 'retro/alpha', ownerPath: AREA, lens: 'counterpart'});
+    expect(getOverview()).toEqual({tag: 'retro/alpha', ownerPath: AREA, lens: 'counterpart'});
     await settle();
     expect(texts(r)).toContain('‹ Review');
 

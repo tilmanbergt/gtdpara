@@ -1,12 +1,17 @@
 /**
  * The Todos list of the Current page's right pane (screens/ProjectDataPanel.tsx):
- * grouped by flow state, flattened into one PagedSection, with its own row
+ * the todos of each active loop first, under the loop's name and main date
+ * (docs/dev/history/technical-design-loops.md §4.7), then the rest grouped
+ * by flow state, flattened into one PagedSection, with its own row
  * actions (done toggle, note) and the "Hide done tasks" switch. Add, edit and
  * delete live in ProjectDataPanel's single Quick Add above both lists.
  */
 import React, {useEffect, useState} from 'react';
 import {Keyboard, Pressable, Text, View} from 'react-native';
 import {Task} from '../../domain/types';
+import {formatDate} from '../../domain/dateFormat';
+import {groupTodosByLoop} from '../../domain/loops';
+import {LoopLine} from '../../domain/loopsSection';
 import {groupTasksByFlowState} from '../../domain/flowState';
 import {withTaskDone} from '../../domain/taskEdit';
 import {todayIso} from '../../domain/meetingTime';
@@ -37,11 +42,14 @@ export default function TodosSection({
   onArmLink,
   onOpenLinkedFile,
   filter,
+  loops = [],
   textColor,
   borderColor,
 }: Pick<PaneColors, 'textColor' | 'borderColor'> & {
   itemPath: string;
   tasks: Task[];
+  /** The item's `## Loops` lines: the todos of each active loop are listed first, under the loop. */
+  loops?: readonly LoopLine[];
   onSave: (next: Task[]) => Promise<void>;
   /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/history/technical-design-unified-quickadd.md §8) - this section only needs `editingIndex` to keep highlighting the row currently being edited. */
   editingIndex: number | null;
@@ -100,7 +108,19 @@ export default function TodosSection({
   // grouping instead, by filtering each group's already-indexed `entries`
   // in place - that keeps every surviving entry's `index` correct and still
   // drops a group left with nothing but done tasks.
-  const groupsByFlowState = groupTasksByFlowState(tasks);
+  const loopGroups = groupTodosByLoop(
+    tasks.map((task, index) => ({task, index, tags: task.tags})).filter(({task}) => !task.cancelled),
+    loops,
+  ).filter(group => group.loop !== null);
+  const inLoop = new Set(loopGroups.flatMap(group => group.todos.map(t => t.index)));
+  const groupsByFlowState = [
+    ...loopGroups.map(group => ({
+      key: `loop-${group.loop!.tag}`,
+      label: `○ ${group.loop!.tag.split('/').slice(1).join('/')}${group.loop!.mainDate ? ` · ${formatDate(group.loop!.mainDate, todayIso())}` : ''}`,
+      entries: group.todos.map(({task, index}) => ({task, index})),
+    })),
+    ...groupTasksByFlowState(tasks).map(group => ({...group, entries: group.entries.filter(e => !inLoop.has(e.index))})),
+  ].filter(group => group.entries.length > 0);
   const groups =
     hideDone || filter
       ? groupsByFlowState

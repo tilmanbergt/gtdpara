@@ -118,25 +118,25 @@
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {Keyboard, LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
 import {AbbrevFileMatch, resolveAbbrevFileTarget} from '../domain/abbrev';
-import {copyCutRange, Selection, spliceAtSelection} from '../domain/clipboardText';
+import {Selection} from '../domain/clipboardText';
 import {describeAddedDate} from '../domain/dateLabel';
 import {Destination, destinationLabel} from '../domain/destination';
 import {joinItems, splitAtSelection, splitByHand} from '../domain/captureText';
 import {composeTaskText} from '../domain/quickAddCompose';
 import {extractContextTags, insertTagAtPosition, removeTagFromText, stripSpaceAfterHash} from '../domain/markdown';
 import {formatMeetingWhen, MeetingField, todayIso, validateMeetingFields} from '../domain/meetingTime';
-import {isHighlight, setHighlight} from '../domain/monthHighlight';
+import {setHighlight} from '../domain/monthHighlight';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {FlowState, Meeting, Task} from '../domain/types';
 import {getRecentTags, getRecentTagsSync, recordTagsUsed} from '../storage/tagUsage';
 import {getRecentDestinations, getRecentDestinationsSync, recordDestinationUsed} from '../storage/destinationUsage';
-import {FILE_TO_SHORT, fileToEligible, fileToLabel, fileToShortList} from '../domain/captureFileTo';
+import {FILE_TO_SHORT} from '../domain/captureFileTo';
+import ClipboardStrip, {clipboardActions} from './ClipboardStrip';
 import ClipboardTextInput from './ClipboardTextInput';
 import DateInput, {DateInputHandle} from './DateInput';
 import FlowStateChips from './FlowStateChips';
-import {ClipIcon, TrashIcon, WarningIcon} from './icons';
+import {ClipIcon, WarningIcon} from './icons';
 import {COLORS, FONT} from './theme';
 import HighlightMark from './HighlightMark';
 import TagChips from './TagChips';
@@ -147,9 +147,12 @@ import MarkWrap from './status/StatusMark';
 import {usePerfRender} from '../utils/perf';
 import {useAbbrevItems} from './useAbbrevItems';
 import {useOnScreenHide} from './screenActivity';
-import {common} from './commonStyles';
 import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
+import {CreateActionRow, EditActionRow, quickAddButtons} from './quickAdd/ActionRow';
+import {useLoopMode} from './quickAdd/useLoopMode';
+import {buildFileToChips} from './quickAdd/fileToChips';
 import ProvenanceLine, {QuickAddProvenance} from './quickAdd/ProvenanceLine';
+import {EditFields, loadEditFields, MeetingEditFields, TaskEditFields} from './quickAdd/editFields';
 import {errorMessage} from '../utils/errorMessage';
 
 /** The fields of a meeting being added or edited; other files import this type from here. */
@@ -196,25 +199,6 @@ interface MeetingDraft {
 interface NoteDraft {
   titleRaw: string;
 }
-
-interface TaskEditFields {
-  text: string;
-  flowState: FlowState;
-  waitingOnText: string;
-  dueDate: string;
-  dueDateOpen: boolean;
-  linkedFile: string;
-}
-
-interface MeetingEditFields {
-  title: string;
-  date: string;
-  time: string;
-  monthly: boolean;
-  linkedFile: string;
-}
-
-type EditFields = {kind: 'task'; fields: TaskEditFields} | {kind: 'meeting'; fields: MeetingEditFields};
 
 function makeTaskDraft(): TaskDraft {
   return {text: '', flowState: null, waitingOnText: '', dueDate: '', dueDateOpen: false};
@@ -339,6 +323,8 @@ interface Props {
   /** Mutually exclusive - the caller's own single edit-target state already keeps that invariant (design doc §6). */
   editingTask?: Task;
   editingMeeting?: Meeting;
+  /** `editingTask` stands for a loop (screens/loop/LoopOverview.tsx): no flow chips, no Delete, "Save loop". */
+  editingLoop?: boolean;
   /** Resolve `false` when the save failed (the screen showed its own error) - the widget then keeps the edit open. */
   onSaveEditTask?: (nextText: string, nextLinkedFile: string) => Promise<void | boolean>;
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
@@ -450,6 +436,7 @@ function QuickAddWidget({
   onAddTask,
   onAddMeeting,
   editingTask,
+  editingLoop,
   editingMeeting,
   onSaveEditTask,
   onSaveEditMeeting,
@@ -645,32 +632,7 @@ function QuickAddWidget({
       // doc comment for why this lives in a ref instead of field state.
       taskLastSelectionRef.current = null;
       meetingLastSelectionRef.current = null;
-      let loaded: EditFields | null = null;
-      if (editingTask) {
-        loaded = {
-          kind: 'task',
-          fields: {
-            text: editingTask.text,
-            flowState: editingTask.flowState,
-            waitingOnText: editingTask.waitingOn ?? '',
-            dueDate: editingTask.dueDate ?? '',
-            dueDateOpen: !!editingTask.dueDate,
-            linkedFile: editingTask.linkedFile ?? '',
-          },
-        };
-      } else if (editingMeeting) {
-        loaded = {
-          kind: 'meeting',
-          fields: {
-            // `#monthly` is edited through the M toggle, not as title text.
-            title: setHighlight(editingMeeting.title, false),
-            date: editingMeeting.date,
-            time: formatMeetingWhen(editingMeeting),
-            monthly: isHighlight(editingMeeting),
-            linkedFile: editingMeeting.linkedFile ?? '',
-          },
-        };
-      }
+      const loaded = loadEditFields(editingTask, editingMeeting);
       setEditFields(loaded);
       loadedFieldsRef.current = loaded ? JSON.stringify(loaded.fields) : null;
       setError(null);
@@ -799,12 +761,15 @@ function QuickAddWidget({
     // matched #tag, which did its job picking the destination:
     // domain/quickAddCompose.ts, shared with the lasso capture panel.
     const finalText = composeTaskText(taskDraft, taskAbbrevTarget ? taskAbbrevTarget.tag : null);
+    if (loopMode.kind === 'exists') return;
+    const startsLoop = loopMode.kind === 'add';
     setError(null);
     setPending(true);
     onAddTask(finalText, taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination)
       .then(() => {
         setTaskDraft(d => ({...d, text: '', flowState: null, waitingOnText: '', dueDate: ''}));
         taskLastSelectionRef.current = null;
+        if (startsLoop) return;
         setTaskJustAdded(
           `Added todo "${truncateItemName(trimmed, 40)}" to ${destinationLabel(
             taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination,
@@ -831,7 +796,7 @@ function QuickAddWidget({
     return (onSaveEditTask ?? (() => Promise.resolve()))(finalText, editFields.fields.linkedFile)
       .then(result => {
         if (result === false) return false;
-        setSavedNote(`Saved todo "${truncateItemName(trimmed, 40)}"`);
+        setSavedNote(`Saved ${loopMode.kind === 'loop' ? 'loop' : 'todo'} "${truncateItemName(trimmed, 40)}"`);
         recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags);
         return true;
       })
@@ -1112,6 +1077,16 @@ function QuickAddWidget({
 
   // ---- Row 2 + Row 3: Task style ----
   const taskFields = editFields?.kind === 'task' ? editFields.fields : taskDraft;
+  // A todo that is only a loop tag starts the loop (ui/quickAdd/useLoopMode.ts).
+  const loopMode = useLoopMode({
+    active: displayType === 'task' && !isCapture,
+    fields: taskFields,
+    editing: editFields?.kind === 'task',
+    editingLoop: !!editingLoop && editFields?.kind === 'task',
+    fixedDestination,
+    editingItemPath,
+    abbrevItems: cachedAbbrevItems,
+  });
   const setTaskText = (t: string) => {
     captureTouchedRef.current = true;
     const stripped = stripSpaceAfterHash(t);
@@ -1164,33 +1139,7 @@ function QuickAddWidget({
 
   // Custom Select All/Copy/Cut/Paste (see the module doc comment on
   // spliceAtSelection/copyCutRange for why these exist at all).
-  const handleTaskSelectAll = () => {
-    const selection = {start: 0, end: taskFields.text.length};
-    taskLastSelectionRef.current = selection;
-    setTaskSelectionOverride(selection);
-  };
-  const handleTaskCopy = () => {
-    const {start, end} = copyCutRange(taskFields.text, taskLastSelectionRef.current);
-    Clipboard.setString(taskFields.text.slice(start, end));
-  };
-  const handleTaskCut = () => {
-    const range = copyCutRange(taskFields.text, taskLastSelectionRef.current);
-    Clipboard.setString(taskFields.text.slice(range.start, range.end));
-    const {text, cursor} = spliceAtSelection(taskFields.text, range, '');
-    setTaskText(text);
-    const selection = {start: cursor, end: cursor};
-    taskLastSelectionRef.current = selection;
-    setTaskSelectionOverride(selection);
-  };
-  const handleTaskPaste = async () => {
-    const clip = await Clipboard.getString();
-    if (!clip) return;
-    const {text, cursor} = spliceAtSelection(taskFields.text, taskLastSelectionRef.current, clip);
-    setTaskText(text);
-    const selection = {start: cursor, end: cursor};
-    taskLastSelectionRef.current = selection;
-    setTaskSelectionOverride(selection);
-  };
+  const taskClipboard = clipboardActions(taskFields.text, taskLastSelectionRef, setTaskText, setTaskSelectionOverride);
 
   // The due-date control: in R2 next to the field; in the capture variant
   // in the options row under it (checkpoint B).
@@ -1201,7 +1150,7 @@ function QuickAddWidget({
           ref={dueInputRef}
           value={taskFields.dueDate}
           onChangeText={setTaskDueDate}
-          placeholder="Due YYYY-MM-DD"
+          placeholder={loopMode.kind === 'none' || loopMode.kind === 'exists' ? 'Due YYYY-MM-DD' : 'Main date YYYY-MM-DD'}
           placeholderColor={placeholderColor}
           textColor={textColor}
           borderColor={borderColor}
@@ -1294,10 +1243,10 @@ function QuickAddWidget({
         <Pressable onPress={toggleSplit} hitSlop={8} accessibilityRole="checkbox">
           <Text style={[styles.splitToggleText, {color: textColor}]}>{splitRows ? '☑' : '☐'} Split lines</Text>
         </Pressable>
-        <Pressable style={[styles.ghostButton, {borderColor}]} onPress={splitAtCursor} hitSlop={6}>
-          <Text style={[styles.ghostButtonText, {color: textColor}]}>✂ Split at cursor</Text>
+        <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={splitAtCursor} hitSlop={6}>
+          <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>✂ Split at cursor</Text>
         </Pressable>
-        <View style={styles.centerSpacer} />
+        <View style={quickAddButtons.centerSpacer} />
         {taskDueControl}
       </View>
     ) : null;
@@ -1400,20 +1349,7 @@ function QuickAddWidget({
           `display:none` pattern above (blur fires on touch-down, but the
           already-claimed touch responder keeps receiving the rest of that
           gesture as long as the view instance itself survives). */}
-      <View style={[common.floatingStrip, {borderColor}, !taskInputFocused && styles.hidden]}>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskSelectAll} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskCopy} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskCut} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleTaskPaste} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
-        </Pressable>
-      </View>
+      <ClipboardStrip visible={taskInputFocused} actions={taskClipboard} textColor={textColor} borderColor={borderColor} />
     </View>
   );
 
@@ -1494,7 +1430,7 @@ function QuickAddWidget({
       <View style={[styles.row3, taskRow3Hidden]} onLayout={taskTagBudget.onRowLayout}>
         <View style={styles.row3ChipsGroup}>
           <View style={styles.row3Lead} onLayout={taskTagBudget.onLeadLayout}>
-            <FlowStateChips value={taskFields.flowState} onChange={setTaskFlowState} textColor={textColor} borderColor={borderColor} />
+            {loopMode.kind !== 'loop' && <FlowStateChips value={taskFields.flowState} onChange={setTaskFlowState} textColor={textColor} borderColor={borderColor} />}
           </View>
           {!isCapture && <TagChips
             text={taskFields.text}
@@ -1559,34 +1495,8 @@ function QuickAddWidget({
     if (meetingSelectionOverride) setMeetingSelectionOverride(null);
   };
 
-  // Custom Select All/Copy/Cut/Paste - see handleTaskSelectAll's comment above.
-  const handleMeetingSelectAll = () => {
-    const selection = {start: 0, end: meetingFields.title.length};
-    meetingLastSelectionRef.current = selection;
-    setMeetingSelectionOverride(selection);
-  };
-  const handleMeetingCopy = () => {
-    const {start, end} = copyCutRange(meetingFields.title, meetingLastSelectionRef.current);
-    Clipboard.setString(meetingFields.title.slice(start, end));
-  };
-  const handleMeetingCut = () => {
-    const range = copyCutRange(meetingFields.title, meetingLastSelectionRef.current);
-    Clipboard.setString(meetingFields.title.slice(range.start, range.end));
-    const {text, cursor} = spliceAtSelection(meetingFields.title, range, '');
-    setMeetingTitle(text);
-    const selection = {start: cursor, end: cursor};
-    meetingLastSelectionRef.current = selection;
-    setMeetingSelectionOverride(selection);
-  };
-  const handleMeetingPaste = async () => {
-    const clip = await Clipboard.getString();
-    if (!clip) return;
-    const {text, cursor} = spliceAtSelection(meetingFields.title, meetingLastSelectionRef.current, clip);
-    setMeetingTitle(text);
-    const selection = {start: cursor, end: cursor};
-    meetingLastSelectionRef.current = selection;
-    setMeetingSelectionOverride(selection);
-  };
+  // Custom Select All/Copy/Cut/Paste - see taskClipboard's comment above.
+  const meetingClipboard = clipboardActions(meetingFields.title, meetingLastSelectionRef, setMeetingTitle, setMeetingSelectionOverride);
 
   const meetingRow2 = (
     <View style={[styles.row2, displayType !== 'meeting' && styles.hidden]}>
@@ -1618,20 +1528,7 @@ function QuickAddWidget({
         </MarkWrap>
       </View>
       {/* Same hovering overlay as taskRow2's - see its comment for why. */}
-      <View style={[common.floatingStrip, {borderColor}, !meetingInputFocused && styles.hidden]}>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingSelectAll} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>All</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingCopy} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Copy</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingCut} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Cut</Text>
-        </Pressable>
-        <Pressable style={[common.floatingStripButton, {borderColor}]} onPress={handleMeetingPaste} hitSlop={6}>
-          <Text style={[common.floatingStripButtonText, {color: textColor}]}>Paste</Text>
-        </Pressable>
-      </View>
+      <ClipboardStrip visible={meetingInputFocused} actions={meetingClipboard} textColor={textColor} borderColor={borderColor} />
     </View>
   );
 
@@ -1832,6 +1729,10 @@ function QuickAddWidget({
   useStatus(`${statusId}.error`, error ? {kind: 'error', text: error, onDismiss: () => setError(null)} : null);
   useStatus(`${statusId}.success`, successText ? {kind: 'success', text: successText, onDismiss: dismissSuccess} : null);
   useStatus(`${statusId}.info`, infoText ? {kind: 'info', text: infoText, onDismiss: () => setMeetingCopyNote(null)} : null);
+  useStatus(
+    `${statusId}.loop`,
+    loopMode.kind === 'exists' && !isEditing ? {kind: 'info', text: `Loop ${loopMode.loop.tag} exists - add words for a todo of it`} : null,
+  );
 
   const buttonMark = errorState && errorState.field === null ? ('warning' as const) : successText ? ('success' as const) : null;
 
@@ -1962,70 +1863,35 @@ function QuickAddWidget({
         return {key: tag, label: `#${recognizedAbbrevTags.has(lower) ? tag.toUpperCase() : tag}`, on, onPress};
       })
     : [];
-  // Short list: Inbox, own place, current choice, focused, recent (checkpoint B);
-  // More… shows every Active Project/Area alphabetically, FILE_TO_PAGE per page.
-  const fileToChip = (item: {kind: 'project' | 'area'; name: string; path: string; abbrev: string | null}): GridChip => ({
-    key: item.path,
-    label: fileToLabel(item),
-    on: captureDestination.type === 'item' && captureDestination.path === item.path,
-    onPress: () => onCaptureDestinationChange?.({type: 'item', kind: item.kind, name: item.name, path: item.path}),
-  });
-  const inboxChip: GridChip = {
-    key: 'inbox',
-    label: 'Inbox',
-    on: captureDestination.type === 'inbox',
-    onPress: () => onCaptureDestinationChange?.({type: 'inbox'}),
-  };
-  let fileToChips: GridChip[] = [];
-  if (isCapture && !fileToAll) {
-    const short = fileToShortList(cachedAbbrevItems, captureOwnDestination, captureDestination, recentDestinations);
-    const total = fileToEligible(cachedAbbrevItems).length;
-    fileToChips = [inboxChip, ...short.map(fileToChip)];
-    if (total > short.length) {
-      fileToChips.push({key: 'more', label: 'More…', on: false, onPress: () => setFileToAll(true)});
-    }
-  } else if (isCapture) {
-    const all = fileToEligible(cachedAbbrevItems);
-    const pages = Math.max(1, Math.ceil(all.length / FILE_TO_PAGE));
-    const page = Math.min(fileToPage, pages - 1);
-    fileToChips = [
-      {key: 'less', label: '‹ Short list', on: false, onPress: () => setFileToAll(false)},
-      // A pick goes back to the short list, which always shows the current choice.
-      ...all.slice(page * FILE_TO_PAGE, (page + 1) * FILE_TO_PAGE).map(item => {
-        const chip = fileToChip(item);
-        return {
-          ...chip,
-          onPress: () => {
-            chip.onPress();
-            setFileToAll(false);
-          },
-        };
-      }),
-    ];
-    if (pages > 1) {
-      fileToChips.push({
-        key: 'page',
-        label: `${page + 1}/${pages} ›`,
-        on: false,
-        onPress: () => setFileToPage((page + 1) % pages),
-      });
-    }
-  }
+  const fileToChips: GridChip[] = isCapture
+    ? buildFileToChips({
+        items: cachedAbbrevItems,
+        own: captureOwnDestination,
+        current: captureDestination,
+        recent: recentDestinations,
+        showAll: fileToAll,
+        page: fileToPage,
+        pageSize: FILE_TO_PAGE,
+        onPick: destination => onCaptureDestinationChange?.(destination),
+        setShowAll: setFileToAll,
+        setPage: setFileToPage,
+      })
+    : [];
   const countLabel = captureCount > 1 ? ` ${captureCount}` : '';
   const captureRow4 = (
-    <View style={styles.row4}>
+    <View style={quickAddButtons.row4}>
       <Text style={[styles.captureDest, {color: textColor}]} numberOfLines={1}>
         → {truncateItemName(destinationLabel(captureDestination), 24)}
       </Text>
-      <Pressable style={[styles.ghostButton, {borderColor}]} onPress={() => submitCapture('next')} disabled={pending} hitSlop={6}>
-        <Text style={[styles.ghostButtonText, {color: textColor}]}>Save{countLabel} & next</Text>
+      <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={() => submitCapture('next')} disabled={pending} hitSlop={6}>
+        <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>Save{countLabel} & next</Text>
       </Pressable>
-      <Pressable style={[styles.ghostButton, {borderColor}]} onPress={() => submitCapture('view')} disabled={pending} hitSlop={6}>
-        <Text style={[styles.ghostButtonText, {color: textColor}]}>Save{countLabel} & view</Text>
+      <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={() => submitCapture('view')} disabled={pending} hitSlop={6}>
+        <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>Save{countLabel} & view</Text>
       </Pressable>
       <MarkWrap mark={errorState && errorState.field === null ? 'warning' : null} textColor={textColor}>
-        <Pressable style={styles.primaryButton} onPress={() => submitCapture('close')} disabled={pending} hitSlop={6}>
-          <Text style={styles.primaryButtonText}>Save{countLabel} & close</Text>
+        <Pressable style={quickAddButtons.primaryButton} onPress={() => submitCapture('close')} disabled={pending} hitSlop={6}>
+          <Text style={quickAddButtons.primaryButtonText}>Save{countLabel} & close</Text>
         </Pressable>
       </MarkWrap>
       {monthlyToggle}
@@ -2052,77 +1918,29 @@ function QuickAddWidget({
   ) : null;
 
   const row4 = isCapture && !isEditing ? captureRow4 : isEditing ? (
-    <View style={styles.row4}>
-      <View style={styles.actionsLeft}>
-        {/* An icon rather than the word "Delete" - frees ~40px in
-            this crowded row. Leftmost on purpose and hitSlop 4 (not the 8 the
-            text buttons use): delete is one tap with no confirmation, so its
-            touch area must not spill into "New from this" next to it. */}
-        <Pressable
-          style={[styles.ghostButton, styles.trashButton, {borderColor}]}
-          onPress={handleDelete}
-          disabled={pending}
-          hitSlop={4}
-          accessibilityRole="button"
-          accessibilityLabel="Delete">
-          <TrashIcon size={18} color={textColor} />
-        </Pressable>
-        {editFields?.kind === 'meeting' && onCancelEdit && (
-          <Pressable style={[styles.ghostButton, {borderColor}]} onPress={handleNewFromThis} disabled={pending} hitSlop={8}>
-            <Text style={[styles.ghostButtonText, {color: textColor}]} numberOfLines={1}>
-              New from this
-            </Text>
-          </Pressable>
-        )}
-        {onRefile && !abbrevTarget && (
-          <Pressable style={[styles.ghostButton, {borderColor}]} onPress={handleRefile} disabled={pending} hitSlop={8}>
-            <Text style={[styles.ghostButtonText, {color: textColor}]}>Refile</Text>
-          </Pressable>
-        )}
-        {onQuickFile && abbrevTarget && (
-          <Pressable style={[styles.ghostButton, {borderColor}]} onPress={handleQuickFile} disabled={pending} hitSlop={8}>
-            <Text style={[styles.ghostButtonText, {color: textColor}]} numberOfLines={1}>
-              File: {truncateItemName(abbrevTarget.name)}
-            </Text>
-          </Pressable>
-        )}
-      </View>
-      <View style={styles.centerSpacer} />
-      <View style={styles.actionsRight}>
-        <Pressable onPress={onCancelEdit} hitSlop={8}>
-          <Text style={[styles.textButton, {color: textColor}]}>Cancel</Text>
-        </Pressable>
-        {monthlyToggle}
-        <MarkWrap mark={errorState && errorState.field === null ? 'warning' : null} textColor={textColor}>
-          <Pressable
-            style={styles.primaryButton}
-            onPress={editFields?.kind === 'meeting' ? submitMeetingEdit : submitTaskEdit}
-            disabled={pending}
-            hitSlop={8}>
-            <Text style={styles.primaryButtonText}>Save</Text>
-          </Pressable>
-        </MarkWrap>
-      </View>
-    </View>
+    <EditActionRow
+      pending={pending}
+      onDelete={loopMode.kind === 'loop' ? undefined : handleDelete}
+      onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
+      onRefile={onRefile ? handleRefile : undefined}
+      quickFile={onQuickFile && abbrevTarget ? {name: truncateItemName(abbrevTarget.name), onPress: handleQuickFile} : null}
+      onCancel={onCancelEdit}
+      saveLabel={loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : 'Save'}
+      onSave={editFields?.kind === 'meeting' ? submitMeetingEdit : submitTaskEdit}
+      errorOnSave={!!errorState && errorState.field === null}
+      monthlyToggle={monthlyToggle}
+      textColor={textColor}
+      borderColor={borderColor}
+    />
   ) : (
-    <View style={styles.row4}>
-      <View style={styles.actionsLeft} />
-      <View style={styles.centerSpacer} />
-      <View style={styles.actionsRight}>
-        {monthlyToggle}
-        <MarkWrap mark={buttonMark} textColor={textColor}>
-          <Pressable
-            style={styles.primaryButton}
-            onPress={displayType === 'meeting' ? submitMeetingCreate : displayType === 'note' ? submitNoteCreate : submitTaskCreate}
-            disabled={pending}
-            hitSlop={8}>
-            <Text style={styles.primaryButtonText} numberOfLines={1}>
-              {abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
-            </Text>
-          </Pressable>
-        </MarkWrap>
-      </View>
-    </View>
+    <CreateActionRow
+      label={loopMode.kind === 'add' ? '+ Add loop' : abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
+      onPress={displayType === 'meeting' ? submitMeetingCreate : displayType === 'note' ? submitNoteCreate : submitTaskCreate}
+      disabled={pending || loopMode.kind === 'exists'}
+      mark={buttonMark}
+      monthlyToggle={monthlyToggle}
+      textColor={textColor}
+    />
   );
 
   return (
@@ -2200,11 +2018,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 6,
-  },
-  row4: {
-    minHeight: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   /** Keeps the inactive tab's row2/row3 native views mounted (see taskRow2's comment) instead of unmounting them - Yoga skips display:none entirely, so it contributes no height. */
   hidden: {
@@ -2313,54 +2126,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginLeft: 3,
     paddingHorizontal: 4,
-  },
-  actionsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionsRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  /** Keeps actionsLeft/actionsRight at the row's two ends. */
-  centerSpacer: {
-    flex: 1,
-  },
-  primaryButton: {
-    backgroundColor: COLORS.accent,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  primaryButtonText: {
-    color: COLORS.accentText,
-    fontSize: FONT.small,
-    fontWeight: '600',
-  },
-  ghostButton: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 6,
-  },
-  ghostButtonText: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    opacity: 0.8,
-  },
-  /** Icon-only variant of ghostButton (edit-mode delete): tighter horizontal padding, icon centred; height still matches its text-labelled neighbours (icon 18 + 2x6 padding ~ line height + 2x6). */
-  trashButton: {
-    paddingHorizontal: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textButton: {
-    fontSize: FONT.small,
-    opacity: 0.7,
-    fontWeight: '600',
-    marginRight: 12,
   },
 });
 

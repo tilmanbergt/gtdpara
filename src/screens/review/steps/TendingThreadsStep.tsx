@@ -31,7 +31,7 @@ import QuickAddWidget, {MeetingQuickAddFields} from '../../../ui/QuickAddWidget'
 import {MeetingSeed} from '../../../ui/quickAdd/useDraftRequests';
 import ReviewMasterDetail from '../../../ui/ReviewMasterDetail';
 import {FONT, SPACING} from '../../../ui/theme';
-import {openThreadOverview} from '../../../ui/threadOverlayStore';
+import {openOverview} from '../../../ui/overviewStore';
 import {log} from '../../../utils/log';
 import {requestEinkRefresh} from '../../../utils/screenRefresh';
 import {needsConfirm, useTendActions} from '../../thread/useTending';
@@ -197,7 +197,7 @@ export default function TendingThreadsStep({data, stepEntryToken, onAddTask, tex
           confirm={needsConfirm(entry)}
           onTend={() => tend.confirm(entry, true)}
           onNot={() => tend.confirm(entry, false)}
-          onOpenOverview={() => openThreadOverview({tag: entry.tag, ownerPath: entry.owner.path, lens: 'counterpart'})}
+          onOpenOverview={() => openOverview({tag: entry.tag, ownerPath: entry.owner.path, lens: 'counterpart'})}
           onSetInactive={() =>
             setInactive(entry).then(result => {
               if (result === 'closeOut') setCloseOutKey(entryKey(entry));

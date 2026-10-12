@@ -21,7 +21,7 @@
 import {hasBareTag, setBareTag, stripBareTags} from './flowState';
 import {deriveMeetingFields} from './markdown';
 import {isoDateOffset, meetingAutoUpdateCutoffMs} from './meetingTime';
-import {TagRule, resolveNoteTemplate} from './tagRules';
+import {TagRule, resolveNoteTemplate, tagMatchesRuleTag} from './tagRules';
 import {Meeting} from './types';
 
 export type MeetingTrackingKind = 'prep' | 'review';
@@ -41,9 +41,28 @@ export const REVIEW_LOOKBACK_DAYS = 7;
 type TrackedMeeting = Pick<Meeting, 'date' | 'time' | 'tags' | 'cancelled'> & Partial<Pick<Meeting, 'endTime' | 'days'>>;
 
 /**
+ * Every enabled meeting rule `tags` match, or the default one when none does
+ * (docs/dev/history/technical-design-loops.md §1.2): a meeting of a loop
+ * that also carries a thread's tag is tracked when either rule asks for it.
+ */
+function matchingMeetingRules(tags: readonly string[], definitions: TagRule[]): TagRule[] {
+  const tagsLower = tags.map(t => t.toLowerCase());
+  const matched = definitions.filter(
+    d =>
+      d.enabled &&
+      d.context === 'meeting' &&
+      d.tags.some(ruleTag => tagsLower.some(tag => tagMatchesRuleTag(tag, ruleTag.toLowerCase()))),
+  );
+  if (matched.length > 0) return matched;
+  const fallback = resolveNoteTemplate('meeting', [...tags], definitions);
+  return fallback ? [fallback] : [];
+}
+
+/**
  * Which checkpoint is current for `meeting` right now and whether it's done -
  * or `null` when nothing is tracked in the current phase (no matching rule,
- * the rule doesn't track this phase, or the meeting is cancelled). The one
+ * none of the matching rules tracks this phase, or the meeting is
+ * cancelled). The one
  * function both the row icon and the review aggregate call, so they can never
  * disagree.
  */
@@ -53,10 +72,10 @@ export function resolveMeetingTracking(
   now: Date = new Date(),
 ): MeetingTrackingState | null {
   if (meeting.cancelled) return null;
-  const definition = resolveNoteTemplate('meeting', meeting.tags, definitions);
-  if (!definition) return null;
+  const matching = matchingMeetingRules(meeting.tags, definitions);
+  if (matching.length === 0) return null;
   const kind: MeetingTrackingKind = now.getTime() > meetingAutoUpdateCutoffMs(meeting) ? 'review' : 'prep';
-  const tracked = kind === 'prep' ? definition.trackPrep : definition.trackReview;
+  const tracked = matching.some(rule => (kind === 'prep' ? rule.trackPrep : rule.trackReview));
   if (!tracked) return null;
   return {kind, done: hasBareTag(meeting.tags, TRACKING_TAG[kind])};
 }

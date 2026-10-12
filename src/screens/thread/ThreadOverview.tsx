@@ -2,7 +2,7 @@
  * The thread overview (docs/dev/history/technical-design-tending-threads.md
  * §3.5): everything around one thread or counterpart, inside the owner's
  * scope - drawn over the tab body by screens/useAppOverlays.tsx, opened from
- * a nested tag or a `#w/f Name` label (ui/threadOverlayStore.ts).
+ * a nested tag or a `#w/f Name` label (ui/overviewStore.ts).
  *
  * Header: "‹ <tab>" (closes it), the tag, the owner, the lens switch
  * (thread | all of the counterpart). `#wf/<name>` and `#owe/<name>` name a
@@ -28,7 +28,7 @@ import MiniTabs from '../../ui/MiniTabs';
 import QuickAddWidget from '../../ui/QuickAddWidget';
 import {MeetingSeed} from '../../ui/quickAdd/useDraftRequests';
 import {useProvenance} from '../../ui/quickAdd/useProvenance';
-import {ThreadOverviewRequest} from '../../ui/threadOverlayStore';
+import {OverviewRequest} from '../../ui/overviewStore';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useCachedItems} from '../../ui/useCachedItems';
 import {getCachedData} from '../../storage/dataCache';
@@ -49,7 +49,7 @@ function destinationOf(item: ThreadItemRef | null): Destination {
 }
 
 interface Props {
-  request: ThreadOverviewRequest;
+  request: OverviewRequest;
   backLabel: string;
   onClose: () => void;
 }

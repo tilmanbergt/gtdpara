@@ -58,6 +58,8 @@ function countText(id: ReviewStepId, count: ReviewStepCount): string {
     case 'stalled':
     case 'done':
       return pluralize(count.n, 'project');
+    case 'openLoops':
+      return pluralize(count.n, 'loop');
     case 'neglected':
       return pluralize(count.n, 'area');
     case 'unfocusedNext':

@@ -21,13 +21,12 @@
 import {formatDate} from '../domain/dateFormat';
 import {meetingEndMs} from '../domain/meetingTime';
 import {daysBetween} from '../domain/nextMeeting';
-import {ItemStatus} from '../domain/types';
+import {ItemStatus, Meeting, Task} from '../domain/types';
 import {CachedItem} from './dataCache';
 import {isActionableOpenTask} from './reviewAggregate';
 
-export interface ProjectGlanceRow {
-  item: CachedItem;
-  status: Extract<ItemStatus, 'active' | 'on-hold'>;
+/** The signals of a set of todos and meetings - a Project's, or a loop's (storage/loopGlance.ts). */
+export interface GlanceSignals {
   /** Date of the latest meeting that is over, or null. */
   lastMeeting: string | null;
   /** Date of the next meeting that is not over yet, or null. */
@@ -40,10 +39,18 @@ export interface ProjectGlanceRow {
   oldestWaitingDays: number | null;
 }
 
-function glanceOf(item: CachedItem, status: ProjectGlanceRow['status'], today: string, nowMs: number): ProjectGlanceRow {
+export interface ProjectGlanceRow extends GlanceSignals {
+  item: CachedItem;
+  status: Extract<ItemStatus, 'active' | 'on-hold'>;
+  /** The Project's active loops (docs/dev/history/technical-design-loops.md §4.7), shown as a count. */
+  loops: number;
+}
+
+/** The signals of `tasks` and `meetings` - see the module doc comment. */
+export function glanceSignals(tasks: readonly Task[], meetings: readonly Meeting[], today: string, nowMs: number): GlanceSignals {
   let last: {date: string; end: number} | null = null;
   let next: {date: string; end: number} | null = null;
-  for (const meeting of item.meetings) {
+  for (const meeting of meetings) {
     if (meeting.cancelled) continue;
     const end = meetingEndMs(meeting);
     if (end <= nowMs) {
@@ -52,21 +59,28 @@ function glanceOf(item: CachedItem, status: ProjectGlanceRow['status'], today: s
       next = {date: meeting.date, end};
     }
   }
-  const open = item.tasks.filter(t => !t.done && !t.cancelled);
+  const open = tasks.filter(t => !t.done && !t.cancelled);
   const waiting = open.filter(t => t.flowState === 'waiting-for');
   const ages = waiting
     .map(t => (t.fields.created ? daysBetween(t.fields.created, today) : null))
     .filter((d): d is number => d !== null);
   return {
-    item,
-    status,
     lastMeeting: last?.date ?? null,
     nextMeeting: next?.date ?? null,
     open: open.length,
     next: open.filter(t => t.flowState === 'next').length,
-    stalled: !item.tasks.some(isActionableOpenTask),
+    stalled: !tasks.some(isActionableOpenTask),
     waitingCount: waiting.length,
     oldestWaitingDays: ages.length > 0 ? Math.max(...ages) : null,
+  };
+}
+
+function glanceOf(item: CachedItem, status: ProjectGlanceRow['status'], today: string, nowMs: number): ProjectGlanceRow {
+  return {
+    item,
+    status,
+    loops: item.loops.filter(l => l.status === 'active').length,
+    ...glanceSignals(item.tasks, item.meetings, today, nowMs),
   };
 }
 
@@ -84,14 +98,15 @@ export function buildProjectGlance(areaName: string, items: readonly CachedItem[
 }
 
 /** Line 2, left: `last 30.9. · next 14.10.`, a dash for a missing date. */
-export function glanceMeetingText(row: ProjectGlanceRow, today: string): string {
+export function glanceMeetingText(row: GlanceSignals, today: string): string {
   const date = (iso: string | null) => (iso ? formatDate(iso, today) : '—');
   return `last ${date(row.lastMeeting)} · next ${date(row.nextMeeting)}`;
 }
 
-/** Line 2, right: `7 open · 2 next · w/f 12 d`; "no next action" instead of the next count when stalled. */
-export function glanceCountsText(row: ProjectGlanceRow): string {
+/** Line 2, right: `7 open · 2 next · w/f 12 d`; "no next action" instead of the next count when stalled; a Project's loops last. */
+export function glanceCountsText(row: GlanceSignals & {loops?: number}): string {
   const parts = [`${row.open} open`, row.stalled ? 'no next action' : `${row.next} next`];
   if (row.waitingCount > 0) parts.push(row.oldestWaitingDays !== null ? `w/f ${row.oldestWaitingDays} d` : `${row.waitingCount} w/f`);
+  if (row.loops) parts.push(`${row.loops} loop${row.loops === 1 ? '' : 's'}`);
   return parts.join(' · ');
 }

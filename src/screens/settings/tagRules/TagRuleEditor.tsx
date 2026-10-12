@@ -6,8 +6,9 @@
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {todayIso} from '../../../domain/meetingTime';
-import {effectiveNoteTarget, hasUntouchedDefaultPieces, NoteContext, TagRule, NotePiece, NoteTarget, PIECE_CONTEXTS, pieceIsHeading, pieceMaxWidthPx, resolvedSharedFileFolder, resolvedSharedFileName, SharedNoteFolder, withDefaultPieces} from '../../../domain/tagRules';
-import {renderSharedFileName, SHARED_FILE_NAME_PLACEHOLDERS} from '../../../domain/sharedNotePages';
+import {effectiveNoteTarget, hasUntouchedDefaultPieces, LOOP_NOTE_NAME_DEFAULT, NoteContext, TagRule, NotePiece, NoteTarget, PIECE_CONTEXTS, pieceIsHeading, pieceMaxWidthPx, resolvedSharedFileFolder, resolvedSharedFileName, SharedNoteFolder, withDefaultPieces} from '../../../domain/tagRules';
+import {renderSharedFileName} from '../../../domain/sharedNotePages';
+import {loopNoteBaseName} from '../../../domain/loops';
 import {MEETINGS_SUBFOLDER, sanitizeFileNameComponent, TODOS_SUBFOLDER} from '../../../storage/noteLinks';
 import {common} from '../../../ui/commonStyles';
 import ClipboardTextInput from '../../../ui/ClipboardTextInput';
@@ -17,15 +18,17 @@ import NudgePad from '../../../ui/NudgePad';
 import PagedSection from '../../../ui/PagedSection';
 import {styles} from '../settingsStyles';
 import CheckToggle from '../CheckToggle';
+import NoteNameField from './NoteNameField';
 import {TagRuleDraft} from './useTagRuleDraft';
 
 
-/** The four note contexts a definition can target - same set domain/tagRules.ts's PIECE_CONTEXTS is keyed against. */
+/** The note contexts a definition can target - same set domain/tagRules.ts's PIECE_CONTEXTS is keyed against. */
 export const CONTEXT_TABS: MiniTabDef<NoteContext>[] = [
   {key: 'project', label: 'Project'},
   {key: 'area', label: 'Area'},
   {key: 'todo', label: 'Todo'},
   {key: 'meeting', label: 'Meeting'},
+  {key: 'loop', label: 'Loop'},
 ];
 
 /** Todo/Meeting-only (docs/dev/history/technical-design-shared-note-pages.md §6): whether this rule's notes each get their own file ('own', the default) or land as pages inside one shared file per Project/Area ('shared'). */
@@ -72,6 +75,13 @@ function sharedFilePreview(definition: TagRule): string {
   return `${subfolder}/${name}.note`;
 }
 
+/** What a Loop rule's note name gives for `#<first tag>/teamoffsite`, with a main date (today) and without one. */
+function loopNotePreviews(definition: TagRule): string[] {
+  const kind = definition.tags[0]?.trim().replace(/^#/, '').toLowerCase() || 'kind';
+  const loop = {kind, name: 'teamoffsite', tag: `${kind}/teamoffsite`};
+  return [todayIso(), null].map(date => `${sanitizeFileNameComponent(loopNoteBaseName(definition.sharedFileName, loop, date))}.note`);
+}
+
 export default function TagRuleEditor({
   draft,
   textColor,
@@ -89,7 +99,9 @@ export default function TagRuleEditor({
   // The Heading switch (docs/dev/history/technical-design-projects-findable-notes.md §2.8):
   // Meeting and Todo rules only, never on a Linked file (a link can't be a title).
   const showHeadingToggle =
-    !!selectedPiece && selectedPiece.type !== 'link' && (draftDef.context === 'meeting' || draftDef.context === 'todo');
+    !!selectedPiece &&
+    selectedPiece.type !== 'link' &&
+    (draftDef.context === 'meeting' || draftDef.context === 'todo' || draftDef.context === 'loop');
   return (
     <View style={styles.templatesEditRow}>
       <View style={[common.column, common.columnLeft, styles.formColumnCard, {borderColor}]}>
@@ -135,12 +147,18 @@ export default function TagRuleEditor({
               // (and its shared-file fields cleared) leaving Project/Area
               // so a hidden 'shared' choice can't resurface confusingly
               // if the rule is later switched back.
+              // A Loop rule keeps a note name of its own (the loop note's,
+              // docs/dev/history/technical-design-loops.md §3.1) and is never
+              // a default.
               const targetsNote = context === 'meeting' || context === 'todo';
               updateDraftDef({
                 context,
                 pieces,
                 ...(context === 'meeting' ? {} : {trackPrep: false, trackReview: false}),
                 ...(targetsNote ? {} : {noteTarget: 'own', sharedFileName: undefined, sharedFileFolder: undefined}),
+                ...(context === 'loop'
+                  ? {isDefault: false, sharedFileName: draftDef.sharedFileName?.trim() ? draftDef.sharedFileName : LOOP_NOTE_NAME_DEFAULT}
+                  : {}),
               });
               setSelectedPieceIndex(null);
             }}
@@ -161,12 +179,14 @@ export default function TagRuleEditor({
           </View>
 
           <View style={[styles.toggleRow, styles.compactFieldSpacer]}>
-            <CheckToggle
-              label="Default for this context"
-              checked={draftDef.isDefault}
-              onPress={() => updateDraftDef({isDefault: !draftDef.isDefault})}
-              textColor={textColor}
-            />
+            {draftDef.context !== 'loop' && (
+              <CheckToggle
+                label="Default for this context"
+                checked={draftDef.isDefault}
+                onPress={() => updateDraftDef({isDefault: !draftDef.isDefault})}
+                textColor={textColor}
+              />
+            )}
             <CheckToggle
               label="Enabled"
               checked={draftDef.enabled}
@@ -215,33 +235,17 @@ export default function TagRuleEditor({
 
               {effectiveNoteTarget(draftDef) === 'shared' && (
                 <>
-                  <Text style={[styles.label, styles.compactFieldSpacer, {color: textColor}]}>Shared file name</Text>
-                  <View style={styles.clipboardFieldRow}>
-                    <ClipboardTextInput
-                      value={draftDef.sharedFileName ?? ''}
-                      onChangeText={text => updateDraftDef({sharedFileName: text})}
-                      placeholder={draftDef.name || 'e.g. Daily'}
-                      placeholderColor={placeholderColor}
-                      textColor={textColor}
-                      borderColor={borderColor}
-                      handleRef={sharedFileNameInputRef}
-                    />
-                  </View>
-                  {/* Placeholder chips + example (docs/dev/history/technical-design-split-by-tag.md §3.6). */}
-                  <View style={styles.placeholderChipRow}>
-                    {SHARED_FILE_NAME_PLACEHOLDERS.map(placeholder => (
-                      <Pressable
-                        key={placeholder}
-                        style={[styles.placeholderChip, {borderColor}]}
-                        onPress={() => sharedFileNameInputRef.current?.insertAtCursor(placeholder)}
-                        hitSlop={4}>
-                        <Text style={[styles.placeholderChipText, {color: textColor}]}>{placeholder}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                  <Text style={[styles.sharedFilePreview, {color: textColor}]} numberOfLines={1}>
-                    {`e.g. ${sharedFilePreview(draftDef)}`}
-                  </Text>
+                  <NoteNameField
+                    label="Shared file name"
+                    value={draftDef.sharedFileName ?? ''}
+                    onChange={text => updateDraftDef({sharedFileName: text})}
+                    placeholder={draftDef.name || 'e.g. Daily'}
+                    inputRef={sharedFileNameInputRef}
+                    examples={[sharedFilePreview(draftDef)]}
+                    textColor={textColor}
+                    borderColor={borderColor}
+                    placeholderColor={placeholderColor}
+                  />
 
                   <Text style={[styles.label, styles.compactFieldSpacer, {color: textColor}]}>Shared file location</Text>
                   <MiniTabs
@@ -254,6 +258,21 @@ export default function TagRuleEditor({
                 </>
               )}
             </>
+          )}
+
+          {draftDef.context === 'loop' && (
+            <NoteNameField
+              label="Loop note name"
+              value={draftDef.sharedFileName ?? ''}
+              onChange={text => updateDraftDef({sharedFileName: text})}
+              placeholder={LOOP_NOTE_NAME_DEFAULT}
+              inputRef={sharedFileNameInputRef}
+              examples={loopNotePreviews(draftDef)}
+              hint="Dates are the loop’s main date, left out while it has none. The note lives in the loop’s Area or Project folder."
+              textColor={textColor}
+              borderColor={borderColor}
+              placeholderColor={placeholderColor}
+            />
           )}
         </View>
 

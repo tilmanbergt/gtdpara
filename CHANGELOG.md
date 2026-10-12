@@ -10,6 +10,46 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Loops**: small projects inside an Area or Project, without a folder of their own - a workshop
+  to prepare, a book to read, a trip, a purchase. A Tag Rule with the new context **Loop** makes
+  its tag a kind of loop (`#workshop/<name>`); its pieces make the loop note's first page, and
+  its **Loop note name** names the note, with the loop's main date in it. See the help page
+  "Loops".
+- **Starting a loop in Quick Add**: type only the loop's tag (`#workshop/teamoffsite`, a date
+  for the main date if you like) and the button reads **+ Add loop**. Editing a todo down to a
+  loop tag turns Save into **Make loop** (its due date, file and own note come along); taking
+  `#someday`/`#maybe` off a bare loop tag, or filing one from the Inbox, starts the loop too.
+- **Loops on the page**: an Area's Projects tab lists its loops under its Projects, a Project
+  gets a **Loops** tab - each loop with its main date, next meeting and todo counts, loop tags in
+  use without a loop yet under **New** (with **Track**), loop ideas and closed loops folded. The
+  page's todos are grouped by loop, the loops first.
+- **The loop overview**: tap a loop, or a loop tag in its Area or Project, to see its meetings and
+  todos ahead and looking back, add to it in Quick Add, and edit it: **Edit** loads its tag, main
+  date and file; renaming the loop or its note is asked in the status line first.
+- **A file for a loop**: link a PDF, epub or any file to a loop with **+** and the clip on its row,
+  or **Link file** in its overview - next to its note, which stays the place for your own notes.
+- **The loop note**: one note per loop in its Area or Project folder, opened with 📓 on the loop
+  row or **Note ›** in the overview; its first page comes from the Loop rule, and the loop's
+  meetings and todos get their pages in it.
+- **Closing loops**: **Close loop** (in the overview or the Weekly Review) asks Done or Dropped,
+  and only while nothing of the loop is open - otherwise the status line says what is and offers
+  **Show**. **Reopen** makes a closed loop active again.
+- **Weekly Review: Open loops**: a new step after "Stalled projects" lists the loops per area and
+  project and counts the ones without a next action or past their main date.
+- Prep/review tracking of a meeting now applies when any matching meeting rule asks for it, not
+  only the first.
+- `{day}` for shared and loop note names. Without a date, date placeholders are left out with
+  the `-`, `.` or `_` between them.
+
+### Fixed
+- Settings → Tag Rules: with more rules than fit on the screen, the last ones were hidden below
+  it without a page arrow. Each rule now takes one fixed row (long names and tag lists are cut),
+  and the list pages.
+
+### Upgrade notes
+- Area and Project files can get a `## Loops` section. Older versions keep it untouched.
+
 ## [0.13.0] — 2026-10-10
 
 ### New

@@ -7,6 +7,7 @@ gtdpara is a calm GTD and PARA workspace for the Supernote. Your projects, areas
 - [Getting started](getting-started.md): install, first setup, the tabs at a glance
 - [Why gtdpara works this way](philosophy.md): the ideas behind the design
 - [Threads](threads.md): keeping your word with the people and meeting series you work with
+- [Loops](loops.md): small projects inside an Area, from first todo to done
 
 ## Daily use
 

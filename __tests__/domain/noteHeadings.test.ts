@@ -45,8 +45,8 @@ describe('pieceIsHeading', () => {
 });
 
 describe('Date & title piece and new-rule defaults', () => {
-  it('belongs to meeting rules only', () => {
-    expect(PIECE_CONTEXTS.dateTitle).toEqual(['meeting']);
+  it('belongs to meeting and loop rules only', () => {
+    expect(PIECE_CONTEXTS.dateTitle).toEqual(['meeting', 'loop']);
   });
   it('new meeting rules start with Date & title (heading), Time, Linked file', () => {
     const rule = withDefaultPieces(createEmptyTagRule('1', 'meeting'));

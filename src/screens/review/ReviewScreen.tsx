@@ -60,6 +60,7 @@ import GmailStep from './steps/GmailStep';
 import InboxStep, {inboxStepEntries} from './steps/InboxStep';
 import ItemListStep from './steps/ItemListStep';
 import MeetingsCloseOutStep from './steps/MeetingsCloseOutStep';
+import OpenLoopsStep, {openLoopsCount, useLoopRoster} from './steps/OpenLoopsStep';
 import TendingThreadsStep, {tendingCount, useTendingRoster} from './steps/TendingThreadsStep';
 import UnfocusedNextStep from './steps/UnfocusedNextStep';
 import WeekAheadStep from './steps/WeekAheadStep';
@@ -200,6 +201,7 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
   };
 
   const tendingRoster = useTendingRoster(data);
+  const loopRoster = useLoopRoster(data);
   // The hub's per-step numbers, from the same aggregate the steps read.
   const inboxEntries = inboxStepEntries(inbox);
   const week = weekAheadRangeIso();
@@ -213,6 +215,7 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
           getCachedGmailInbox()?.length ?? 0,
           countMeetingsInRange(inbox?.meetings ?? [], week.start, week.end),
           tendingCount(tendingRoster),
+          openLoopsCount(loopRoster),
         )
       : null;
   // Backlog steps with nothing in them, as a string so the effect below only runs when that set changes.
@@ -283,6 +286,8 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
       case 'onHold':
       case 'neglected':
         return <ItemListStep key={id} step={id} onStartCloseOut={onStartCloseOut} {...stepProps} />;
+      case 'openLoops':
+        return <OpenLoopsStep {...stepProps} />;
       case 'unfocusedNext':
         return <UnfocusedNextStep {...stepProps} />;
       case 'weeklyFocus':
