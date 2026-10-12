@@ -123,3 +123,68 @@ export function noteMoveConfirmText(
 export function noteMoveDoneText(title: string, targetName: string): string {
   return `Moved "${title}" to ${targetName}, with its note.`;
 }
+
+// ---- Tag Rules -> Note setups notice (docs/dev/history/technical-design-note-setups.md §5, §6.6) ----
+
+function itemsOf(context: string): string {
+  return context === 'todo' ? 'todos' : 'meetings';
+}
+
+function pageNameOf(kind: string): string {
+  return kind === 'first' ? 'First page' : kind === 'todo' ? 'Todo page' : 'Meeting page';
+}
+
+/** A component of several rules became one setup. */
+export function migrationMergedText(ruleNames: readonly string[]): string {
+  return `Merged from the rules ${ruleNames.join(', ')}.`;
+}
+
+/** Two rules of the same context in one setup: the first one's page was kept. */
+export function migrationConflictText(ruleName: string, pageKind: string): string {
+  return `Rule ${ruleName} left out: the ${pageNameOf(pageKind)} comes from an earlier rule.`;
+}
+
+/** An own-note rule joined a setup with a notebook (shared means shared). */
+export function migrationIntoNotebookText(context: string, tags: readonly string[], notebookName: string): string {
+  return `New ${itemsOf(context)} with ${tags.map(t => `#${t}`).join(' ')} now get pages in ${notebookName}.`;
+}
+
+/** A shared rule whose notebook differs from the setup's. */
+export function migrationNotebookChangedText(context: string, folder: string, notebookName: string): string {
+  return `New ${itemsOf(context)} now go into ${folder ? `${folder}/` : ''}${notebookName}.`;
+}
+
+/** A shared Meeting/Todo rule on a loop kind: outside an active loop its items get their own note now. */
+export function migrationLoopOwnText(context: string): string {
+  return `New ${itemsOf(context)} outside an active loop now get their own note.`;
+}
+
+/** A shared Default rule: items without a setup get their own note now. */
+export function migrationUnmatchedSharedText(context: string): string {
+  return `New ${itemsOf(context)} without a setup now get their own note; its page became the Default.`;
+}
+
+/** Project and Area rules were never applied. */
+export function migrationNeverAppliedText(): string {
+  return 'Removed: Project and Area rules never had an effect.';
+}
+
+/** A second or switched-off Default rule. */
+export function migrationDefaultRemovedText(): string {
+  return 'Removed: only the first Default per kind is kept.';
+}
+
+/** A rule without tags never matched. */
+export function migrationNoTagsText(): string {
+  return 'Removed: a rule without tags never matched.';
+}
+
+/** A switched-off rule whose tags are in a switched-on setup. */
+export function migrationOffCollisionText(): string {
+  return 'Removed: switched off, and its tags are in a setup that is on.';
+}
+
+/** Loop-kind tags taken out of a Meeting/Todo rule (a tag belongs to one setup). */
+export function migrationLoopKindTagText(tags: readonly string[]): string {
+  return `${tags.map(t => `#${t}`).join(' ')} left out: a loop kind belongs to its Loop setup.`;
+}

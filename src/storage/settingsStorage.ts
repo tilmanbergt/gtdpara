@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {DEFAULT_SETTINGS, GtdParaSettings, renameLegacyTagRuleKeys} from '../domain/settings';
 import {migrateTagRuleDefaults} from '../domain/tagRules';
+import {migrateNoteSetupSettings, migrationCounts} from '../domain/noteSetupMigration';
+import {seedNoteSetupDefaults} from '../domain/noteSetups';
+import {errorMessage} from '../utils/errorMessage';
+import {log, logError} from '../utils/log';
 import {ReviewStepsMap} from '../domain/reviewSteps';
 import {perfEnd, perfStart} from '../utils/perf';
 import {migrateExperimentalFlags} from '../domain/features';
@@ -20,6 +24,9 @@ const SETTINGS_KEY = 'gtdpara:settings:v1';
  * - `renameLegacyTagRuleKeys` moves Tag Rules stored under their 0.8 key
  *   names (`noteCreationDefinitions`, `nextNoteDefinitionId`) to the current
  *   ones - first, so the default rule below isn't seeded over them.
+ * - `migrateNoteSetups` turns 0.14's Tag Rules into Note setups once per
+ *   settings blob or profile (domain/noteSetupMigration.ts), or seeds the
+ *   Default on a fresh install. The Tag Rules stay stored as they are.
  * - `migrateTagRuleDefaults` seeds the "Meeting (default)" Tag Rule
  *   when there are no rules yet (fresh install).
  * - `migrateExperimentalFlags` sets the experimental switches and the
@@ -34,7 +41,7 @@ async function readSettings(): Promise<GtdParaSettings> {
   const stored: Record<string, unknown> = raw ? JSON.parse(raw) : {};
   const parsed = renameLegacyTagRuleKeys(stored);
   const merged: GtdParaSettings = {...DEFAULT_SETTINGS, ...parsed};
-  const noteMigrated = migrateTagRuleDefaults(merged);
+  const noteMigrated = migrateTagRuleDefaults(migrateNoteSetups(merged));
   const migrated = migrateExperimentalFlags(noteMigrated, parsed, BUILD_INFO.version);
   if (migrated !== merged || parsed !== stored) {
     try {
@@ -44,6 +51,30 @@ async function readSettings(): Promise<GtdParaSettings> {
     }
   }
   return migrated;
+}
+
+let noteSetupMigrationFailed = false;
+
+/** Whether the Tag Rules -> Note setups migration failed in this session (the app then runs on the Default only). */
+export function didNoteSetupMigrationFail(): boolean {
+  return noteSetupMigrationFailed;
+}
+
+/**
+ * The Note setups migration with its log line (counts only). A failure
+ * leaves `noteSetupsMigrated` unset, so the next load tries again, and runs
+ * this session on no setups plus the seeded Default.
+ */
+function migrateNoteSetups(settings: GtdParaSettings): GtdParaSettings {
+  try {
+    const migrated = migrateNoteSetupSettings(settings);
+    if (migrated !== settings) log('NoteSetupMigration: migrated', migrationCounts(migrated));
+    return migrated;
+  } catch (e) {
+    noteSetupMigrationFailed = true;
+    logError('NoteSetupMigration: failed', errorMessage(e));
+    return {...settings, noteSetups: [], noteSetupDefaults: seedNoteSetupDefaults(), noteSetupsNotice: null};
+  }
 }
 
 /**
