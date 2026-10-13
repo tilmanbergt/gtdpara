@@ -393,6 +393,12 @@ export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
     perfMark('cache:rebuildJoined');
     return rebuildInFlight;
   }
+  // Without a cache a running refresh is itself a full build: join it
+  // instead of building a second time right after it.
+  if (refreshInFlight && !cached) {
+    perfMark('cache:rebuildJoinedRefresh');
+    return refreshInFlight;
+  }
   const perfToken = perfStart();
   // A refresh still running finishes first, so the two never write the cache at the same time.
   const pending = refreshInFlight ? refreshInFlight.catch(() => undefined) : Promise.resolve();

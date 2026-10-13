@@ -43,13 +43,27 @@ or your project/area files are stored.
   created - between the meetings around them instead of at the end. Pages you added after an
   item's page stay with that item; a loop's own page stays first.
 
+- **Built for Supernote's plugin firmware** (A5 X / A6 X Chauvet 2.27.42, Manta / Nomad Chauvet
+  3.30.45). Lasso recognition uses the page's real coordinates: handwriting is recognized
+  anywhere on the page, also across its full width; the old position workaround is gone.
+- **Mark for later is faster**, also as the first thing after the device or the plugin started:
+  gtdpara reads the lasso first and starts nothing else until the mark is saved.
+
 ### Fixed
 - Settings → About shows the version of the installed build (a beta of 0.15.0 showed 0.14.0).
+- The first **Mark for later** after a start could lose the selection: no picture, no text, and
+  the lasso stayed on the page.
 
 ### Removed
 - Tag Rules for **Projects** and **Areas**: they never had an effect.
+- The warning "gtdpara was updated, but the old version is still loaded" and its **Restart**
+  button: the plugin firmware loads the new version cleanly.
 
 ### Upgrade notes
+- **gtdpara 0.15.0 requires the plugin firmware**: A5 X / A6 X Chauvet 2.27.42 or later,
+  Manta / Nomad Chauvet 3.30.45 or later. Update the Supernote first.
+- Marks made with an older gtdpara and not processed yet are not recognized: their picture is
+  shown, type the text from it.
 - On the first start of 0.15.0 your Tag Rules become Note setups by themselves; a card above the
   list says what was merged and what changed for new notes (**OK** clears it). Rules that share a
   tag become one setup; their pieces, texts and backgrounds become the pages' own layouts, so

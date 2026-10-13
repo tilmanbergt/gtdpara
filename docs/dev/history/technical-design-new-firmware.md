@@ -1,6 +1,6 @@
 # Technical design: New plugin firmware and sn-plugin-lib 0.2.3 (0.15.0)
 
-Status: **in progress** - steps F0-F3, F3b, F3c and F5's logging built; F3c waits for its device test.
+Status: **built** (2026-10-13), see §7 "As built"; final 0.15.0 beta device test open.
 Branch: `feature/note-setups` (ships with Note setups in 0.15.0; `nextVersion` stays `0.15.0`).
 
 Background:
@@ -222,3 +222,21 @@ now has `picture=true`, no 904. But the cold mark took 5.7 s against about 1.1 s
   note-writing code stay as they are (geometry points and rects were pixels before; on the A5 X
   page size = screen size). Tests 3, 4 (PDF) and 6 are part of the final 0.15.0 beta checklist;
   a problem there reopens F4.
+
+- **F5** Device test 7: on the new firmware the old build is unloaded on install; `staleBuilds`
+  stayed empty and the warning never showed. Tilman chose D5 (a). Removed: `ui/StaleBuildBanner.tsx`
+  and its App mount, `restartPluginHost` (JS and the native `@ReactMethod`) and
+  `PluginRuntimeGuard.killHostProcess`, the Restart lines in the help and `RELEASING.md` §6. Kept:
+  `getRuntimeDiagnostics` (debug bundle "stale builds n", About) and one
+  `pluginRuntime: stale builds n=<count> <labels>` line per start (`logStaleBuilds`, run with the
+  temp clean-up after the mark gate). The native removal is compiled by the next
+  `buildPlugin.ps1` only, not by `npm run check`.
+  `docs/dev/history/technical-design-host-update-crash.md` §7 has the "Since 0.15.0" note.
+- **F6** CHANGELOG `[Unreleased]` (Changed, Fixed, Removed, Upgrade notes), README install
+  requirement, help (`getting-started.md` requirement, `lasso.md` old marks, the Restart line out
+  of `troubleshooting.md`), `docs/dev/README.md` test-device line.
+  - Also fixed here, from the F3c device test: after the resume the cache was built twice in a
+    row (4.1 s, then 0.4 s). With no cache yet, `refreshCache` is itself a full build; a screen
+    that found no cache called `rebuildCache`, which waited for that refresh and then built
+    again. `rebuildCache` now joins a running refresh while there is no cache (test in
+    `__tests__/storage/refreshCache.test.ts`).

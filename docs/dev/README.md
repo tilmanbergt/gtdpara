@@ -15,7 +15,8 @@ Prerequisites (Windows is the tested setup):
 
 - Node.js 18 or newer, `npm install` in the repo root
 - Android SDK + JDK as required by React Native 0.79 (Android Studio is the easiest way to get both)
-- A Supernote with plugin support to test on
+- A Supernote with the plugin firmware to test on (A5 X / A6 X Chauvet 2.27.42, Manta / Nomad Chauvet
+  3.30.45 or later; gtdpara pins `sn-plugin-lib` 0.2.3, which needs it)
 
 Build the plugin package:
 

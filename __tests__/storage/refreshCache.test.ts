@@ -151,4 +151,13 @@ describe('refreshCache', () => {
     expect(after.items).toHaveLength(3);
     expect(mockReads).toHaveLength(4);
   });
+  it('a rebuild asked for while that first build runs joins it instead of building twice', async () => {
+    clearCachedData();
+    mockReads.length = 0;
+    const refresh = refreshCache(DEFAULT_SETTINGS);
+    const rebuild = rebuildCache(DEFAULT_SETTINGS);
+    const [a, b] = await Promise.all([refresh, rebuild]);
+    expect(b).toBe(a);
+    expect(mockReads).toHaveLength(4);
+  });
 });
