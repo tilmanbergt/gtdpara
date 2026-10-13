@@ -33,6 +33,6 @@ Switches on this tab take effect immediately.
 
 ## About
 
-- version, build number and device
+- the version of the installed build (a test build shows the coming version and its stage, for example `0.15.0 beta`), build number and device
 - **Debug logging** and **Export debug bundle**, see [Troubleshooting](troubleshooting.md)
 - **What's new**: the release notes of this and earlier versions

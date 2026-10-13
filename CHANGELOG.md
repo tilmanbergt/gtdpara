@@ -43,6 +43,9 @@ or your project/area files are stored.
   created - between the meetings around them instead of at the end. Pages you added after an
   item's page stay with that item; a loop's own page stays first.
 
+### Fixed
+- Settings → About shows the version of the installed build (a beta of 0.15.0 showed 0.14.0).
+
 ### Removed
 - Tag Rules for **Projects** and **Areas**: they never had an effect.
 

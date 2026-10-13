@@ -164,3 +164,13 @@ sets the new one. The label of a build towards the next release is in `BUILD_INF
 - Smoke render: `__tests__/ui/itemDetailFilesTab.test.tsx` renders the App on an Area, a
   Project with an Area and one without; the arming paths of §2.3 are pane tests
   (`__tests__/ui/fileBrowserFilesGroup.test.tsx`).
+
+### Step 10
+
+- `domain/buildVersionText.ts` `buildVersionText(BUILD_INFO)` gives the About title; it also
+  fills a saved profile's `savedBy` (`storage/profiles.ts`), which named the last release too.
+- Left as they are: the debug bundle header already shows `BUILD_INFO.label` (the full label
+  with commit, more useful for a report than the short text); What's new compares
+  `BUILD_INFO.version` only for release builds, where it is the build's version; the stale-build
+  banner shows no version; the experimental-flags migration and `lastSeenVersion` compare
+  versions and are not shown.

@@ -17,6 +17,7 @@ import {
   serializeProfile,
 } from '../domain/profiles';
 import {GtdParaSettings} from '../domain/settings';
+import {buildVersionText} from '../domain/buildVersionText';
 import {BUILD_INFO} from '../generated/buildInfo';
 import {ensureFolderExists, listFolderEntries, PROFILES_FOLDER_PATH, readTextFile, writeTextFile} from '../supernote/fileSystem';
 import {log} from '../utils/log';
@@ -99,7 +100,7 @@ export async function writeProfile(id: string, settings: GtdParaSettings, name?:
   }
   await ensureFolderExists(PROFILES_FOLDER_PATH);
   const finalName = name ?? (await readProfileName(id)) ?? (id === DEFAULT_PROFILE_ID ? DEFAULT_PROFILE_NAME : id);
-  await writeTextFile(profilePath(id), serializeProfile(finalName, settings, new Date(), BUILD_INFO.version));
+  await writeTextFile(profilePath(id), serializeProfile(finalName, settings, new Date(), buildVersionText(BUILD_INFO)));
   await writeSecrets(id, secretsOf(settings));
   log('profiles: saved profile', id);
 }
