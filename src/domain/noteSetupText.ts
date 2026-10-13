@@ -9,7 +9,7 @@ import {PageKind, PageLayout} from './pageLayout';
 import {threadOf} from './threads';
 import {sanitizeFileNameComponent} from './fileName';
 import {loopNoteBaseName} from './loops';
-import {renderSharedFileName} from './sharedNotePages';
+import {NoteOwnerNames, renderSharedFileName} from './sharedNotePages';
 
 export const SETUP_KIND_LABELS: Record<SetupKind, string> = {thread: 'Thread', loop: 'Loop'};
 
@@ -70,6 +70,9 @@ export function setupTagChoices(recent: readonly string[], setups: readonly Note
   return out;
 }
 
+/** The Project the previews show for `{name}` and `{abbr}`, like the sample subtag. */
+const SAMPLE_OWNER: NoteOwnerNames = {itemName: 'Project', itemAbbrev: 'PRJ'};
+
 /**
  * What a notebook name gives (§6.2): one example file per tag (at most
  * three), with a sample subtag and `date` - "Sparring/sparring client 2026.note".
@@ -79,7 +82,7 @@ export function notebookPreviews(name: string, fallbackName: string, tags: reado
   const shown = tags.length > 0 ? tags.slice(0, 3).map(normalizeSetupTag) : [''];
   const files = shown.map(tag => {
     const file = sanitizeFileNameComponent(
-      renderSharedFileName({template: name.trim() ? name : fallbackName, fallbackName, tag, subtag: 'client', date}),
+      renderSharedFileName({template: name.trim() ? name : fallbackName, fallbackName, tag, subtag: 'client', date, ...SAMPLE_OWNER}),
     );
     return `${folder ? `${folder}/` : ''}${file}.note`;
   });
@@ -90,5 +93,5 @@ export function notebookPreviews(name: string, fallbackName: string, tags: reado
 export function loopNotePreviews(name: string, tags: readonly string[], date: string): string[] {
   const kind = normalizeSetupTag(tags[0] ?? '') || 'kind';
   const loop = {kind, name: 'teamoffsite', tag: `${kind}/teamoffsite`};
-  return [date, null].map(d => `${sanitizeFileNameComponent(loopNoteBaseName(name, loop, d))}.note`);
+  return [date, null].map(d => `${sanitizeFileNameComponent(loopNoteBaseName(name, loop, d, SAMPLE_OWNER))}.note`);
 }

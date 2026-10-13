@@ -1,13 +1,14 @@
 // docs/dev/history/technical-design-note-setups.md §4.1, §4.4: note candidates placed in the
 // file system, and the layout an existing note link uses.
 let mockLoops: unknown[] = [];
+let mockAbbrev: string | null = null;
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 jest.mock('sn-plugin-lib', () => ({PluginCommAPI: {recycleElement: jest.fn()}}));
 jest.mock('../../src/storage/dataCache', () => ({
   getCachedData: () => null,
-  findCachedItem: (path: string) => ({path, name: 'Coaching', kind: 'area', tasks: [], meetings: [], loops: mockLoops}),
+  findCachedItem: (path: string) => ({path, name: 'Coaching', kind: 'area', abbrev: mockAbbrev, tasks: [], meetings: [], loops: mockLoops}),
 }));
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 
@@ -37,6 +38,7 @@ function input(tags: string[], extra: Partial<NoteTargetInput> = {}): NoteTarget
 
 beforeEach(() => {
   mockLoops = [newLoopLine('workshop/offsite', '2026-11-14')];
+  mockAbbrev = null;
 });
 
 describe('placeNoteCandidates', () => {
@@ -68,6 +70,22 @@ describe('placeNoteCandidates', () => {
     expect(placed.candidate).toEqual({setup: null, target: 'notebook'});
     expect(placed.shared?.relativeFile).toBe('Meetings/Daily 2026.note');
     expect(layoutForLink({...input(['other'], {settings: withNotebook, pageKind: 'meeting'}), linkedFile: 'Meetings/Daily 2026.note'})).toBe(settings.noteSetupDefaults.pages.meeting);
+  });
+
+  it('fills {abbr} and {name} from the item’s Project or Area, in notebooks and loop notes', () => {
+    const named = {
+      ...settings,
+      noteSetups: [
+        {...sparring, notebook: {name: '{abbr} {tag} {subtag} {year}', folder: ''}},
+        {...workshop, notebook: {name: '{name} {subtag}', folder: ''}},
+        team,
+      ],
+    };
+    mockAbbrev = 'CO';
+    expect(placeNoteCandidates(input(['sparring/peter'], {settings: named, pageKind: 'meeting'}))[0].shared?.fileName).toBe('CO sparring peter 2026');
+    expect(placeNoteCandidates(input(['workshop/offsite'], {settings: named}))[0].shared?.fileName).toBe('Coaching offsite');
+    mockAbbrev = null;
+    expect(placeNoteCandidates(input(['sparring/peter'], {settings: named, pageKind: 'meeting'}))[0].shared?.fileName).toBe('Coaching sparring peter 2026');
   });
 
   it('Inbox: the best setup, its own note', () => {

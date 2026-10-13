@@ -50,7 +50,7 @@ jest.mock('../../src/storage/sharedNotePages', () => ({
   writeRecreatedNotice: jest.fn(async () => undefined),
 }));
 
-jest.mock('../../src/storage/dataCache', () => ({getCachedData: () => null}));
+jest.mock('../../src/storage/dataCache', () => ({getCachedData: () => null, findCachedItem: () => undefined}));
 jest.mock('../../src/storage/linkedFiles', () => ({linkedFileStatus: jest.fn(), resolveLinkedFilePath: jest.fn()}));
 jest.mock('../../src/storage/meetingNoteAggregate', () => ({relatedItemsFor: () => []}));
 jest.mock('../../src/storage/notePieceMetrics', () => ({measureNoteLinkRect: jest.fn(), measureNotePieceRect: jest.fn()}));

@@ -62,4 +62,9 @@ describe('previews', () => {
       'workshop teamoffsite.note',
     ]);
   });
+
+  it('shows a sample Project for {name} and {abbr}', () => {
+    expect(notebookPreviews('{abbr} {tag} {subtag}', 'Sparring', ['sparring'], '', '2026-10-12')).toEqual(['PRJ sparring client.note']);
+    expect(loopNotePreviews('{name} {subtag}', ['workshop'], '2026-11-14')).toEqual(['Project teamoffsite.note', 'Project teamoffsite.note']);
+  });
 });

@@ -553,9 +553,11 @@ Default with the standard Meeting and First pages; 0.14's Tag Rules are migrated
   note's `loop <kind>/<name>` page 1); `timelineInsertIndex` puts the page before the first later
   start, never between an item's pages or before a pinned page. The date is the meeting's date
   or the todo's `created` (today without one); pages are never moved later. The shared file name is a
-  template (`renderSharedFileName`: `{tag}`, `{subtag}`, `{year}`, `{quarter}`, `{month}`, `{day}`),
-  so one setup can split into one file per type, client and year; `setupTypeTag` gives the setup
-  tag the item matched, `setupSubtag` the nested part after it.
+  template (`renderSharedFileName`: `{tag}`, `{subtag}`, `{name}`, `{abbr}`, `{year}`,
+  `{quarter}`, `{month}`, `{day}`), so one setup can split into one file per type, client and
+  year; `setupTypeTag` gives the setup tag the item matched, `setupSubtag` the nested part after
+  it. `{name}`/`{abbr}` are the owning Project's or Area's folder name and abbreviation,
+  resolved in storage (`storage/noteOwner.ts`) and passed in, for loop notes too.
 - **Loops.** A Loop setup's tags are loop kinds (`domain/loops.ts`'s `loopKindsOf`, readable at
   once through `storage/loopKinds.ts`); `#<kind>/<name>` is a loop, its line lives in the owner's
   `## Loops` section (`domain/loopsSection.ts`, on the generic `domain/statusSection.ts` that

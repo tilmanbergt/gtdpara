@@ -91,11 +91,15 @@ Each todo appears once; a todo agreed last time stays under Agreed last time. A 
 
 - `{tag}`: the setup's tag the item matched - `retro` for `#retro/alpha` when the setup has the tags `sparring` and `retro` (always lowercase); for a loop its kind
 - `{subtag}`: the part after the `/` - `sabina` for `#coaching/sabina`; for a loop its name (always lowercase)
+- `{name}`: the name of the Project or Area the item belongs to - `Leadership Program`
+- `{abbr}`: that Project's or Area's abbreviation - `LP`; its name when it has none
 - `{year}`: `2026`, `{quarter}`: `Q4`, `{month}`: `10`, `{day}`: `07`
 
 A meeting uses its own date, a todo the day its note is created, a loop its main date. Without a date, the date placeholders are left out together with the `-`, `.` or `_` between them: `{year}-{month} {tag}` becomes just the tag.
 
-Example: a setup "Coaching" on `coaching`, notebook name `Coaching {subtag} {year}`. A meeting tagged `#coaching/sabina` goes into `Coaching sabina 2026`, one tagged `#coaching/tom` into `Coaching tom 2026`, and one tagged just `#coaching` into `Coaching 2026`. With `{tag}`, one setup on `sparring` and `retro` with the name `{tag} {subtag} {year}` puts `#sparring/max` into `sparring max 2026` and `#retro/alpha` into `retro alpha 2026`.
+Example: a setup "Coaching" on `coaching`, notebook name `Coaching {subtag} {year}`. A meeting tagged `#coaching/sabina` goes into `Coaching sabina 2026`, one tagged `#coaching/tom` into `Coaching tom 2026`, and one tagged just `#coaching` into `Coaching 2026`. With `{tag}`, one setup on `sparring` and `retro` with the name `{tag} {subtag} {year}` puts `#sparring/max` into `sparring max 2026` and `#retro/alpha` into `retro alpha 2026`. With `{abbr} {tag} {subtag} {year}`, a meeting `#sparring/peter` in the Project "Leadership Program" (abbreviation `LP`) goes into `LP sparring peter 2026`.
+
+If you rename a Project or Area or change its abbreviation, new pages go into a note with the new name; pages that already exist stay where they are and their links keep working - the same as a new year with `{year}`.
 
 ## When several setups match
 

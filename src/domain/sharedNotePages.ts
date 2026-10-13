@@ -178,9 +178,17 @@ export function recreatedPageNoticeText(isoDate: string): string {
 // ---- Shared file-name placeholders (docs/dev/history/technical-design-split-by-tag.md §3.3) ----
 
 /** The placeholders a notebook name understands, in the order the Settings chips show them. */
-export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{year}', '{quarter}', '{month}', '{day}'];
+export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{name}', '{abbr}', '{year}', '{quarter}', '{month}', '{day}'];
 
-export interface SharedFileNameInput {
+/** The Project or Area a note belongs to, for `{name}` and `{abbr}` (storage/noteOwner.ts resolves it). */
+export interface NoteOwnerNames {
+  /** Its folder name; `''` when unknown. */
+  itemName: string;
+  /** Its abbreviation (`abbrev:`); `''` when it has none. */
+  itemAbbrev: string;
+}
+
+export interface SharedFileNameInput extends NoteOwnerNames {
   /** The notebook name (or the setup name when that field is blank). */
   template: string;
   /** Fallback when the rendered name comes out empty (the setup name). */
@@ -199,7 +207,8 @@ const DATE_PLACEHOLDER_RUN = /[-._]?\{(?:year|quarter|month|day)\}(?:[-._]\{(?:y
 /**
  * Renders a shared file's base name (no folder, no ".note") from the
  * notebook name: `{tag}` -> the setup tag the item matched, `{subtag}` -> the
- * nested-tag part (both lowercased), `{year}` -> `2026`,
+ * nested-tag part (both lowercased), `{name}` -> the Project's or Area's name,
+ * `{abbr}` -> its abbreviation (its name without one), `{year}` -> `2026`,
  * `{quarter}` -> `Q4`, `{month}` -> `10`, `{day}` -> `07`. Without a date
  * the date placeholders are left out together with the `-`, `.` or `_`
  * joining them (`{year}-{month} {tag}` -> `{tag}`). Placeholders are matched
@@ -218,10 +227,19 @@ export function renderSharedFileName(input: SharedFileNameInput): string {
   const month = match ? match[2] : '';
   const day = match ? match[3] : '';
   const quarter = match ? `Q${Math.floor((Number(month) - 1) / 3) + 1}` : '';
-  const values: Record<string, string> = {tag: input.tag ?? '', subtag: input.subtag, year, quarter, month, day};
+  const values: Record<string, string> = {
+    tag: input.tag ?? '',
+    subtag: input.subtag,
+    name: input.itemName,
+    abbr: input.itemAbbrev || input.itemName,
+    year,
+    quarter,
+    month,
+    day,
+  };
   const template = match ? input.template : input.template.replace(DATE_PLACEHOLDER_RUN, '');
   const rendered = template
-    .replace(/\{(tag|subtag|year|quarter|month|day)\}/gi, (_all, key: string) => values[key.toLowerCase()])
+    .replace(/\{(tag|subtag|name|abbr|year|quarter|month|day)\}/gi, (_all, key: string) => values[key.toLowerCase()])
     .replace(/\s+/g, ' ')
     .trim();
   return rendered || input.fallbackName.trim();

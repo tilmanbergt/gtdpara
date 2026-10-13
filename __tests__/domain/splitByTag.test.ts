@@ -4,10 +4,12 @@ import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
 import {renderSharedFileName} from '../../src/domain/sharedNotePages';
 import {setupTypeTag} from '../../src/domain/noteSetups';
 
+const NO_OWNER = {itemName: '', itemAbbrev: ''};
+
 // docs/dev/history/technical-design-split-by-tag.md §3.3, §3.5, §3.6
 
 describe('renderSharedFileName', () => {
-  const base = {template: 'Coaching {subtag} {year}', fallbackName: 'Coaching', subtag: 'sabina', date: '2026-10-02'};
+  const base = {template: 'Coaching {subtag} {year}', fallbackName: 'Coaching', subtag: 'sabina', date: '2026-10-02', ...NO_OWNER};
 
   it('fills every placeholder', () => {
     expect(renderSharedFileName({...base, template: '{subtag} {year}-{quarter} {month}'})).toBe('sabina 2026-Q4 10');
@@ -36,6 +38,30 @@ describe('renderSharedFileName', () => {
 
   it('leaves a template without placeholders unchanged', () => {
     expect(renderSharedFileName({...base, template: 'Daily'})).toBe('Daily');
+  });
+});
+
+// docs/dev/history/technical-design-note-setups-finish.md §1
+describe('{name} and {abbr} in note names', () => {
+  const base = {template: '{abbr} {tag} {subtag} {year}', fallbackName: 'Sparring', tag: 'sparring', subtag: 'peter', date: '2026-10-02'};
+  const owner = {itemName: 'Leadership Program', itemAbbrev: 'LP'};
+
+  it('fills the owner’s abbreviation and name', () => {
+    expect(renderSharedFileName({...base, ...owner})).toBe('LP sparring peter 2026');
+    expect(renderSharedFileName({...base, ...owner, template: '{name} {year}'})).toBe('Leadership Program 2026');
+  });
+  it('uses the name for {abbr} when there is no abbreviation', () => {
+    expect(renderSharedFileName({...base, itemName: 'Garden', itemAbbrev: ''})).toBe('Garden sparring peter 2026');
+  });
+  it('matches them case-insensitively', () => {
+    expect(renderSharedFileName({...base, ...owner, template: '{ABBR}-{Name}'})).toBe('LP-Leadership Program');
+  });
+  it('leaves both out when unknown, without double spaces', () => {
+    expect(renderSharedFileName({...base, ...NO_OWNER, template: '{abbr} {name} {subtag} {year}', subtag: ''})).toBe('2026');
+    expect(renderSharedFileName({...base, ...NO_OWNER, template: '{abbr}{name}'})).toBe('Sparring');
+  });
+  it('works with date placeholders left out', () => {
+    expect(renderSharedFileName({...base, ...owner, template: '{abbr} {subtag} {year}-{month}', date: ''})).toBe('LP peter');
   });
 });
 
@@ -112,13 +138,13 @@ describe('{tag} in shared file names', () => {
   it('names the file after the rule tag the item matched', () => {
     const tag = setupTypeTag(['next', 'retro/alpha'], ['sparring', 'retro']);
     expect(tag).toBe('retro');
-    const rendered = renderSharedFileName({template: '{tag} {subtag} {year}', fallbackName: 'Sessions', tag, subtag: 'alpha', date: '2026-10-02'});
+    const rendered = renderSharedFileName({template: '{tag} {subtag} {year}', fallbackName: 'Sessions', tag, subtag: 'alpha', date: '2026-10-02', ...NO_OWNER});
     expect(rendered).toBe('retro alpha 2026');
-    expect(renderSharedFileName({template: '{TAG} {year}', fallbackName: 'S', tag: 'sparring', subtag: '', date: '2026-10-02'})).toBe('sparring 2026');
+    expect(renderSharedFileName({template: '{TAG} {year}', fallbackName: 'S', tag: 'sparring', subtag: '', date: '2026-10-02', ...NO_OWNER})).toBe('sparring 2026');
   });
   it('leaves {tag} empty when no rule tag matches', () => {
     expect(setupTypeTag(['retrox/a', 'other'], ['retro'])).toBe('');
-    expect(renderSharedFileName({template: 'Notes {tag} {year}', fallbackName: 'Notes', subtag: '', date: '2026-10-02'})).toBe('Notes 2026');
+    expect(renderSharedFileName({template: 'Notes {tag} {year}', fallbackName: 'Notes', subtag: '', date: '2026-10-02', ...NO_OWNER})).toBe('Notes 2026');
   });
   it('matches a plain rule tag and keeps the first match in text order', () => {
     expect(setupTypeTag(['Sparring', 'retro/a'], ['RETRO', 'sparring'])).toBe('sparring');

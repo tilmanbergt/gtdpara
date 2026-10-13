@@ -10,6 +10,11 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **`{name}` and `{abbr}` in note names**: the name or abbreviation of the Project or Area the
+  item belongs to, for notebooks and loop notes - `{abbr} {tag} {subtag} {year}` gives
+  `LP sparring peter 2026`.
+
 ### Changed
 - **Tag Rules are now Note setups** (Settings → **Note setups**): one setup per thing you keep
   notes about - your sparring sessions, a coaching client, a kind of workshop. A setup has its

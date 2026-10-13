@@ -15,11 +15,13 @@
 import {findLoopLine, LoopLine} from '../domain/loopsSection';
 import {LOOP_PAGE_KEYWORD_PREFIX, LoopRef, loopOf, loopsOfTags} from '../domain/loops';
 import {layoutFor, NoteSetup, NoteSetupDefaults} from '../domain/noteSetups';
+import {NoteOwnerNames} from '../domain/sharedNotePages';
 import {fileExists, insertKeyWord} from '../supernote/fileSystem';
 import {log} from '../utils/log';
 import {findCachedItem} from './dataCache';
 import {getLoopKinds} from './loopKinds';
 import {loopNoteFileName} from './loops';
+import {noteOwnerNames} from './noteOwner';
 import {backgroundOf} from './noteLinks';
 import {ensureSharedNoteFile} from './sharedNotePages';
 
@@ -50,9 +52,9 @@ export function activeLoopsOf(itemPath: string, tags: readonly string[], kinds: 
   return out;
 }
 
-/** The note of `loop` (its line `line`) under `setup`. */
-export function loopNoteTargetOf(setup: NoteSetup | null, loop: LoopRef, line: LoopLine): LoopNoteTarget {
-  return {loop, line, fileName: loopNoteFileName(setup, loop, line.mainDate), setup};
+/** The note of `loop` (its line `line`) under `setup`, in the Project or Area `owner`. */
+export function loopNoteTargetOf(setup: NoteSetup | null, loop: LoopRef, line: LoopLine, owner: NoteOwnerNames): LoopNoteTarget {
+  return {loop, line, fileName: loopNoteFileName(setup, loop, line.mainDate, owner), setup};
 }
 
 /** The loop of `tag` in `ownerPath` with its note's name and Loop setup; throws when it has no line. */
@@ -62,7 +64,7 @@ export function loopNoteOf(ownerPath: string, tag: string): LoopNoteTarget & {ab
   const loop = loopOf(tag, kindsState.kinds);
   const line = item && loop ? findLoopLine(item.loops, loop.tag) : undefined;
   if (!item || !loop || !line) throw new Error(`Loop ${tag} has no line here.`);
-  const target = loopNoteTargetOf(kindsState.setups[loop.kind] ?? null, loop, line);
+  const target = loopNoteTargetOf(kindsState.setups[loop.kind] ?? null, loop, line, noteOwnerNames(item.path));
   return {...target, absolutePath: `${item.path.replace(/\/+$/, '')}/${target.fileName}.note`};
 }
 

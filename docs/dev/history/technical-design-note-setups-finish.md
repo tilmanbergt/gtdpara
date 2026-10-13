@@ -130,3 +130,21 @@ sets the new one. The label of a build towards the next release is in `BUILD_INF
   §3 above.
 - Beta build, Tilman's own use for a few days, then `scripts/release.ps1` for 0.15.0.
 - Each step gets an "As built" note at the end of **this** document if anything differs.
+
+## 5. As built
+
+### Step 8
+
+- The two inputs are one type, `NoteOwnerNames` (`itemName`, `itemAbbrev`) in
+  `domain/sharedNotePages.ts`; `SharedFileNameInput` extends it and `loopNoteBaseName` takes it
+  as its fourth argument.
+- Resolved in one small storage helper, `storage/noteOwner.ts` `noteOwnerNames(itemPath)`,
+  used by `storage/noteTargets.ts`, `storage/loopNotes.ts` and `storage/loops.ts` (a helper in
+  `noteTargets.ts` would have made `loops.ts` → `noteTargets.ts` → `loopNotes.ts` → `loops.ts` a
+  cycle). The name is the base name of `itemPath`, so it is known even for an item not in the
+  cache; the abbreviation comes from the cache.
+- Loop note renames and the note carried along when a todo becomes a loop use the owner too.
+  A rename computes the old and the new file name with the current abbreviation: after an
+  abbreviation change the old note is not found under its old name and stays where it is
+  (as §1.1 accepts for notebooks).
+- The placeholder chips wrap to a second row on the setup page (8 chips); about 30 dp more.

@@ -120,14 +120,20 @@ describe('members, blockers, New and ideas', () => {
 
 describe('the loop note name', () => {
   const loop = {kind: 'workshop', name: 'teamoffsite', tag: 'workshop/teamoffsite'};
+  const owner = {itemName: 'Leadership Program', itemAbbrev: 'LP'};
   it('takes the main date, or leaves the date out', () => {
-    expect(loopNoteBaseName(undefined, loop, '2026-11-14')).toBe('2026-11 workshop teamoffsite');
-    expect(loopNoteBaseName('', loop, null)).toBe('workshop teamoffsite');
-    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, '2026-11-04')).toBe('teamoffsite 04.11.2026');
-    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, null)).toBe('teamoffsite');
+    expect(loopNoteBaseName(undefined, loop, '2026-11-14', owner)).toBe('2026-11 workshop teamoffsite');
+    expect(loopNoteBaseName('', loop, null, owner)).toBe('workshop teamoffsite');
+    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, '2026-11-04', owner)).toBe('teamoffsite 04.11.2026');
+    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, null, owner)).toBe('teamoffsite');
+  });
+  it('takes {name} and {abbr} from the loop’s owner', () => {
+    expect(loopNoteBaseName('{abbr} {subtag} {year}', loop, '2026-11-04', owner)).toBe('LP teamoffsite 2026');
+    expect(loopNoteBaseName('{name} {subtag}', loop, null, {itemName: 'Garden', itemAbbrev: ''})).toBe('Garden teamoffsite');
+    expect(loopNoteBaseName('{abbr} {subtag}', loop, null, {itemName: 'Garden', itemAbbrev: ''})).toBe('Garden teamoffsite');
   });
   it('drops date placeholders with their separator for shared notes too', () => {
-    const base = {fallbackName: 'Retro', tag: 'retro', subtag: 'demand'};
+    const base = {fallbackName: 'Retro', tag: 'retro', subtag: 'demand', itemName: '', itemAbbrev: ''};
     expect(renderSharedFileName({...base, template: '{tag}-{year}', date: ''})).toBe('retro');
     expect(renderSharedFileName({...base, template: '{tag} {subtag} {year}', date: '2026-10-07'})).toBe('retro demand 2026');
     expect(renderSharedFileName({...base, template: '{year}_{month}_{day} {tag}', date: '2026-10-07'})).toBe('2026_10_07 retro');

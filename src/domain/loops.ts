@@ -13,7 +13,7 @@
  */
 import {stripAllTags} from './markdown';
 import {meetingEndMs} from './meetingTime';
-import {renderSharedFileName} from './sharedNotePages';
+import {NoteOwnerNames, renderSharedFileName} from './sharedNotePages';
 import {LOOP_NOTE_NAME_DEFAULT} from './noteSetups';
 import {newTask, parseTaskInput} from './taskEdit';
 import {threadOf} from './threads';
@@ -184,12 +184,14 @@ export function loopIdeas(
 
 /**
  * The loop note's base name (no folder, no ".note"): the Loop setup's note
- * name with `{tag}` = kind, `{subtag}` = name and the date placeholders from
- * the main date (left out without one). Sanitizing is the caller's job, as
+ * name with `{tag}` = kind, `{subtag}` = name, `{name}`/`{abbr}` from the
+ * loop's owner and the date placeholders from the main date (left out
+ * without one). Sanitizing is the caller's job, as
  * for every file name.
  */
-export function loopNoteBaseName(template: string | undefined, loop: LoopRef, mainDate: string | null): string {
+export function loopNoteBaseName(template: string | undefined, loop: LoopRef, mainDate: string | null, owner: NoteOwnerNames): string {
   return renderSharedFileName({
+    ...owner,
     template: template?.trim() ? template : LOOP_NOTE_NAME_DEFAULT,
     fallbackName: `${loop.kind} ${loop.name}`,
     tag: loop.kind,

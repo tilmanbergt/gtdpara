@@ -22,6 +22,7 @@ import {GtdParaSettings} from '../domain/settings';
 import {renderSharedFileName} from '../domain/sharedNotePages';
 import {activeLoopsOf, LoopNoteTarget, loopNoteTargetOf} from './loopNotes';
 import {sanitizeFileNameComponent} from './noteLinks';
+import {noteOwnerNames} from './noteOwner';
 
 /** A note candidate with the file its note would live in. */
 export interface PlacedCandidate {
@@ -62,7 +63,7 @@ function place(candidate: NoteCandidate, input: NoteTargetInput, loops: ReturnTy
   if (candidate.target === 'loop' && candidate.loop) {
     const active = loops.find(l => l.loop.tag === candidate.loop?.tag);
     if (active) {
-      const loopNote = loopNoteTargetOf(setup, active.loop, active.line);
+      const loopNote = loopNoteTargetOf(setup, active.loop, active.line, noteOwnerNames(input.itemPath));
       return {candidate, shared: {relativeFolder: '', fileName: loopNote.fileName, relativeFile: `${loopNote.fileName}.note`}, loopNote};
     }
   }
@@ -79,6 +80,7 @@ function place(candidate: NoteCandidate, input: NoteTargetInput, loops: ReturnTy
         tag: setupTypeTag(input.tags, setup?.tags ?? []),
         subtag: setupSubtag(input.tags, setup?.tags ?? []),
         date: input.fileDate,
+        ...noteOwnerNames(input.itemPath),
       }),
     );
     const relativeFolder = notebook.folder;
