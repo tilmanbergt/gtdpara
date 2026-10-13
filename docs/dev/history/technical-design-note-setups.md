@@ -1,6 +1,6 @@
 # Technical design: Note setups
 
-Status: **implemented** (steps 0-6, see §12 As built); full device checklist (§9.2) open. Release: **0.15.0**, branch `feature/note-setups`.
+Status: **implemented** (steps 0-6, see §12 As built); full device checklist (§9.2) open. **§13 (page order: Timeline) decided after step 6, to be built as step 7.** Release: **0.15.0**, branch `feature/note-setups`.
 Requirements and their history: claude.ai project doc `claude/feature-tag-rule-model.md`.
 UX: canvas "gtdpara Note setups — UX draft" (setup page, page layout with Pieces · Add · Background).
 
@@ -729,3 +729,96 @@ above, and why.
   tab keeps its help mapping (`settings.md`, which links the page).
 - design-overview: §2.6 describes Note setups; the decision entry is in §4 ("One setup per
   thing"), the document's section for reasons.
+
+## 13. Page order in a notebook: Timeline (step 7)
+
+Decided after step 6. Replaces the page placement of the shared-pages design (meetings by
+date, todos always appended).
+
+### 13.1 Requirements (decided)
+
+- Every page gtdpara adds to a notebook or loop note goes where it belongs **in time**:
+  meetings by their date, todos by their creation date. A todo created between two meetings
+  sits between them; a meeting note created ahead of time no longer pushes later todos
+  behind it.
+- An item may span several pages: its first page and any pages after it that the user added
+  by hand (with or without a heading or own keywords). A new page goes **before the next page
+  that starts an item**, never between an item's pages.
+- Pages are placed once, when created; nothing is moved later (no move-page API). A meeting
+  whose date changes stays where it is.
+- **Only Timeline is built.** The ordering lives in one pure function; a later "Meetings, then
+  todos" choice per notebook would be a second strategy with the same inputs and nothing else.
+  If adding it would spread through other code, it is not built.
+
+### 13.2 Current code (checked on the branch)
+
+- `domain/sharedNotePages.ts`: `chronologicalInsertIndex(keywords, totalPages, newKeyword)`
+  (dated: before the first page whose anchor keyword starts with a later date; todo pages and
+  bare date keywords are skipped) and `insertTodoPageIndex(totalPages)` (always the end).
+- `storage/sharedNotePages.ts` `insertChronologicalPage(filePath, keyword, template, isDated)`
+  picks one of the two; callers: `storage/itemNotePlan.ts` (new page, new file, recreate) with
+  `isDated` from `storage/meetingNoteContent.ts` (`true` for meetings, `false` for todos).
+- Every page gtdpara fills gets a bare date keyword (meeting date / todo `[created::]` date,
+  `domain/noteFindability.ts` `isBareDateKeyword`, `itemDateKeyword`), written when the page is
+  filled, after insertion.
+
+### 13.3 Design
+
+`domain/pageOrder.ts` (new, about 80 lines, pure):
+
+```ts
+/** One page as the order sees it: the start of an item (with its date) or a continuation page. */
+export interface PageMark {
+  /** YYYY-MM-DD when the page starts an item; null for a continuation page. */
+  startDate: string | null;
+  /** A loop note's first page (keyword `loop <kind>/<name>`): always stays first. */
+  pinned: boolean;
+}
+
+/** The marks of a file's pages from its keywords (`PageKeyword[]`) and page count. */
+export function pageMarks(keywords: readonly PageKeyword[], totalPages: number): PageMark[];
+
+/**
+ * Timeline: the index to insert a page dated `date` at - before the first page that starts an
+ * item dated later than `date`; after all items of the same date (stable); never before a
+ * pinned page; at the end when none.
+ */
+export function timelineInsertIndex(marks: readonly PageMark[], date: string): number;
+```
+
+- **Starts an item**: the page has a bare date keyword. For pages from before 0.13, an anchor
+  keyword starting with a date (a meeting, `parseKeywordLeadingDate`) also counts, with that
+  date. Every other page is a continuation page (pre-0.13 todo pages included).
+- **Pinned**: a page with the loop page keyword (prefix `loop `; the prefix moves from `storage/loopNotes.ts` `loopPageKeyword` to a domain constant so `pageOrder.ts` stays pure).
+- **The new page's date**: a meeting's date; a todo's creation date (`[created::]`, the date
+  its date keyword gets), today when it has none.
+- `storage/sharedNotePages.ts`: `insertChronologicalPage(…, isDated)` becomes
+  `insertItemPage(filePath, keyword, template, date)`: read keywords and page count,
+  `pageMarks`, `timelineInsertIndex`, insert, keyword. The debug-log entry records the date
+  and index instead of `isDated`.
+- `ItemNoteParams.isDated` becomes `pageDate: string` (set in `openOrCreateMeetingNote` /
+  `openOrCreateTodoNote`); recreated pages use it too.
+- Removed: `chronologicalInsertIndex`, `insertTodoPageIndex` and their tests (the new tests
+  cover their cases).
+- Nothing else reads page positions; the alternatives, anchors and keyword rename are
+  unchanged.
+
+### 13.4 Tests
+
+- Jest (`pageOrder`): empty file; meeting between two meetings; todo created between two
+  meetings; item with continuation pages (insert after them, before the next start); same
+  date (after the existing items); date before everything; pre-0.13 file (meeting anchors
+  with a leading date; todo pages without a date keyword are continuation); loop note page 1
+  pinned; a page with only the user's own keywords is a continuation page.
+- Device (demo space): notebook with meetings 1 Oct and 15 Oct, each with a hand-added second
+  page → a todo created today lands after the last item dated today or earlier and after
+  that item's extra pages; a meeting dated 8 Oct lands after 1 Oct's pages and before 15 Oct;
+  in a loop note a new todo never goes before page 1.
+
+### 13.5 Docs
+
+- Help page `docs/user/note-setups.md`: one short paragraph "Order of pages in a notebook".
+- CHANGELOG `[Unreleased]`, Changed: pages in a shared note now follow the timeline (todos by
+  their creation date, between the meetings around them; pages you added stay with their
+  item).
+
