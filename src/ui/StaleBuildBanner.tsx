@@ -16,6 +16,7 @@
 import {useEffect, useState} from 'react';
 import {PluginManager} from 'sn-plugin-lib';
 import {getRuntimeDiagnostics, restartPluginHost} from '../supernote/pluginRuntime';
+import {log} from '../utils/log';
 import {useStatus} from './status/StatusProvider';
 
 export default function StaleBuildBanner(): null {
@@ -25,7 +26,12 @@ export default function StaleBuildBanner(): null {
   useEffect(() => {
     let cancelled = false;
     getRuntimeDiagnostics().then(d => {
+      // Evidence for docs/dev/history/technical-design-new-firmware.md D5:
+      // build labels only. A "warning shown" line without a later "Restart
+      // tapped" means the warning was ignored (it has no dismiss control).
+      if (d) log('pluginRuntime: stale builds', `n=${d.staleBuilds.length}`, d.staleBuilds.join(','));
       if (cancelled || !d || d.staleBuilds.length === 0) return;
+      log('pluginRuntime: stale-build warning shown', `n=${d.staleBuilds.length}`);
       setStaleBuilds(d.staleBuilds);
     });
     return () => {
@@ -34,6 +40,7 @@ export default function StaleBuildBanner(): null {
   }, []);
 
   const onRestart = () => {
+    log('pluginRuntime: stale-build warning, Restart tapped', `n=${staleBuilds.length}`);
     setRestarting(true);
     // restartPluginHost schedules the kill ~400 ms later; closing the plugin
     // view first lets the NOTE app see a normal close before the host dies
