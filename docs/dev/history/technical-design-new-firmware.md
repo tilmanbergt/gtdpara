@@ -216,3 +216,9 @@ now has `picture=true`, no 904. But the cold mark took 5.7 s against about 1.1 s
   - `ms` steps: `lasso`, `lassoGone`, `icon`, `picture`, `data`, `line`.
   - Not covered: a press that arrives only after `reorient()` already landed, or after the
     banner's scan started; the bundle showed the press within the first reads.
+
+- **F4** Verified, no change: no misplaced bookmark/check icon and no misplaced text box or
+  heading came up in the device rounds after checkpoint A, so `supernote/markIcons.ts` and the
+  note-writing code stay as they are (geometry points and rects were pixels before; on the A5 X
+  page size = screen size). Tests 3, 4 (PDF) and 6 are part of the final 0.15.0 beta checklist;
+  a problem there reopens F4.
