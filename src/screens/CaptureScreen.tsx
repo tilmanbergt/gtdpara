@@ -4,8 +4,8 @@
  *
  * Opened two ways (App.tsx, `mode === 'capture'`):
  * - from the lasso toolbar's "Capture Todo/Meeting" (`source: 'lasso'`): the
- *   lasso is read once, its picture shown, its strokes recognized as shifted
- *   copies (supernote/strokeRecognition.ts - the fix for text low on the page);
+ *   lasso is read once, its picture shown, its strokes recognized from the
+ *   saved stroke data (supernote/strokeRecognition.ts);
  *   open marks are listed in the left column too;
  * - from a "marks to process" card (`source: 'marks'`, a scope and where to
  *   go back to): the marks only.
@@ -129,7 +129,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
       if (fromLasso) {
         lasso = await readLasso();
         recognitionStartMs = Date.now() - t0;
-        recognition = recognizeStrokes(lasso.strokes, lasso.textBoxText, lasso.displaySize ?? lasso.pageSize, lasso.page ?? 0);
+        recognition = recognizeStrokes(lasso.strokes, lasso.textBoxText, lasso, lasso.page ?? 0);
       }
       const settings = await loadSettings();
       const cache = getCachedData() ?? (await rebuildCache(settings));

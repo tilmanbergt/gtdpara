@@ -1,9 +1,9 @@
 /**
  * "Mark for later" - the pure part (docs/dev/history/technical-design-lasso-0.8.md
  * §3.1-§3.2, §3.8, §3.10): the `## Marks` line format, mark ids, which
- * project/area/Inbox owns a mark, icon geometry, the shifted copy of the
- * stored strokes that recognition uses (§2.1), and the
- * grouping of the marks column.
+ * project/area/Inbox owns a mark, icon geometry, the stored strokes and the
+ * size recognition uses, the private data file, and the grouping of the
+ * marks column.
  *
  * No React Native, no sn-plugin-lib, no I/O (design-overview.md §3).
  */
@@ -329,9 +329,12 @@ export function checkPolygon(box: PxRect): PxPoint[] {
 }
 
 // ---------------------------------------------------------------------------
-// Stored strokes and the shifted copy for recognition (§2.1, §3.4)
+// Stored strokes and the recognition size (§3.4, technical-design-new-firmware.md)
 
-/** One stroke as saved at mark time: EMR points flattened [x0, y0, x1, y1, ...]. */
+/**
+ * One stroke as saved at mark time: page-size pixel points flattened
+ * [x0, y0, x1, y1, ...] (the page's real size from PluginFileAPI.getPageSize).
+ */
 export interface StoredStroke {
   thickness: number | null;
   penColor: number | null;
@@ -341,33 +344,23 @@ export interface StoredStroke {
   pressures: number[];
 }
 
-/** Where the shifted copy starts, in EMR units from the top-left. */
-export const SHIFT_ORIGIN_EMR = 300;
+export interface PageSize {
+  width: number;
+  height: number;
+}
 
 /**
- * The same strokes moved so the smallest x and y sit at SHIFT_ORIGIN_EMR.
- * The host recognizer maps points with the page size it is given; on the
- * A5 X the points use a larger EMR range than that size implies, so text low
- * on the page fell outside and failed (error 117) or came back partial.
- * Moving the strokes to the top-left keeps them inside on every device.
- * Relative positions (lines, words) are unchanged.
+ * The size handed to the recognizer with the strokes: the page's real size,
+ * the space the stroke points are in. The on-screen display size is only a
+ * fallback for when the page size couldn't be read; `source` says which one.
  */
-export function shiftStrokes(strokes: StoredStroke[], origin = SHIFT_ORIGIN_EMR): StoredStroke[] {
-  let minX = Infinity;
-  let minY = Infinity;
-  for (const s of strokes) {
-    for (let i = 0; i + 1 < s.points.length; i += 2) {
-      if (s.points[i] < minX) {minX = s.points[i];}
-      if (s.points[i + 1] < minY) {minY = s.points[i + 1];}
-    }
-  }
-  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {return strokes.map(s => ({...s, points: [...s.points]}));}
-  const dx = origin - minX;
-  const dy = origin - minY;
-  return strokes.map(s => ({
-    ...s,
-    points: s.points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy)),
-  }));
+export function recognitionSize(sizes: {pageSize: PageSize | null; displaySize: PageSize | null}): {
+  size: PageSize | null;
+  source: 'page' | 'display' | null;
+} {
+  if (sizes.pageSize) {return {size: sizes.pageSize, source: 'page'};}
+  if (sizes.displaySize) {return {size: sizes.displaySize, source: 'display'};}
+  return {size: null, source: null};
 }
 
 /** The smallest rect around every stroke point, plus the point count; null rect when there are no points. */

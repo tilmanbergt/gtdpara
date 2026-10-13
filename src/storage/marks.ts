@@ -205,7 +205,7 @@ export function listOpenMarks(scope: MarkScope): OpenMark[] {
 }
 
 /**
- * Recognizes a mark from its saved strokes (shifted copies, §3.4) - once:
+ * Recognizes a mark from its saved strokes (§3.4) - once:
  * the result is kept in its mark.json and returned from there next time. A
  * mark that only holds text-box text needs no recognition. `missing` = the
  * private data is gone (e.g. after reinstalling) - the line still works,
@@ -219,7 +219,7 @@ export async function recognizeMark(open: OpenMark): Promise<RecognitionResult &
   if (data.recognizedText) {
     return {text: data.recognizedText, error: null, ms: 0, missing: false};
   }
-  const result = await recognizeStrokes(data.strokes, data.textBoxText, data.displaySize ?? data.pageSize, data.page);
+  const result = await recognizeStrokes(data.strokes, data.textBoxText, data, data.page);
   if (result.text.trim()) {
     try {
       await writeMarkData({...data, recognizedText: result.text});

@@ -775,10 +775,10 @@ link, or its page in a shared note - one `getKeyWords` call for that page), a sa
 that meeting as provenance (§2.4).
 
 **Recognition** (`supernote/lassoRead.ts`, `supernote/strokeRecognition.ts`). The lasso's strokes
-are read once, rebuilt as new elements shifted to the top-left (`domain/marks.ts`'s
-`shiftStrokes`) and recognized with the page size: the A5 X reports stroke points in a larger EMR
-range than the page size implies, and unshifted strokes low on the page fail or come back
-partial. One recognition runs at a time. `ui/capture/useRecognitionQueue.ts` recognizes the
+are read once (page-size pixel points, §4 "Page-size pixels everywhere"), rebuilt as new elements
+where they were drawn and recognized with the page's real size (`domain/marks.ts`'s
+`recognitionSize`; the display size only when the page size can't be read). One recognition runs
+at a time. `ui/capture/useRecognitionQueue.ts` recognizes the
 selected mark plus three ahead; recognized text triggers an e-ink refresh.
 
 **Mark for later** (`storage/marks.ts`'s `createMarkFromLasso`, run from `index.js` with

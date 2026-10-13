@@ -1,9 +1,14 @@
 /**
- * Reads the active lasso once into plain data (docs/dev/technical-design-
- * lasso-0.8.md §3.4): where it is, its text boxes' text, and every stroke's
- * points and pressures. Capture and "Mark for later" both start here, so
- * recognition never works on live elements with the page size again (the
- * root cause of the "second lasso recognizes nothing" bug, §2.1).
+ * Reads the active lasso once into plain data
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.4): where it is, its
+ * text boxes' text, and every stroke's points and pressures. Capture and "Mark for later" both start
+ * here, and both recognize from this saved data.
+ *
+ * Every coordinate read here - rect, stroke points, text-box rects - is a
+ * pixel on the page's real size (`pageSize`, PluginFileAPI.getPageSize;
+ * docs/dev/history/technical-design-new-firmware.md). `displaySize` is the
+ * on-screen size, read for diagnostics and as the recognizer's fallback when
+ * the page size can't be read.
  */
 import {PluginCommAPI, PluginFileAPI} from 'sn-plugin-lib';
 import {joinInReadingOrder, PxPoint, PxRect, StoredStroke, strokeBounds, TextPiece} from '../domain/marks';

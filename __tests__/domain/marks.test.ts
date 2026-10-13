@@ -14,11 +14,11 @@ import {
   parseMarkLine,
   parseMarkLines,
   parseMarkUserData,
+  recognitionSize,
   markDoneUserData,
   markUserData,
   resolveMarkPath,
   serializeMarkLines,
-  shiftStrokes,
   StoredStroke,
   strokeBounds,
 } from '../../src/domain/marks';
@@ -152,26 +152,15 @@ describe('icons', () => {
   });
 });
 
-describe('shiftStrokes', () => {
-  const stroke = (points: number[]): StoredStroke => ({
-    thickness: 1,
-    penColor: 0,
-    penType: 10,
-    layerNum: 0,
-    points,
-    pressures: points.filter((_, i) => i % 2 === 0).map(() => 100),
+describe('recognitionSize', () => {
+  const page = {width: 1404, height: 1872};
+  const display = {width: 1400, height: 1870};
+  it('prefers the page size, the space the stroke points are in', () => {
+    expect(recognitionSize({pageSize: page, displaySize: display})).toEqual({size: page, source: 'page'});
   });
-  it('moves all strokes so the minimum sits at the origin, keeping relative positions', () => {
-    const out = shiftStrokes([stroke([18000, 15000, 18100, 15050]), stroke([17500, 15200])]);
-    expect(out[0].points).toEqual([800, 300, 900, 350]);
-    expect(out[1].points).toEqual([300, 500]);
-  });
-  it('leaves empty input alone and does not mutate', () => {
-    const input = [stroke([])];
-    expect(shiftStrokes(input)[0].points).toEqual([]);
-    const s = [stroke([5000, 6000])];
-    shiftStrokes(s);
-    expect(s[0].points).toEqual([5000, 6000]);
+  it('falls back to the display size only without a page size', () => {
+    expect(recognitionSize({pageSize: null, displaySize: display})).toEqual({size: display, source: 'display'});
+    expect(recognitionSize({pageSize: null, displaySize: null})).toEqual({size: null, source: null});
   });
 });
 
