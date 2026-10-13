@@ -2,7 +2,6 @@
 
 ## Common situations
 
-- **"gtdpara was updated, but the old version is still loaded"**: tap **Restart** in that message, wait a few seconds, then open gtdpara again. This comes from how the Supernote installs plugin updates.
 - **Something looks outdated**, for example after editing files on your computer: open gtdpara again, it reads changed files when it opens. If that doesn't help, tap **Reload all files** in Settings → Advanced. If it happens often, try switching off **Keep tabs in memory** there.
 - **A handwritten tag isn't recognized**: a tag must not contain a space after `#`. Quick Add removes such spaces automatically; in files you edited by hand, check them.
 - **A note link or linked file is broken**: run **Run Integrity Check** in Settings → Advanced. It writes a report to `EXPORT/gtdpara/debug`.

@@ -35,8 +35,7 @@ the rules that keep these layers apart.
 
 ### 2.1 Screens and navigation
 
-**Shell.** `App.tsx` renders a `StatusProvider` (§2.13), an always-mounted `StaleBuildBanner`,
-and `AppShell`. `AppShell` is keyed by a profile epoch, so switching profiles remounts the whole
+**Shell.** `App.tsx` renders a `StatusProvider` (§2.13) and `AppShell`. `AppShell` is keyed by a profile epoch, so switching profiles remounts the whole
 shell with no state carried over (§2.12). A "Mark for later" result screen
 (`ui/MarkOutcomeScreen.tsx`) can be drawn on top of everything (§2.10).
 
@@ -884,9 +883,10 @@ when asked for:
   navigation, reopen and cold start, ending after 1.5 s of quiet (15 s at most), written as JSONL
   to `EXPORT/gtdpara/debug/perf/` with data-volume stats (`storage/perfStats.ts`). Off costs one
   check per call. Analysis: `node scripts/perf-report.js`.
-- **Stale build**: after an update the host can keep an older build loaded;
-  `supernote/pluginRuntime.ts` detects it and `StaleBuildBanner` offers a restart of the host
-  process.
+- **Stale build**: `supernote/pluginRuntime.ts` checks whether an older gtdpara build is still
+  loaded in the host process. The required plugin firmware unloads it on install, so there is no
+  warning: the count goes into the debug bundle and one `pluginRuntime: stale builds` log line per
+  start, to catch a regression.
 
 **Dates and errors.** All date and time text shown to the user comes from
 `domain/dateFormat.ts` (`6.10.`, `6.10. 14:05`, year only when not the current one); files keep

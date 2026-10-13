@@ -22,8 +22,8 @@ import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
 import {setOpenMarksHandler} from './src/ui/marksNav';
 import {MarkScope} from './src/domain/marks';
-import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
+import {logStaleBuilds} from './src/supernote/pluginRuntime';
 import {getMarkOutcome, holdStartForMark, isMarkInFlight, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
 import {useLoopEvents} from './src/ui/useLoopEvents';
@@ -112,14 +112,13 @@ interface CurrentItem {
 type Mode = 'loading' | 'capture' | 'tabs' | 'focus';
 
 // The central status slot (docs/dev/history/technical-design-status-slot.md) needs its
-// provider above every mode, so App itself is only the provider + the
-// always-mounted StaleBuildBanner publisher; the real shell is AppShell.
+// provider above every mode, so App itself is only the provider; the real
+// shell is AppShell.
 // Keep this `export default` - index.js is untyped JS, so tsc can't catch
 // a missing default export here (see the project's App.tsx crash notes).
 export default function App(): React.JSX.Element {
   return (
     <StatusProvider>
-      <StaleBuildBanner />
       <AppRoot />
     </StatusProvider>
   );
@@ -201,12 +200,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // Loops: a todo that is only a loop tag becomes its loop after the save (storage/loops.ts).
   useLoopEvents();
   useLoopLinkNavigation(stableOpenItem);
-  // Leftovers of an interrupted PDF export live only in the plugin's private
-  // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - cleared
-  // once per start, by the first reorient() that lands on the tabs: never
-  // while "Mark for later" or Capture still has its lasso picture there.
-  // Best-effort: older native builds lack the call.
-  const tempCleanedRef = useRef(false);
+  // Once per start, by the first reorient() that lands on the tabs (never
+  // while "Mark for later" or Capture still has its lasso picture in the
+  // temp folder): clear leftovers of an interrupted PDF export from the
+  // private temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2;
+  // best-effort, older native builds lack the call), and log whether an
+  // older build is still loaded (supernote/pluginRuntime.ts logStaleBuilds).
+  const startHousekeepingRef = useRef(false);
 
   // Re-checks the current note's Project/Area and jumps straight there - on
   // initial mount, AND every time our own sidebar button is pressed again.
@@ -326,11 +326,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         if (cancelled || routedByLassoButtonRef.current) return;
 
         setSettings(loadedSettings);
-        if (!tempCleanedRef.current) {
-          tempCleanedRef.current = true;
+        if (!startHousekeepingRef.current) {
+          startHousekeepingRef.current = true;
           getPrivateTempDir()
             .then(dir => deleteTempTree(dir))
             .catch(e => log('App: private temp clean-up skipped', errorMessage(e)));
+          logStaleBuilds();
         }
         // Only files changed outside gtdpara are read again (technical-design-files-0.6.md §3.2).
         refreshCache(loadedSettings).catch(e =>
@@ -582,10 +583,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // "Updated to x.y.z" notice (docs/dev/history/technical-design-about-debug-experimental.md
   // §3.6, P3). Only a tap on "What's new" or ✕ stores lastSeenVersion - not
-  // merely showing it - because after an update the first start is often cut
-  // short by the stale-build restart (StaleBuildBanner, which also wins the
-  // status slot: warning outranks info), so the notice must survive to the
-  // next start.
+  // merely showing it - a first start after an update can be short (the
+  // user only marks something, or a warning outranks info in the status
+  // slot), so the notice must survive to the next start.
   const [whatsNewAcknowledged, setWhatsNewAcknowledged] = useState(false);
   const acknowledgeWhatsNew = () => {
     setWhatsNewAcknowledged(true);

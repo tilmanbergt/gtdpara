@@ -6,7 +6,7 @@
 2. Copy it to your Supernote and install it as a plugin. Your firmware needs plugin support.
 3. Open any note, open the plugin sidebar and tap the gtdpara icon.
 
-To update later, install the newer file over the old one. Read the **Upgrade notes** in "What's new" (Settings → About) first. If a message says the old version is still loaded, tap **Restart** once.
+To update later, install the newer file over the old one. Read the **Upgrade notes** in "What's new" (Settings → About) first.
 
 ## First setup
 

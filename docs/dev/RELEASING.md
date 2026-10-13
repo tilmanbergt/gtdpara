@@ -149,7 +149,7 @@ CHANGELOG line under Fixed) followed by `./scripts/release.ps1 -Bump patch`.
 ## 6. Device check before publishing
 
 - [ ] Install `build\outputs\gtdpara-x.y.z.snplg` **over the previous release** (not a clean
-      install). If the "old version still loaded" warning appears, tap Restart.
+      install).
 - [ ] Settings → About shows `x.y.z` (no `+dev`); "What's new" shows the new notes.
 - [ ] Settings are still there; Projects and Areas load.
 - [ ] Daily, Week, Month and a project's Current tab open and look right.

@@ -2,11 +2,12 @@
  * JS side of the native `GtdParaRuntime` module (GtdParaRuntimeModule.kt /
  * PluginRuntimeGuard.kt) - docs/dev/history/technical-design-host-update-crash.md.
  *
- * The Supernote host installs a new gtdpara build into the already running
- * host process, next to the old one; that process then tends to crash a minute
- * or two later. `getRuntimeDiagnostics` reports whether an older build is
- * still loaded; `restartPluginHost` ends the host process in a controlled way
- * so the next tap starts clean. Both never throw.
+ * `getRuntimeDiagnostics` reports the build, the device and whether an older
+ * gtdpara build is still loaded in the host process. Older firmware kept the
+ * old build loaded after an update and then crashed; the plugin firmware
+ * gtdpara requires unloads it (docs/dev/history/technical-design-new-firmware.md D5),
+ * so the check only feeds the debug bundle and one log line per start, to
+ * catch a regression. Never throws.
  */
 import {NativeModules} from 'react-native';
 import {log, logError} from '../utils/log';
@@ -60,16 +61,8 @@ export async function getRuntimeDiagnostics(): Promise<RuntimeDiagnostics | null
   }
 }
 
-/** Ends the plugin host process shortly after resolving; the next plugin tap starts it fresh. */
-export async function restartPluginHost(reason: string): Promise<void> {
-  if (!GtdParaRuntime?.restartPluginHost) {
-    logError('pluginRuntime: restartPluginHost not available');
-    return;
-  }
-  try {
-    log('pluginRuntime: restarting plugin host', reason);
-    await GtdParaRuntime.restartPluginHost(reason);
-  } catch (e) {
-    logError('pluginRuntime: restartPluginHost failed', errorMessage(e));
-  }
+/** Logs once how many older builds are still loaded (labels only); expected: none. Never throws. */
+export async function logStaleBuilds(): Promise<void> {
+  const d = await getRuntimeDiagnostics();
+  if (d) log('pluginRuntime: stale builds', `n=${d.staleBuilds.length}`, d.staleBuilds.join(','));
 }
