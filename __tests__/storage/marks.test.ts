@@ -72,7 +72,8 @@ jest.mock('../../src/storage/dataCache', () => ({
 }));
 
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';
-import {createMarkFromLasso, outcomeNeedsScreen, recognizeMark} from '../../src/storage/marks';
+import {createMarkFromLasso, outcomeNeedsScreen, recognizeMark, storedMarkRecognition} from '../../src/storage/marks';
+import {log} from '../../src/utils/log';
 import {recognizeStrokes} from '../../src/supernote/strokeRecognition';
 
 const paths = resolvePaths(DEFAULT_SETTINGS);
@@ -107,6 +108,7 @@ it('saves into the project the note belongs to, in the designed order, silently'
   expect(outcome.kind).toBe('saved');
   expect(outcomeNeedsScreen(outcome)).toBe(false);
   expect(mockState.calls).toEqual(['preview', 'lassoGone', 'icon', 'data', 'line:project:Plan.note:']);
+  expect(mockState.written).toEqual([expect.objectContaining({version: 2, pageSize: {width: 1404, height: 1872}})]);
 });
 
 it('puts marks from outside projects/areas into the Inbox with an absolute path, keeping text-box text', async () => {
@@ -138,7 +140,7 @@ it('takes the icon and data back when the line cannot be written', async () => {
 
 describe('recognizeMark keeps the text (checkpoint B)', () => {
   const open = {mark: {id: 'm-1', createdAt: '2026-10-05 10:42', notePath: 'Plan.note', page: 0, text: null}, owner: {type: 'inbox'}, absPath: '/x/Plan.note'} as never;
-  const data = {id: 'm-1', strokes: [stroke], textBoxText: '', page: 0, displaySize: {width: 1404, height: 1872}};
+  const data = {version: 2, id: 'm-1', strokes: [stroke], textBoxText: '', page: 0, displaySize: null, pageSize: {width: 1404, height: 1872}};
   it('recognizes once and writes the text into the mark data', async () => {
     mockState.data = data;
     (recognizeStrokes as jest.Mock).mockResolvedValueOnce({text: 'Call Anna', error: null, ms: 5});
@@ -151,5 +153,41 @@ describe('recognizeMark keeps the text (checkpoint B)', () => {
     expect((await recognizeMark(open)).text).toBe('Call Anna');
     expect(recognizeStrokes).not.toHaveBeenCalled();
     expect(mockState.written).toEqual([]);
+  });
+  it('recognizes with the page size', async () => {
+    mockState.data = data;
+    (recognizeStrokes as jest.Mock).mockClear().mockResolvedValueOnce({text: 'x', error: null, ms: 1});
+    await recognizeMark(open);
+    expect(recognizeStrokes).toHaveBeenCalledWith([stroke], '', data, 0);
+  });
+});
+
+describe('recognizeMark with marks from an older gtdpara (version 1)', () => {
+  const open = {mark: {id: 'm-1', createdAt: '2026-10-05 10:42', notePath: 'Plan.note', page: 0, text: null}, owner: {type: 'inbox'}, absPath: '/x/Plan.note'} as never;
+  const v1 = {version: 1, id: 'm-1', strokes: [stroke], textBoxText: '', page: 0, displaySize: {width: 1404, height: 1872}, pageSize: null};
+  beforeEach(() => (recognizeStrokes as jest.Mock).mockClear());
+  it('keeps using text recognized before', async () => {
+    mockState.data = {...v1, recognizedText: 'Call Anna'};
+    expect(await recognizeMark(open)).toMatchObject({text: 'Call Anna', old: false});
+    expect(recognizeStrokes).not.toHaveBeenCalled();
+  });
+  it('does not send old handwriting to the recognizer and says so', async () => {
+    mockState.data = v1;
+    expect(await recognizeMark(open)).toMatchObject({text: '', error: null, old: true, missing: false});
+    expect(recognizeStrokes).not.toHaveBeenCalled();
+    expect(mockState.written).toEqual([]);
+    expect(log).toHaveBeenCalledWith('marks: old mark, not recognized', 'm-1');
+  });
+  it('keeps the text-box text of an old mark', async () => {
+    mockState.data = {...v1, textBoxText: 'Order toner'};
+    expect(await recognizeMark(open)).toMatchObject({text: 'Order toner', old: true});
+  });
+  it('the preload reports an old mark the same way, and kept text first', async () => {
+    mockState.data = v1;
+    expect(await storedMarkRecognition(open)).toEqual({text: '', old: true});
+    mockState.data = {...v1, recognizedText: 'Call Anna'};
+    expect(await storedMarkRecognition(open)).toEqual({text: 'Call Anna', old: false});
+    mockState.data = {...v1, version: 2};
+    expect(await storedMarkRecognition(open)).toBeNull();
   });
 });

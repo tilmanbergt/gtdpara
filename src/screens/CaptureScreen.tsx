@@ -234,6 +234,10 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
 
   // ---- the seed for the panel ----
   const selectedText = selectedMark ? recognition.get(selectedMark.mark.id)?.text ?? '' : '';
+  // Handwriting marked with an older gtdpara is not recognized
+  // (docs/dev/history/technical-design-new-firmware.md D2): say so while it is selected.
+  const selectedOld = !!selectedMark && !!recognition.get(selectedMark.mark.id)?.old;
+  useStatus('CaptureScreen.oldMark', selectedOld ? {kind: 'info', text: 'Marked with an older gtdpara - type the text from the picture.'} : null);
   const seed: CaptureSeed | null = useMemo(() => {
     if (selectedKey === LASSO_KEY) {
       // Once something was saved from the lasso, coming back to its row gives an empty form.

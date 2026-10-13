@@ -8,7 +8,7 @@
  */
 import {useEffect, useRef, useState} from 'react';
 import {OpenMark} from '../../domain/marks';
-import {recognizeMark, storedMarkText} from '../../storage/marks';
+import {recognizeMark, storedMarkRecognition} from '../../storage/marks';
 import {logWarn} from '../../utils/log';
 import {errorMessage} from '../../utils/errorMessage';
 
@@ -19,6 +19,8 @@ export interface MarkRecognition {
   text: string;
   /** The private data was missing (picture and strokes gone). */
   missing?: boolean;
+  /** Handwriting from an older gtdpara: never recognized, the text is typed from the picture. */
+  old?: boolean;
 }
 
 /** How many marks after the selected one are recognized ahead. */
@@ -39,6 +41,13 @@ export function nextToRecognize(
   return null;
 }
 
+/** A finished result: 'done' with text, else 'failed' (an error) or 'empty'. Pure. */
+export function settledRecognition(rawText: string, error: string | null, old = false): MarkRecognition {
+  const text = rawText.trim();
+  const state: RecognitionState = text ? 'done' : error ? 'failed' : 'empty';
+  return old ? {state, text, old} : {state, text};
+}
+
 export function useRecognitionQueue(marks: OpenMark[], selectedId: string | null): Map<string, MarkRecognition> {
   const [results, setResults] = useState<Map<string, MarkRecognition>>(() => new Map());
   const runningRef = useRef<string | null>(null);
@@ -54,8 +63,9 @@ export function useRecognitionQueue(marks: OpenMark[], selectedId: string | null
   const idsKey = ids.join('|');
 
   // Text recognized on an earlier open comes from the mark's data at once,
-  // for every mark in the list (one small file read each) - only marks
-  // without it are recognized, by the queue below.
+  // for every mark in the list (one small file read each), and so does the
+  // "old mark" verdict - only marks without either are recognized, by the
+  // queue below.
   // The queue waits for these reads, so a mark with stored text is never
   // sent to the recognizer first.
   const preloadedRef = useRef(new Set<string>());
@@ -69,22 +79,22 @@ export function useRecognitionQueue(marks: OpenMark[], selectedId: string | null
     fresh.forEach(m => preloadedRef.current.add(m.mark.id));
     inFlightRef.current += 1;
     setPreloading(n => n + 1);
-    Promise.all(fresh.map(m => storedMarkText(m).then(text => [m.mark.id, text] as const).catch(() => [m.mark.id, null] as const))).then(
-      found => {
-        inFlightRef.current -= 1;
-        if (!mountedRef.current) {return;}
-        const known = found.filter((f): f is readonly [string, string] => !!f[1]);
-        setPreloading(n => n - 1);
-        if (known.length === 0) {return;}
-        setResults(prev => {
-          const next = new Map(prev);
-          for (const [id, text] of known) {
-            if (!next.has(id)) {next.set(id, {state: 'done', text});}
-          }
-          return next;
-        });
-      },
-    );
+    Promise.all(
+      fresh.map(m => storedMarkRecognition(m).then(r => [m.mark.id, r] as const).catch(() => [m.mark.id, null] as const)),
+    ).then(found => {
+      inFlightRef.current -= 1;
+      if (!mountedRef.current) {return;}
+      const known = found.filter((f): f is readonly [string, {text: string; old: boolean}] => !!f[1]);
+      setPreloading(n => n - 1);
+      if (known.length === 0) {return;}
+      setResults(prev => {
+        const next = new Map(prev);
+        for (const [id, r] of known) {
+          if (!next.has(id)) {next.set(id, settledRecognition(r.text, null, r.old));}
+        }
+        return next;
+      });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
 
@@ -110,11 +120,7 @@ export function useRecognitionQueue(marks: OpenMark[], selectedId: string | null
     runningRef.current = nextId;
     setResults(prev => new Map(prev).set(nextId, {state: 'recognizing', text: ''}));
     recognizeMark(open)
-      .then(r => {
-        const text = r.text.trim();
-        const state: RecognitionState = text ? 'done' : r.error ? 'failed' : 'empty';
-        return {state, text, missing: r.missing} as MarkRecognition;
-      })
+      .then(r => ({...settledRecognition(r.text, r.error, r.old), missing: r.missing}))
       .catch(e => {
         logWarn('useRecognitionQueue: failed', nextId, errorMessage(e));
         return {state: 'failed', text: ''} as MarkRecognition;

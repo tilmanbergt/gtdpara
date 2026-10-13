@@ -1,10 +1,13 @@
 import {
   bookmarkPolygon,
+  canRecognize,
   checkPolygon,
   formatMarkLine,
   groupMarks,
   iconBox,
   isMarkId,
+  isOldStrokeMark,
+  MarkDataFile,
   markCreatedAt,
   markLinkPath,
   markOwner,
@@ -182,6 +185,42 @@ describe('strokeBounds', () => {
   it('has no rect without points and ignores a dangling coordinate', () => {
     expect(strokeBounds([])).toEqual({rect: null, points: 0});
     expect(strokeBounds([stroke([]), stroke([7])])).toEqual({rect: null, points: 0});
+  });
+});
+
+describe('canRecognize / isOldStrokeMark', () => {
+  const s: StoredStroke = {thickness: 1, penColor: 0, penType: 10, layerNum: 0, points: [10, 20], pressures: []};
+  const data = (over: Partial<MarkDataFile>): MarkDataFile => ({
+    version: 2,
+    id: 'm-1',
+    path: '/x/A.note',
+    page: 0,
+    rect: null,
+    displaySize: null,
+    pageSize: null,
+    textBoxText: '',
+    strokes: [s],
+    icon: null,
+    ...over,
+  });
+  it('recognizes version 2 strokes', () => {
+    expect(canRecognize(data({}))).toBe(true);
+    expect(isOldStrokeMark(data({}))).toBe(false);
+  });
+  it('does not send version 1 strokes, with or without kept text', () => {
+    expect(canRecognize(data({version: 1}))).toBe(false);
+    expect(isOldStrokeMark(data({version: 1}))).toBe(true);
+    expect(canRecognize(data({version: 1, recognizedText: 'Call Anna'}))).toBe(false);
+  });
+  it('treats a file without a version as old', () => {
+    const noVersion = data({});
+    delete (noVersion as Partial<MarkDataFile>).version;
+    expect(canRecognize(noVersion)).toBe(false);
+    expect(isOldStrokeMark(noVersion)).toBe(true);
+  });
+  it('a text-box-only mark needs no recognizer and is not old', () => {
+    expect(canRecognize(data({strokes: [], textBoxText: 'Typed'}))).toBe(false);
+    expect(isOldStrokeMark(data({version: 1, strokes: [], textBoxText: 'Typed'}))).toBe(false);
   });
 });
 

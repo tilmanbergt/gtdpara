@@ -20,7 +20,7 @@ import {isEmptyLasso, readLasso, saveLassoPreview} from '../supernote/lassoRead'
 import {setLassoBoxState} from '../supernote/lasso';
 import {changeMarkIcon, insertBookmark} from '../supernote/markIcons';
 import {ensureFolderExists, readTextFile} from '../supernote/fileSystem';
-import {collectOpenMarks, MARK_DATA_VERSION, markCreatedAt, markOwner, MarkScope, newMarkId, OpenMark, PxRect} from '../domain/marks';
+import {collectOpenMarks, isOldStrokeMark, MARK_DATA_VERSION, MarkDataFile, markCreatedAt, markOwner, MarkScope, newMarkId, OpenMark, PxRect} from '../domain/marks';
 import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import {Mark} from '../domain/types';
 import {log, logError, logWarn} from '../utils/log';
@@ -204,20 +204,31 @@ export function listOpenMarks(scope: MarkScope): OpenMark[] {
   return collectOpenMarks(cache.items, getCachedInbox(), cache.paths.inboxFolder, scope);
 }
 
+/** What an old mark (domain/marks.ts isOldStrokeMark) offers instead of recognition: its text-box text only. */
+function oldMarkText(id: string, data: MarkDataFile): string {
+  log('marks: old mark, not recognized', id);
+  return data.textBoxText.trim();
+}
+
 /**
  * Recognizes a mark from its saved strokes (§3.4) - once:
  * the result is kept in its mark.json and returned from there next time. A
  * mark that only holds text-box text needs no recognition. `missing` = the
  * private data is gone (e.g. after reinstalling) - the line still works,
- * the text has to be typed.
+ * the text has to be typed. `old` = handwriting saved by an older gtdpara
+ * in another unit (docs/dev/history/technical-design-new-firmware.md D2):
+ * not sent to the recognizer, the text is typed from the picture.
  */
-export async function recognizeMark(open: OpenMark): Promise<RecognitionResult & {missing: boolean}> {
+export async function recognizeMark(open: OpenMark): Promise<RecognitionResult & {missing: boolean; old: boolean}> {
   const data = await readMarkData(open.mark.id);
   if (!data) {
-    return {text: open.mark.text ?? '', error: open.mark.text ? null : 'mark data missing', ms: 0, missing: true};
+    return {text: open.mark.text ?? '', error: open.mark.text ? null : 'mark data missing', ms: 0, missing: true, old: false};
   }
   if (data.recognizedText) {
-    return {text: data.recognizedText, error: null, ms: 0, missing: false};
+    return {text: data.recognizedText, error: null, ms: 0, missing: false, old: false};
+  }
+  if (isOldStrokeMark(data)) {
+    return {text: oldMarkText(open.mark.id, data), error: null, ms: 0, missing: false, old: true};
   }
   const result = await recognizeStrokes(data.strokes, data.textBoxText, data, data.page);
   if (result.text.trim()) {
@@ -227,7 +238,7 @@ export async function recognizeMark(open: OpenMark): Promise<RecognitionResult &
       logWarn('marks: keeping recognized text failed', open.mark.id, errorMessage(e));
     }
   }
-  return {...result, missing: false};
+  return {...result, missing: false, old: false};
 }
 
 export interface FinishResult {
@@ -289,9 +300,16 @@ export async function cleanMarkDataOrphans(): Promise<void> {
   }
 }
 
-/** Recognized text kept from an earlier open (null when there is none yet). Cheap: one small file read. */
-export async function storedMarkText(open: OpenMark): Promise<string | null> {
-  if (open.mark.text) {return open.mark.text;}
+/**
+ * What is known about a mark's text without the recognizer (null: it still
+ * needs recognizing): text kept from an earlier open, or an old mark
+ * (`old`), whose text is typed. Cheap: one small file read.
+ */
+export async function storedMarkRecognition(open: OpenMark): Promise<{text: string; old: boolean} | null> {
+  if (open.mark.text) {return {text: open.mark.text, old: false};}
   const data = await readMarkData(open.mark.id);
-  return data?.recognizedText || null;
+  if (!data) {return null;}
+  if (data.recognizedText) {return {text: data.recognizedText, old: false};}
+  if (isOldStrokeMark(data)) {return {text: oldMarkText(open.mark.id, data), old: true};}
+  return null;
 }

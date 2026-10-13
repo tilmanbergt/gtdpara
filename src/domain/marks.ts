@@ -410,7 +410,12 @@ export function joinInReadingOrder(pieces: TextPiece[], lineTolerance = 20): str
 // ---------------------------------------------------------------------------
 // The private data file (§3.3)
 
-export const MARK_DATA_VERSION = 1;
+/**
+ * 2: stroke points are page-size pixels (sn-plugin-lib 0.2.x). 1 (and files
+ * without a version): EMR points from older builds - their handwriting is
+ * not sent to the recognizer (docs/dev/history/technical-design-new-firmware.md D2).
+ */
+export const MARK_DATA_VERSION = 2;
 
 export interface MarkDataFile {
   version: number;
@@ -430,6 +435,20 @@ export interface MarkDataFile {
    * the `## Marks` line itself never gets it.
    */
   recognizedText?: string;
+}
+
+/**
+ * True when the mark's handwriting can go to the recognizer: strokes saved
+ * as page-size pixels (version 2 or later). A mark with only text-box text
+ * needs no recognizer; an older mark's strokes are in another unit.
+ */
+export function canRecognize(data: MarkDataFile): boolean {
+  return typeof data.version === 'number' && data.version >= 2 && data.strokes.length > 0;
+}
+
+/** Handwriting saved by an older gtdpara that won't be recognized: the user types the text from the picture. */
+export function isOldStrokeMark(data: MarkDataFile): boolean {
+  return data.strokes.length > 0 && !canRecognize(data);
 }
 
 /** Parses mark.json; null when it isn't one. */

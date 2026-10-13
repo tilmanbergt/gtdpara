@@ -1,7 +1,7 @@
 // docs/dev/history/technical-design-lasso-0.8.md §3.7: the shared capture / marks screen.
 const mockCalls: string[] = [];
 const mockAdded: Array<{text: string; notePath: string; linkedFile: string; dest: {type: string}}> = [];
-const mockState = {marksInbox: [] as unknown[], stored: {} as Record<string, string>, recognized: [] as string[]};
+const mockState = {marksInbox: [] as unknown[], stored: {} as Record<string, string>, old: [] as string[], recognized: [] as string[]};
 
 jest.mock('react-native-svg', () => {
   const ReactLib = require('react');
@@ -72,7 +72,11 @@ jest.mock('../../src/storage/marks', () => ({
   outcomeNeedsScreen: () => false,
   runPendingIconChanges: async () => undefined,
   setMarkOutcome: jest.fn(),
-  storedMarkText: async (open: {mark: {id: string}}) => mockState.stored[open.mark.id] ?? null,
+  storedMarkRecognition: async (open: {mark: {id: string}}) => {
+    if (mockState.old.includes(open.mark.id)) {return {text: '', old: true};}
+    const text = mockState.stored[open.mark.id];
+    return text != null ? {text, old: false} : null;
+  },
   recognizeMark: async (open: {mark: {id: string}}) => {
     mockState.recognized.push(open.mark.id);
     return {
@@ -118,11 +122,17 @@ import React from 'react';
 import {Image, Text, TextInput} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import CaptureScreen from '../../src/screens/CaptureScreen';
-import {StatusProvider} from '../../src/ui/status/StatusProvider';
+import {StatusProvider, useStatusList} from '../../src/ui/status/StatusProvider';
 
 const flush = () => act(async () => {
   for (let i = 0; i < 10; i++) {await Promise.resolve();}
 });
+
+let mockStatusTexts: string[] = [];
+function StatusProbe(): null {
+  mockStatusTexts = useStatusList().map(e => e.msg.text);
+  return null;
+}
 
 function render(request: React.ComponentProps<typeof CaptureScreen>['request'], onExit = jest.fn()) {
   let r!: TestRenderer.ReactTestRenderer;
@@ -130,6 +140,7 @@ function render(request: React.ComponentProps<typeof CaptureScreen>['request'], 
     r = TestRenderer.create(
       <StatusProvider>
         <CaptureScreen request={request} onOpenItem={jest.fn()} onOpenDaily={jest.fn()} onExit={onExit} />
+        <StatusProbe />
       </StatusProvider>,
     );
   });
@@ -155,6 +166,7 @@ beforeEach(() => {
   mockAdded.length = 0;
   mockState.marksInbox = [];
   mockState.stored = {};
+  mockState.old = [];
   mockState.recognized = [];
 });
 
@@ -201,6 +213,19 @@ it('marks: text kept from an earlier open is used, not recognized again; the col
   await flush();
   expect(r.root.findAllByType(TextInput).map(i => i.props.value)).toContain('Stored text');
   expect(mockState.recognized).toEqual([]);
+});
+
+it('marks: an old mark is not recognized; the status slot says to type the text', async () => {
+  mockState.marksInbox = [
+    {id: 'm-20261005-100000-001', createdAt: '2026-10-05 10:00', notePath: '/Note/x/A.note', page: 0, text: null},
+  ];
+  mockState.old = ['m-20261005-100000-001'];
+  const r = render({source: 'marks', scope: {type: 'all'}, returnTo: 'inbox'});
+  await flush();
+  await flush();
+  expect(mockState.recognized).toEqual([]);
+  expect(mockStatusTexts).toContain('Marked with an older gtdpara - type the text from the picture.');
+  expect(texts(r).join(' ')).not.toContain('recognizing…');
 });
 
 it('✂ Split at cursor: a caret splits there, a selection becomes the next item', async () => {
