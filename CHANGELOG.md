@@ -36,6 +36,9 @@ or your project/area files are stored.
   offers the other place as a second button (**In Sparring**). Your choice is kept, so it is
   asked once.
 - The question before a note is created names the setup ("Sparring: new page in …").
+- **One Files tab** on a Project or Area page: the left pane has three tabs - Threads, Loops (or
+  Projects on an Area) and **Files**. Inside Files a second row picks the place: Project, Area
+  and Resources. Linking, refiling and assigning an Area switch to the right place by themselves.
 - **Pages in a notebook follow the timeline**: meetings by their date, todos by the day they were
   created - between the meetings around them instead of at the end. Pages you added after an
   item's page stay with that item; a loop's own page stays first.

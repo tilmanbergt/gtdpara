@@ -121,7 +121,7 @@ describe('the Projects tab on an Area page', () => {
     await settle();
     await pressText(r, /^Home /);
     await settle();
-    expect(filesTabs(r).props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Projects', 'Area Files', 'Resources']);
+    expect(filesTabs(r).props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Projects', 'Files']);
     expect(filesTabs(r).props.activeKey).toBe('threads');
     await act(async () => filesTabs(r).props.onChange('projects'));
     await settle();
@@ -138,7 +138,7 @@ describe('the Projects tab on an Area page', () => {
     await act(async () => garden.root.findAll(n => typeof n.props.onPress === 'function')[0].props.onPress());
     await settle();
     expect(texts(r)).toEqual(expect.arrayContaining(['Garden', 'Project']));
-    expect(filesTabs(r).props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Loops', 'Project Files', 'Resources', 'Area Files']);
+    expect(filesTabs(r).props.tabs.map((t: {label: string}) => t.label)).toEqual(['Threads', 'Loops', 'Files']);
     act(() => r.unmount());
   });
 });

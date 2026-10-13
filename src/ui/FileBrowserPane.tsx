@@ -119,6 +119,17 @@
  * one that starts while an extra tab is shown switches to a root, and an
  * arm that ends goes back to the extra tab it started on.
  *
+ * `groupLabel` (the Project/Area page's "Files",
+ * docs/dev/history/technical-design-note-setups-finish.md §2) - all `roots`
+ * share one top tab with that label, and a second, smaller MiniTabs row
+ * inside it picks the root (its `shortLabel`, else its `label`; the
+ * alternate's label while that shows). Extra tabs stay top-level; an
+ * arming root still takes its extra tab's top slot. Tapping the group shows
+ * the root last shown in it, or the first one when the pane comes from an
+ * extra tab's arming root; a new `resetKey` starts it on the first root.
+ * The tab logic is in ui/fileBrowserGroup.ts. Without `groupLabel` every
+ * root is a top tab of its own.
+ *
  * `armingRoot` (`FileBrowserExtraTab`, the Area page's Projects tab,
  * docs/dev/history/technical-design-projects-findable-notes.md §1.2) - while
  * any arm is active, that extra tab's slot is replaced by this root (its
@@ -145,6 +156,7 @@ import {FolderEntry, listFolderEntries, openPath, subscribeFolderChanges} from '
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import MiniTabs from './MiniTabs';
+import {activeTopTab, FILES_GROUP_KEY, groupEntryKey, groupTopTab} from './fileBrowserGroup';
 import PagedSection from './PagedSection';
 import {JumpTo} from './pagination';
 import {activeLineEstimator} from './textLineEstimator';
@@ -223,6 +235,8 @@ export interface FileBrowserRoot {
   key: string;
   /** MiniTabs label - "Project Files" / "Resources" / "Areas" / "Area Files". */
   label: string;
+  /** The label in a group's second row ("Project", "Area") - see the module doc comment's `groupLabel` note; `label` without one. */
+  shortLabel?: string;
   /** Absolute path this root starts browsing at. */
   rootPath: string;
   /** Resources root only - lets the pane render the pin and start at the pinned subfolder instead of rootPath. Relative to rootPath; '' or undefined/null = no pin set. */
@@ -334,6 +348,8 @@ interface Props {
   viewportHeight?: number;
   /** Tabs before the roots with their own content - see the module doc comment's `extraTabs` note. */
   extraTabs?: FileBrowserExtraTab[];
+  /** All roots under one top tab with this label - see the module doc comment's `groupLabel` note. */
+  groupLabel?: string;
   textColor: string;
   borderColor: string;
 }
@@ -356,6 +372,7 @@ export default function FileBrowserPane({
   onActiveLocationChange,
   viewportHeight,
   extraTabs = [],
+  groupLabel,
   textColor,
   borderColor,
 }: Props): React.JSX.Element {
@@ -432,10 +449,11 @@ export default function FileBrowserPane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRootIdentity, resetKey]);
 
-  // A new item opens on the first extra tab again.
+  // A new item opens on the first extra tab again (and a group on its first root).
   const firstExtraKey = extraTabs[0]?.key ?? null;
   useEffect(() => {
     setExtraKey(firstExtraKey);
+    if (groupLabel) setActiveRootKey(ownRoots[0]?.key);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
@@ -713,35 +731,54 @@ export default function FileBrowserPane({
     return <View />;
   }
 
-  const rootTab = (r: FileBrowserRoot) => {
+  const rootTab = (r: FileBrowserRoot, short = false) => {
     const shown = r.key === slotRoot.key && showAlternate && r.alternate ? r.alternate : r;
-    return {key: r.key, label: shown.label, disabled: shown.disabled};
+    return {key: r.key, label: (short && shown === r && r.shortLabel) || shown.label, disabled: shown.disabled};
   };
+
+  const showRoot = (key: string) => {
+    setExtraKey(null);
+    // Tapping the slot that shows Browse during a file-link arm goes back to its own files.
+    if (key === slotRoot.key && showAlternate && !linkTarget?.root) setShowAlternate(false);
+    else if (key !== slotRoot.key) setShowAlternate(false);
+    setActiveRootKey(key);
+  };
+
+  const grouped = !!groupLabel;
+  const topTabs = [
+    ...extraTabs.map(t => (arming && t.armingRoot ? rootTab(t.armingRoot) : {key: t.key, label: t.label, disabled: arming})),
+    ...(grouped ? [groupTopTab(groupLabel, ownRoots.map(r => rootTab(r)))] : ownRoots.map(r => rootTab(r))),
+  ];
+  const topActiveKey = grouped ? activeTopTab(activeExtra?.key ?? null, slotRoot.key, ownRoots) : activeExtra ? activeExtra.key : slotRoot.key;
+  const showPlaces = grouped && topActiveKey === FILES_GROUP_KEY && ownRoots.length > 1;
 
   return (
     <View style={selfMeasuring ? styles.selfMeasuringRoot : undefined}>
-      {ownRoots.length + extraTabs.length > 1 ? (
+      {topTabs.length > 1 ? (
         <View style={styles.tabsRow}>
           <MiniTabs
-            tabs={[
-              ...extraTabs.map(t => (arming && t.armingRoot ? rootTab(t.armingRoot) : {key: t.key, label: t.label, disabled: arming})),
-              ...ownRoots.map(rootTab),
-            ]}
-            activeKey={activeExtra ? activeExtra.key : slotRoot.key}
+            tabs={topTabs}
+            activeKey={topActiveKey}
             onChange={key => {
               if (extraTabs.some(t => t.key === key)) {
                 setExtraKey(key);
                 return;
               }
-              setExtraKey(null);
-              // Tapping the slot that shows Browse during a file-link arm goes back to its own files.
-              if (key === slotRoot.key && showAlternate && !linkTarget?.root) setShowAlternate(false);
-              else if (key !== slotRoot.key) setShowAlternate(false);
-              setActiveRootKey(key);
+              if (key === FILES_GROUP_KEY) {
+                const entry = groupEntryKey(slotRoot.key, ownRoots.map(r => rootTab(r)));
+                if (entry) showRoot(entry);
+                return;
+              }
+              showRoot(key);
             }}
             textColor={textColor}
             borderColor={borderColor}
           />
+        </View>
+      ) : null}
+      {showPlaces ? (
+        <View style={styles.tabsRow}>
+          <MiniTabs tabs={ownRoots.map(r => rootTab(r, true))} activeKey={slotRoot.key} onChange={showRoot} textColor={textColor} borderColor={borderColor} />
         </View>
       ) : null}
       {/* Breadcrumb + "‹ Up" + pagination arrows form one PagedSection

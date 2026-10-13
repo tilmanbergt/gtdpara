@@ -148,3 +148,19 @@ sets the new one. The label of a build towards the next release is in `BUILD_INF
   abbreviation change the old note is not found under its old name and stays where it is
   (as §1.1 accepts for notebooks).
 - The placeholder chips wrap to a second row on the setup page (8 chips); about 30 dp more.
+
+### Step 9
+
+- The tab arithmetic (active top tab, the group tab's greyed state, which place a tap on Files
+  shows) is a small pure module, `ui/fileBrowserGroup.ts`, so `FileBrowserPane.tsx` stays under
+  1,000 lines and the rules have Jest tests.
+- The Project page's roots are reordered to Project · Area · Resources (keys, `alternate`,
+  `disabled` and `defaultSubfolder` unchanged), so the places row reads in the §2.1 order.
+- Tapping Files shows the place last shown in it on this page; a new page (`resetKey`) starts
+  on its own files. The places row shows only when the group has more than one root.
+- The Files group's top tab is greyed only when every place is (an Area page while refiling or
+  assigning, where Browse sits on the Projects tab's slot).
+- The pane keeps its "Files" heading above the three tabs.
+- Smoke render: `__tests__/ui/itemDetailFilesTab.test.tsx` renders the App on an Area, a
+  Project with an Area and one without; the arming paths of §2.3 are pane tests
+  (`__tests__/ui/fileBrowserFilesGroup.test.tsx`).

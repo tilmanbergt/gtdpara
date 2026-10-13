@@ -473,10 +473,15 @@ can carry an `armingRoot`: while any arm is active that root takes the tab's slo
 `alternate`), and the slot is the extra tab again when the arm ends. Roots per screen:
 
 - Inbox and Review's Inbox step: Resources, Browse.
-- Current, Project: the Threads and Loops tabs, then Project Files (Browse as its alternate), Resources,
-  Area Files (once assigned).
-- Current, Area: the Threads and Projects tabs, then Area Files, Resources. Project Files (its
-  assigned Projects; Browse as its alternate) is the Projects tab's `armingRoot`.
+- Current, Project: the Threads and Loops tabs, then the **Files** group (`groupLabel`): Project
+  Files (Browse as its alternate), Area Files (once assigned), Resources.
+- Current, Area: the Threads and Projects tabs, then the **Files** group: Area Files, Resources.
+  Project Files (its assigned Projects; Browse as its alternate) is the Projects tab's
+  `armingRoot`.
+
+With `groupLabel` the roots share one top tab and a second MiniTabs row picks the root (its
+`shortLabel`); the tab arithmetic is `ui/fileBrowserGroup.ts`. Without it (Inbox, Review) every
+root is a top tab.
 
 The Resources root can pin a per-item default subfolder (`defaultResourceFolder`).
 
