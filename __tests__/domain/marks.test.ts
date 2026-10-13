@@ -20,6 +20,7 @@ import {
   serializeMarkLines,
   shiftStrokes,
   StoredStroke,
+  strokeBounds,
 } from '../../src/domain/marks';
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';
 import {Mark} from '../../src/domain/types';
@@ -171,6 +172,27 @@ describe('shiftStrokes', () => {
     const s = [stroke([5000, 6000])];
     shiftStrokes(s);
     expect(s[0].points).toEqual([5000, 6000]);
+  });
+});
+
+describe('strokeBounds', () => {
+  const stroke = (points: number[]): StoredStroke => ({
+    thickness: 1,
+    penColor: 0,
+    penType: 10,
+    layerNum: 0,
+    points,
+    pressures: [],
+  });
+  it('spans every point of every stroke and counts the points', () => {
+    expect(strokeBounds([stroke([100, 200, 300, 150]), stroke([50, 900])])).toEqual({
+      rect: {left: 50, top: 150, right: 300, bottom: 900},
+      points: 3,
+    });
+  });
+  it('has no rect without points and ignores a dangling coordinate', () => {
+    expect(strokeBounds([])).toEqual({rect: null, points: 0});
+    expect(strokeBounds([stroke([]), stroke([7])])).toEqual({rect: null, points: 0});
   });
 });
 

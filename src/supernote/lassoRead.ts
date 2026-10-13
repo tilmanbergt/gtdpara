@@ -6,7 +6,7 @@
  * root cause of the "second lasso recognizes nothing" bug, §2.1).
  */
 import {PluginCommAPI, PluginFileAPI} from 'sn-plugin-lib';
-import {joinInReadingOrder, PxPoint, PxRect, StoredStroke, TextPiece} from '../domain/marks';
+import {joinInReadingOrder, PxPoint, PxRect, StoredStroke, strokeBounds, TextPiece} from '../domain/marks';
 import {log, logWarn} from '../utils/log';
 import {
   ELEMENT_TYPE_STROKE,
@@ -65,6 +65,15 @@ async function readStroke(el: SdkElement): Promise<StoredStroke | null> {
     points,
     pressures: pressures.map(v => Math.round(v * 1000) / 1000),
   };
+}
+
+/** Coordinate diagnostics for the log: numbers only. */
+function sizeText(size: Size | null): string {
+  return size ? `${Math.round(size.width)}x${Math.round(size.height)}` : 'null';
+}
+
+function rectText(rect: PxRect | null): string {
+  return rect ? [rect.left, rect.top, rect.right, rect.bottom].map(v => Math.round(v)).join(',') : 'null';
 }
 
 /** Never throws; whatever couldn't be read is null/empty and listed in `errors`. */
@@ -136,12 +145,18 @@ export async function readLasso(): Promise<LassoSnapshot> {
   } finally {
     recycleElements(elements);
   }
+  const bounds = strokeBounds(snap.strokes);
   log(
     'lassoRead: done',
     `elements=${snap.elementCount}`,
     `strokes=${snap.strokes.length}`,
     `textBoxChars=${snap.textBoxText.length}`,
     `page=${snap.page}`,
+    `pageSize=${sizeText(snap.pageSize)}`,
+    `displaySize=${sizeText(snap.displaySize)}`,
+    `rect=${rectText(snap.rect)}`,
+    `strokeBounds=${rectText(bounds.rect)}`,
+    `points=${bounds.points}`,
     JSON.stringify(timings),
     errors.length ? `errors=${errors.join(' | ')}` : '',
   );

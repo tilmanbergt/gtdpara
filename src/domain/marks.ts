@@ -370,6 +370,27 @@ export function shiftStrokes(strokes: StoredStroke[], origin = SHIFT_ORIGIN_EMR)
   }));
 }
 
+/** The smallest rect around every stroke point, plus the point count; null rect when there are no points. */
+export function strokeBounds(strokes: StoredStroke[]): {rect: PxRect | null; points: number} {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  let points = 0;
+  for (const s of strokes) {
+    for (let i = 0; i + 1 < s.points.length; i += 2) {
+      const x = s.points[i];
+      const y = s.points[i + 1];
+      if (x < left) {left = x;}
+      if (x > right) {right = x;}
+      if (y < top) {top = y;}
+      if (y > bottom) {bottom = y;}
+      points++;
+    }
+  }
+  return {rect: points > 0 ? {left, top, right, bottom} : null, points};
+}
+
 // ---------------------------------------------------------------------------
 // Text boxes
 
