@@ -131,4 +131,27 @@ Each step ends with `npm run check` green and one commit `firmware: step FN - <w
 
 ## 7. As built
 
-(Filled in as the steps land.)
+Up to checkpoint A (F0-F3, F5 logging), where the build differs from §1-§6:
+
+- **F0** `design-overview.md` has no §5; its decisions live in §4 "Why it is built this way",
+  so the decision line is the §4 paragraph "Page-size pixels everywhere". There is no
+  `__mocks__/sn-plugin-lib.js`: tests mock the library inline per file, none needed a change.
+  `npm install` also brought the lock file's stale root `name`/`version` fields up to date.
+- **F1** The `lassoRead: done` line logs `pageSize=WxH displaySize=WxH rect=l,t,r,b
+  strokeBounds=l,t,r,b points=N`; the bounds come from the pure `domain/marks.ts` `strokeBounds`.
+- **F2** `recognizeStrokes(strokes, textBoxText, sizes, page)` takes both sizes (a
+  `LassoSnapshot` or a `MarkDataFile` passes as is) and picks through the pure
+  `recognitionSize`, so the fallback is decided and logged in one place
+  (`strokeRecognition: no page size, using the display size size=display`, and `size=page|display`
+  on every `done`/`failed` line). `design-overview.md` §2.10 describes the new recognition.
+- **F3** `canRecognize(data)` plus `isOldStrokeMark(data)` (strokes that can't be recognized).
+  An old mark keeps its text-box text (only the handwriting is not recognized). The queue's
+  preload (`storage/marks.ts` `storedMarkRecognition`, replacing `storedMarkText`) settles old
+  marks before the queue runs, so they never show "recognizing…"; `recognizeMark` checks the
+  same as a safety net. The column shows "no text" (or "recognized" when there was text-box
+  text); the status slot shows "Marked with an older gtdpara - type the text from the picture."
+  (`info`) while such a mark is selected.
+- **F5 logging** `pluginRuntime: stale builds n=<count> <labels>` at mount, `stale-build
+  warning shown`, and `stale-build warning, Restart tapped`. The warning has no dismiss
+  control: "ignored" is a "shown" line without a later "Restart tapped". Log lines reach the
+  debug bundle only with Debug logging on.
