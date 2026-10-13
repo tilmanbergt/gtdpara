@@ -1167,6 +1167,15 @@ deduplication by title, date and time avoids a schema change for event ids.
 and yes/no facts, pass through redaction, and never include secrets. Profiles are shareable files
 for the same reason: secrets stay in the app's own storage.
 
+**Page-size pixels everywhere.** gtdpara is built against `sn-plugin-lib` 0.2.3, pinned
+exactly, and requires the plugin firmware that goes with it (A5X/A6X Chauvet 2.27.42, Manta/Nomad
+Chauvet 3.30.45 or later). With it every coordinate the SDK reads or takes - stroke points, lasso
+rect, geometry points, text boxes, recognition size - is an Android pixel on the page's real size
+from `PluginFileAPI.getPageSize`. gtdpara uses no EMR coordinates, no `PointUtils`, no
+`Element.maxX/maxY`, and `getPageDisplaySize` for nothing but diagnostics. Ratta changes such
+semantics without a major version, so a library upgrade is always a deliberate step with a device
+test.
+
 **Native code only where the host has no API.** Moving and merging folders, statting files in
 bulk, measuring text, writing PDFs and talking IMAP are native modules because `sn-plugin-lib`
 offers nothing for them; everything else uses the SDK, so the plugin keeps working across host
