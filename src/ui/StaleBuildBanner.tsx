@@ -16,6 +16,7 @@
 import {useEffect, useState} from 'react';
 import {PluginManager} from 'sn-plugin-lib';
 import {getRuntimeDiagnostics, restartPluginHost} from '../supernote/pluginRuntime';
+import {whenMarkSettled} from '../storage/marks';
 import {log} from '../utils/log';
 import {useStatus} from './status/StatusProvider';
 
@@ -25,7 +26,8 @@ export default function StaleBuildBanner(): null {
 
   useEffect(() => {
     let cancelled = false;
-    getRuntimeDiagnostics().then(d => {
+    // Not while "Mark for later" saves: the scan would slow the lasso reads.
+    whenMarkSettled().then(getRuntimeDiagnostics).then(d => {
       // Evidence for docs/dev/history/technical-design-new-firmware.md D5:
       // build labels only. A "warning shown" line without a later "Restart
       // tapped" means the warning was ignored (it has no dismiss control).

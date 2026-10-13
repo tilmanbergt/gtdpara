@@ -6,15 +6,20 @@
  *
  * Order (the line in project.txt / area.txt / Inbox.txt is the commit point):
  *   1. read the lasso once: path and page, then at once the picture into the
- *      mark's private folder (the host can drop the lasso during slower
- *      reads on a cold start), then rect, strokes, text boxes, page size
+ *      private temp folder (the host can drop the lasso during slower reads
+ *      on a cold start; the temp folder needs no permission check), then
+ *      rect, strokes, text boxes, page size
  *   2. remove the lasso
  *   3. bookmark icon into the note, save the note
- *   4. mark.json (strokes etc.)
+ *   4. the picture moved into the mark's private folder, mark.json (strokes
+ *      etc.) - the first file write, so the first permission check comes
+ *      after the lasso is read
  *   5. the `## Marks` line - if that fails, the icon and data are removed again
  *
- * While a mark is saved, App holds back its cache refresh (whenMarkSettled),
- * so a cold start doesn't compete with the lasso reads.
+ * While a mark is saved, App starts nothing else (whenMarkSettled): no
+ * landing, no Files pane, no cache build, no temp clean-up, so a cold start
+ * doesn't compete with the lasso reads
+ * (docs/dev/history/technical-design-new-firmware.md, steps F3b/F3c).
  *
  * The outcome is silent when everything worked. Otherwise it is kept in
  * `markOutcome` for App's small result screen (opened via showPluginView).
@@ -23,7 +28,7 @@ import {findEnclosingItem, resolvePaths} from '../domain/settings';
 import {isEmptyLasso, readLasso} from '../supernote/lassoRead';
 import {setLassoBoxState} from '../supernote/lasso';
 import {changeMarkIcon, insertBookmark} from '../supernote/markIcons';
-import {ensureFolderExists, readTextFile} from '../supernote/fileSystem';
+import {getPrivateTempDir, moveFile, readTextFile} from '../supernote/fileSystem';
 import {collectOpenMarks, isOldStrokeMark, MARK_DATA_VERSION, MarkDataFile, markCreatedAt, markOwner, MarkScope, newMarkId, OpenMark, PxRect} from '../domain/marks';
 import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import {Mark} from '../domain/types';
@@ -33,7 +38,6 @@ import {
   addPendingIconChange,
   cleanOrphanedMarkData,
   deleteMarkData,
-  markDataFolder,
   markPicturePath,
   PendingIconChange,
   readMarkData,
@@ -102,9 +106,26 @@ export function trackMarkPress<T>(job: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/** True while the Mark button's job runs. */
+export function isMarkInFlight(): boolean {
+  return inFlight !== null;
+}
+
 /** Resolves once no mark is being saved (at once when none is). Never rejects. */
 export function whenMarkSettled(): Promise<void> {
   return inFlight ? inFlight.then(() => undefined) : Promise.resolve();
+}
+
+/**
+ * App's start waits here while a mark is saved, so a cold start from the
+ * Mark button doesn't slow the lasso reads (step F3c of
+ * docs/dev/history/technical-design-new-firmware.md). Logs how long it held.
+ */
+export async function holdStartForMark(): Promise<void> {
+  const t = Date.now();
+  log('App: start held while a mark is saved');
+  await whenMarkSettled();
+  log('App: start resumed after the mark', `ms=${Date.now() - t}`);
 }
 
 async function ownerFor(absNotePath: string) {
@@ -141,20 +162,21 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
   let path: string | null = null;
   let page: number | null = null;
   try {
-    await ensureFolderExists(await markDataFolder(id));
-    step('folder');
-    const snap = await readLasso({previewPath: await markPicturePath(id)});
+    let tempPicture: string | undefined;
+    try {
+      tempPicture = `${await getPrivateTempDir()}/mark-${id}.png`;
+    } catch (e) {
+      logWarn('marks: no temp folder for the picture', errorMessage(e));
+    }
+    const snap = await readLasso({previewPath: tempPicture});
     step('lasso');
     path = snap.path;
     page = snap.page;
-    const picture = snap.picture;
     if (isEmptyLasso(snap)) {
       log('marks: empty lasso', id);
-      await deleteMarkData(id);
       return {kind: 'empty'};
     }
     if (!path || page == null) {
-      await deleteMarkData(id);
       return {kind: 'failed', detail: 'Could not tell which note and page the lasso is on.'};
     }
 
@@ -168,6 +190,17 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
     const icon = snap.rect ? await insertBookmark(page, snap.rect, id) : null;
     iconPlaced = !!icon?.placed;
     step('icon');
+
+    let picture = false;
+    if (snap.picture) {
+      try {
+        await moveFile(snap.picture, await markPicturePath(id));
+        picture = true;
+      } catch (e) {
+        logWarn('marks: keeping the picture failed', id, errorMessage(e));
+      }
+    }
+    step('picture');
 
     await writeMarkData({
       version: MARK_DATA_VERSION,
@@ -201,7 +234,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       ref.kind,
       `strokes=${snap.strokes.length}`,
       `textBoxChars=${snap.textBoxText.length}`,
-      `picture=${picture !== null}`,
+      `picture=${picture}`,
       `icon=${iconPlaced}`,
       `totalMs=${Date.now() - t0}`,
       `ms=${JSON.stringify(steps)}`,

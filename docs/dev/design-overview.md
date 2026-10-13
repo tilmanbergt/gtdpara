@@ -789,8 +789,11 @@ Project/Area, else the Inbox):
 `storage/markStore.ts` writes these lines on one serial queue from a fresh disk read and applies
 the result to the cache. Picture, strokes and recognized text live in the plugin's private data
 folder (`storage/markData.ts`, `marks/<id>/`), deleted when the mark is processed; orphans are
-cleaned up. While a mark is saved, App holds back its cache refresh (`whenMarkSettled`), so a cold
-start doesn't compete with the lasso reads. Marks written before `MARK_DATA_VERSION` 2 hold EMR
+cleaned up. The flow reads the lasso first (picture into the private temp folder, then rect,
+elements, strokes) and removes the lasso box before its first file write, so the first permission
+check doesn't delay the read. While a mark is saved, App starts nothing (`holdStartForMark`: no
+landing, no Files pane, no cache build, no temp clean-up), so a cold start doesn't compete with the
+lasso reads. Marks written before `MARK_DATA_VERSION` 2 hold EMR
 stroke points: their handwriting is not recognized, the text is typed from the picture. A bookmark icon is drawn on the page (`supernote/markIcons.ts`, userData
 `gtdpara:mark:<id>`), turned into a check on save and removed on discard; when the element is not
 unique the change is kept in a pending list and retried. Only a problem shows

@@ -17,7 +17,7 @@ jest.mock('../../src/supernote/lassoRead', () => ({
   // The picture is taken inside the read, right after path and page.
   readLasso: async (opts: {previewPath?: string} = {}) => {
     if (opts.previewPath) {mockState.calls.push('preview');}
-    return {...mockState.snap, picture: opts.previewPath ?? null};
+    return {picture: opts.previewPath ?? null, ...mockState.snap};
   },
   isEmptyLasso: (s: {strokes: unknown[]; textBoxText: string}) => s.strokes.length === 0 && !s.textBoxText.trim(),
 }));
@@ -38,11 +38,13 @@ jest.mock('../../src/supernote/markIcons', () => ({
   },
 }));
 jest.mock('../../src/supernote/fileSystem', () => ({
-  ensureFolderExists: async () => undefined,
+  getPrivateTempDir: async () => '/private/tmp',
+  moveFile: async (from: string, to: string) => {
+    mockState.calls.push(`picture:${from}->${to}`);
+  },
   readTextFile: async (path: string) => (path.endsWith('Garden/project.txt') ? '## Tasks\n' : null),
 }));
 jest.mock('../../src/storage/markData', () => ({
-  markDataFolder: async (id: string) => `/private/data/marks/${id}`,
   markPicturePath: async (id: string) => `/private/data/marks/${id}/picture.png`,
   writeMarkData: async (data: Record<string, unknown>) => {
     mockState.calls.push('data');
@@ -99,6 +101,7 @@ const snap = (over: Record<string, unknown> = {}) => ({
 });
 
 beforeEach(() => {
+  (log as jest.Mock).mockClear();
   mockState.snap = snap();
   mockState.iconPlaced = true;
   mockState.addFails = false;
@@ -113,11 +116,27 @@ it('saves into the project the note belongs to, in the designed order, silently'
   const outcome = await createMarkFromLasso(NOW);
   expect(outcome.kind).toBe('saved');
   expect(outcomeNeedsScreen(outcome)).toBe(false);
-  expect(mockState.calls).toEqual(['preview', 'lassoGone', 'icon', 'data', 'line:project:Plan.note:']);
+  const id = (log as jest.Mock).mock.calls.find(c => c[0] === 'marks: saved')?.[1];
+  expect(mockState.calls).toEqual([
+    'preview',
+    'lassoGone',
+    'icon',
+    `picture:/private/tmp/mark-${id}.png->/private/data/marks/${id}/picture.png`,
+    'data',
+    'line:project:Plan.note:',
+  ]);
   expect(mockState.written).toEqual([
     expect.objectContaining({version: 2, displaySize: null, pageSize: {width: 1404, height: 1872}}),
   ]);
-  expect(log).toHaveBeenCalledWith('marks: saved', expect.any(String), 'project', 'strokes=1', 'textBoxChars=0', 'picture=true', 'icon=true', expect.stringMatching(/^totalMs=/), expect.stringMatching(/^ms=\{"folder":\d+,"lasso":\d+,"lassoGone":\d+,"icon":\d+,"data":\d+,"line":\d+\}$/));
+  expect(log).toHaveBeenCalledWith('marks: saved', expect.any(String), 'project', 'strokes=1', 'textBoxChars=0', 'picture=true', 'icon=true', expect.stringMatching(/^totalMs=/), expect.stringMatching(/^ms=\{"lasso":\d+,"lassoGone":\d+,"icon":\d+,"picture":\d+,"data":\d+,"line":\d+\}$/));
+});
+
+it('keeps the mark without a picture when the host made none', async () => {
+  mockState.snap = snap({picture: null});
+  const outcome = await createMarkFromLasso(NOW);
+  expect(outcome.kind).toBe('saved');
+  expect(mockState.calls.some(c => c.startsWith('picture:'))).toBe(false);
+  expect(log).toHaveBeenCalledWith('marks: saved', expect.any(String), 'project', 'strokes=1', 'textBoxChars=0', 'picture=false', 'icon=true', expect.any(String), expect.any(String));
 });
 
 it('puts marks from outside projects/areas into the Inbox with an absolute path, keeping text-box text', async () => {
@@ -130,8 +149,8 @@ it('puts marks from outside projects/areas into the Inbox with an absolute path,
 it('says so when the lasso is empty, without touching the note', async () => {
   mockState.snap = snap({strokes: [], textBoxText: ' '});
   expect((await createMarkFromLasso(NOW)).kind).toBe('empty');
-  // Only the picture taken before the lasso was known to be empty, and its private folder removed again.
-  expect(mockState.calls).toEqual(['preview', 'dataDeleted']);
+  // Only the picture taken into the temp folder before the lasso was known to be empty.
+  expect(mockState.calls).toEqual(['preview']);
 });
 
 it('keeps the mark but reports a missing icon', async () => {

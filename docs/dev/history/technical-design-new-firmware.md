@@ -1,6 +1,6 @@
 # Technical design: New plugin firmware and sn-plugin-lib 0.2.3 (0.15.0)
 
-Status: **in progress** - steps F0-F3, F3b and F5's logging built; F3b waits for its device test.
+Status: **in progress** - steps F0-F3, F3b, F3c and F5's logging built; F3c waits for its device test.
 Branch: `feature/note-setups` (ships with Note setups in 0.15.0; `nextVersion` stays `0.15.0`).
 
 Background:
@@ -108,6 +108,8 @@ Each step ends with `npm run check` green and one commit `firmware: step FN - <w
 - **Checkpoint A** after F3 plus F5's logging.
 - **F3b** Lasso first (from checkpoint A, §7): picture right after path and page, no
   `getPageDisplaySize`, no cache refresh while a mark is saved, `ms` per step on `marks: saved`.
+- **F3c** Cold mark faster (from the F3b device test, §7): App starts nothing while a mark is
+  saved; the lasso is read before the first file write.
 - **F4** Icons and written notes: verify on the device; change only what the device shows wrong.
 - **F5** Stale-build warning: logging before checkpoint A, the chosen option (D5) after it.
 - **F6** CHANGELOG, README, help, and this document's "As built".
@@ -184,3 +186,33 @@ top of the page.
   - A failed picture is logged as before (`lassoRead: preview failed`) and the mark is kept.
   - `marks: saved` (and `marks: saving failed`) log `ms={"folder","lasso","lassoGone","icon",
     "data","line"}` next to `totalMs`.
+
+**F3b device test** (debug bundle 2026-10-13 23:52, analysed by Tilman): the cold top-of-page mark
+now has `picture=true`, no 904. But the cold mark took 5.7 s against about 1.1 s warm
+(`ms={"folder":1559,"lasso":2962,…}`):
+1. The deferral did not hold: on a pressEvent-3 start App still landed ("reorienting to current
+   note's item"), the Files pane loaded and `rebuildCache` started during `readLasso` - only
+   `refreshCache` had waited, the screens built the cache themselves. That slowed
+   `getCurrentPageNum` (1.34 s) and the stroke reads (1.07 s).
+2. The first `hasPermission(FILE:WRITE)` took 1.17 s, inside `ensureFolderExists` before the
+   lasso read.
+
+- **F3c** (`firmware: step F3c - cold mark faster`):
+  - `reorient()` checks `isMarkInFlight()` at its start and again after its first reads (the
+    press can come before App mounts - the library replays it to App's listener - or while
+    `loadSettings`/`getCurrentNotePath` run); while a mark is saved it waits in
+    `holdStartForMark` (logs `App: start held…` / `App: start resumed after the mark ms=`) and
+    then starts over. Nothing lands, so no Files pane and no cache build start. The F3b wait
+    in front of `refreshCache` is gone, the gate covers it.
+  - The private temp clean-up moved from a mount effect into the first `reorient()` that lands
+    on the tabs: the mark picture now lives in the temp folder until it is moved. It does not
+    run on a start by the Capture button either (Capture's picture is there too).
+  - `StaleBuildBanner` runs its diagnostics scan after `whenMarkSettled`.
+  - Mark flow: picture to `<private tmp>/mark-<id>.png` (no permission needed), `readLasso`,
+    remove the lasso box, icon, `moveFile` of the picture into `marks/<id>/picture.png`,
+    `mark.json`, line. No `ensureFolderExists`: `moveFile` and the native text write create the
+    folder, and the first write-permission check comes after the lasso is read and removed. A
+    failed move logs `marks: keeping the picture failed` and keeps the mark (`picture=false`).
+  - `ms` steps: `lasso`, `lassoGone`, `icon`, `picture`, `data`, `line`.
+  - Not covered: a press that arrives only after `reorient()` already landed, or after the
+    banner's scan started; the bundle showed the press within the first reads.

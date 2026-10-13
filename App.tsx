@@ -24,7 +24,7 @@ import {setOpenMarksHandler} from './src/ui/marksNav';
 import {MarkScope} from './src/domain/marks';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
-import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome, whenMarkSettled} from './src/storage/marks';
+import {getMarkOutcome, holdStartForMark, isMarkInFlight, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
 import {useLoopEvents} from './src/ui/useLoopEvents';
 import {useLoopLinkNavigation} from './src/screens/area/useLoopLinkArm';
@@ -202,13 +202,11 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   useLoopEvents();
   useLoopLinkNavigation(stableOpenItem);
   // Leftovers of an interrupted PDF export live only in the plugin's private
-  // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - clear
-  // them once per start. Best-effort: older native builds lack the call.
-  useEffect(() => {
-    getPrivateTempDir()
-      .then(dir => deleteTempTree(dir))
-      .catch(e => log('App: private temp clean-up skipped', errorMessage(e)));
-  }, []);
+  // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - cleared
+  // once per start, by the first reorient() that lands on the tabs: never
+  // while "Mark for later" or Capture still has its lasso picture there.
+  // Best-effort: older native builds lack the call.
+  const tempCleanedRef = useRef(false);
 
   // Re-checks the current note's Project/Area and jumps straight there - on
   // initial mount, AND every time our own sidebar button is pressed again.
@@ -301,9 +299,17 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     // any earlier record intact.
     setOpenPathObserver({onOpening: path => recordPluginOpen(path)});
 
-    const reorient = async () => {
+    // While "Mark for later" saves, App starts nothing (no landing, Files
+    // pane, cache build or temp clean-up; storage/marks.ts holdStartForMark).
+    // The press can arrive before or during the first reads: checked at both.
+    const reorient = async (): Promise<void> => {
+      if (isMarkInFlight()) await holdStartForMark();
       try {
         const [loadedSettings, currentPath] = await Promise.all([loadSettings(), getCurrentNotePath()]);
+        if (isMarkInFlight()) {
+          await holdStartForMark();
+          return reorient();
+        }
         perfEnable(loadedSettings.perfTracing === true);
         // Experimental switches + debug-log file (docs/dev/history/technical-design-about-debug-experimental.md).
         setFeatures(featuresOf(loadedSettings));
@@ -320,18 +326,16 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         if (cancelled || routedByLassoButtonRef.current) return;
 
         setSettings(loadedSettings);
+        if (!tempCleanedRef.current) {
+          tempCleanedRef.current = true;
+          getPrivateTempDir()
+            .then(dir => deleteTempTree(dir))
+            .catch(e => log('App: private temp clean-up skipped', errorMessage(e)));
+        }
         // Only files changed outside gtdpara are read again (technical-design-files-0.6.md §3.2).
-        // Never while "Mark for later" is saving: on a cold start a full
-        // build competes with the lasso reads and the host drops the lasso
-        // (docs/dev/history/technical-design-new-firmware.md, step F3b).
-        const markWait = Date.now();
-        whenMarkSettled()
-          .then(() => {
-            const waited = Date.now() - markWait;
-            if (waited > 50) log('App: cache refresh waited for the mark', `ms=${waited}`);
-            return refreshCache(loadedSettings);
-          })
-          .catch(e => logError('App: background cache refresh failed', errorMessage(e)));
+        refreshCache(loadedSettings).catch(e =>
+          logError('App: background cache refresh failed', errorMessage(e)),
+        );
 
         // Where to land is one pure decision (domain/returnContext.ts's
         // decideLanding, docs/dev/history/technical-design-return-to-origin.md), in this
