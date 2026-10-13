@@ -24,7 +24,7 @@ import {setOpenMarksHandler} from './src/ui/marksNav';
 import {MarkScope} from './src/domain/marks';
 import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
-import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
+import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome, whenMarkSettled} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
 import {useLoopEvents} from './src/ui/useLoopEvents';
 import {useLoopLinkNavigation} from './src/screens/area/useLoopLinkArm';
@@ -321,9 +321,17 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
         setSettings(loadedSettings);
         // Only files changed outside gtdpara are read again (technical-design-files-0.6.md §3.2).
-        refreshCache(loadedSettings).catch(e =>
-          logError('App: background cache refresh failed', errorMessage(e)),
-        );
+        // Never while "Mark for later" is saving: on a cold start a full
+        // build competes with the lasso reads and the host drops the lasso
+        // (docs/dev/history/technical-design-new-firmware.md, step F3b).
+        const markWait = Date.now();
+        whenMarkSettled()
+          .then(() => {
+            const waited = Date.now() - markWait;
+            if (waited > 50) log('App: cache refresh waited for the mark', `ms=${waited}`);
+            return refreshCache(loadedSettings);
+          })
+          .catch(e => logError('App: background cache refresh failed', errorMessage(e)));
 
         // Where to land is one pure decision (domain/returnContext.ts's
         // decideLanding, docs/dev/history/technical-design-return-to-origin.md), in this

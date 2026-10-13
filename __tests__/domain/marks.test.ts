@@ -17,7 +17,6 @@ import {
   parseMarkLine,
   parseMarkLines,
   parseMarkUserData,
-  recognitionSize,
   markDoneUserData,
   markUserData,
   resolveMarkPath,
@@ -152,18 +151,6 @@ describe('icons', () => {
     expect(box.left).toBeGreaterThanOrEqual(lasso.left);
     expect(box.right).toBeLessThanOrEqual(lasso.right);
     expect(box.bottom).toBeLessThanOrEqual(lasso.bottom);
-  });
-});
-
-describe('recognitionSize', () => {
-  const page = {width: 1404, height: 1872};
-  const display = {width: 1400, height: 1870};
-  it('prefers the page size, the space the stroke points are in', () => {
-    expect(recognitionSize({pageSize: page, displaySize: display})).toEqual({size: page, source: 'page'});
-  });
-  it('falls back to the display size only without a page size', () => {
-    expect(recognitionSize({pageSize: null, displaySize: display})).toEqual({size: display, source: 'display'});
-    expect(recognitionSize({pageSize: null, displaySize: null})).toEqual({size: null, source: null});
   });
 });
 

@@ -776,9 +776,9 @@ that meeting as provenance (§2.4).
 
 **Recognition** (`supernote/lassoRead.ts`, `supernote/strokeRecognition.ts`). The lasso's strokes
 are read once (page-size pixel points, §4 "Page-size pixels everywhere"), rebuilt as new elements
-where they were drawn and recognized with the page's real size (`domain/marks.ts`'s
-`recognitionSize`; the display size only when the page size can't be read). One recognition runs
-at a time. `ui/capture/useRecognitionQueue.ts` recognizes the
+where they were drawn and recognized with the page's real size from `PluginFileAPI.getPageSize`.
+The lasso picture is taken first, right after path and page, before the slower reads: on a cold
+plugin start the host can drop the lasso meanwhile (error 904). One recognition runs at a time. `ui/capture/useRecognitionQueue.ts` recognizes the
 selected mark plus three ahead; recognized text triggers an e-ink refresh.
 
 **Mark for later** (`storage/marks.ts`'s `createMarkFromLasso`, run from `index.js` with
@@ -789,7 +789,9 @@ Project/Area, else the Inbox):
 `storage/markStore.ts` writes these lines on one serial queue from a fresh disk read and applies
 the result to the cache. Picture, strokes and recognized text live in the plugin's private data
 folder (`storage/markData.ts`, `marks/<id>/`), deleted when the mark is processed; orphans are
-cleaned up. A bookmark icon is drawn on the page (`supernote/markIcons.ts`, userData
+cleaned up. While a mark is saved, App holds back its cache refresh (`whenMarkSettled`), so a cold
+start doesn't compete with the lasso reads. Marks written before `MARK_DATA_VERSION` 2 hold EMR
+stroke points: their handwriting is not recognized, the text is typed from the picture. A bookmark icon is drawn on the page (`supernote/markIcons.ts`, userData
 `gtdpara:mark:<id>`), turned into a check on save and removed on discard; when the element is not
 unique the change is kept in a pending list and retried. Only a problem shows
 `ui/MarkOutcomeScreen.tsx`.

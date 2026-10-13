@@ -1,6 +1,6 @@
 # Technical design: New plugin firmware and sn-plugin-lib 0.2.3 (0.15.0)
 
-Status: **in progress** - steps F0-F3 and F5's logging built, waiting for device checkpoint A.
+Status: **in progress** - steps F0-F3, F3b and F5's logging built; F3b waits for its device test.
 Branch: `feature/note-setups` (ships with Note setups in 0.15.0; `nextVersion` stays `0.15.0`).
 
 Background:
@@ -106,6 +106,8 @@ Each step ends with `npm run check` green and one commit `firmware: step FN - <w
 - **F3** Mark data version 2 (D2): pure `canRecognize(data)`; old marks without text are not
   recognized and show a status-slot message; the queue skips them.
 - **Checkpoint A** after F3 plus F5's logging.
+- **F3b** Lasso first (from checkpoint A, §7): picture right after path and page, no
+  `getPageDisplaySize`, no cache refresh while a mark is saved, `ms` per step on `marks: saved`.
 - **F4** Icons and written notes: verify on the device; change only what the device shows wrong.
 - **F5** Stale-build warning: logging before checkpoint A, the chosen option (D5) after it.
 - **F6** CHANGELOG, README, help, and this document's "As built".
@@ -137,13 +139,12 @@ Up to checkpoint A (F0-F3, F5 logging), where the build differs from §1-§6:
   so the decision line is the §4 paragraph "Page-size pixels everywhere". There is no
   `__mocks__/sn-plugin-lib.js`: tests mock the library inline per file, none needed a change.
   `npm install` also brought the lock file's stale root `name`/`version` fields up to date.
-- **F1** The `lassoRead: done` line logs `pageSize=WxH displaySize=WxH rect=l,t,r,b
-  strokeBounds=l,t,r,b points=N`; the bounds come from the pure `domain/marks.ts` `strokeBounds`.
-- **F2** `recognizeStrokes(strokes, textBoxText, sizes, page)` takes both sizes (a
-  `LassoSnapshot` or a `MarkDataFile` passes as is) and picks through the pure
-  `recognitionSize`, so the fallback is decided and logged in one place
-  (`strokeRecognition: no page size, using the display size size=display`, and `size=page|display`
-  on every `done`/`failed` line). `design-overview.md` §2.10 describes the new recognition.
+- **F1** The `lassoRead: done` line logs `pageSize=WxH rect=l,t,r,b strokeBounds=l,t,r,b
+  points=N` (plus `displaySize=` until F3b); the bounds come from the pure `domain/marks.ts` `strokeBounds`.
+- **F2** Built as planned with a display-size fallback (`recognitionSize`, `size=display`);
+  F3b removed it together with the `getPageDisplaySize` call: `recognizeStrokes(strokes,
+  textBoxText, pageSize, page)` takes the page size only, and without one the recognition fails
+  with "no page size" (logged, as before 0.15.0). `design-overview.md` §2.10 describes it.
 - **F3** `canRecognize(data)` plus `isOldStrokeMark(data)` (strokes that can't be recognized).
   An old mark keeps its text-box text (only the handwriting is not recognized). The queue's
   preload (`storage/marks.ts` `storedMarkRecognition`, replacing `storedMarkText`) settles old
@@ -155,3 +156,31 @@ Up to checkpoint A (F0-F3, F5 logging), where the build differs from §1-§6:
   warning shown`, and `stale-build warning, Restart tapped`. The warning has no dismiss
   control: "ignored" is a "shown" line without a later "Restart tapped". Log lines reach the
   debug bundle only with Debug logging on.
+
+**Checkpoint A** (debug bundle 2026-10-13 23:22, A5 X on the new firmware; analysed by Tilman):
+old marks showed their picture and the status message; new marks at the bottom, middle-bottom,
+middle and middle-top were recognized. The first "Mark for later" right after a cold plugin start
+lost the lasso: `readLasso` took about 7 s (`getPageDisplaySize` 2.2 s, `getLassoRect` 1.4 s) while
+App's cache build ran in parallel, then `generateLassoPreview` and `setLassoBoxState(2)` both failed
+with `904: No lasso action has been performed` - an empty picture, no text, the lasso box left on
+the page. Later marks took about 0.3 s. The cause is the cold start, not the position at the
+top of the page.
+
+- **F3b** (`firmware: step F3b - lasso first`):
+  - `readLasso({previewPath})` takes the picture right after `getCurrentFilePath` /
+    `getCurrentPageNum`, before rect, elements and page size (`preview` in its timings). The Mark
+    flow creates the mark folder first and passes the picture path; an empty lasso deletes the
+    folder again. Capture does the same with its temp picture: its picture used to come after
+    `rebuildCache`, the same hazard on a cold start from the Capture button.
+  - `getPageDisplaySize` is no longer called; `LassoSnapshot` has no `displaySize`, new
+    `mark.json` files write `displaySize: null`. `recognitionSize` and the `size=` log token went
+    with it.
+  - `storage/marks.ts` `trackMarkPress` (index.js wraps the Mark button's whole job in it, from
+    the synchronous first moment) and `whenMarkSettled`; App's reorient waits for it before
+    `refreshCache` and logs `App: cache refresh waited for the mark ms=` when it waited. The
+    landing itself does not wait. The Capture button needs no wait: reorient skips the refresh
+    when the lasso button routed to Capture, and Capture builds the cache only after the lasso
+    read.
+  - A failed picture is logged as before (`lassoRead: preview failed`) and the mark is kept.
+  - `marks: saved` (and `marks: saving failed`) log `ms={"folder","lasso","lassoGone","icon",
+    "data","line"}` next to `totalMs`.

@@ -97,19 +97,18 @@ jest.mock('../../src/supernote/lasso', () => ({
   setLassoBoxState: async (s: number) => mockCalls.push(`lassoState:${s}`),
 }));
 jest.mock('../../src/supernote/lassoRead', () => ({
-  readLasso: async () => ({
+  readLasso: async (opts: {previewPath?: string} = {}) => ({
     path: '/Note/2 Areas/0 Inbox/Todos/Test.note',
     page: 1,
     rect: {left: 0, top: 0, right: 100, bottom: 100},
-    displaySize: {width: 1404, height: 1872},
     pageSize: {width: 1404, height: 1872},
+    picture: opts.previewPath ?? null,
     textBoxText: '',
     strokes: [{points: [1, 2]}],
     elementCount: 1,
     errors: [],
     timingsMs: {},
   }),
-  saveLassoPreview: async (t: string) => t,
 }));
 jest.mock('../../src/supernote/strokeRecognition', () => ({
   recognizeStrokes: async () => {

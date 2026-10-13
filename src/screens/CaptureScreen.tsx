@@ -46,7 +46,7 @@ import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {FolderEntry, getCurrentNotePath, getPrivateDataDir, getPrivateTempDir, openPath} from '../supernote/fileSystem';
 import {setLassoBoxState} from '../supernote/lasso';
-import {LassoSnapshot, readLasso, saveLassoPreview} from '../supernote/lassoRead';
+import {LassoSnapshot, readLasso} from '../supernote/lassoRead';
 import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import MarksColumn, {LASSO_KEY} from '../ui/capture/MarksColumn';
 import {MarksReturnTo} from '../ui/marksNav';
@@ -116,9 +116,11 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
   useStatus('CaptureScreen.info', info ? {kind: 'info', text: info, onDismiss: () => setInfo(null)} : null);
 
   // ---- load ----
-  // Lasso first (checkpoint C, "route A"): read the lasso and start its
-  // recognition at once; settings, the project list (a cold rebuild takes
-  // 2-3 s), the picture and the screen follow while the recognizer works.
+  // Lasso first (checkpoint C, "route A"): read the lasso - its picture
+  // first of all, before the host can drop the lasso on a cold start
+  // (docs/dev/history/technical-design-new-firmware.md, step F3b) - and start
+  // its recognition at once; settings, the project list (a cold rebuild
+  // takes 2-3 s) and the screen follow while the recognizer works.
   const load = useCallback(async () => {
     setLoadError(null);
     const t0 = Date.now();
@@ -126,21 +128,21 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
       let lasso: LassoSnapshot | null = null;
       let recognition: Promise<RecognitionResult> | null = null;
       let recognitionStartMs = 0;
-      if (fromLasso) {
-        lasso = await readLasso();
-        recognitionStartMs = Date.now() - t0;
-        recognition = recognizeStrokes(lasso.strokes, lasso.textBoxText, lasso, lasso.page ?? 0);
-      }
-      const settings = await loadSettings();
-      const cache = getCachedData() ?? (await rebuildCache(settings));
       let lassoPicture: string | null = null;
       if (fromLasso) {
+        let previewPath: string | undefined;
         try {
-          lassoPicture = await saveLassoPreview(`${await getPrivateTempDir()}/lasso-${Date.now()}.png`);
+          previewPath = `${await getPrivateTempDir()}/lasso-${Date.now()}.png`;
         } catch (e) {
           log('CaptureScreen: no lasso picture', errorMessage(e));
         }
+        lasso = await readLasso({previewPath});
+        lassoPicture = lasso.picture;
+        recognitionStartMs = Date.now() - t0;
+        recognition = recognizeStrokes(lasso.strokes, lasso.textBoxText, lasso.pageSize, lasso.page ?? 0);
       }
+      const settings = await loadSettings();
+      const cache = getCachedData() ?? (await rebuildCache(settings));
       const currentNotePath = lasso?.path ?? (await getCurrentNotePath());
       const enclosing = currentNotePath ? findEnclosingItem(cache.paths, currentNotePath) : null;
       const lassoDestination: Destination = enclosing

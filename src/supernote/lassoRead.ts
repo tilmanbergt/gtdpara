@@ -6,9 +6,12 @@
  *
  * Every coordinate read here - rect, stroke points, text-box rects - is a
  * pixel on the page's real size (`pageSize`, PluginFileAPI.getPageSize;
- * docs/dev/history/technical-design-new-firmware.md). `displaySize` is the
- * on-screen size, read for diagnostics and as the recognizer's fallback when
- * the page size can't be read.
+ * docs/dev/history/technical-design-new-firmware.md).
+ *
+ * With `previewPath` the lasso picture is taken first, right after path and
+ * page: on a cold plugin start the host can drop the lasso while the slower
+ * reads run (error 904 "No lasso action has been performed"), so the picture
+ * must not wait for them.
  */
 import {PluginCommAPI, PluginFileAPI} from 'sn-plugin-lib';
 import {joinInReadingOrder, PxPoint, PxRect, StoredStroke, strokeBounds, TextPiece} from '../domain/marks';
@@ -31,8 +34,9 @@ export interface LassoSnapshot {
   /** 0-based page; null when unknown. */
   page: number | null;
   rect: PxRect | null;
-  displaySize: Size | null;
   pageSize: Size | null;
+  /** The picture written when `previewPath` was given; null when none or it failed. */
+  picture: string | null;
   /** Text-box text in reading order ('' when none). */
   textBoxText: string;
   strokes: StoredStroke[];
@@ -82,7 +86,7 @@ function rectText(rect: PxRect | null): string {
 }
 
 /** Never throws; whatever couldn't be read is null/empty and listed in `errors`. */
-export async function readLasso(): Promise<LassoSnapshot> {
+export async function readLasso(opts: {previewPath?: string} = {}): Promise<LassoSnapshot> {
   const timings: Record<string, number> = {};
   const errors: string[] = [];
   let elements: SdkElement[] = [];
@@ -90,8 +94,8 @@ export async function readLasso(): Promise<LassoSnapshot> {
     path: null,
     page: null,
     rect: null,
-    displaySize: null,
     pageSize: null,
+    picture: null,
     textBoxText: '',
     strokes: [],
     elementCount: 0,
@@ -107,6 +111,9 @@ export async function readLasso(): Promise<LassoSnapshot> {
     snap.page = pageR?.success && typeof pageR.result === 'number' ? pageR.result : null;
     if (snap.page == null) {errors.push('getCurrentPageNum: ' + errText(pageR, 'no page'));}
 
+    const previewPath = opts.previewPath;
+    if (previewPath) {snap.picture = await timed(timings, 'preview', () => saveLassoPreview(previewPath));}
+
     const rectR = (await timed(timings, 'rect', () => PluginCommAPI.getLassoRect())) as SdkResponse<PxRect>;
     snap.rect = rectR?.success && rectR.result ? rectR.result : null;
     if (!snap.rect) {errors.push('getLassoRect: ' + errText(rectR, 'no rect'));}
@@ -116,8 +123,6 @@ export async function readLasso(): Promise<LassoSnapshot> {
     if (!elR?.success) {errors.push('getLassoElements: ' + errText(elR, 'failed'));}
     snap.elementCount = elements.length;
 
-    const dispR = (await timed(timings, 'displaySize', () => PluginCommAPI.getPageDisplaySize())) as SdkResponse<Size>;
-    snap.displaySize = dispR?.success && dispR.result ? dispR.result : null;
     if (snap.path && snap.page != null) {
       try {
         const sizeR = (await timed(timings, 'pageSize', () =>
@@ -158,7 +163,6 @@ export async function readLasso(): Promise<LassoSnapshot> {
     `textBoxChars=${snap.textBoxText.length}`,
     `page=${snap.page}`,
     `pageSize=${sizeText(snap.pageSize)}`,
-    `displaySize=${sizeText(snap.displaySize)}`,
     `rect=${rectText(snap.rect)}`,
     `strokeBounds=${rectText(bounds.rect)}`,
     `points=${bounds.points}`,

@@ -11,7 +11,7 @@
  * never asked twice at once.
  */
 import {PluginCommAPI} from 'sn-plugin-lib';
-import {PageSize, recognitionSize, StoredStroke} from '../domain/marks';
+import {PageSize, StoredStroke} from '../domain/marks';
 import {log, logWarn} from '../utils/log';
 import {
   ELEMENT_TYPE_STROKE,
@@ -68,19 +68,17 @@ async function buildStrokes(strokes: StoredStroke[], page: number): Promise<SdkE
 /**
  * Recognizes `strokes` and appends `textBoxText`. Never throws: a failure
  * comes back as `error` with whatever text there is (the text boxes').
- * `sizes` are the page and display size read with the strokes; the page size
- * is used (domain/marks.ts recognitionSize), the display size only without it.
+ * `size` is the page's real size the strokes were read on; without it
+ * nothing is recognized (error 'no page size').
  */
 export function recognizeStrokes(
   strokes: StoredStroke[],
   textBoxText: string,
-  sizes: {pageSize: PageSize | null; displaySize: PageSize | null},
+  size: PageSize | null,
   page = 0,
 ): Promise<RecognitionResult> {
   const boxText = textBoxText.trim();
   if (strokes.length === 0) {return Promise.resolve({text: boxText, error: null, ms: 0});}
-  const {size, source} = recognitionSize(sizes);
-  if (source === 'display') {logWarn('strokeRecognition: no page size, using the display size', 'size=display');}
   return serial(async () => {
     const t0 = Date.now();
     let built: SdkElement[] = [];
@@ -101,8 +99,8 @@ export function recognizeStrokes(
     }
     const text = [recognized, boxText].filter(part => part.length > 0).join('\n');
     const ms = Date.now() - t0;
-    if (error) {logWarn('strokeRecognition: failed', `strokes=${strokes.length}`, `ms=${ms}`, `size=${source}`, error);}
-    else {log('strokeRecognition: done', `strokes=${strokes.length}`, `chars=${text.length}`, `ms=${ms}`, `build=${buildMs}`, `size=${source}`);}
+    if (error) {logWarn('strokeRecognition: failed', `strokes=${strokes.length}`, `ms=${ms}`, error);}
+    else {log('strokeRecognition: done', `strokes=${strokes.length}`, `chars=${text.length}`, `ms=${ms}`, `build=${buildMs}`);}
     return {text, error, ms};
   });
 }

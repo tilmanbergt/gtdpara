@@ -5,18 +5,22 @@
  * data cache being there.
  *
  * Order (the line in project.txt / area.txt / Inbox.txt is the commit point):
- *   1. read the lasso once (strokes, text boxes, page, rect)
- *   2. picture of the lasso into the mark's private folder
- *   3. remove the lasso
- *   4. bookmark icon into the note, save the note
- *   5. mark.json (strokes etc.)
- *   6. the `## Marks` line - if that fails, the icon and data are removed again
+ *   1. read the lasso once: path and page, then at once the picture into the
+ *      mark's private folder (the host can drop the lasso during slower
+ *      reads on a cold start), then rect, strokes, text boxes, page size
+ *   2. remove the lasso
+ *   3. bookmark icon into the note, save the note
+ *   4. mark.json (strokes etc.)
+ *   5. the `## Marks` line - if that fails, the icon and data are removed again
+ *
+ * While a mark is saved, App holds back its cache refresh (whenMarkSettled),
+ * so a cold start doesn't compete with the lasso reads.
  *
  * The outcome is silent when everything worked. Otherwise it is kept in
  * `markOutcome` for App's small result screen (opened via showPluginView).
  */
 import {findEnclosingItem, resolvePaths} from '../domain/settings';
-import {isEmptyLasso, readLasso, saveLassoPreview} from '../supernote/lassoRead';
+import {isEmptyLasso, readLasso} from '../supernote/lassoRead';
 import {setLassoBoxState} from '../supernote/lasso';
 import {changeMarkIcon, insertBookmark} from '../supernote/markIcons';
 import {ensureFolderExists, readTextFile} from '../supernote/fileSystem';
@@ -79,6 +83,29 @@ export function outcomeNeedsScreen(o: MarkOutcome): boolean {
 // ---- the flow ----
 
 let running = false;
+let inFlight: Promise<unknown> | null = null;
+
+/**
+ * Runs the Mark button's whole job (index.js) and marks it as in flight from
+ * the first, synchronous moment on, so App can wait for it.
+ */
+export function trackMarkPress<T>(job: () => Promise<T>): Promise<T> {
+  const run = job();
+  const settled = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  inFlight = settled;
+  settled.then(() => {
+    if (inFlight === settled) {inFlight = null;}
+  });
+  return run;
+}
+
+/** Resolves once no mark is being saved (at once when none is). Never rejects. */
+export function whenMarkSettled(): Promise<void> {
+  return inFlight ? inFlight.then(() => undefined) : Promise.resolve();
+}
 
 async function ownerFor(absNotePath: string) {
   const settings = await loadSettings();
@@ -102,33 +129,45 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
   }
   running = true;
   const t0 = Date.now();
+  const steps: Record<string, number> = {};
+  let tStep = t0;
+  const step = (name: string) => {
+    const t = Date.now();
+    steps[name] = t - tStep;
+    tStep = t;
+  };
   const id = newMarkId(now);
   let iconPlaced = false;
   let path: string | null = null;
   let page: number | null = null;
   try {
-    const snap = await readLasso();
+    await ensureFolderExists(await markDataFolder(id));
+    step('folder');
+    const snap = await readLasso({previewPath: await markPicturePath(id)});
+    step('lasso');
     path = snap.path;
     page = snap.page;
+    const picture = snap.picture;
     if (isEmptyLasso(snap)) {
       log('marks: empty lasso', id);
+      await deleteMarkData(id);
       return {kind: 'empty'};
     }
     if (!path || page == null) {
+      await deleteMarkData(id);
       return {kind: 'failed', detail: 'Could not tell which note and page the lasso is on.'};
     }
-
-    await ensureFolderExists(await markDataFolder(id));
-    const picture = await saveLassoPreview(await markPicturePath(id));
 
     try {
       await setLassoBoxState(2);
     } catch (e) {
       logWarn('marks: removing the lasso failed', errorMessage(e));
     }
+    step('lassoGone');
 
     const icon = snap.rect ? await insertBookmark(page, snap.rect, id) : null;
     iconPlaced = !!icon?.placed;
+    step('icon');
 
     await writeMarkData({
       version: MARK_DATA_VERSION,
@@ -136,12 +175,13 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       path,
       page,
       rect: snap.rect,
-      displaySize: snap.displaySize,
+      displaySize: null,
       pageSize: snap.pageSize,
       textBoxText: snap.textBoxText,
       strokes: snap.strokes,
       icon: icon ? {box: icon.box, placed: icon.placed} : null,
     });
+    step('data');
 
     const ref = await ownerFor(path);
     const mark: Mark = {
@@ -153,6 +193,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       text: snap.strokes.length === 0 && snap.textBoxText ? snap.textBoxText : null,
     };
     await addMarkLine(ref, mark);
+    step('line');
 
     log(
       'marks: saved',
@@ -163,6 +204,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       `picture=${picture !== null}`,
       `icon=${iconPlaced}`,
       `totalMs=${Date.now() - t0}`,
+      `ms=${JSON.stringify(steps)}`,
     );
     if (!iconPlaced) {
       return {kind: 'iconMissing', id, page, rect: snap.rect, detail: icon?.error ?? 'no lasso rect'};
@@ -170,7 +212,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
     return {kind: 'saved', id};
   } catch (e) {
     const detail = errorMessage(e);
-    logError('marks: saving failed', id, detail);
+    logError('marks: saving failed', id, detail, `totalMs=${Date.now() - t0}`, `ms=${JSON.stringify(steps)}`);
     // Not saved: take back what is already there.
     if (iconPlaced && path && page != null) {await changeMarkIcon({id, path, page}, 'remove', path);}
     await deleteMarkData(id);
@@ -230,7 +272,7 @@ export async function recognizeMark(open: OpenMark): Promise<RecognitionResult &
   if (isOldStrokeMark(data)) {
     return {text: oldMarkText(open.mark.id, data), error: null, ms: 0, missing: false, old: true};
   }
-  const result = await recognizeStrokes(data.strokes, data.textBoxText, data, data.page);
+  const result = await recognizeStrokes(data.strokes, data.textBoxText, data.pageSize, data.page);
   if (result.text.trim()) {
     try {
       await writeMarkData({...data, recognizedText: result.text});

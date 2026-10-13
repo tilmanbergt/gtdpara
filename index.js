@@ -8,7 +8,7 @@ import {name as appName} from './app.json';
 
 import { PluginManager } from 'sn-plugin-lib';
 import {LASSO_BUTTON_ID, MARK_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
-import {createMarkFromLasso, outcomeNeedsScreen, setMarkOutcome} from './src/storage/marks';
+import {createMarkFromLasso, outcomeNeedsScreen, setMarkOutcome, trackMarkPress} from './src/storage/marks';
 import {loadSettings} from './src/storage/settingsStorage';
 import {log, logError} from './src/utils/log';
 import {setFileLogging} from './src/utils/logSink';
@@ -55,7 +55,9 @@ PluginManager.registerButtonListener({
       return;
     }
     log('index: Mark for later pressed', 'pressEvent=' + String(event?.pressEvent));
-    (async () => {
+    // Tracked from this synchronous moment on: App holds back its cache
+    // refresh until the mark is saved (storage/marks.ts whenMarkSettled).
+    trackMarkPress(async () => {
       // App switches Debug logging on after loading the settings; with
       // showType 0 App may never mount, so do it here too.
       try {
@@ -76,6 +78,6 @@ PluginManager.registerButtonListener({
           logError('index: showPluginView failed', e instanceof Error ? e.message : String(e));
         }
       }
-    })();
+    });
   },
 });

@@ -1,8 +1,8 @@
 /**
  * "Mark for later" - the pure part (docs/dev/history/technical-design-lasso-0.8.md
  * §3.1-§3.2, §3.8, §3.10): the `## Marks` line format, mark ids, which
- * project/area/Inbox owns a mark, icon geometry, the stored strokes and the
- * size recognition uses, the private data file, and the grouping of the
+ * project/area/Inbox owns a mark, icon geometry, the stored strokes, the
+ * private data file, and the grouping of the
  * marks column.
  *
  * No React Native, no sn-plugin-lib, no I/O (design-overview.md §3).
@@ -329,7 +329,7 @@ export function checkPolygon(box: PxRect): PxPoint[] {
 }
 
 // ---------------------------------------------------------------------------
-// Stored strokes and the recognition size (§3.4, technical-design-new-firmware.md)
+// Stored strokes (§3.4, docs/dev/history/technical-design-new-firmware.md)
 
 /**
  * One stroke as saved at mark time: page-size pixel points flattened
@@ -347,20 +347,6 @@ export interface StoredStroke {
 export interface PageSize {
   width: number;
   height: number;
-}
-
-/**
- * The size handed to the recognizer with the strokes: the page's real size,
- * the space the stroke points are in. The on-screen display size is only a
- * fallback for when the page size couldn't be read; `source` says which one.
- */
-export function recognitionSize(sizes: {pageSize: PageSize | null; displaySize: PageSize | null}): {
-  size: PageSize | null;
-  source: 'page' | 'display' | null;
-} {
-  if (sizes.pageSize) {return {size: sizes.pageSize, source: 'page'};}
-  if (sizes.displaySize) {return {size: sizes.displaySize, source: 'display'};}
-  return {size: null, source: null};
 }
 
 /** The smallest rect around every stroke point, plus the point count; null rect when there are no points. */
@@ -424,8 +410,10 @@ export interface MarkDataFile {
   path: string;
   page: number;
   rect: PxRect | null;
-  displaySize: {width: number; height: number} | null;
-  pageSize: {width: number; height: number} | null;
+  /** On-screen size; only version-1 marks have one, newer marks write null. */
+  displaySize: PageSize | null;
+  /** The page's real size, the space of `rect` and the stroke points. */
+  pageSize: PageSize | null;
   textBoxText: string;
   strokes: StoredStroke[];
   icon: {box: PxRect; placed: boolean} | null;
