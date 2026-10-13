@@ -40,7 +40,7 @@ jest.mock('../../src/storage/sharedNotePages', () => ({
     return `${folder}/${name}.note`;
   }),
   findKeywordPage: jest.fn(async (file: string, keyword: string) => mockKeywordPages.get(file)?.get(keyword) ?? null),
-  insertChronologicalPage: jest.fn(async (file: string, keyword: string) => {
+  insertItemPage: jest.fn(async (file: string, keyword: string) => {
     const pages = mockKeywordPages.get(file) ?? new Map<string, number>();
     pages.set(keyword, pages.size);
     mockKeywordPages.set(file, pages);
@@ -149,7 +149,7 @@ describe('first-time note on a split-by-tag rule', () => {
     });
     expect(r.plans[0]).toMatchObject({kind: 'link-page', keyword: '2026-10-02 Session #coaching/sabina'});
     expect(result.outcome?.page).toBe(3);
-    expect(sharedPages.insertChronologicalPage).not.toHaveBeenCalled();
+    expect(sharedPages.insertItemPage).not.toHaveBeenCalled();
   });
 
   it('✕ writes nothing and opens nothing', async () => {
@@ -282,7 +282,7 @@ describe('existing link', () => {
     const result = await openOrCreateMeetingNote(m, AREA, settingsWith([coachingRule()]), null, {confirmCreate: r.confirm});
     expect(r.plans[0]).toMatchObject({kind: 'recreate-page', file: 'Meetings/Coaching sabina 2026.note'});
     expect(result.cancelled).toBe(true);
-    expect(sharedPages.insertChronologicalPage).not.toHaveBeenCalled();
+    expect(sharedPages.insertItemPage).not.toHaveBeenCalled();
   });
 
   it('asks before recreating a deleted shared file', async () => {

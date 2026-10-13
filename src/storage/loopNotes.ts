@@ -13,7 +13,7 @@
  *   (docs/dev/history/technical-design-note-setups.md §1.2).
  */
 import {findLoopLine, LoopLine} from '../domain/loopsSection';
-import {LoopRef, loopOf, loopsOfTags} from '../domain/loops';
+import {LOOP_PAGE_KEYWORD_PREFIX, LoopRef, loopOf, loopsOfTags} from '../domain/loops';
 import {layoutFor, NoteSetup, NoteSetupDefaults} from '../domain/noteSetups';
 import {fileExists, insertKeyWord} from '../supernote/fileSystem';
 import {log} from '../utils/log';
@@ -34,7 +34,7 @@ export interface LoopNoteTarget {
 
 /** Page 1's keyword. */
 export function loopPageKeyword(tag: string): string {
-  return `loop ${tag}`;
+  return `${LOOP_PAGE_KEYWORD_PREFIX}${tag}`;
 }
 
 /** The loops among `tags` with an active line in the item at `itemPath`, in tag order. */

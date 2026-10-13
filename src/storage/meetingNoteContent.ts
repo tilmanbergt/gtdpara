@@ -594,7 +594,7 @@ export async function openOrCreateMeetingNote(
       pageKind: 'meeting',
       currentKeyword,
       baseName: meetingNoteBaseName(meeting),
-      isDated: true,
+      pageDate: itemDateKeyword(meeting) ?? todayIso(),
       fileDate: meeting.date,
       forceOwnTarget: options.forceOwnTarget ?? false,
       collisionCheck: oldKeyword => meetingKeywordStillUsed(itemPath, oldKeyword),
@@ -624,8 +624,9 @@ export async function openOrCreateMeetingNote(
 
 /**
  * The Todo counterpart to `openOrCreateMeetingNote` above - same shape, same
- * contract. A todo has no date, so the `{year}`/`{quarter}`/`{month}`
- * placeholders use the day the note is created.
+ * contract. The `{year}`/`{quarter}`/`{month}` placeholders use the day the
+ * note is created; a new page in a shared note goes by the todo's creation
+ * date (today when it has none).
  */
 export async function openOrCreateTodoNote(
   task: Task,
@@ -645,7 +646,7 @@ export async function openOrCreateTodoNote(
       pageKind: 'todo',
       currentKeyword,
       baseName: todoNoteBaseName(task),
-      isDated: false,
+      pageDate: itemDateKeyword(task) ?? todayIso(),
       fileDate: todayIso(),
       forceOwnTarget: options.forceOwnTarget ?? false,
       collisionCheck: oldKeyword => todoKeywordStillUsed(itemPath, oldKeyword),

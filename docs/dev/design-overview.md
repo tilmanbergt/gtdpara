@@ -543,11 +543,16 @@ Default with the standard Meeting and First pages; 0.14's Tag Rules are migrated
 - **Keywords.** Every non-frozen refresh (and creation) calls `syncPageKeywords` before the layout
   is resolved: the page gets the item's date keyword (`itemDateKeyword`: meeting date, todo
   `created`) and its context tags; other bare `YYYY-MM-DD` keywords are deleted
-  (`planPageKeywords`), tag keywords never. `chronologicalInsertIndex` ignores bare dates.
+  (`planPageKeywords`), tag keywords never. The page order reads the bare date as the start of an item.
 - **Notebooks.** A setup with a notebook puts every meeting and todo it covers into one `.note`
   per Project/Area (in the notebook's folder, created on first use): each item gets a page located by keyword (meeting: `<date> <title>`;
-  todo: its text without functional tags), inserted chronologically (`storage/sharedNotePages.ts`
-  is the page engine, decisions in `domain/sharedNotePages.ts`). The shared file name is a
+  todo: its text without functional tags), inserted on the timeline (`storage/sharedNotePages.ts`
+  is the page engine, decisions in `domain/sharedNotePages.ts`). `domain/pageOrder.ts` alone
+  decides a new page's position: `pageMarks` reads each page as the start of an item (bare date
+  keyword, or a pre-0.13 anchor with a leading date) or a continuation page, and pinned (a loop
+  note's `loop <kind>/<name>` page 1); `timelineInsertIndex` puts the page before the first later
+  start, never between an item's pages or before a pinned page. The date is the meeting's date
+  or the todo's `created` (today without one); pages are never moved later. The shared file name is a
   template (`renderSharedFileName`: `{tag}`, `{subtag}`, `{year}`, `{quarter}`, `{month}`, `{day}`),
   so one setup can split into one file per type, client and year; `setupTypeTag` gives the setup
   tag the item matched, `setupSubtag` the nested part after it.

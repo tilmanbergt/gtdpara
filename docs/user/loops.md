@@ -46,7 +46,7 @@ Tap a loop row, or a loop tag in any todo or meeting of its Area or Project, to 
 Every loop has one note, from start to end, in its Area's or Project's folder. Its name comes from the Loop setup (see [Note setups](note-setups.md)), for example `2026-11 workshop teamoffsite`.
 
 - The 📓 on a loop row, or **Note ›** in the overview, opens it. The first time, the status line asks, then the note is created: its first page is the loop's own, filled from the Loop setup's First page.
-- A todo of the loop gets its note as a page in the loop note. A meeting does too, unless it also carries the tag of a Thread setup - `#jf`, say: a meeting goes to the thread first. When both are possible, the question before the note is created offers the other place as a second button; the meeting still shows in the loop. Meeting pages are sorted by date after the loop's page.
+- A todo of the loop gets its note as a page in the loop note. A meeting does too, unless it also carries the tag of a Thread setup - `#jf`, say: a meeting goes to the thread first. When both are possible, the question before the note is created offers the other place as a second button; the meeting still shows in the loop. Pages follow the timeline after the loop's page, see [Note setups](note-setups.md).
 - Prep and review tracking applies when any setup matching the meeting asks for it.
 
 ## Editing a loop

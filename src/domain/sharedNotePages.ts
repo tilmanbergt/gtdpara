@@ -6,8 +6,8 @@
  * Note setup's notebook and the loop note (domain/noteSetups.ts).
  * Covers everything this feature needs that doesn't touch the device:
  * encoding/decoding the anchor stored in `Task.notePath`/`Meeting.notePath`,
- * deriving a page's keyword from the item it belongs to, and the pure array
- * math behind chronological page insertion. Zero RN/SDK imports (design-
+ * deriving a page's keyword from the item it belongs to (where a new page
+ * goes is domain/pageOrder.ts). Zero RN/SDK imports (design-
  * overview.md §3) - the actual PluginFileAPI calls (insertNotePage/
  * insertKeyWord/getKeyWords/deleteKeyWord/...) live in the sibling
  * `storage/sharedNotePages.ts`, which calls into this file for
@@ -18,7 +18,6 @@ import {RESERVED_BARE_TAGS, stripBareTags} from './flowState';
 import {setDueInLine} from './markdown';
 import {meetingDisplayTitle} from './meetingTracking';
 import {Meeting, Task} from './types';
-import {isBareDateKeyword} from './noteFindability';
 
 /**
  * A shared-target note's anchor: which file, and which keyword locates this
@@ -116,8 +115,8 @@ export function joinNotePath(itemPath: string, target: string): string {
 
 /**
  * A meeting's page keyword: `"YYYY-MM-DD <display title>"` (design doc §3) -
- * date first so `parseKeywordLeadingDate` below can recover it for
- * chronological insertion. `meetingDisplayTitle` (domain/meetingTracking.ts)
+ * date first so `parseKeywordLeadingDate` below can recover it (the page
+ * order reads it on pages from before 0.13, domain/pageOrder.ts). `meetingDisplayTitle` (domain/meetingTracking.ts)
  * already strips `#prepped`/`#reviewed` and any other bare state tags, so
  * those never leak into the keyword - same title text `meetingNoteBaseName`
  * (storage/noteLinks.ts) already uses for an own-note file name, just not
@@ -163,53 +162,6 @@ export interface PageKeyword {
 export function findExactKeywordPage(existingKeywords: PageKeyword[], keyword: string): number | null {
   const hit = existingKeywords.find(kw => kw.keyword === keyword);
   return hit ? hit.page : null;
-}
-
-/**
- * Where a NEW dated page should be inserted among `totalPages` existing
- * pages, given every keyword already on file (design doc §4's
- * `insertChronologicalPage`, dated/meeting case). Only the first
- * parseable-date keyword found for each page counts as that page's "date"
- * for ordering; a page can carry several keywords, and pages with no dated
- * keyword at all (foreign content, or a page this feature wrote for an
- * undated todo keyword) are skipped when deciding where the new page goes -
- * never treated as "after" or "before", so they can't force a dated page to
- * the wrong end of the file. Ties (an existing page with the SAME leading
- * date) are inserted after - new same-day pages append within the day
- * rather than jumping ahead of same-day siblings.
- *
- * `newKeyword` with no parseable leading date (shouldn't happen for a
- * meeting keyword this feature builds itself - defensive only) is treated
- * as unorderable and appended at the very end, same as
- * `insertTodoPageIndex` below always does.
- */
-export function chronologicalInsertIndex(
-  existingKeywords: PageKeyword[],
-  totalPages: number,
-  newKeyword: string,
-): number {
-  const newDate = parseKeywordLeadingDate(newKeyword);
-  if (newDate === null) return totalPages;
-
-  const firstDateByPage = new Map<number, string>();
-  for (const kw of existingKeywords) {
-    // A bare date keyword (domain/noteFindability.ts) is a page's date keyword, not its anchor:
-    // only anchors order pages, so a todo page carrying its creation date stays unordered.
-    if (firstDateByPage.has(kw.page) || isBareDateKeyword(kw.keyword)) continue;
-    const date = parseKeywordLeadingDate(kw.keyword);
-    if (date !== null) firstDateByPage.set(kw.page, date);
-  }
-
-  for (let page = 0; page < totalPages; page++) {
-    const date = firstDateByPage.get(page);
-    if (date !== undefined && date > newDate) return page;
-  }
-  return totalPages;
-}
-
-/** A todo page always appends at the end (design doc §4/§9: todos have no date to order by) - named for symmetry with `chronologicalInsertIndex`, not because it does any real math. */
-export function insertTodoPageIndex(totalPages: number): number {
-  return totalPages;
 }
 
 /**

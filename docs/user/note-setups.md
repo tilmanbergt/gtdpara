@@ -12,7 +12,7 @@ You find them in **Settings → Note setups**.
   - **Loop**: a small project of its own. `#workshop/teamoffsite` is one loop of the kind `workshop`. See [Loops](loops.md).
 - **Notes** (where the notes go):
   - **Own note per item**: every todo or meeting gets its own note in the project's `Todos` or `Meetings` folder.
-  - **One notebook**: every meeting and todo of the setup gets a page in one note. Meeting pages are sorted by date.
+  - **One notebook**: every meeting and todo of the setup gets a page in one note, in date order (see below).
   - A Loop setup always has its **loop note**: one note per loop in the loop's Area or Project folder.
 - **Tracking**: **Prepare before** and **Review after** for the setup's meetings, see [Meetings](meetings.md).
 - **Pages**: a **Meeting page** and a **Todo page**, and for a Loop setup a **First page** (the loop's own page at the start of its loop note).
@@ -115,6 +115,10 @@ The status line also asks first when:
 - the item's page or note file was deleted ("… not found (deleted?) - create it again?"). The old content does not come back; if you deleted it by mistake, restore the file first and tap ✕.
 
 Once a note exists, the note icon opens it directly. A page stays where it was created: changing the tag, the date, the setup's notebook or deleting the setup later does not move it.
+
+## Order of pages in a notebook
+
+A notebook - and a loop note - reads like a timeline. A new page goes where it belongs in time: a meeting by its date, a todo by the day it was created. A todo you create between two meetings lands between them; items of the same day keep the order you created them in. Pages you add yourself after an item's page stay with that item: a new page goes after them, never in between. In a loop note the loop's own page stays first. Pages are placed once, when they are created, and never moved later - a meeting whose date changes stays where it is.
 
 ## Finding notes again
 

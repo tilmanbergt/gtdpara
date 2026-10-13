@@ -27,6 +27,9 @@ export interface LoopRef {
   tag: string;
 }
 
+/** A loop note's first page carries the keyword `loop <kind>/<name>` (storage/loopNotes.ts). */
+export const LOOP_PAGE_KEYWORD_PREFIX = 'loop ';
+
 /** What `loopKindsOf` and `threadTypesOf` read of a setup (a NoteSetup fits). */
 export interface SetupTagSource {
   enabled: boolean;

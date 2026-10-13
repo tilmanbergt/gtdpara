@@ -40,7 +40,7 @@ jest.mock('../../src/storage/sharedNotePages', () => ({
     return `${folder}/${name}.note`;
   }),
   findKeywordPage: jest.fn(async (file: string, keyword: string) => mockKeywordPages.get(file)?.get(keyword) ?? null),
-  insertChronologicalPage: jest.fn(async (file: string, keyword: string) => {
+  insertItemPage: jest.fn(async (file: string, keyword: string) => {
     const pages = mockKeywordPages.get(file) ?? new Map<string, number>();
     pages.set(keyword, pages.size);
     mockKeywordPages.set(file, pages);

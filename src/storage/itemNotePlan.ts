@@ -24,7 +24,7 @@ import {collisionFreeName} from './fileNaming';
 import {ensureLoopNoteFile, LoopNoteTarget} from './loopNotes';
 import {backgroundOf, classifyNotePath, createLinkedNote, insertNoteKeywords, MEETINGS_SUBFOLDER, TODOS_SUBFOLDER} from './noteLinks';
 import {layoutForLink, NoteTargetInput, PlacedCandidate, placeNoteCandidates} from './noteTargets';
-import {ensureSharedNoteFile, findKeywordPage, insertChronologicalPage, renameKeywordAt, writeRecreatedNotice} from './sharedNotePages';
+import {ensureSharedNoteFile, findKeywordPage, insertItemPage, renameKeywordAt, writeRecreatedNotice} from './sharedNotePages';
 
 /**
  * What executing a note plan produced: which file+page this item's note
@@ -62,7 +62,8 @@ export interface ItemNoteParams {
   pageKind: 'meeting' | 'todo';
   currentKeyword: string;
   baseName: string;
-  isDated: boolean;
+  /** YYYY-MM-DD the page order places a new page by (note-setups design §13): a meeting's date, a todo's creation date. */
+  pageDate: string;
   /** YYYY-MM-DD for the `{year}`/`{quarter}`/`{month}` placeholders - a meeting's own date, today for a todo. */
   fileDate: string;
   /** Inbox items: always an own note, whatever the matched setup says (no shared files for Inbox items - see the split-by-tag design §4). */
@@ -104,10 +105,10 @@ async function recreateSharedPage(
   absoluteFile: string,
   keyword: string,
   background: string,
-  isDated: boolean,
+  pageDate: string,
 ): Promise<number> {
   await ensureSharedNoteFile(folderPath, fileName, background);
-  const page = await insertChronologicalPage(absoluteFile, keyword, background, isDated);
+  const page = await insertItemPage(absoluteFile, keyword, background, pageDate);
   await writeRecreatedNotice(absoluteFile, page, todayIso());
   return page;
 }
@@ -138,7 +139,7 @@ async function recreateSharedPage(
  * it gets filled from (for a link: `layoutForLink`).
  */
 export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan> {
-  const {itemPath, tags, currentKeyword, isDated} = params;
+  const {itemPath, tags, currentKeyword, pageDate} = params;
   const existing = await classifyNotePath(itemPath, params.notePath);
   if (existing.kind === 'none') return planFirstNote(params);
   const background = backgroundOf(
@@ -191,7 +192,7 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
       return {
         plan: {kind: 'recreate-shared-file', file: anchor.filePath, absolutePath: absoluteFile, setupName: null},
         execute: async () => {
-          const page = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, isDated);
+          const page = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, pageDate);
           return {notePath: newNotePath, changed: keywordChanged, isInitialPopulation: true, absolutePath: absoluteFile, page};
         },
       };
@@ -214,7 +215,7 @@ export async function planItemNote(params: ItemNoteParams): Promise<ItemNotePlan
     return {
       plan: {kind: 'recreate-page', file: anchor.filePath, absolutePath: absoluteFile, setupName: null},
       execute: async () => {
-        const newPage = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, isDated);
+        const newPage = await recreateSharedPage(folderPath, fileName, absoluteFile, currentKeyword, background, pageDate);
         return {notePath: newNotePath, changed: keywordChanged, isInitialPopulation: true, absolutePath: absoluteFile, page: newPage};
       },
     };
@@ -253,7 +254,7 @@ function targetInput(params: ItemNoteParams): NoteTargetInput {
 
 /** The plan for an item's first note at `placed` (one note candidate). */
 async function planNewNote(params: ItemNoteParams, placed: PlacedCandidate): Promise<ItemNotePlan> {
-  const {itemPath, settings, tags, currentKeyword, isDated} = params;
+  const {itemPath, settings, tags, currentKeyword, pageDate} = params;
   const setup = placed.candidate.setup;
   const setupName = setup ? setup.name : null;
   const background = backgroundOf(layoutFor(setup, params.pageKind, settings.noteSetupDefaults));
@@ -286,7 +287,7 @@ async function planNewNote(params: ItemNoteParams, placed: PlacedCandidate): Pro
         // A new loop note starts with the loop's own page (filled by the caller).
         const loopPage = loopNote && (await ensureLoopNoteFile(itemPath, loopNote, settings.noteSetupDefaults)) ? loopNote : undefined;
         if (!loopNote) await ensureSharedNoteFile(folderPath, fileName, background);
-        const page = await insertChronologicalPage(absoluteFile, currentKeyword, background, isDated);
+        const page = await insertItemPage(absoluteFile, currentKeyword, background, pageDate);
         return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page, loopPage};
       },
     };
@@ -305,7 +306,7 @@ async function planNewNote(params: ItemNoteParams, placed: PlacedCandidate): Pro
   return {
     plan: {kind: 'new-page', file: relativeFilePath, absolutePath: absoluteFile, setupName},
     execute: async () => {
-      const page = await insertChronologicalPage(absoluteFile, currentKeyword, background, isDated);
+      const page = await insertItemPage(absoluteFile, currentKeyword, background, pageDate);
       return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page};
     },
   };

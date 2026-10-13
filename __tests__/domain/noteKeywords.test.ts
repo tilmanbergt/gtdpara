@@ -1,6 +1,5 @@
 /** Date and tag keywords of note pages (docs/dev/history/technical-design-projects-findable-notes.md §2.7). */
 import {isBareDateKeyword, itemDateKeyword, planPageKeywords} from '../../src/domain/noteFindability';
-import {chronologicalInsertIndex} from '../../src/domain/sharedNotePages';
 import {emptyTaskFields} from '../../src/domain/taskLine';
 import {meeting, task} from '../../test-helpers/fixtures';
 
@@ -50,22 +49,3 @@ describe('planPageKeywords', () => {
   });
 });
 
-describe('chronologicalInsertIndex with date keywords', () => {
-  it('keeps a todo page with a bare date unordered', () => {
-    const keywords = [
-      {page: 0, keyword: 'Call supplier'},
-      {page: 0, keyword: '2026-12-01'},
-      {page: 1, keyword: '2026-09-30 Retro'},
-    ];
-    expect(chronologicalInsertIndex(keywords, 2, '2026-10-07 Retro')).toBe(2);
-  });
-  it('orders meeting pages by their anchor, whatever extra bare date they carry', () => {
-    const keywords = [
-      {page: 0, keyword: '2026-01-01'},
-      {page: 0, keyword: '2026-09-30 Retro'},
-      {page: 1, keyword: '2026-10-14 Retro'},
-      {page: 1, keyword: '2026-10-14'},
-    ];
-    expect(chronologicalInsertIndex(keywords, 2, '2026-10-07 Retro')).toBe(1);
-  });
-});

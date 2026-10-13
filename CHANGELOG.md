@@ -31,6 +31,9 @@ or your project/area files are stored.
   offers the other place as a second button (**In Sparring**). Your choice is kept, so it is
   asked once.
 - The question before a note is created names the setup ("Sparring: new page in …").
+- **Pages in a notebook follow the timeline**: meetings by their date, todos by the day they were
+  created - between the meetings around them instead of at the end. Pages you added after an
+  item's page stay with that item; a loop's own page stays first.
 
 ### Removed
 - Tag Rules for **Projects** and **Areas**: they never had an effect.

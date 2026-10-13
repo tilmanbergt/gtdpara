@@ -730,6 +730,19 @@ above, and why.
 - design-overview: §2.6 describes Note setups; the decision entry is in §4 ("One setup per
   thing"), the document's section for reasons.
 
+### Page order (step 7)
+
+Built as §13. Details the design left open:
+
+- `LOOP_PAGE_KEYWORD_PREFIX` lives in `domain/loops.ts`; `storage/loopNotes.ts`
+  `loopPageKeyword` builds on it.
+- A page with both a bare date and a dated anchor (every meeting page since 0.13) starts on
+  its bare date; the anchor's leading date only counts on a page without one.
+- `pageDate` is `itemDateKeyword(item) ?? todayIso()` for meetings as well, so a meeting with
+  a malformed date goes by today instead of a string compared out of order.
+- `insertItemPage` always reads the keywords (the todo path read only the page count); its
+  debug-log entry is now named `insertItemPage` and records `date` and `insertedPage`.
+
 ## 13. Page order in a notebook: Timeline (step 7)
 
 Decided after step 6. Replaces the page placement of the shared-pages design (meetings by
