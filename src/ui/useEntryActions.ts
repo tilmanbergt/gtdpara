@@ -43,6 +43,7 @@ import {MeetingQuickAddFields, QuickFilePayload} from './QuickAddWidget';
 import {useActionError} from './useActionError';
 import {useCachedInbox} from './useCachedInbox';
 import {useEditTarget} from './useEditTarget';
+import {useEngagePrompt} from './useEngagePrompt';
 import {useEntryMoveUi} from './useEntryMoveUi';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
 import {errorMessage} from '../utils/errorMessage';
@@ -76,6 +77,7 @@ export function useEntryActions(name = 'ThreadOverview') {
   const edit = useEditTarget<EntryEditKey>();
   const widgetAction = useActionError(`${LOG}.widgetError`, `${LOG}: widget action failed`);
   const rowAction = useActionError(`${LOG}.rowError`, `${LOG}: row action failed`);
+  const engagePrompt = useEngagePrompt(LOG);
   const ctx = {inbox, inboxPath};
 
   const saveTasks = async (entry: ThreadTaskEntry, mutate: (tasks: Task[]) => Task[]) => {
@@ -105,6 +107,7 @@ export function useEntryActions(name = 'ThreadOverview') {
         tasks[entry.taskIndex] = withTaskDone(tasks[entry.taskIndex], !tasks[entry.taskIndex].done, todayIso());
         return tasks;
       });
+      if (!entry.task.done) engagePrompt.afterDone(entry.item.path, entry.task);
       requestEinkRefresh();
     });
 

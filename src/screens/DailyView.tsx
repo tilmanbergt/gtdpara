@@ -144,6 +144,7 @@ import {perfEnd, perfStart, usePerfRender} from '../utils/perf';
 import {useStableCallback} from '../ui/useStableCallback';
 import {useOnScreenShow} from '../ui/screenActivity';
 import {useActionError} from '../ui/useActionError';
+import {useEngagePrompt} from '../ui/useEngagePrompt';
 import {errorMessage} from '../utils/errorMessage';
 import {useCachedInbox} from '../ui/useCachedInbox';
 
@@ -433,15 +434,13 @@ export default function DailyView({
   };
 
 
-  // Errors from the shared widget's own add/edit/delete actions - kept
-  // separate from tasksActionError/meetingsActionError below, which stay
-  // scoped to each column's row-level actions (note create/open), because
-  // those two are displayed in two different columns while the widget
-  // itself lives in only one.
+  // The widget's own add/edit/delete errors, apart from the two columns'
+  // row-level errors below (they show in different columns).
   const widgetAction = useActionError('DailyView.widgetError', 'DailyView: widget action failed');
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = widgetAction.run;
+  const engagePrompt = useEngagePrompt('DailyView');
 
   const handleToggleDone = (entry: DailyTaskEntry) => {
     toggleAction.run(async () => {
@@ -450,6 +449,7 @@ export default function DailyView({
         return tasks;
       });
       log('DailyView: toggled', entry.item.path, entry.taskIndex);
+      if (!entry.task.done) engagePrompt.afterDone(entry.item.path, entry.task);
     }, 'DailyView: toggle failed');
   };
 

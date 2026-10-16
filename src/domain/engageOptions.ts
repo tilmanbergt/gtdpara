@@ -19,6 +19,7 @@ import {
   ownerHomePath,
   ownerKey,
   ownerMeetings,
+  ownerOfTodo,
   ownerTitle,
   ownerTodos,
   OwnerTitle,
@@ -151,4 +152,27 @@ export function focusOwnerLines(ring: FocusRing, current: EngageOwner | null, so
 /** How many owners in a ring still have something to pick (the flow's "anything left?"). */
 export function ownersLeft(ring: FocusRing, source: EngageSource, nowMs: number): number {
   return focusOwnerLines(ring, null, source, nowMs).length;
+}
+
+/** At most this many plan todos are offered in the prompt after a Done (R5). */
+export const PROMPT_CANDIDATES = 3;
+
+export interface NextPrompt {
+  owner: EngageOwner;
+  /** The first plan todos, file order. */
+  candidates: EngageTodoRef[];
+}
+
+/**
+ * After a todo of `itemPath` was ticked done elsewhere in gtdpara (R5): when
+ * its owner has no `#next` left but a plan, the prompt's candidates; else
+ * null. Asked only right after a Done, and only about the owner of what was
+ * just finished (design-philosophy §5).
+ */
+export function nextPromptOf(itemPath: string, doneTask: Pick<Task, 'tags'>, source: EngageSource, nowMs: number): NextPrompt | null {
+  const owner = ownerOfTodo({itemPath, task: doneTask}, source);
+  if (!owner) return null;
+  const {next, plan} = optionsOf(owner, source, nowMs);
+  if (next.length > 0 || plan.length === 0) return null;
+  return {owner, candidates: plan.slice(0, PROMPT_CANDIDATES)};
 }

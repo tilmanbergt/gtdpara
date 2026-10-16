@@ -1,6 +1,6 @@
 // docs/dev/history/technical-design-engage.md §3.2: options of an owner and the focus screens' owner lines.
 import {EngageItem, EngageSource} from '../../src/domain/engageOwner';
-import {effectiveFocus, engageFlowText, focusOwnerLines, optionsOf, ownersLeft} from '../../src/domain/engageOptions';
+import {effectiveFocus, engageFlowText, focusOwnerLines, nextPromptOf, optionsOf, ownersLeft} from '../../src/domain/engageOptions';
 import {LoopLine} from '../../src/domain/loopsSection';
 import {ownerLineText} from '../../src/domain/engageText';
 import {item, meeting, task} from '../../test-helpers/fixtures';
@@ -97,5 +97,30 @@ describe('engageFlowText', () => {
     expect(engageFlowText('Brief #next #now', null)).toBe('Brief');
     expect(engageFlowText('Brief #next', 'someday')).toBe('Brief #someday');
     expect(engageFlowText('Brief #now #next', 'next')).toBe('Brief #now #next');
+  });
+});
+
+describe('nextPromptOf (R5)', () => {
+  const loopItem = item('area', 'Coaching', {
+    loops: [loopLine('proj/launch')],
+    tasks: [
+      task('Brief #proj/launch #next', {done: true}),
+      task('Plan #proj/launch'),
+      task('Book #proj/launch'),
+      task('Call #proj/launch'),
+      task('Print #proj/launch'),
+      task('Loose #next'),
+    ],
+  });
+  it('the owner\'s last #next done and a plan left: up to three plan todos', () => {
+    const prompt = nextPromptOf(loopItem.path, {tags: ['proj/launch', 'next']}, src([loopItem]), NOW);
+    expect(prompt?.owner).toEqual({kind: 'loop', itemPath: loopItem.path, tag: 'proj/launch'});
+    expect(texts(prompt!.candidates)).toEqual(['Plan #proj/launch', 'Book #proj/launch', 'Call #proj/launch']);
+  });
+  it('none while a #next is left, without a plan, or for an unknown item', () => {
+    expect(nextPromptOf(loopItem.path, {tags: []}, src([loopItem]), NOW)).toBeNull();
+    const noPlan = {...loopItem, tasks: [task('Brief #proj/launch #next', {done: true})]};
+    expect(nextPromptOf(loopItem.path, {tags: ['proj/launch']}, src([noPlan]), NOW)).toBeNull();
+    expect(nextPromptOf('/nowhere', {tags: []}, src([loopItem]), NOW)).toBeNull();
   });
 });

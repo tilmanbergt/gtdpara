@@ -65,6 +65,12 @@ export const ENGAGE_NOTICE = {
   promptLater: 'Later',
 } as const;
 
+/** A todo as a button in the prompt (R5): its title, shortened to fit the 36 dp slot. */
+export function promptTodoLabel(title: string, maxChars = 22): string {
+  const t = title.trim();
+  return t.length <= maxChars ? t : `${t.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
 /** The candidate prompt after a Done elsewhere in gtdpara (R5). */
 export function noNextPromptText(ownerName: string): string {
   return `${ownerName} has no next action. Pick one:`;

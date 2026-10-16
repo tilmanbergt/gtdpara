@@ -1,5 +1,5 @@
 // docs/dev/history/technical-design-engage.md §3.12: the panel's texts.
-import {ackLabel, linkedFileButtonText, marksLineText, noNextPromptText, nothingLeftText, nowDetailsText, ownerLineText} from '../../src/domain/engageText';
+import {ackLabel, linkedFileButtonText, marksLineText, noNextPromptText, nothingLeftText, nowDetailsText, ownerLineText, promptTodoLabel} from '../../src/domain/engageText';
 import {task} from '../../test-helpers/fixtures';
 
 describe('engageText', () => {
@@ -31,5 +31,9 @@ describe('engageText', () => {
   it('linked file button: the file name, without a page link', () => {
     expect(linkedFileButtonText('3 Resources/Garden/Plan v2.pdf')).toBe('File: Plan v2.pdf ›');
     expect(linkedFileButtonText('Note/Beds.note#page=3')).toBe('File: Beds.note ›');
+  });
+  it('prompt labels are shortened', () => {
+    expect(promptTodoLabel('Plan dinner')).toBe('Plan dinner');
+    expect(promptTodoLabel('Plan the whole offsite dinner with everyone')).toBe('Plan the whole offsit…');
   });
 });
