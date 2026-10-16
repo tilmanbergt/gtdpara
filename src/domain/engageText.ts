@@ -60,6 +60,11 @@ export function ackLabel(kind: 'done' | 'someday' | 'unnext' | 'next'): string {
   }
 }
 
+/** The way back to the todo you worked on in another owner (Addendum "Engage follows the note"). */
+export function backLineText(ownerName: string, todoTitle: string): string {
+  return `↩ ${ownerName} · ${todoTitle}`;
+}
+
 /** The options screen's tab labels, with the rows each lists. */
 export function tabLabel(tab: 'next' | 'plan', rows: number): string {
   return `${tab === 'next' ? 'Next' : 'Plan'} ${rows}`;

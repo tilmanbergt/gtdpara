@@ -231,3 +231,48 @@ export function ownerTitle(owner: EngageOwner, source: EngageSource): OwnerTitle
 export function ownerHomePath(owner: EngageOwner): string {
   return owner.kind === 'thread' ? owner.scopeOwnerPath : owner.itemPath;
 }
+
+/** The current todo with its owner, as stored or offered as the way back. */
+export interface OwnedTodo {
+  owner: EngageOwner;
+  key: EngageTodoKey;
+}
+
+/** What the panel opens on (Addendum "Engage follows the note"). */
+export interface EngageOpening {
+  owner: EngageOwner | null;
+  current: EngageTodoKey | null;
+  /** Offered as "↩ …" when it belongs to another owner than the one shown. */
+  back: OwnedTodo | null;
+  /** The note page's todo becomes the stored current todo. */
+  store: OwnedTodo | null;
+}
+
+/**
+ * The opening order: "Engage ›" > the note page's todo > the note's owner >
+ * the stored current todo's owner > none. `stored` is the stored current
+ * todo, already found again (null when gone).
+ */
+export function decideOpening(input: {
+  pageOwner: EngageOwner | null;
+  noteOwner: EngageOwner | null;
+  noteTodo: EngageTodoKey | null;
+  stored: OwnedTodo | null;
+}): EngageOpening {
+  const {pageOwner, noteOwner, noteTodo, stored} = input;
+  const backFrom = (owner: EngageOwner) => (stored && !sameOwner(stored.owner, owner) ? stored : null);
+  if (pageOwner) {
+    const keep = stored && sameOwner(stored.owner, pageOwner) ? stored.key : null;
+    return {owner: pageOwner, current: keep, back: null, store: null};
+  }
+  if (noteOwner && noteTodo) {
+    const same = stored && sameOwner(stored.owner, noteOwner) && sameTodo(stored.key, noteTodo);
+    return {owner: noteOwner, current: noteTodo, back: same ? null : backFrom(noteOwner), store: {owner: noteOwner, key: noteTodo}};
+  }
+  if (noteOwner) {
+    const keep = stored && sameOwner(stored.owner, noteOwner) ? stored.key : null;
+    return {owner: noteOwner, current: keep, back: backFrom(noteOwner), store: null};
+  }
+  if (stored) return {owner: stored.owner, current: stored.key, back: null, store: null};
+  return {owner: null, current: null, back: null, store: null};
+}

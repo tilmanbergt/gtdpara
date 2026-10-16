@@ -1,5 +1,6 @@
 // docs/dev/history/technical-design-engage.md §3.2, §3.4, §3.5: owners, their todos, and the current todo's key.
 import {
+  decideOpening,
   EngageSource,
   ownerExists,
   ownerKey,
@@ -103,5 +104,25 @@ describe('owner identity and title', () => {
     expect(ownerTitle({kind: 'item', itemPath: coaching.path}, source)).toEqual({kindLabel: 'Area', name: 'Coaching', parent: null});
     expect(ownerTitle({kind: 'loop', itemPath: coaching.path, tag: 'proj/launch'}, source)).toEqual({kindLabel: 'Loop', name: 'launch', parent: 'Coaching'});
     expect(ownerTitle({kind: 'thread', scopeOwnerPath: coaching.path, tag: 'sparring/anna'}, source)).toEqual({kindLabel: 'Thread', name: '#sparring/anna', parent: 'Coaching'});
+  });
+});
+
+describe('decideOpening (Engage follows the note)', () => {
+  const A = {kind: 'item' as const, itemPath: '/A'};
+  const B = {kind: 'item' as const, itemPath: '/B'};
+  const loopA = {kind: 'loop' as const, itemPath: '/A', tag: 'proj/x'};
+  const keyA = {itemPath: '/A', taskText: 'Brief #next', taskIndex: 1};
+  const keyB = {itemPath: '/B', taskText: 'Call #next', taskIndex: 0};
+  const stored = {owner: loopA, key: keyA};
+  it.each([
+    ['"Engage ›" wins, no way back', {pageOwner: B, noteOwner: A, noteTodo: null, stored}, {owner: B, current: null, back: null, store: null}],
+    ['"Engage ›" on the stored owner keeps its todo', {pageOwner: loopA, noteOwner: null, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null}],
+    ['the note page\'s todo: current and stored, the replaced todo is the way back', {pageOwner: null, noteOwner: B, noteTodo: keyB, stored}, {owner: B, current: keyB, back: stored, store: {owner: B, key: keyB}}],
+    ['the note\'s owner wins over the stored todo, even nested in the same Area', {pageOwner: null, noteOwner: A, noteTodo: null, stored}, {owner: A, current: null, back: stored, store: null}],
+    ['the note\'s owner is the stored owner: its todo, no way back', {pageOwner: null, noteOwner: loopA, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null}],
+    ['a note that belongs to nothing: the stored todo', {pageOwner: null, noteOwner: null, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null}],
+    ['nothing at all', {pageOwner: null, noteOwner: null, noteTodo: null, stored: null}, {owner: null, current: null, back: null, store: null}],
+  ])('%s', (_name, input, expected) => {
+    expect(decideOpening(input)).toEqual(expected);
   });
 });

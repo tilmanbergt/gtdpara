@@ -7,13 +7,16 @@
 - The **Engage** button in the sidebar of a note or document, next to the gtdpara button.
 - **Engage ›** at the top of a Project's or Area's page, a loop overview or a thread overview.
 
-The panel is about one **owner** at a time: a Project, an Area, a loop or a thread. Which one:
+The panel is about one **owner** at a time: a Project, an Area, a loop or a thread. Engage follows the note you are in:
 
 - **Engage ›** on a page: that page's Project, Area, loop or thread.
 - The Engage button on a todo's note (its own note, its page in a loop note, or its page in a shared notebook): that todo becomes the one you are working on; the owner is its loop, or else its Project or Area.
 - The Engage button on a meeting's note or page: the meeting's thread, or else its loop or its Project or Area.
-- Otherwise the owner of the todo you were last working on, then the Project or Area the note lies in.
+- On a loop note: the loop. On any other note in a Project's or Area's folder: that Project or Area.
+- On a note that belongs to none of them: the owner of the todo you were last working on.
 - Nothing fits: Engage shows today's focus to choose from (or this week's, when nothing is in today's focus).
+
+When Engage shows another owner than the one of the todo you were working on, a line under the header offers the way back, for example **↩ Garden renovation · Measure the beds**. Tap it to return to that todo. Once you choose a todo in the new place, it is the one you are working on and the line goes. After **Engage ›** there is no such line: you chose the owner yourself.
 
 ## Working on
 

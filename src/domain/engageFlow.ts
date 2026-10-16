@@ -4,7 +4,7 @@
  * successor. Nothing here suggests another owner on its own: the owner
  * changes only through `ownerChosen` (D14). Pure.
  */
-import {EngageOwner, EngageTodoKey, sameTodo} from './engageOwner';
+import {EngageOwner, EngageTodoKey, OwnedTodo, sameOwner, sameTodo} from './engageOwner';
 import {EngageOptions, FocusRing} from './engageOptions';
 import {Task} from './types';
 
@@ -59,10 +59,12 @@ export interface EngageState {
   ring: FocusRing;
   /** The options screen's tab; null until the first `dataChanged` after opening or choosing an owner picks it. */
   tab: EngageTab | null;
+  /** The way back to the stored current todo of another owner (Addendum "Engage follows the note"); one step only. */
+  back: OwnedTodo | null;
 }
 
 export type EngageEvent =
-  | {type: 'open'; owner: EngageOwner | null; current: EngageTodoKey | null; ring: FocusRing}
+  | {type: 'open'; owner: EngageOwner | null; current: EngageTodoKey | null; ring: FocusRing; back?: OwnedTodo | null}
   | {type: 'picked'; key: EngageTodoKey}
   | {type: 'acted'; ack: EngageAck}
   | {type: 'undone'}
@@ -73,6 +75,7 @@ export type EngageEvent =
   | {type: 'expandQuickAdd'}
   | {type: 'collapseQuickAdd'}
   | {type: 'selectTab'; tab: EngageTab}
+  | {type: 'goBack'}
   /**
    * The cache changed: the owner's options, the effective ring, how many
    * owners today's focus still has, the current todo found again
@@ -96,6 +99,7 @@ export const INITIAL_ENGAGE_STATE: EngageState = {
   ownerEmpty: false,
   ring: 'daily',
   tab: null,
+  back: null,
 };
 
 /** The owner's own screen: its options, or S8 when it is empty. */
@@ -114,9 +118,11 @@ export function engageFlow(state: EngageState, event: EngageEvent): EngageState 
         ownerEmpty: false,
         ring: event.ring,
         tab: null,
+        back: event.back ?? null,
       };
     case 'picked':
-      return {...state, current: event.key, ack: null};
+      // A todo chosen in this context becomes the stored one: the way back goes.
+      return {...state, current: event.key, ack: null, back: null};
     case 'acted':
       return {...state, ack: event.ack, current: sameTodo(state.current, event.ack.key) ? null : state.current};
     case 'undone':
@@ -129,16 +135,25 @@ export function engageFlow(state: EngageState, event: EngageEvent): EngageState 
     case 'back':
       return state.owner ? {...state, screen: ownerScreen(state)} : state;
     case 'ownerChosen':
-      return {...state, owner: event.owner, current: null, ack: null, ownerEmpty: false, screen: {kind: 'options'}, tab: null};
+      return {...state, owner: event.owner, current: null, ack: null, ownerEmpty: false, screen: {kind: 'options'}, tab: null, back: backAfterChoosing(state, event.owner)};
     case 'expandQuickAdd':
       return state.owner ? {...state, screen: {kind: 'quickAdd'}} : state;
     case 'collapseQuickAdd':
       return state.screen.kind === 'quickAdd' ? {...state, screen: ownerScreen(state)} : state;
     case 'selectTab':
       return {...state, tab: event.tab};
+    case 'goBack':
+      if (!state.back) return state;
+      return {...state, owner: state.back.owner, current: state.back.key, ack: null, ownerEmpty: false, screen: {kind: 'options'}, tab: null, back: null};
     case 'dataChanged':
       return onDataChanged(state, event);
   }
+}
+
+/** Choosing another owner keeps the todo you worked on reachable: the current one, else the way back already offered. */
+function backAfterChoosing(state: EngageState, owner: EngageOwner): OwnedTodo | null {
+  const back = state.owner && state.current ? {owner: state.owner, key: state.current} : state.back;
+  return back && !sameOwner(back.owner, owner) ? back : null;
 }
 
 function sameKey(a: EngageTodoKey | null, b: EngageTodoKey | null): boolean {

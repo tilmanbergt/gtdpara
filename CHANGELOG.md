@@ -17,8 +17,10 @@ or your project/area files are stored.
   actions of its project, area, loop or thread on two tabs, **Next** and **Plan**: choose what to
   work on from Next, make a plan todo a next action with **#next**; a project's only `#next`
   stands on top by itself. **Undo** after every action; **Select next focus ›** moves on to
-  another part of today's focus, only when you ask. On a todo's note, its page in a loop note or
-  in a shared notebook, that todo is the one you are working on. See the help page "Engage".
+  another part of today's focus, only when you ask. Engage follows the note you are in: on a
+  todo's note, its page in a loop note or in a shared notebook, that todo is the one you are
+  working on; on any other note of a project, area, loop or thread, that one is shown, and
+  **↩ …** takes you back to the todo you were working on. See the help page "Engage".
 - **Engage ›** at the top of a project's or area's page, a loop overview and a thread overview
   opens Engage for it.
 - **After Done**: when you tick off the last `#next` of a project, area, loop or thread on Daily,

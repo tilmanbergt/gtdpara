@@ -674,7 +674,8 @@ One reducer (`domain/engageFlow.ts`) decides every screen: options, owner empty,
 (today's or this week's owners in ring order), all done in today's focus, Quick Add. Writes go
 through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the current todo is
 per-profile app state in `settings.engageCurrent` (`storage/engageCurrent.ts`), found again by
-index and text. The panel sits on a transparent root, so the note stays visible; it keeps its
+index and text. Opening follows the note (`decideOpening`): "Engage ›" > the note page's todo > the
+note's owner > the stored todo's owner, with "↩" back to the stored todo of another owner. The panel sits on a transparent root, so the note stays visible; it keeps its
 largest height while open, because the A5 X does not reliably redraw the note where a panel
 shrank. After a Done on Daily, the Current tab or an overview, `ui/useEngagePrompt.ts` offers
 the owner's plan in the status slot when its last `#next` was done. Detail:

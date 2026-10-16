@@ -248,6 +248,26 @@ describe('EngageOverlay screens', () => {
     act(() => r.unmount());
   });
 
+  it('Engage follows the note: another project\'s note switches, "↩" goes back to the todo worked on', async () => {
+    area('Coaching', ['## Tasks', '- [ ] Draft agenda #next', '- [ ] Book room #next']);
+    area('Writing', ['## Tasks', '- [ ] Outline #next']);
+    mockSettings.current = {
+      ...mockSettings.current,
+      engageCurrent: {itemPath: COACHING, taskText: 'Book room #next', taskIndex: 1, owner: {kind: 'item', itemPath: COACHING}},
+    };
+    mockNote.path = `${AREAS}/Writing/Meetings/Ideas.note`;
+    const {r} = await open({via: 'button'});
+    expect(texts(r)).toContain('Writing');
+    expect(texts(r)).toContain('Next action');
+    expect(texts(r)).toContain('↩ Coaching · Book room');
+    await press(r, '↩ Coaching · Book room');
+    expect(texts(r)).toContain('Coaching');
+    expect(texts(r)).toContain('Working on');
+    expect(rendered(r)).toContain('Book room');
+    expect(texts(r).some(t => t.startsWith('↩'))).toBe(false);
+    act(() => r.unmount());
+  });
+
   it('S8: an empty owner → "Nothing left", Select next focus and Close as main action', async () => {
     area('Coaching', ['## Tasks', '- [x] Old one']);
     const {r} = await open({via: 'ownerPage', owner: {kind: 'item', itemPath: COACHING}});

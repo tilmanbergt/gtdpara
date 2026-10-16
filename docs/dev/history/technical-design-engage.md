@@ -378,6 +378,17 @@ Each step ends with `npm run check` green and is its own commit on `feature/enga
 
 Pure parts: `engageListsOf` (`domain/engageOptions.ts`) decides the Now box todo and the tab rows; the reducer keeps the tab (`selectTab`, and the switches of point 3 on `open`, `ownerChosen` and `dataChanged`).
 
+## Addendum: Engage follows the note
+
+**Decided (Tilman, after the tabs addendum).** Engage supports the context you are in right now. R2's order "owner of the current todo > owner of the open note" is reversed:
+
+1. **Opening order:** "Engage ›" on an owner page > the note page's todo (it becomes the current todo, R3) > the note's owner (meeting page → its thread/loop/item, loop note → the loop, a note in a Project/Area folder → the item) > the stored current todo's owner (only for notes that belong to nothing) > today's focus. This holds for nested contexts too: a general note in an Area's folder switches to the Area even while you work on a loop of that Area.
+2. **The way back:** when the panel opens on another owner than the one of the stored current todo, one quiet line under the header offers it: "↩ <owner> · <todo>". A tap switches back - that owner, that todo as "Working on". One step only: choosing a todo in the new context makes it the stored one, and the line goes. A note's own todo replaces the stored one in the same way, and the line then offers the todo it replaced.
+3. **No way back after "Engage ›"** - opening from an owner page is an explicit choice.
+4. **After "Select next focus"**: choosing another owner from the focus list keeps the stored current todo (it is no longer forgotten), so the back line offers it.
+
+Pure: `decideOpening` in `domain/engageOwner.ts`; the reducer keeps `back` (`open`, `ownerChosen`, `picked`, `goBack`).
+
 ## As built
 
 Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the Checkpoint B device test. Where the build differs from the sections above:
@@ -410,6 +421,8 @@ Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the C
 **Entry points (S6).** "Engage ›" on ItemDetail, on an active loop's overview, and on a thread overview whose owner is a Project or Area (not for `wf`/`owe` counterparts); a thread's owner is its scope owner.
 
 **Next and Plan tabs.** Built as in the addendum above. The tabs' `PagedSection` has an empty header line (the tabs name the list; the line carries the page arrows). A plan row is not tappable; its **#next** writes through `setTaskFlow` like every flow change. `OptionList.tsx` became `OptionTabs.tsx`.
+
+**Engage follows the note.** Built as in the addendum above: `decideOpening` (pure, table-tested) and `back` in the reducer (`open`, `ownerChosen`, `picked`, `goBack`); `screens/engage/BackLine.tsx` shows the line on the options and owner-empty screens. Choosing an owner from the focus list no longer forgets the stored current todo.
 
 **Sizes.** `App.tsx` 991 → 997 (one mode branch, the listener branch, the engage store subscription, the flash fix; the `captureNonce` comment was shortened to make room); `DailyView.tsx` 1537 → 1536.
 

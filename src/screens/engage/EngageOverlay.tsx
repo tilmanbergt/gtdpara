@@ -23,6 +23,7 @@ import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../../utils/screenRefresh';
 import AckLine from './AckLine';
+import BackLine from './BackLine';
 import Celebration from './Celebration';
 import EngageFooter from './EngageFooter';
 import EngageHeader from './EngageHeader';
@@ -120,10 +121,17 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
 
   const homeName = (o: EngageOwner) => source?.items.find(i => i.path === ownerHomePath(o))?.name ?? '';
 
+  // The stored current todo stays: it is the way back from the owner chosen here.
   const choose = (next: EngageOwner) => {
     log(`${NAME}: action`, 'owner', next.kind);
-    forget(next);
     dispatch({type: 'ownerChosen', owner: next});
+  };
+  const goBack = async () => {
+    const back = state.back;
+    if (!back) return;
+    log(`${NAME}: action`, 'back', back.owner.kind);
+    dispatch({type: 'goBack'});
+    await setEngageCurrent(back.owner, back.key);
   };
 
   const body = (): React.ReactNode => {
@@ -240,6 +248,9 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
             onBack={onFocusScreen && owner ? () => dispatch({type: 'back'}) : undefined}
             textColor={textColor}
           />
+          {view.back && (screen.kind === 'options' || screen.kind === 'ownerEmpty') ? (
+            <BackLine ownerName={view.back.ownerName} todo={view.back.todo} onPress={goBack} textColor={textColor} />
+          ) : null}
           {body()}
           <EngageFooter
             select={select}

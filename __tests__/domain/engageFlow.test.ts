@@ -117,6 +117,21 @@ describe('engageFlow state', () => {
     expect(engageFlow(state(S.options, {tab: 'plan'}), {type: 'selectTab', tab: 'next'}).tab).toBe('next');
     expect(engageFlow(state(S.options, {tab: 'plan'}), {type: 'ownerChosen', owner: OTHER}).tab).toBeNull();
   });
+  it('the way back: kept from open, offered after choosing another owner, gone after a pick, taken by goBack', () => {
+    const back = {owner: OTHER, key: {...KEY, itemPath: '/b'}};
+    const opened = engageFlow(state(S.options), {type: 'open', owner: OWNER, current: null, ring: 'daily', back});
+    expect(opened.back).toEqual(back);
+    expect(engageFlow(opened, {type: 'picked', key: KEY}).back).toBeNull();
+    const returned = engageFlow(opened, {type: 'goBack'});
+    expect(returned).toMatchObject({owner: OTHER, current: back.key, back: null, tab: null, screen: S.options});
+    // Choosing another owner from the focus list offers the todo worked on before.
+    const chosen = engageFlow(state(S.daily, {current: KEY}), {type: 'ownerChosen', owner: OTHER});
+    expect(chosen.back).toEqual({owner: OWNER, key: KEY});
+    // The way back already offered stays, unless it is the owner chosen now.
+    expect(engageFlow(state(S.daily, {back, current: null}), {type: 'ownerChosen', owner: OTHER}).back).toBeNull();
+    expect(engageFlow(state(S.daily, {back, current: null}), {type: 'ownerChosen', owner: {kind: 'item', itemPath: '/c'}}).back).toEqual(back);
+    expect(engageFlow(state(S.options), {type: 'goBack'})).toEqual(state(S.options));
+  });
   it('undone without an ack is a no-op', () => {
     const s = state(S.options);
     expect(engageFlow(s, {type: 'undone'})).toBe(s);

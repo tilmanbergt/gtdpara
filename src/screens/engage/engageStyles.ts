@@ -75,6 +75,11 @@ export const engageStyles = StyleSheet.create({
     fontSize: FONT.medium,
     fontWeight: '700',
   },
+  backLine: {
+    fontSize: FONT.small,
+    textDecorationLine: 'underline',
+    marginBottom: SPACING.sm,
+  },
   caption: {
     fontSize: FONT.small,
     fontWeight: '600',

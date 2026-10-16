@@ -1,12 +1,13 @@
 /**
  * The Engage panel's state (docs/dev/history/technical-design-engage.md §3.3,
  * §3.7): `useReducer` over domain/engageFlow.ts, the `open` event and the
- * `dataChanged` event from the cache. Opening resolves the owner in the
- * order of R2: "Engage ›" on an owner page > the note's todo (it becomes
- * current, R3) > the stored current todo's owner > the note's owner > none.
+ * `dataChanged` event from the cache. Opening follows the note
+ * (`decideOpening`, Addendum "Engage follows the note"): "Engage ›" > the
+ * note page's todo (it becomes current, R3) > the note's owner > the stored
+ * current todo's owner > none, with the way back to the stored todo.
  */
 import {useEffect, useMemo, useReducer, useState} from 'react';
-import {EngageOwner, EngageSource, EngageTodoKey, resolveTodoKey, sameOwner, todoKeyOf} from '../../domain/engageOwner';
+import {decideOpening, EngageOpening, EngageSource, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
 import {effectiveFocus, engageListsOf, optionsOf, ownersLeft} from '../../domain/engageOptions';
 import {engageFlow, EngageRequest, EngageState, INITIAL_ENGAGE_STATE} from '../../domain/engageFlow';
 import {GtdParaSettings, resolvePaths} from '../../domain/settings';
@@ -23,28 +24,18 @@ import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';
 
 
-interface Opening {
-  owner: EngageOwner | null;
-  current: EngageTodoKey | null;
-}
-
-async function resolveOpening(request: EngageRequest, source: EngageSource, settings: GtdParaSettings): Promise<Opening> {
+async function resolveOpening(request: EngageRequest, source: EngageSource, settings: GtdParaSettings): Promise<EngageOpening> {
   const stored = await getEngageCurrent();
   const storedRef = stored ? resolveTodoKey(stored.key, source) : null;
   if (stored && !storedRef) await setEngageCurrent(null, null);
-  const storedOpening = stored && storedRef ? {owner: stored.owner, current: todoKeyOf(storedRef)} : null;
+  const found = stored && storedRef ? {owner: stored.owner, key: todoKeyOf(storedRef)} : null;
 
-  if (request.via === 'ownerPage') {
-    const keep = storedOpening && sameOwner(storedOpening.owner, request.owner);
-    return {owner: request.owner, current: keep ? storedOpening.current : null};
-  }
+  if (request.via === 'ownerPage') return decideOpening({pageOwner: request.owner, noteOwner: null, noteTodo: null, stored: found});
   const [path, page] = await Promise.all([getCurrentNotePath(), getCurrentPageNum()]);
   const context = await noteContextOf(path, page, source, resolvePaths(settings));
-  if (context.owner && context.todo) {
-    await setEngageCurrent(context.owner, context.todo);
-    return {owner: context.owner, current: context.todo};
-  }
-  return storedOpening ?? {owner: context.owner, current: null};
+  const opening = decideOpening({pageOwner: null, noteOwner: context.owner, noteTodo: context.todo, stored: found});
+  if (opening.store) await setEngageCurrent(opening.store.owner, opening.store.key);
+  return opening;
 }
 
 export interface EngageFlow {
@@ -71,9 +62,9 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
       const opening = await resolveOpening(request, source, loaded);
       if (cancelled) return;
       setSettings(loaded);
-      dispatch({type: 'open', owner: opening.owner, current: opening.current, ring: effectiveFocus(source)});
+      dispatch({type: 'open', owner: opening.owner, current: opening.current, ring: effectiveFocus(source), back: opening.back});
       setOpened(true);
-      log('EngageOverlay: opened', 'owner=' + (opening.owner?.kind ?? 'none'), 'via=' + request.via, 'current=' + (opening.current ? 'yes' : 'no'));
+      log('EngageOverlay: opened', 'owner=' + (opening.owner?.kind ?? 'none'), 'via=' + request.via, 'current=' + (opening.current ? 'yes' : 'no'), 'back=' + (opening.back ? 'yes' : 'no'));
     })().catch(e => {
       logError('EngageOverlay: opening failed', errorMessage(e));
       if (!cancelled) setOpened(true);
