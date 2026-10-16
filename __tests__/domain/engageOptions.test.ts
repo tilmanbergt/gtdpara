@@ -1,6 +1,6 @@
 // docs/dev/history/technical-design-engage.md §3.2: options of an owner and the focus screens' owner lines.
 import {EngageItem, EngageSource} from '../../src/domain/engageOwner';
-import {effectiveFocus, focusOwnerLines, optionsOf, ownersLeft} from '../../src/domain/engageOptions';
+import {effectiveFocus, engageFlowText, focusOwnerLines, optionsOf, ownersLeft} from '../../src/domain/engageOptions';
 import {LoopLine} from '../../src/domain/loopsSection';
 import {ownerLineText} from '../../src/domain/engageText';
 import {item, meeting, task} from '../../test-helpers/fixtures';
@@ -88,5 +88,14 @@ describe('focus', () => {
     expect(lines).toEqual(['#sparring/anna', 'launch', 'Coaching', 'Solo']);
     const fromThread = focusOwnerLines('weekly', {kind: 'thread', scopeOwnerPath: '/elsewhere', tag: 'sparring/anna'}, s, NOW).map(l => l.name);
     expect(fromThread[0]).toBe('#sparring/anna');
+  });
+});
+
+describe('engageFlowText', () => {
+  it('picks, parks and removes #next; leaving #next drops #now', () => {
+    expect(engageFlowText('Brief #proj/launch', 'next')).toBe('Brief #proj/launch #next');
+    expect(engageFlowText('Brief #next #now', null)).toBe('Brief');
+    expect(engageFlowText('Brief #next', 'someday')).toBe('Brief #someday');
+    expect(engageFlowText('Brief #now #next', 'next')).toBe('Brief #now #next');
   });
 });

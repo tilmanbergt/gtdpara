@@ -27,9 +27,22 @@ import {
   todoKeyOf,
 } from './engageOwner';
 import {belongsToLoop, groupTodosByLoop} from './loops';
+import {setFlowStateTag, setNowTag} from './flowState';
 import {meetingEndMs} from './meetingTime';
 import {scopeOf, threadOf} from './threads';
 import {Task} from './types';
+
+/** The flow a todo is set to from the panel: picked (`#next`), Someday, or neither (Remove #next). */
+export type EngageFlowChoice = 'next' | 'someday' | null;
+
+/**
+ * A todo's text with its flow set to `flow`, through `setFlowStateTag`.
+ * Leaving `#next` also drops `#now`, which is only ever layered on top of it.
+ */
+export function engageFlowText(text: string, flow: EngageFlowChoice): string {
+  const withFlow = setFlowStateTag(text, flow);
+  return flow === 'next' ? withFlow : setNowTag(withFlow, false);
+}
 
 export interface EngageOptions {
   /** Open `#next` (or `#now`) todos, file order. */

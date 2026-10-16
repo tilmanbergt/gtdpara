@@ -3,7 +3,9 @@
  * Quick Add (docs/dev/history/technical-design-tending-threads.md §3.5.3,
  * docs/dev/history/technical-design-engage.md §3.6): add, edit,
  * delete (cancel) and quick-file todos and meetings, tick todos done, the
- * prep/review icon, notes and linked files. The same write paths Daily uses:
+ * prep/review icon, notes and linked files; for the Engage panel also the
+ * flow of a todo (`setTaskFlow`), Done with an undo record and Undo. The same
+ * write paths Daily uses:
  * storage/itemMutations.ts (`mutateEntryTasks`/`mutateEntryMeetings` on the
  * entry's full-array index), domain/taskEdit.ts, storage/entryMove.ts for
  * quick-file, ui/useEditTarget.ts for the one edit target.
@@ -12,10 +14,13 @@ import {useEffect, useState} from 'react';
 import {Keyboard} from 'react-native';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination, destinationLabel} from '../domain/destination';
+import {EngageFlowChoice, engageFlowText} from '../domain/engageOptions';
+import {UndoRecord} from '../domain/engageFlow';
+import {ENGAGE_NOTICE} from '../domain/engageText';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {todayIso} from '../domain/meetingTime';
 import {GtdParaSettings} from '../domain/settings';
-import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
+import {withTaskCancelled, withTaskDone, withTaskText} from '../domain/taskEdit';
 import {Meeting, Task} from '../domain/types';
 import {getCachedData, setCachedInbox} from '../storage/dataCache';
 import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
@@ -44,7 +49,6 @@ import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 
-const LOG = 'ThreadOverview';
 
 /** The row open in Quick Add's edit mode: `<item path>#<index>`. */
 export interface EntryEditKey {
@@ -55,7 +59,9 @@ export interface EntryEditKey {
 export const taskEntryKey = (e: ThreadTaskEntry) => `${e.item.path}#${e.taskIndex}`;
 export const meetingEntryKey = (e: ThreadMeetingEntry) => `${e.item.path}#${e.meetingIndex}`;
 
-export function useEntryActions() {
+/** `name`: the log prefix and status-slot id prefix of the screen using it. */
+export function useEntryActions(name = 'ThreadOverview') {
+  const LOG = name;
   const inbox = useCachedInbox();
   const paths = getCachedData()?.paths ?? null;
   const inboxPath = paths?.inboxFolder ?? null;
@@ -64,7 +70,7 @@ export function useEntryActions() {
     loadSettings()
       .then(setSettings)
       .catch(e => logError(`${LOG}: loading settings failed`, errorMessage(e)));
-  }, []);
+  }, [LOG]);
   const confirmNoteCreate = useNoteCreateConfirm(`${LOG}.noteCreateConfirm`);
   const moveUi = useEntryMoveUi(LOG);
   const edit = useEditTarget<EntryEditKey>();
@@ -97,6 +103,47 @@ export function useEntryActions() {
     rowAction.run(async () => {
       await saveTasks(entry, tasks => {
         tasks[entry.taskIndex] = withTaskDone(tasks[entry.taskIndex], !tasks[entry.taskIndex].done, todayIso());
+        return tasks;
+      });
+      requestEinkRefresh();
+    });
+
+  /** Changes one task through the write path and returns what Undo needs, or null when the write failed. */
+  const changeTask = async (entry: ThreadTaskEntry, change: (task: Task) => Task): Promise<UndoRecord | null> => {
+    let undo: UndoRecord | null = null;
+    await rowAction.run(async () => {
+      await saveTasks(entry, tasks => {
+        const before = tasks[entry.taskIndex];
+        const after = change(before);
+        tasks[entry.taskIndex] = after;
+        undo = {itemPath: entry.item.path, taskIndex: entry.taskIndex, before, afterText: after.text};
+        return tasks;
+      });
+      requestEinkRefresh();
+    });
+    return undo;
+  };
+
+  /** Engage's pick, Remove #next and Someday (docs/dev/history/technical-design-engage.md §3.6). */
+  const setTaskFlow = (entry: ThreadTaskEntry, flow: EngageFlowChoice) =>
+    changeTask(entry, task => withTaskText(task, engageFlowText(task.text, flow)));
+
+  /** Engage's Done: ticks the task done and keeps what Undo needs. */
+  const completeTask = (entry: ThreadTaskEntry) => changeTask(entry, task => withTaskDone(task, true, todayIso()));
+
+  /**
+   * Writes the task as it was before `record`'s change back at the same
+   * index - only while that index still holds the changed text; otherwise the
+   * status slot says so and nothing is written. Resolves true when undone.
+   */
+  const undoTask = (record: UndoRecord): Promise<boolean> =>
+    rowAction.runSave(async () => {
+      const item = getCachedData()?.items.find(i => i.path === record.itemPath);
+      const current = item?.tasks[record.taskIndex];
+      if (!item || !current || current.text !== record.afterText) throw new Error(ENGAGE_NOTICE.undoStale);
+      const entry: ThreadTaskEntry = {item: {kind: item.kind, name: item.name, path: item.path, abbrev: item.abbrev}, taskIndex: record.taskIndex, task: current};
+      await saveTasks(entry, tasks => {
+        tasks[record.taskIndex] = record.before;
         return tasks;
       });
       requestEinkRefresh();
@@ -210,6 +257,9 @@ export function useEntryActions() {
     addTask,
     addMeeting,
     toggleDone,
+    setTaskFlow,
+    completeTask,
+    undoTask,
     commitTaskEdit,
     commitMeetingEdit,
     cancelEntry,

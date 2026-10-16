@@ -6,6 +6,7 @@
  */
 import {INBOX_FILE_NAME} from './types';
 import type {LegacyTagRule, MigrationReport} from './noteSetupMigration';
+import type {EngageOwner, EngageTodoKey} from './engageOwner';
 import type {NoteSetup, NoteSetupDefaults} from './noteSetups';
 import {ReviewStepsMap} from './reviewSteps';
 
@@ -80,6 +81,13 @@ export interface GtdParaSettings {
    * App.tsx's onEnterFocusMode/onExitFocusMode.
    */
   focusModeActive: boolean;
+  /**
+   * The Engage panel's current todo and its owner
+   * (docs/dev/history/technical-design-engage.md §3.5, D7): per-profile UI
+   * state, found again by index and text and dropped silently when it no
+   * longer matches. Written only by storage/engageCurrent.ts.
+   */
+  engageCurrent: (EngageTodoKey & {owner: EngageOwner}) | null;
   /**
    * Note setups (docs/dev/history/technical-design-note-setups.md §3.2): one
    * per thing tracked - tags, kind, where notes go, tracking, own page
@@ -208,6 +216,7 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   hideDoneInboxTasks: false,
   googleCalendarIcsUrl: '',
   focusModeActive: false,
+  engageCurrent: null,
   noteSetups: [],
   noteSetupDefaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}, notebook: null},
   nextNoteSetupId: 1,
