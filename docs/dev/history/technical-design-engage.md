@@ -364,6 +364,39 @@ Each step ends with `npm run check` green and is its own commit on `feature/enga
 - **S0 results**: transparency of the plugin view, current page detection, a second sidebar button.
 - Stage 2 (focus on loops/threads, daily focus that can add): its own design after living with stage 1.
 
+## As built
+
+Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the Checkpoint B device test. Where the build differs from the sections above:
+
+**Device facts (S0, Checkpoint B).**
+- A second sidebar button works; the note stays visible around a panel on a transparent root (`ENGAGE_BACKDROP_TRANSPARENT = true`); `getCurrentFilePath` and `getCurrentPageNum` (0-based) are right on notes, shared notebook pages and PDFs; `closePluginView` brings the note back.
+- Over the transparent root the A5 X can keep showing the previous panel after a change: taps arrived and the state changed, but the display did not (Quick Add seemed dead; the stale footer's buttons had nothing behind them). The panel therefore never shrinks while it is open (it keeps its largest measured height), the footer stays on every screen, and every screen change calls `requestEinkRefresh()`. Presses and the panel height are logged (`EngageOverlay: press`, `EngageOverlay: screen`).
+- While the panel was hidden, pressing the gtdpara button showed it for a moment before `reorient()` landed: the gtdpara branch now switches `mode` from `engage` to `tabs` at once.
+
+**Domain (§3.2, §3.3).**
+- `EngageTodoRef` is `{item, taskIndex, task}`, the thread overview's entry shape, so `useEntryActions` takes it unchanged.
+- The reducer keeps no `planPage`: the page lives in `PagedSection` (no second pager). It keeps `ownerEmpty` and `ring` from the last `dataChanged`, whose event also carries the current todo as found again (`resolveTodoKey`; null drops it, D7). `EngageRequest` (button or owner page) lives in `domain/engageFlow.ts`.
+- `ownerEmpty` → `options` when the owner gets a todo again (Quick Add, Undo) - the reverse of the S8 transition.
+- The plan is offered only when no `#next` is left, the one in the Now box included.
+- Marks belong to a Project or Area, never to a loop or thread: the marks line counts the owner's item and names it ("n marks to process in Coaching ›").
+
+**Opening (§3.4, R2/R3).** Order: "Engage ›" (keeps the stored current todo only when it belongs to that owner) > the note page's open todo (it becomes current and is stored) > the stored current todo's owner > the note's owner (meeting page, loop note, enclosing item) > none. A cold start through the Engage button skips `reorient()`'s cache refresh, so the panel builds the cache when there is none.
+
+**Writes (§3.6).**
+- `setTaskFlow` uses `withTaskText(task, engageFlowText(text, flow))`, which keeps the trailing fields; leaving `#next` also drops `#now`.
+- Done is `completeTask` (returns the undo record); Undo of every action writes the earlier task back at its index, after checking the index still holds the changed text. For Done this equals toggling back.
+- `taskNote` resolves true only when a note really opened (not cancelled in the confirm); `openTaskFile` opens a linked file.
+
+**The Now box and picking (S5b, decided with Tilman after Checkpoint B).**
+- The Now box shows a details line - due date ("overdue"), or Waiting For with its counterpart and follow-up date, and the meeting it was agreed in; no created date - plus **Note ›** / **+ Note** (the one note flow with its confirm) and **File: <name> ›** for a linked file. Opening either closes the panel.
+- Picking a row only makes it the current todo (a plan todo still gets `#next`, D8); it no longer opens the note. Appendix A screen 3 ("picking opens its note") is replaced by the Now box's Note ›.
+
+**R5 (§3.8).** `useEngagePrompt` is called from Daily's done handler (not focus mode's), the Current tab's `TodosSection` and `useEntryActions.toggleDone`; not from the Inbox (no owner) or the Review (decided with Tilman: deciding, not doing). Its pick writes through `mutateEntryTasks` + `domain/taskEdit.ts`, because `useEntryActions` itself uses the prompt. The decision is pure: `nextPromptOf` in `domain/engageOptions.ts`.
+
+**Entry points (S6).** "Engage ›" on ItemDetail, on an active loop's overview, and on a thread overview whose owner is a Project or Area (not for `wf`/`owe` counterparts); a thread's owner is its scope owner.
+
+**Sizes.** `App.tsx` 991 → 997 (one mode branch, the listener branch, the engage store subscription, the flash fix; the `captureNonce` comment was shortened to make room); `DailyView.tsx` 1537 → 1536.
+
 ## Appendix A. Screens S1-S11 (approved UI draft)
 1. **Owner page, "Engage ›"** (Project, Area, loop, thread page): opens Engage with that owner as current owner.
 2. **Engage next**: header (kind, name, area, ✕), the owner's `#next` todos only, collapsed Quick Add, footer (Open gtdpara · Close).

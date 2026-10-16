@@ -12,7 +12,7 @@ You can also simply create a folder yourself - in the Supernote's file manager o
 
 Tapping a project or area opens it on the **Current** tab:
 
-- **Header**: name, kind and the abbreviation (tap to change it)
+- **Header**: name, kind and the abbreviation (tap to change it); **Engage ›** opens [Engage](engage.md) for this project or area
 - **Scope**: one to three sentences about what this project or area is about. Tap to edit.
 - **Focus**: daily, weekly and monthly focus, each with an optional goal for the week or month
 - **Status**: Active, On Hold, Done (projects only) - and Close out… or Archive…

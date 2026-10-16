@@ -10,6 +10,20 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Engage**: a second sidebar button, **Engage**, opens a small panel over the note you work in.
+  It shows the todo you are working on - with its due date or Waiting For, **Done**, **Remove
+  #next** or **Someday**, **Note ›** (or **+ Note**) and **File: name ›** - and the other next
+  actions of its project, area, loop or thread. When no `#next` is left, it offers the plan to
+  pick from, five at a time. **Undo** after every action; **Select next focus ›** moves on to
+  another part of today's focus, only when you ask. On a todo's note, its page in a loop note or
+  in a shared notebook, that todo is the one you are working on. See the help page "Engage".
+- **Engage ›** at the top of a project's or area's page, a loop overview and a thread overview
+  opens Engage for it.
+- **After Done**: when you tick off the last `#next` of a project, area, loop or thread on Daily,
+  the Current tab or an overview, the status line offers up to three todos of its plan to make
+  the next one, or **Later**.
+
 ## [0.15.0] — 2026-10-16
 
 ### New
