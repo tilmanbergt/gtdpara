@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-10-16
+
 ### New
 - **`{name}` and `{abbr}` in note names**: the name or abbreviation of the Project or Area the
   item belongs to, for notebooks and loop notes - `{abbr} {tag} {subtag} {year}` gives
