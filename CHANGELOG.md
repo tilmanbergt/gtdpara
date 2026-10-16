@@ -12,7 +12,7 @@ or your project/area files are stored.
 
 ### New
 - **Engage**: a second sidebar button, **Engage**, opens a small panel over the note you work in.
-  It shows the todo you are working on - with its due date or Waiting For, **Done**, **Remove
+  It shows the todo you are working on - with its due date or Waiting For, a large **✓** to tick it off, **Remove
   #next** or **Someday**, **Note ›** (or **+ Note**) and **File: name ›** - and the other next
   actions of its project, area, loop or thread on two tabs, **Next** and **Plan**: choose what to
   work on from Next, make a plan todo a next action with **#next**; a project's only `#next`

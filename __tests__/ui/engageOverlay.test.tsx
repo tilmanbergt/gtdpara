@@ -156,7 +156,12 @@ describe('EngageOverlay screens', () => {
     expect(rendered(r)).not.toContain('Plan dinner');
     expect(mockSettings.current.engageCurrent).toMatchObject({taskIndex: 0, owner: {kind: 'loop', tag: 'workshop/offsite'}});
 
-    await press(r, 'Done');
+    // The Now box's Done is the large check box on the right.
+    const done = r.root.findAll(n => n.props.accessibilityLabel === 'Done' && typeof n.props.onPress === 'function');
+    expect(done.length).toBeGreaterThan(0); // the Pressable and its host view
+    expect(r.root.findAll(n => n.props.label === 'Done')).toHaveLength(0);
+    await act(async () => done[0].props.onPress());
+    await settle();
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [x] Book room');
     // The only #next left moves up as "Next action"; the empty Next tab gives way to Plan.
     expect(texts(r)).toContain('Next action');

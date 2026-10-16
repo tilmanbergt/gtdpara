@@ -93,6 +93,28 @@ export const engageStyles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
+  nowRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  nowMain: {
+    flex: 1,
+  },
+  // The Now box's Done: one large check box on the right (FONT.large in a 56 dp square).
+  doneBox: {
+    width: 56,
+    height: 56,
+    marginLeft: SPACING.md,
+    borderWidth: 2,
+    borderRadius: RADII.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneMark: {
+    fontSize: FONT.large,
+    fontWeight: '700',
+    includeFontPadding: false,
+  },
   nowTitle: {
     fontSize: FONT.medium,
     fontWeight: '700',

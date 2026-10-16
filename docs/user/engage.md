@@ -23,7 +23,7 @@ When Engage shows another owner than the one of the todo you were working on, a 
 The todo you are working on stands at the top under **Working on**. When you haven't chosen one and the owner has exactly one `#next`, that one stands there as **Next action** - usually a project has just one next action. With several `#next` and none chosen, Engage says **Pick your next action below.**
 
 - A line with what matters about it: the due date (with "overdue"), or for a Waiting For who you are waiting for and when to follow up, and the meeting it was agreed in.
-- **Done** ticks it off. **Remove #next** takes `#next` away (it goes back to the plan). For a todo without `#next`, the button is **Someday** instead.
+- The large **✓** on the right ticks it off. **Remove #next** takes `#next` away (it goes back to the plan). For a todo without `#next`, the button is **Someday** instead.
 - **Note ›** opens its note, or its page in a loop note or a shared notebook. Without a note, **+ Note** creates one the usual way: the status line first asks where it goes, and nothing is created without your confirmation.
 - **File: name ›** opens the file linked to it, for example a PDF.
 
