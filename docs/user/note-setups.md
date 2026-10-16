@@ -59,7 +59,7 @@ Left, the page as it will look, with its background; tap a piece to select it. R
   - **Title** of the item; tags are written as words without `#` (`Retro demand retro/demand`), the tags gtdpara uses itself (`#next`, `#wf/anna` …) are left out
   - **Date & title** (Meeting and First page): the date with the year and the title, `30.9.2026 · Retro demand retro/demand`; for a loop its main date and name
   - **Date** and **Time** (Meeting page)
-  - **Related items**: open todos and meetings that share a tag with the item
+  - **Related items**: open todos and meetings that share a tag with the item - a tag about what it is about, like `#garden` or `#retro/alpha`; `#next`, `#now`, `#someday`, `#maybe` and Waiting For don't count
   - **Linked file**: a link to the file linked to the item
   - **Since last time** (Meeting page), see below
   - your own **texts**: **+ New text** writes one, for example "Agenda" or "Decisions"; **Edit** changes it. Deleting a text that is on the page asks first.

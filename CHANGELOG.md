@@ -24,6 +24,12 @@ or your project/area files are stored.
   the Current tab or an overview, the status line offers up to three todos of its plan to make
   the next one, or **Later**.
 
+### Fixed
+- **Related items on a note** listed every `#next` todo when the note's todo had `#next` (the
+  same for `#now`, `#someday`, `#maybe` and Waiting For): only tags about what an item is about,
+  like `#garden` or `#retro/alpha`, relate items now. A note that is still updated when it is
+  opened shows the right list the next time you open it.
+
 ## [0.15.0] — 2026-10-16
 
 ### New
