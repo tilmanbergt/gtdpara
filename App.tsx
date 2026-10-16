@@ -22,6 +22,7 @@ import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
 import EngageOverlay from './src/screens/engage/EngageOverlay';
 import {setOpenMarksHandler} from './src/ui/marksNav';
+import {getEngageRequest, requestEngage, subscribeEngage} from './src/ui/engageStore';
 import {MarkScope} from './src/domain/marks';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {logStaleBuilds} from './src/supernote/pluginRuntime';
@@ -242,10 +243,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // flight knows not to clobber a capture screen a button event just routed
   // us to - see the race explained just above registerButtonListener below.
   const routedByLassoButtonRef = useRef(false);
-  // The same guard for the Engage button; its nonce remounts the panel per press
-  // (docs/dev/history/technical-design-engage.md §3.8).
+  // The same guard for the Engage button; every Engage request (button or
+  // "Engage ›") opens a fresh panel (docs/dev/history/technical-design-engage.md §3.8).
   const routedByEngageButtonRef = useRef(false);
-  const [engageNonce, setEngageNonce] = useState(0);
+  const engage = useSyncExternalStore(subscribeEngage, getEngageRequest);
+  useEffect(() => {
+    if (engage.nonce > 0) setMode('engage');
+  }, [engage.nonce]);
 
   // Whether we've landed on *something* (tabs or capture) at least once.
   // Only relevant to the reorient() catch block below: a failed *first*
@@ -443,6 +447,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           log('App: sidebar button pressed - reorienting');
           routedByLassoButtonRef.current = false;
           routedByEngageButtonRef.current = false;
+          setMode(m => (m === 'engage' ? 'tabs' : m)); // the hidden panel must not show while reorient() runs
           reorient();
         } else if (event?.id === LASSO_BUTTON_ID) {
           log('App: lasso button pressed - opening capture screen');
@@ -453,7 +458,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           setMode('capture');
         } else if (event?.id === ENGAGE_BUTTON_ID) {
           routedByEngageButtonRef.current = true;
-          setEngageNonce(n => n + 1);
+          requestEngage({via: 'button'});
           hasLandedRef.current = true;
           setMode('engage');
         }
@@ -780,12 +785,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setMode('capture');
   };
   const exitCapture = () => {
-    setMode('tabs');
+    setMode(captureRequest.source === 'marks' && captureRequest.returnTo === 'engage' ? 'engage' : 'tabs');
     requestEinkRefresh();
   };
 
   // The Engage panel over the note (docs/dev/history/technical-design-engage.md §3.8).
-  if (mode === 'engage') return <EngageOverlay key={engageNonce} request={{via: 'button'}} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} />;
+  if (mode === 'engage') return <EngageOverlay key={engage.nonce} request={engage.request} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} />;
 
   if (mode === 'capture') {
     // The lasso-capture overlay gets the status slot at its top too (D11).

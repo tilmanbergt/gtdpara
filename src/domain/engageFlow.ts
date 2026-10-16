@@ -8,6 +8,9 @@ import {EngageOwner, EngageTodoKey, sameTodo} from './engageOwner';
 import {EngageOptions, FocusRing} from './engageOptions';
 import {Task} from './types';
 
+/** How the panel was opened: the sidebar button (from the open note) or "Engage ›" on an owner page. */
+export type EngageRequest = {via: 'button'} | {via: 'ownerPage'; owner: EngageOwner};
+
 export type EngageScreen =
   /** S2/S4/S5/S6: the owner's `#next`, or its plan when no `#next` is left. */
   | {kind: 'options'}

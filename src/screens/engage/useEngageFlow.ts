@@ -8,7 +8,7 @@
 import {useEffect, useMemo, useReducer, useState} from 'react';
 import {EngageOwner, EngageSource, EngageTodoKey, resolveTodoKey, sameOwner, todoKeyOf} from '../../domain/engageOwner';
 import {effectiveFocus, optionsOf, ownersLeft} from '../../domain/engageOptions';
-import {engageFlow, EngageState, INITIAL_ENGAGE_STATE} from '../../domain/engageFlow';
+import {engageFlow, EngageRequest, EngageState, INITIAL_ENGAGE_STATE} from '../../domain/engageFlow';
 import {GtdParaSettings, resolvePaths} from '../../domain/settings';
 import {getCachedData, rebuildCache} from '../../storage/dataCache';
 import {engageSourceOf} from '../../storage/engageAggregate';
@@ -22,8 +22,6 @@ import {useCachedItems} from '../../ui/useCachedItems';
 import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';
 
-/** How the panel was opened: the sidebar button (from the open note) or "Engage ›" on an owner page. */
-export type EngageRequest = {via: 'button'} | {via: 'ownerPage'; owner: EngageOwner};
 
 interface Opening {
   owner: EngageOwner | null;

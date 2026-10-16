@@ -60,6 +60,7 @@ import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import App from '../../App';
 import {ENGAGE_BUTTON_ID, SIDEBAR_BUTTON_ID} from '../../src/domain/buttonIds';
+import {engageOwner} from '../../src/ui/engageStore';
 import {log} from '../../src/utils/log';
 
 const texts = (r: TestRenderer.ReactTestRenderer) => r.root.findAllByType(Text).map(t => [t.props.children].flat().join(''));
@@ -92,10 +93,30 @@ describe('App with the Engage button', () => {
     await act(async () => close.props.onPress());
     expect(mockClosePluginView).toHaveBeenCalledTimes(1);
 
-    await act(async () => mockButtons.press!({id: SIDEBAR_BUTTON_ID}));
-    await settle();
+    // The gtdpara button leaves the hidden panel at once, before reorient() finishes.
+    act(() => mockButtons.press!({id: SIDEBAR_BUTTON_ID}));
     expect(texts(r)).not.toContain('Engage next');
+    await settle();
     expect(texts(r)).toContain('Daily'); // the TabBar: back in the tab shell
+    act(() => r.unmount());
+  });
+
+  it('opens for an owner through the store ("Engage ›") and Open gtdpara goes to the tabs', async () => {
+    let r!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      r = TestRenderer.create(<App />);
+    });
+    await settle();
+    expect(texts(r)).toContain('Daily');
+    await act(async () => engageOwner({kind: 'item', itemPath: '/storage/emulated/0/Note/1 Projects/Website'}));
+    await settle();
+    expect(texts(r)).toContain('Open gtdpara');
+    expect(texts(r)).not.toContain('Daily');
+    expect(log).toHaveBeenCalledWith('EngageOverlay: opened', 'owner=item', 'via=ownerPage', 'current=no');
+    const open = r.root.findAll(n => n.props.label === 'Open gtdpara' && typeof n.props.onPress === 'function')[0];
+    await act(async () => open.props.onPress());
+    await settle();
+    expect(texts(r)).toContain('Daily');
     act(() => r.unmount());
   });
 });

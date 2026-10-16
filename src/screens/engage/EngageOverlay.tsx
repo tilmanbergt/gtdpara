@@ -8,7 +8,7 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
-import {EngageAck} from '../../domain/engageFlow';
+import {EngageAck, EngageRequest} from '../../domain/engageFlow';
 import {EngageFlowChoice} from '../../domain/engageOptions';
 import {EngageOwner, EngageSource, EngageTodoRef, ownerHomePath, todoKeyOf} from '../../domain/engageOwner';
 import {ENGAGE_TEXT} from '../../domain/engageText';
@@ -32,7 +32,7 @@ import NowBox from './NowBox';
 import OptionList from './OptionList';
 import OwnerEmpty from './OwnerEmpty';
 import OwnerList from './OwnerList';
-import {EngageRequest, useEngageFlow} from './useEngageFlow';
+import {useEngageFlow} from './useEngageFlow';
 import {useEngageView} from './useEngageView';
 
 const NAME = 'EngageOverlay';

@@ -61,7 +61,7 @@ import TestRenderer, {act} from 'react-test-renderer';
 import {DEFAULT_SETTINGS} from '../../src/domain/settings';
 import {createNoteSetup} from '../../src/domain/noteSetups';
 import EngageOverlay from '../../src/screens/engage/EngageOverlay';
-import {EngageRequest} from '../../src/screens/engage/useEngageFlow';
+import {EngageRequest} from '../../src/domain/engageFlow';
 import {clearCachedData} from '../../src/storage/dataCache';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
 
