@@ -28,6 +28,7 @@ export const ENGAGE_TEXT = {
   allDone: "All done in today's focus.",
   openGtdpara: 'Open gtdpara',
   close: 'Close',
+  cancel: 'Cancel',
   back: '‹ Back',
 } as const;
 

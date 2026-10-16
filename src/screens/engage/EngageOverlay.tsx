@@ -9,7 +9,7 @@ import React from 'react';
 import {Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {EngageAck, EngageRequest} from '../../domain/engageFlow';
-import {EngageFlowChoice} from '../../domain/engageOptions';
+import {EngageFlowChoice, isNextTask} from '../../domain/engageOptions';
 import {EngageOwner, EngageSource, EngageTodoRef, ownerHomePath, todoKeyOf} from '../../domain/engageOwner';
 import {ENGAGE_TEXT} from '../../domain/engageText';
 import {setEngageCurrent} from '../../storage/engageCurrent';
@@ -153,6 +153,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
                 owner={owner}
                 next={options.next}
                 plan={options.plan}
+                currentIsNext={current !== null && isNextTask(current.task)}
                 onPick={pick}
                 onSomeday={todo => act(todo, 'someday', false)}
                 textColor={textColor}
@@ -163,7 +164,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
             {destination ? (
               <CollapsedQuickAdd
                 label={ENGAGE_TEXT.quickAdd}
-                cancelLabel={ENGAGE_TEXT.close}
+                cancelLabel={ENGAGE_TEXT.cancel}
                 expanded={screen.kind === 'quickAdd'}
                 onExpand={() => dispatch({type: 'expandQuickAdd'})}
                 onCollapse={() => dispatch({type: 'collapseQuickAdd'})}

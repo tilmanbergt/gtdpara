@@ -151,6 +151,16 @@ describe('EngageOverlay screens', () => {
     act(() => r.unmount());
   });
 
+  it('S4: the Now box holds the only #next → no plan offered under it', async () => {
+    area('Coaching', ['## Tasks', '- [ ] Book room #next → [[Todos/Book room.note]]', '- [ ] Plan dinner']);
+    mockNote.path = `${COACHING}/Todos/Book room.note`;
+    const {r} = await open({via: 'button'});
+    expect(texts(r)).toContain('Working on');
+    expect(texts(r)).not.toContain('No next action left. Pick one from the plan:');
+    expect(rendered(r)).not.toContain('Plan dinner');
+    act(() => r.unmount());
+  });
+
   it('S6: no #next left → the plan with Someday; a pick adds #next and makes it current', async () => {
     area('Coaching', ['## Tasks', '- [ ] Plan dinner', '- [ ] Call caterer', '- [ ] Later thing #someday']);
     const {r} = await open({via: 'ownerPage', owner: {kind: 'item', itemPath: COACHING}});

@@ -1,7 +1,8 @@
 /**
  * The owner's options (S2/S4/S5 `#next`, S6 the plan,
  * docs/dev/history/technical-design-engage.md §3.7): one PagedSection with
- * room for five rows; the plan rows carry Someday.
+ * room for five rows; the plan rows carry Someday. The plan shows only when
+ * no `#next` is left, the one in the Now box included (D16).
  */
 import React from 'react';
 import {EngageOwner, EngageTodoRef, ownerKey} from '../../domain/engageOwner';
@@ -14,6 +15,8 @@ interface Props {
   owner: EngageOwner;
   next: EngageTodoRef[];
   plan: EngageTodoRef[];
+  /** The Now box holds a `#next` todo: the owner still has its next action. */
+  currentIsNext: boolean;
   onPick: (todo: EngageTodoRef) => void;
   onSomeday: (todo: EngageTodoRef) => void;
   textColor: string;
@@ -22,8 +25,8 @@ interface Props {
 
 const rowKey = (todo: EngageTodoRef) => `${todo.item.path}#${todo.taskIndex}`;
 
-export default function OptionList({owner, next, plan, onPick, onSomeday, textColor, borderColor}: Props): React.JSX.Element {
-  const showPlan = next.length === 0;
+export default function OptionList({owner, next, plan, currentIsNext, onPick, onSomeday, textColor, borderColor}: Props): React.JSX.Element {
+  const showPlan = next.length === 0 && !currentIsNext;
   const rows = showPlan ? plan : next;
   return (
     <PagedSection
