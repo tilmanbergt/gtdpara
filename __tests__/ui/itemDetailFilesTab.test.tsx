@@ -144,6 +144,8 @@ async function filesOf(r: TestRenderer.ReactTestRenderer): Promise<{top: string[
 describe('one Files tab on the Project/Area page', () => {
   it('an Area: Threads · Projects · Files, with Area · Resources', async () => {
     const r = await openPage('Areas', /^Home /);
+    // The header carries "Engage ›" for this Area (docs/dev/history/technical-design-engage.md §3.7).
+    expect(r.root.findAll(n => n.props.label === 'Engage ›' && n.props.owner === undefined && typeof n.props.onPress === 'function')).toHaveLength(1);
     expect(await filesOf(r)).toEqual({top: ['Threads', 'Projects', 'Files'], places: ['Area', 'Resources'], active: 'project'});
     act(() => r.unmount());
   });

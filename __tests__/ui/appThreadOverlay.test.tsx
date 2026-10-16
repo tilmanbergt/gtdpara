@@ -242,4 +242,15 @@ describe('tap routing in a row', () => {
     });
     expect(r.root.findAll(n => typeof n.props.onPress === 'function' && n.props.children === '#alpha')).toHaveLength(0);
   });
+
+  it('"Engage ›" opens the Engage panel with the thread as owner (docs/dev/history/technical-design-engage.md §3.7)', async () => {
+    const r = await renderApp();
+    await act(async () => openOverview({tag: 'retro/alpha', ownerPath: AREA}));
+    await settle();
+    await pressText(r, 'Engage ›');
+    await settle();
+    expect(texts(r)).toContain('Thread');
+    expect(texts(r)).toContain('Open gtdpara');
+    act(() => r.unmount());
+  });
 });
