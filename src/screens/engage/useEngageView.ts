@@ -4,13 +4,14 @@
  * `focusOwnerLines` over the cache. Decides nothing about screens.
  */
 import {useMemo} from 'react';
-import {EngageSource, EngageTodoRef, ownerTitle, OwnerTitle, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
-import {EngageOptions, focusItems, focusOwnerLines, optionsOf, OwnerLine} from '../../domain/engageOptions';
+import {EngageSource, ownerTitle, OwnerTitle, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
+import {EngageLists, EngageOptions, engageListsOf, focusItems, focusOwnerLines, optionsOf, OwnerLine} from '../../domain/engageOptions';
 import {EngageState} from '../../domain/engageFlow';
 
 export interface EngageView {
-  currentTodo: EngageTodoRef | null;
   options: EngageOptions | null;
+  /** The Now box todo and the tabs' rows; null without an owner. */
+  lists: EngageLists | null;
   title: OwnerTitle | null;
   /** The focus screen's owner lines (S9/S11). */
   lines: OwnerLine[];
@@ -20,13 +21,14 @@ export interface EngageView {
 
 export function useEngageView(state: EngageState, source: EngageSource | null): EngageView {
   return useMemo(() => {
-    if (!source) return {currentTodo: null, options: null, title: null, lines: [], focusNames: []};
+    if (!source) return {options: null, lists: null, title: null, lines: [], focusNames: []};
     const nowMs = Date.now();
     const currentTodo = state.current ? resolveTodoKey(state.current, source) : null;
     const {owner, screen} = state;
+    const options = owner ? optionsOf(owner, source, nowMs, currentTodo ? todoKeyOf(currentTodo) : null) : null;
     return {
-      currentTodo,
-      options: owner ? optionsOf(owner, source, nowMs, currentTodo ? todoKeyOf(currentTodo) : null) : null,
+      options,
+      lists: options ? engageListsOf(options, currentTodo) : null,
       title: owner ? ownerTitle(owner, source) : null,
       lines: screen.kind === 'selectFocus' ? focusOwnerLines(screen.ring, owner, source, nowMs) : [],
       focusNames: screen.kind === 'focusDone' ? focusItems('daily', source).map(item => item.name) : [],

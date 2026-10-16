@@ -12,7 +12,7 @@ import {Task} from './types';
 export type EngageRequest = {via: 'button'} | {via: 'ownerPage'; owner: EngageOwner};
 
 export type EngageScreen =
-  /** S2/S4/S5/S6: the owner's `#next`, or its plan when no `#next` is left. */
+  /** S2/S4/S5/S6: the Now box and the Next · Plan tabs (Addendum "Next and Plan tabs"). */
   | {kind: 'options'}
   /** S8: nothing left in the owner. */
   | {kind: 'ownerEmpty'}
@@ -33,8 +33,12 @@ export interface UndoRecord {
   afterText: string;
 }
 
+/** The options screen's tabs. */
+export type EngageTab = 'next' | 'plan';
+
 export interface EngageAck {
-  kind: 'done' | 'someday' | 'unnext';
+  /** Done, Someday, Remove #next, or #next from the Plan tab. */
+  kind: 'done' | 'someday' | 'unnext' | 'next';
   /** The todo's title for the ack line. */
   text: string;
   /** The todo acted on. */
@@ -53,6 +57,8 @@ export interface EngageState {
   ownerEmpty: boolean;
   /** From the last `dataChanged`: today's focus if any, else this week's. */
   ring: FocusRing;
+  /** The options screen's tab; null until the first `dataChanged` after opening or choosing an owner picks it. */
+  tab: EngageTab | null;
 }
 
 export type EngageEvent =
@@ -66,12 +72,21 @@ export type EngageEvent =
   | {type: 'ownerChosen'; owner: EngageOwner}
   | {type: 'expandQuickAdd'}
   | {type: 'collapseQuickAdd'}
+  | {type: 'selectTab'; tab: EngageTab}
   /**
    * The cache changed: the owner's options, the effective ring, how many
-   * owners today's focus still has, and the current todo found again
-   * (`resolveTodoKey`; null when it is gone, D7).
+   * owners today's focus still has, the current todo found again
+   * (`resolveTodoKey`; null when it is gone, D7), and how many rows the Next
+   * tab lists (`engageListsOf`).
    */
-  | {type: 'dataChanged'; options: EngageOptions | null; ring: FocusRing; dailyLeft: number; current: EngageTodoKey | null};
+  | {
+      type: 'dataChanged';
+      options: EngageOptions | null;
+      ring: FocusRing;
+      dailyLeft: number;
+      current: EngageTodoKey | null;
+      nextRows: number;
+    };
 
 export const INITIAL_ENGAGE_STATE: EngageState = {
   owner: null,
@@ -80,6 +95,7 @@ export const INITIAL_ENGAGE_STATE: EngageState = {
   ack: null,
   ownerEmpty: false,
   ring: 'daily',
+  tab: null,
 };
 
 /** The owner's own screen: its options, or S8 when it is empty. */
@@ -97,6 +113,7 @@ export function engageFlow(state: EngageState, event: EngageEvent): EngageState 
         ack: null,
         ownerEmpty: false,
         ring: event.ring,
+        tab: null,
       };
     case 'picked':
       return {...state, current: event.key, ack: null};
@@ -112,11 +129,13 @@ export function engageFlow(state: EngageState, event: EngageEvent): EngageState 
     case 'back':
       return state.owner ? {...state, screen: ownerScreen(state)} : state;
     case 'ownerChosen':
-      return {...state, owner: event.owner, current: null, ack: null, ownerEmpty: false, screen: {kind: 'options'}};
+      return {...state, owner: event.owner, current: null, ack: null, ownerEmpty: false, screen: {kind: 'options'}, tab: null};
     case 'expandQuickAdd':
       return state.owner ? {...state, screen: {kind: 'quickAdd'}} : state;
     case 'collapseQuickAdd':
       return state.screen.kind === 'quickAdd' ? {...state, screen: ownerScreen(state)} : state;
+    case 'selectTab':
+      return {...state, tab: event.tab};
     case 'dataChanged':
       return onDataChanged(state, event);
   }
@@ -131,7 +150,9 @@ function onDataChanged(state: EngageState, event: Extract<EngageEvent, {type: 'd
   const ownerEmpty = event.options?.ownerEmpty ?? false;
   // The same key keeps its object, so a hook that reacts to `current` doesn't run again for nothing.
   const current = sameKey(state.current, event.current) ? state.current : event.current;
-  const next = {...state, ownerEmpty, ring: event.ring, current};
+  // Next when it lists anything, else Plan; an empty Next always gives way to Plan. Adding #next from Plan doesn't switch.
+  const tab: EngageTab | null = state.tab === null || state.tab === 'next' ? (event.nextRows > 0 ? 'next' : 'plan') : state.tab;
+  const next = {...state, ownerEmpty, ring: event.ring, current, tab};
   const focusDone = event.ring === 'daily' && event.dailyLeft === 0;
   switch (state.screen.kind) {
     case 'options':

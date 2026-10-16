@@ -1,6 +1,7 @@
 /**
  * The current todo (S4, docs/dev/history/technical-design-engage.md §3.7):
- * "Working on", its title, a details line (due date or Waiting For with its
+ * "Working on" - or "Next action" for the owner's only `#next` shown without
+ * being chosen (Addendum "Next and Plan tabs") - its title, a details line (due date or Waiting For with its
  * follow-up, the meeting it was agreed in), Done and - with `#next` - Remove
  * #next, without it Someday (D11), then its note (Note › / + Note through
  * the one note flow) and its linked file ("File: <name> ›").
@@ -18,6 +19,7 @@ import {ENGAGE_TEXT_WIDTH, engageStyles as styles} from './engageStyles';
 
 interface Props {
   todo: EngageTodoRef;
+  caption: string;
   onDone: () => void;
   onRemoveNext: () => void;
   onSomeday: () => void;
@@ -27,7 +29,7 @@ interface Props {
   borderColor: string;
 }
 
-export default function NowBox({todo, onDone, onRemoveNext, onSomeday, onNote, onFile, textColor, borderColor}: Props): React.JSX.Element {
+export default function NowBox({todo, caption, onDone, onRemoveNext, onSomeday, onNote, onFile, textColor, borderColor}: Props): React.JSX.Element {
   const today = todayIso();
   const layout = taskRowLayout(todo.task, ENGAGE_TEXT_WIDTH, 'flat', false, today);
   // Due and Waiting For are spelled out on the details line, so the title keeps only #next/#now.
@@ -37,7 +39,7 @@ export default function NowBox({todo, onDone, onRemoveNext, onSomeday, onNote, o
   const file = todo.task.linkedFile;
   return (
     <View style={[styles.nowBox, {borderColor: textColor}]}>
-      <Text style={[styles.caption, {color: textColor}]}>{ENGAGE_TEXT.workingOn}</Text>
+      <Text style={[styles.caption, {color: textColor}]}>{caption}</Text>
       <Text style={[styles.nowTitle, {color: textColor}]} numberOfLines={2}>
         {layout.title}
         <TaskLabels labels={labels} />

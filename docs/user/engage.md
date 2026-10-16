@@ -17,7 +17,7 @@ The panel is about one **owner** at a time: a Project, an Area, a loop or a thre
 
 ## Working on
 
-The todo you are working on stands at the top under **Working on**:
+The todo you are working on stands at the top under **Working on**. When you haven't chosen one and the owner has exactly one `#next`, that one stands there as **Next action** - usually a project has just one next action. With several `#next` and none chosen, Engage says **Pick your next action below.**
 
 - A line with what matters about it: the due date (with "overdue"), or for a Waiting For who you are waiting for and when to follow up, and the meeting it was agreed in.
 - **Done** ticks it off. **Remove #next** takes `#next` away (it goes back to the plan). For a todo without `#next`, the button is **Someday** instead.
@@ -26,13 +26,16 @@ The todo you are working on stands at the top under **Working on**:
 
 Opening the note or the file closes the panel: the note is in front now.
 
-## Next actions and the plan
+## Next and Plan
 
-Below come the owner's other `#next` todos, five per page. Tap one to work on it instead: it moves up to **Working on**.
+Below are two tabs, each with how many todos it lists, five per page:
 
-When no `#next` is left, Engage says **No next action left. Pick one from the plan:** and lists the owner's todos without a flow state, in the order of the file. Tap one to work on it: it gets `#next`. **Someday** on a row parks it. Waiting For, Someday and Maybe todos are never offered.
+- **Next**: the owner's other `#next` todos. Tap one to work on it: it moves up to **Working on**. **Remove #next** on a row sends it back to the plan.
+- **Plan**: the owner's todos without a flow state, in the order of the file. **#next** on a row makes it a next action - it stays where it is, so you can mark several; then choose the one to work on under **Next**. **Someday** on a row parks it.
 
-After Done, Remove #next or Someday, a line shows what happened, with **Undo**. Undo puts the todo back as it was, as long as the panel is open and the todo was not changed elsewhere.
+Engage opens on **Next** when it lists anything, otherwise on **Plan**, and it switches to **Plan** whenever **Next** runs empty. Waiting For, Someday and Maybe todos are never offered.
+
+After Done, Remove #next, #next or Someday, a line shows what happened, with **Undo**. Undo puts the todo back as it was, as long as the panel is open and the todo was not changed elsewhere.
 
 ## When the owner is finished
 

@@ -1,6 +1,6 @@
 // docs/dev/history/technical-design-engage.md §3.2: options of an owner and the focus screens' owner lines.
 import {EngageItem, EngageSource} from '../../src/domain/engageOwner';
-import {effectiveFocus, engageFlowText, focusOwnerLines, nextPromptOf, optionsOf, ownersLeft} from '../../src/domain/engageOptions';
+import {effectiveFocus, engageFlowText, engageListsOf, focusOwnerLines, nextPromptOf, optionsOf, ownersLeft} from '../../src/domain/engageOptions';
 import {LoopLine} from '../../src/domain/loopsSection';
 import {ownerLineText} from '../../src/domain/engageText';
 import {item, meeting, task} from '../../test-helpers/fixtures';
@@ -122,5 +122,29 @@ describe('nextPromptOf (R5)', () => {
     const noPlan = {...loopItem, tasks: [task('Brief #proj/launch #next', {done: true})]};
     expect(nextPromptOf(loopItem.path, {tags: ['proj/launch']}, src([noPlan]), NOW)).toBeNull();
     expect(nextPromptOf('/nowhere', {tags: []}, src([loopItem]), NOW)).toBeNull();
+  });
+});
+
+describe('engageListsOf (Next and Plan tabs)', () => {
+  const owner = item('project', 'Garden', {tasks: [task('Measure #next'), task('Dig #next'), task('Buy soil'), task('Call #next')]});
+  const o = {kind: 'item' as const, itemPath: owner.path};
+  it('the current todo is in the Now box; the other #next fill the Next tab', () => {
+    const current = {item: {kind: 'project' as const, name: 'Garden', path: owner.path, abbrev: null}, taskIndex: 1, task: owner.tasks[1]};
+    const lists = engageListsOf(optionsOf(o, src([owner]), NOW, {itemPath: owner.path, taskText: 'Dig #next', taskIndex: 1}), current);
+    expect(lists.nowKind).toBe('current');
+    expect(texts(lists.next)).toEqual(['Measure #next', 'Call #next']);
+    expect(texts(lists.plan)).toEqual(['Buy soil']);
+  });
+  it('several #next and nothing chosen: no Now box', () => {
+    const lists = engageListsOf(optionsOf(o, src([owner]), NOW), null);
+    expect(lists.nowTodo).toBeNull();
+    expect(lists.next).toHaveLength(3);
+  });
+  it('a single #next moves up into the Now box, the Next tab is empty', () => {
+    const single = {...owner, tasks: [task('Measure #next'), task('Buy soil')]};
+    const lists = engageListsOf(optionsOf(o, src([single]), NOW), null);
+    expect(lists.nowKind).toBe('single');
+    expect(lists.nowTodo?.task.text).toBe('Measure #next');
+    expect(lists.next).toEqual([]);
   });
 });

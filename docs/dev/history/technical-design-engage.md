@@ -364,6 +364,20 @@ Each step ends with `npm run check` green and is its own commit on `feature/enga
 - **S0 results**: transparency of the plugin view, current page detection, a second sidebar button.
 - Stage 2 (focus on loops/threads, daily focus that can add): its own design after living with stage 1.
 
+## Addendum: Next and Plan tabs
+
+**Decided (Tilman, after the Checkpoint B device test).** Following Allen's guidance of usually one next action per project, the options screen changes; D16 ("the plan only when no `#next` is left") is replaced:
+
+1. **Now box.** It shows the todo you are working on. Without one, an owner with exactly **one** `#next` shows that one there, captioned "Next action" (promoted automatically, also when Remove #next leaves a single `#next`). With several `#next` and nothing chosen there is no Now box, only the line "Pick your next action below." The promoted todo is shown, not stored as the current todo.
+2. **Mini tabs Next · Plan** (`ui/MiniTabs`) under it, with counts of the rows each tab lists (`Next 2`, `Plan 7`); a Someday tab may follow later. Each tab is one `PagedSection` of five rows.
+   - **Next:** the other `#next` todos (the Now box todo is never listed twice). Tapping a row makes it the todo you work on. Each row has **Remove #next**.
+   - **Plan:** open todos without a flow state, file order. Each row has **#next** (adds `#next`, the todo stays where it is - two clear steps: #next, then choose it under Next) and **Someday**. A row tap does nothing.
+3. **Which tab.** On opening (and on choosing another owner): Next when it lists anything, else Plan. Whenever the Next tab runs empty, the panel switches to Plan. Adding `#next` from Plan does not switch. The tab is not remembered: every opening starts fresh.
+4. **Same model for every owner** (Project, Area, loop, thread).
+5. Undo covers `#next` from Plan ("Now #next: … · Undo"). The separate "No next action left. Pick one from the plan:" view is gone - it is the Plan tab.
+
+Pure parts: `engageListsOf` (`domain/engageOptions.ts`) decides the Now box todo and the tab rows; the reducer keeps the tab (`selectTab`, and the switches of point 3 on `open`, `ownerChosen` and `dataChanged`).
+
 ## As built
 
 Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the Checkpoint B device test. Where the build differs from the sections above:
@@ -394,6 +408,8 @@ Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the C
 **R5 (§3.8).** `useEngagePrompt` is called from Daily's done handler (not focus mode's), the Current tab's `TodosSection` and `useEntryActions.toggleDone`; not from the Inbox (no owner) or the Review (decided with Tilman: deciding, not doing). Its pick writes through `mutateEntryTasks` + `domain/taskEdit.ts`, because `useEntryActions` itself uses the prompt. The decision is pure: `nextPromptOf` in `domain/engageOptions.ts`.
 
 **Entry points (S6).** "Engage ›" on ItemDetail, on an active loop's overview, and on a thread overview whose owner is a Project or Area (not for `wf`/`owe` counterparts); a thread's owner is its scope owner.
+
+**Next and Plan tabs.** Built as in the addendum above. The tabs' `PagedSection` has an empty header line (the tabs name the list; the line carries the page arrows). A plan row is not tappable; its **#next** writes through `setTaskFlow` like every flow change. `OptionList.tsx` became `OptionTabs.tsx`.
 
 **Sizes.** `App.tsx` 991 → 997 (one mode branch, the listener branch, the engage store subscription, the flash fix; the `captureNonce` comment was shortened to make room); `DailyView.tsx` 1537 → 1536.
 

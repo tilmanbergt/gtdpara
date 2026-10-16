@@ -666,9 +666,10 @@ layout around the `#now` tasks; reopening the plugin lands back in it until it i
 
 **Engage** (`mode: 'engage'`, `screens/engage/`) is the doing step over the note, next to focus
 mode and independent of it (`#now` is untouched). One owner at a time - a Project/Area, a loop or
-a thread (`domain/engageOwner.ts`) - with its current todo (the Now box: details, Done, Remove
-#next or Someday, Note ›/+ Note, File ›) and its `#next` todos; the plan (todos without a flow
-state, file order) only when no `#next` is left, five rows per page (`domain/engageOptions.ts`).
+a thread (`domain/engageOwner.ts`) - with the Now box (the current todo, else the owner's only
+`#next`: details, Done, Remove #next or Someday, Note ›/+ Note, File ›) and two tabs, Next (the
+other `#next` todos, chosen to work on) and Plan (todos without a flow state, file order, made
+`#next` from there), five rows per page (`domain/engageOptions.ts` `engageListsOf`).
 One reducer (`domain/engageFlow.ts`) decides every screen: options, owner empty, select focus
 (today's or this week's owners in ring order), all done in today's focus, Quick Add. Writes go
 through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the current todo is

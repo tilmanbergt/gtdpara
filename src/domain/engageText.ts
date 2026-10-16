@@ -13,11 +13,15 @@ export const ENGAGE_TEXT = {
   ownerButton: 'Engage ›',
   heading: 'Engage next',
   workingOn: 'Working on',
+  nextAction: 'Next action',
+  pickBelow: 'Pick your next action below.',
+  makeNext: '#next',
+  noOtherNext: 'No other next action.',
+  emptyPlan: 'Nothing in the plan.',
   done: 'Done',
   removeNext: 'Remove #next',
   someday: 'Someday',
   undo: 'Undo',
-  planIntro: 'No next action left. Pick one from the plan:',
   nothingToPick: 'Nothing to pick right now.',
   closeLoop: 'Close loop…',
   addTodo: '+ Add todo',
@@ -43,8 +47,22 @@ export function nothingLeftText(ownerName: string): string {
 }
 
 /** The ack line's verb for each action (S5). */
-export function ackLabel(kind: 'done' | 'someday' | 'unnext'): string {
-  return kind === 'done' ? 'Done:' : kind === 'someday' ? 'Someday:' : 'No longer #next:';
+export function ackLabel(kind: 'done' | 'someday' | 'unnext' | 'next'): string {
+  switch (kind) {
+    case 'done':
+      return 'Done:';
+    case 'someday':
+      return 'Someday:';
+    case 'unnext':
+      return 'No longer #next:';
+    case 'next':
+      return 'Now #next:';
+  }
+}
+
+/** The options screen's tab labels, with the rows each lists. */
+export function tabLabel(tab: 'next' | 'plan', rows: number): string {
+  return `${tab === 'next' ? 'Next' : 'Plan'} ${rows}`;
 }
 
 /** The marks line (S6/S8): marks belong to a Project or Area, so it names that item; empty for none. */

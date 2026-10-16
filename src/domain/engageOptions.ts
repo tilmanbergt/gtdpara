@@ -176,3 +176,22 @@ export function nextPromptOf(itemPath: string, doneTask: Pick<Task, 'tags'>, sou
   if (next.length > 0 || plan.length === 0) return null;
   return {owner, candidates: plan.slice(0, PROMPT_CANDIDATES)};
 }
+
+/** What the options screen shows (Addendum "Next and Plan tabs"): the Now box todo and the two tabs' rows. */
+export interface EngageLists {
+  /** The Now box todo: the current one, else the owner's only `#next`; null otherwise. */
+  nowTodo: EngageTodoRef | null;
+  /** 'current' (stored, you work on it) or 'single' (shown because it is the only `#next`). */
+  nowKind: 'current' | 'single' | null;
+  /** The Next tab: `#next` todos other than the Now box todo. */
+  next: EngageTodoRef[];
+  /** The Plan tab. */
+  plan: EngageTodoRef[];
+}
+
+/** `options` (current todo already left out) with the current todo resolved; a single `#next` moves up into the Now box. */
+export function engageListsOf(options: EngageOptions, current: EngageTodoRef | null): EngageLists {
+  if (current) return {nowTodo: current, nowKind: 'current', next: options.next, plan: options.plan};
+  if (options.next.length === 1) return {nowTodo: options.next[0], nowKind: 'single', next: [], plan: options.plan};
+  return {nowTodo: null, nowKind: null, next: options.next, plan: options.plan};
+}

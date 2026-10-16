@@ -137,7 +137,7 @@ beforeEach(() => {
 });
 
 describe('EngageOverlay screens', () => {
-  it('S4/S5: the note\'s todo in the Now box; Done shows the ack line, Undo brings it back', async () => {
+  it('S4/S5: the note\'s todo is worked on; the other #next under Next; Done shows the ack line, Undo brings it back', async () => {
     area('Coaching', [
       '## Tasks',
       '- [ ] Book room #workshop/offsite #next → [[Todos/Book room.note]]',
@@ -151,15 +151,17 @@ describe('EngageOverlay screens', () => {
     const {r} = await open({via: 'button'});
     expect(texts(r)).toContain('Loop');
     expect(texts(r)).toContain('Working on');
-    expect(rendered(r)).toContain('Book room');
-    expect(texts(r)).toContain('Engage next');
+    expect(texts(r)).toEqual(expect.arrayContaining(['Next 1', 'Plan 1']));
     expect(rendered(r)).toContain('Draft agenda');
     expect(rendered(r)).not.toContain('Plan dinner');
     expect(mockSettings.current.engageCurrent).toMatchObject({taskIndex: 0, owner: {kind: 'loop', tag: 'workshop/offsite'}});
 
     await press(r, 'Done');
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [x] Book room');
-    expect(texts(r)).not.toContain('Working on');
+    // The only #next left moves up as "Next action"; the empty Next tab gives way to Plan.
+    expect(texts(r)).toContain('Next action');
+    expect(texts(r)).toEqual(expect.arrayContaining(['Next 0', 'Plan 1']));
+    expect(rendered(r)).toContain('Plan dinner');
     expect(rendered(r)).toContain('Done:');
     expect(mockSettings.current.engageCurrent).toBeNull();
 
@@ -194,37 +196,55 @@ describe('EngageOverlay screens', () => {
     act(() => r.unmount());
   });
 
-  it('Now box without a note offers + Note', async () => {
-    area('Coaching', ['## Tasks', '- [ ] Plan dinner #next']);
+  it('several #next and nothing chosen: "Pick your next action below"; a tap works on it, offering + Note', async () => {
+    area('Coaching', ['## Tasks', '- [ ] Plan dinner #next', '- [ ] Call caterer #next', '- [ ] Book band']);
     const {r} = await open({via: 'ownerPage', owner: {kind: 'item', itemPath: COACHING}});
+    expect(texts(r)).toContain('Pick your next action below.');
+    expect(texts(r)).toEqual(expect.arrayContaining(['Next 2', 'Plan 1']));
     await press(r, 'Plan dinner');
     expect(texts(r)).toContain('Working on');
     expect(texts(r)).toContain('+ Note');
+    expect(texts(r)).toContain('Next 1');
+    expect(mockSettings.current.engageCurrent).toMatchObject({taskText: 'Plan dinner #next'});
     act(() => r.unmount());
   });
 
-  it('S4: the Now box holds the only #next → no plan offered under it', async () => {
-    area('Coaching', ['## Tasks', '- [ ] Book room #next → [[Todos/Book room.note]]', '- [ ] Plan dinner']);
-    mockNote.path = `${COACHING}/Todos/Book room.note`;
-    const {r} = await open({via: 'button'});
-    expect(texts(r)).toContain('Working on');
-    expect(texts(r)).not.toContain('No next action left. Pick one from the plan:');
-    expect(rendered(r)).not.toContain('Plan dinner');
-    act(() => r.unmount());
-  });
-
-  it('S6: no #next left → the plan with Someday; a pick adds #next and makes it current', async () => {
-    area('Coaching', ['## Tasks', '- [ ] Plan dinner', '- [ ] Call caterer', '- [ ] Later thing #someday']);
+  it('Remove #next on a Next row sends it to the plan', async () => {
+    area('Coaching', ['## Tasks', '- [ ] Plan dinner #next', '- [ ] Call caterer #next', '- [ ] Book band #next']);
     const {r} = await open({via: 'ownerPage', owner: {kind: 'item', itemPath: COACHING}});
-    expect(texts(r)).toContain('Area');
-    expect(texts(r)).toContain('No next action left. Pick one from the plan:');
-    expect(rendered(r)).not.toContain('Later thing');
-    expect(r.root.findAll(n => n.props.label === 'Someday' && typeof n.props.onPress === 'function')).toHaveLength(2);
+    const remove = r.root.findAll(n => n.props.label === 'Remove #next' && typeof n.props.onPress === 'function');
+    expect(remove).toHaveLength(3);
+    await act(async () => remove[1].props.onPress());
+    await settle();
+    expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [ ] Call caterer\n');
+    expect(texts(r)).toEqual(expect.arrayContaining(['Next 2', 'Plan 1']));
+    act(() => r.unmount());
+  });
 
-    await press(r, 'Call caterer');
+  it('no #next: the Plan tab; "#next" marks a todo without switching or choosing it, Someday parks it', async () => {
+    area('Coaching', ['## Tasks', '- [ ] Plan dinner', '- [ ] Call caterer', '- [ ] Book band', '- [ ] Later thing #someday']);
+    const {r} = await open({via: 'ownerPage', owner: {kind: 'item', itemPath: COACHING}});
+    expect(texts(r)).toEqual(expect.arrayContaining(['Next 0', 'Plan 3']));
+    expect(texts(r)).not.toContain('Pick your next action below.');
+    expect(rendered(r)).not.toContain('Later thing');
+
+    const make = r.root.findAll(n => n.props.label === '#next' && typeof n.props.onPress === 'function');
+    await act(async () => make[1].props.onPress());
+    await settle();
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [ ] Call caterer #next');
-    expect(texts(r)).toContain('Working on');
-    expect(mockSettings.current.engageCurrent).toMatchObject({taskText: 'Call caterer #next'});
+    expect(rendered(r)).toContain('Now #next:');
+    // The only #next is shown as "Next action", not chosen; the Plan tab stays.
+    expect(texts(r)).toContain('Next action');
+    expect(texts(r)).toEqual(expect.arrayContaining(['Next 0', 'Plan 2']));
+    expect(mockSettings.current.engageCurrent).toBeNull();
+
+    const someday = r.root.findAll(n => n.props.label === 'Someday' && typeof n.props.onPress === 'function');
+    await act(async () => someday[someday.length - 1].props.onPress());
+    await settle();
+    expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [ ] Book band #someday');
+
+    await press(r, 'Next 0');
+    expect(texts(r)).toContain('No other next action.');
     act(() => r.unmount());
   });
 
@@ -247,7 +267,7 @@ describe('EngageOverlay screens', () => {
     expect(texts(r)).toContain("Today's focus");
     expect(texts(r)).toEqual(expect.arrayContaining(['Area · Coaching · 1 next ›', 'Area · Writing · pick next ›']));
     await press(r, 'Area · Writing · pick next ›');
-    expect(texts(r)).toContain('No next action left. Pick one from the plan:');
+    expect(texts(r)).toEqual(expect.arrayContaining(['Next 0', 'Plan 1']));
     act(() => r.unmount());
   });
 

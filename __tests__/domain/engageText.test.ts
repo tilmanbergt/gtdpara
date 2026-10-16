@@ -1,5 +1,5 @@
 // docs/dev/history/technical-design-engage.md §3.12: the panel's texts.
-import {ackLabel, linkedFileButtonText, marksLineText, noNextPromptText, nothingLeftText, nowDetailsText, ownerLineText, promptTodoLabel} from '../../src/domain/engageText';
+import {ackLabel, linkedFileButtonText, marksLineText, noNextPromptText, nothingLeftText, nowDetailsText, ownerLineText, promptTodoLabel, tabLabel} from '../../src/domain/engageText';
 import {task} from '../../test-helpers/fixtures';
 
 describe('engageText', () => {
@@ -15,7 +15,9 @@ describe('engageText', () => {
   it('signals and acks', () => {
     expect(nothingLeftText('launch')).toBe('Nothing left in launch.');
     expect(noNextPromptText('Website')).toBe('Website has no next action. Pick one:');
-    expect(['done', 'someday', 'unnext'].map(k => ackLabel(k as 'done'))).toEqual(['Done:', 'Someday:', 'No longer #next:']);
+    expect(['done', 'someday', 'unnext', 'next'].map(k => ackLabel(k as 'done'))).toEqual(['Done:', 'Someday:', 'No longer #next:', 'Now #next:']);
+    expect(tabLabel('next', 2)).toBe('Next 2');
+    expect(tabLabel('plan', 0)).toBe('Plan 0');
   });
 
   it('Now box details: due (overdue), waiting for with follow-up, agreed in; nothing when none is set', () => {

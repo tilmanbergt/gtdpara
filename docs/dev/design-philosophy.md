@@ -95,8 +95,9 @@ Within the working day, the rhythm is picking and working through a small set:
   straight to it.
 
 **Engage: one at a time, in the owner you chose.** Engage is the doing step while you work in a
-note: one owner at a time - a Project, an Area, a loop or a thread - with the todo you are on and
-its `#next` todos; its plan appears only when no `#next` is left. It never moves on to another
+note: one owner at a time - a Project, an Area, a loop or a thread - with the todo you are on, or
+its one next action, on top. Its other `#next` todos and its plan are a tab apart; a plan todo
+becomes a next action only by your tap, and only a next action can be the one you work on. It never moves on to another
 owner by itself; "Select next focus" lists today's focus only when asked, and after a Done
 elsewhere in the app the one offer is a pick from that same owner's plan. One tap in, one or two
 taps to decide, and the panel is gone - the note is where the work happens.

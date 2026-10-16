@@ -9,7 +9,7 @@ import React, {useEffect, useState} from 'react';
 import {LayoutChangeEvent, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {EngageAck, EngageRequest} from '../../domain/engageFlow';
-import {EngageFlowChoice, isNextTask} from '../../domain/engageOptions';
+import {EngageFlowChoice} from '../../domain/engageOptions';
 import {EngageOwner, EngageSource, EngageTodoRef, ownerHomePath, todoKeyOf} from '../../domain/engageOwner';
 import {ENGAGE_TEXT} from '../../domain/engageText';
 import {setEngageCurrent} from '../../storage/engageCurrent';
@@ -29,7 +29,7 @@ import EngageHeader from './EngageHeader';
 import {ENGAGE_BACKDROP_TRANSPARENT, ENGAGE_TEXT_WIDTH, engageStyles as styles} from './engageStyles';
 import MarksLine from './MarksLine';
 import NowBox from './NowBox';
-import OptionList from './OptionList';
+import OptionTabs from './OptionTabs';
 import OwnerEmpty from './OwnerEmpty';
 import OwnerList from './OwnerList';
 import {useEngageFlow} from './useEngageFlow';
@@ -75,7 +75,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
     requestEinkRefresh();
     // Logged and refreshed per screen; the height is read, not a trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen.kind, ack === null]);
+  }, [screen.kind, ack === null, state.tab]);
   const press = (what: string, run: () => void) => {
     log(`${NAME}: press`, what);
     run();
@@ -85,7 +85,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
 
   const act = async (todo: EngageTodoRef, kind: EngageAck['kind'], wasCurrent: boolean) => {
     log(`${NAME}: action`, kind);
-    const flow: EngageFlowChoice = kind === 'someday' ? 'someday' : null;
+    const flow: EngageFlowChoice = kind === 'someday' ? 'someday' : kind === 'next' ? 'next' : null;
     const undo = kind === 'done' ? await actions.completeTask(todo) : await actions.setTaskFlow(todo, flow);
     if (!undo) return;
     dispatch({type: 'acted', ack: {kind, text: titleOf(todo), key: todoKeyOf(todo), wasCurrent, undo}});
@@ -100,15 +100,10 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
     if (ack.wasCurrent && owner) await setEngageCurrent(owner, ack.key);
   };
 
+  /** A Next row: work on it (only `#next` todos can be chosen; a plan todo first gets #next). */
   const pick = async (todo: EngageTodoRef) => {
     log(`${NAME}: action`, 'pick');
-    let key = todoKeyOf(todo);
-    if (todo.task.flowState !== 'next' && !todo.task.now) {
-      const changed = await actions.setTaskFlow(todo, 'next');
-      if (!changed) return;
-      key = {...key, taskText: changed.afterText};
-    }
-    // Picking only makes the todo current; its note and file are in the Now box.
+    const key = todoKeyOf(todo);
     dispatch({type: 'picked', key});
     if (owner) await setEngageCurrent(owner, key);
   };
@@ -162,36 +157,45 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
       case 'options': {
         if (!owner) return null;
         const destination = destinationOf(owner, source);
-        const options = view.options;
-        const current = view.currentTodo;
+        const lists = view.lists;
+        const nowTodo = lists?.nowTodo ?? null;
+        const isCurrent = lists?.nowKind === 'current';
+        const tab = state.tab ?? 'next';
         return (
           <>
-            {current && screen.kind === 'options' ? (
+            {nowTodo && screen.kind === 'options' ? (
               <NowBox
-                todo={current}
-                onDone={() => act(current, 'done', true)}
-                onRemoveNext={() => act(current, 'unnext', true)}
-                onSomeday={() => act(current, 'someday', true)}
-                onNote={() => openNote(current)}
+                todo={nowTodo}
+                caption={isCurrent ? ENGAGE_TEXT.workingOn : ENGAGE_TEXT.nextAction}
+                onDone={() => act(nowTodo, 'done', isCurrent)}
+                onRemoveNext={() => act(nowTodo, 'unnext', isCurrent)}
+                onSomeday={() => act(nowTodo, 'someday', isCurrent)}
+                onNote={() => openNote(nowTodo)}
                 onFile={openFile}
                 textColor={textColor}
                 borderColor={borderColor}
               />
             ) : null}
+            {!nowTodo && screen.kind === 'options' && lists && lists.next.length > 0 ? (
+              <Text style={[styles.caption, {color: textColor}]}>{ENGAGE_TEXT.pickBelow}</Text>
+            ) : null}
             {ackLine}
-            {screen.kind === 'options' && options ? (
-              <OptionList
+            {screen.kind === 'options' && lists ? (
+              <OptionTabs
                 owner={owner}
-                next={options.next}
-                plan={options.plan}
-                currentIsNext={current !== null && isNextTask(current.task)}
+                tab={tab}
+                next={lists.next}
+                plan={lists.plan}
+                onTab={next => press('tab', () => dispatch({type: 'selectTab', tab: next}))}
                 onPick={pick}
+                onRemoveNext={todo => act(todo, 'unnext', false)}
+                onMakeNext={todo => act(todo, 'next', false)}
                 onSomeday={todo => act(todo, 'someday', false)}
                 textColor={textColor}
                 borderColor={borderColor}
               />
             ) : null}
-            {screen.kind === 'options' && options?.next.length === 0 ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
+            {screen.kind === 'options' && tab === 'plan' ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
             {destination ? (
               <CollapsedQuickAdd
                 label={ENGAGE_TEXT.quickAdd}
@@ -215,7 +219,8 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
     }
   };
 
-  const nothingToPick = screen.kind === 'options' && !view.currentTodo && view.options?.next.length === 0 && view.options.plan.length === 0;
+  const lists = view.lists;
+  const nothingToPick = screen.kind === 'options' && lists !== null && !lists.nowTodo && lists.next.length === 0 && lists.plan.length === 0;
   const select =
     screen.kind === 'focusDone'
       ? {kind: 'new' as const, onPress: () => press('selectNewFocus', () => dispatch({type: 'selectNewFocus'}))}

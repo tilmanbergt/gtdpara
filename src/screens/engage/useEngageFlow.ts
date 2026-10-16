@@ -7,7 +7,7 @@
  */
 import {useEffect, useMemo, useReducer, useState} from 'react';
 import {EngageOwner, EngageSource, EngageTodoKey, resolveTodoKey, sameOwner, todoKeyOf} from '../../domain/engageOwner';
-import {effectiveFocus, optionsOf, ownersLeft} from '../../domain/engageOptions';
+import {effectiveFocus, engageListsOf, optionsOf, ownersLeft} from '../../domain/engageOptions';
 import {engageFlow, EngageRequest, EngageState, INITIAL_ENGAGE_STATE} from '../../domain/engageFlow';
 import {GtdParaSettings, resolvePaths} from '../../domain/settings';
 import {getCachedData, rebuildCache} from '../../storage/dataCache';
@@ -100,12 +100,14 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
     const currentRef = current ? resolveTodoKey(current, source) : null;
     const currentKey = currentRef ? todoKeyOf(currentRef) : null;
     if (current && !currentRef) setEngageCurrent(null, null).catch(e => logError('EngageOverlay: forgetting the current todo failed', errorMessage(e)));
+    const options = owner ? optionsOf(owner, source, nowMs, currentKey) : null;
     dispatch({
       type: 'dataChanged',
-      options: owner ? optionsOf(owner, source, nowMs, currentKey) : null,
+      options,
       ring: effectiveFocus(source),
       dailyLeft: ownersLeft('daily', source, nowMs),
       current: currentKey,
+      nextRows: options ? engageListsOf(options, currentRef).next.length : 0,
     });
   }, [source, owner, current]);
 

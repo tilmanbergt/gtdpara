@@ -135,6 +135,10 @@ export const engageStyles = StyleSheet.create({
     fontSize: FONT.medium,
     includeFontPadding: false,
   },
+  rowActions: {
+    flexDirection: 'row',
+    marginLeft: SPACING.sm,
+  },
   rowText: {
     flex: 1,
     fontSize: FONT.medium,

@@ -14,7 +14,7 @@ const ack = (wasCurrent: boolean): EngageAck => ({
   undo: {itemPath: '/a', taskIndex: 1, before: task('Brief #next'), afterText: 'Brief #next'},
 });
 const options = (ownerEmpty: boolean): EngageOptions => ({next: [], plan: [], ownerEmpty});
-const data = (ownerEmpty: boolean, dailyLeft = 2, ring: 'daily' | 'weekly' = 'daily'): EngageEvent => ({type: 'dataChanged', options: options(ownerEmpty), ring, dailyLeft, current: KEY});
+const data = (ownerEmpty: boolean, dailyLeft = 2, ring: 'daily' | 'weekly' = 'daily'): EngageEvent => ({type: 'dataChanged', options: options(ownerEmpty), ring, dailyLeft, current: KEY, nextRows: 1});
 
 const S = {
   options: {kind: 'options'},
@@ -104,6 +104,18 @@ describe('engageFlow state', () => {
     expect(engageFlow(state(S.options), {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), current: null}).current).toBeNull();
     const from = state(S.options);
     expect(engageFlow(from, {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), current: {...KEY}}).current).toBe(from.current);
+  });
+  it('tabs: Next when it lists anything, else Plan; an empty Next gives way to Plan; #next from Plan does not switch', () => {
+    const changed = (from: EngageState, nextRows: number) =>
+      engageFlow(from, {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), nextRows}).tab;
+    const opened = engageFlow(state(S.daily), {type: 'open', owner: OWNER, current: null, ring: 'daily'});
+    expect(opened.tab).toBeNull();
+    expect(changed(opened, 2)).toBe('next');
+    expect(changed(opened, 0)).toBe('plan');
+    expect(changed(state(S.options, {tab: 'next'}), 0)).toBe('plan');
+    expect(changed(state(S.options, {tab: 'plan'}), 3)).toBe('plan');
+    expect(engageFlow(state(S.options, {tab: 'plan'}), {type: 'selectTab', tab: 'next'}).tab).toBe('next');
+    expect(engageFlow(state(S.options, {tab: 'plan'}), {type: 'ownerChosen', owner: OTHER}).tab).toBeNull();
   });
   it('undone without an ack is a no-op', () => {
     const s = state(S.options);
