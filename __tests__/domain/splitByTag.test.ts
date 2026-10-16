@@ -1,13 +1,15 @@
 import {spliceWordAtSelection} from '../../src/domain/clipboardText';
-import {noteCreationConfirmText} from '../../src/domain/fileChangeText';
+import {noteChoiceText, noteCreationConfirmText} from '../../src/domain/fileChangeText';
 import {NoteCreationPlan} from '../../src/domain/noteCreationPlan';
 import {renderSharedFileName} from '../../src/domain/sharedNotePages';
-import {ruleTypeTag} from '../../src/domain/tagRules';
+import {setupTypeTag} from '../../src/domain/noteSetups';
+
+const NO_OWNER = {itemName: '', itemAbbrev: ''};
 
 // docs/dev/history/technical-design-split-by-tag.md §3.3, §3.5, §3.6
 
 describe('renderSharedFileName', () => {
-  const base = {template: 'Coaching {subtag} {year}', ruleName: 'Coaching', subtag: 'sabina', date: '2026-10-02'};
+  const base = {template: 'Coaching {subtag} {year}', fallbackName: 'Coaching', subtag: 'sabina', date: '2026-10-02', ...NO_OWNER};
 
   it('fills every placeholder', () => {
     expect(renderSharedFileName({...base, template: '{subtag} {year}-{quarter} {month}'})).toBe('sabina 2026-Q4 10');
@@ -36,6 +38,30 @@ describe('renderSharedFileName', () => {
 
   it('leaves a template without placeholders unchanged', () => {
     expect(renderSharedFileName({...base, template: 'Daily'})).toBe('Daily');
+  });
+});
+
+// docs/dev/history/technical-design-note-setups-finish.md §1
+describe('{name} and {abbr} in note names', () => {
+  const base = {template: '{abbr} {tag} {subtag} {year}', fallbackName: 'Sparring', tag: 'sparring', subtag: 'peter', date: '2026-10-02'};
+  const owner = {itemName: 'Leadership Program', itemAbbrev: 'LP'};
+
+  it('fills the owner’s abbreviation and name', () => {
+    expect(renderSharedFileName({...base, ...owner})).toBe('LP sparring peter 2026');
+    expect(renderSharedFileName({...base, ...owner, template: '{name} {year}'})).toBe('Leadership Program 2026');
+  });
+  it('uses the name for {abbr} when there is no abbreviation', () => {
+    expect(renderSharedFileName({...base, itemName: 'Garden', itemAbbrev: ''})).toBe('Garden sparring peter 2026');
+  });
+  it('matches them case-insensitively', () => {
+    expect(renderSharedFileName({...base, ...owner, template: '{ABBR}-{Name}'})).toBe('LP-Leadership Program');
+  });
+  it('leaves both out when unknown, without double spaces', () => {
+    expect(renderSharedFileName({...base, ...NO_OWNER, template: '{abbr} {name} {subtag} {year}', subtag: ''})).toBe('2026');
+    expect(renderSharedFileName({...base, ...NO_OWNER, template: '{abbr}{name}'})).toBe('Sparring');
+  });
+  it('works with date placeholders left out', () => {
+    expect(renderSharedFileName({...base, ...owner, template: '{abbr} {subtag} {year}-{month}', date: ''})).toBe('LP peter');
   });
 });
 
@@ -69,24 +95,24 @@ describe('noteCreationConfirmText', () => {
     kind,
     file: 'Meetings/Coaching sabina 2026.note',
     absolutePath: '/x',
-    ruleName: 'Coaching',
+    setupName: 'Coaching',
     ...extra,
   });
   const full = 'Note/2 Areas/Coaching/Meetings/Coaching sabina 2026.note';
 
   it('names the rule and the file for first-time notes', () => {
     expect(noteCreationConfirmText(plan('new-shared-file'), full)).toMatchObject({
-      text: 'Rule Coaching: new file Meetings/Coaching sabina 2026.note',
+      text: 'Coaching: new file Meetings/Coaching sabina 2026.note',
       actionLabel: 'Create',
     });
     expect(noteCreationConfirmText(plan('new-page'), full)).toMatchObject({
-      text: 'Rule Coaching: new page in Meetings/Coaching sabina 2026.note',
+      text: 'Coaching: new page in Meetings/Coaching sabina 2026.note',
       actionLabel: 'Add page',
     });
     expect(noteCreationConfirmText(plan('new-own-file', {file: 'Todos/Call.note'}), full).text).toBe(
-      'Rule Coaching: new note Todos/Call.note',
+      'Coaching: new note Todos/Call.note',
     );
-    expect(noteCreationConfirmText(plan('new-own-file', {file: 'Todos/Call.note', ruleName: null}), full).text).toBe(
+    expect(noteCreationConfirmText(plan('new-own-file', {file: 'Todos/Call.note', setupName: null}), full).text).toBe(
       'New note Todos/Call.note',
     );
   });
@@ -99,7 +125,7 @@ describe('noteCreationConfirmText', () => {
 
   it('says a recreate does not bring content back', () => {
     for (const kind of ['recreate-page', 'recreate-shared-file', 'recreate-own-file'] as const) {
-      const t = noteCreationConfirmText(plan(kind, {ruleName: null}), full);
+      const t = noteCreationConfirmText(plan(kind, {setupName: null}), full);
       expect(t.text).toContain('(deleted?)');
       expect(t.detail).toContain('Earlier content is not restored');
       expect(t.detail).toContain(full);
@@ -110,17 +136,40 @@ describe('noteCreationConfirmText', () => {
 // docs/dev/history/technical-design-tending-threads.md §3.8: one rule for several types.
 describe('{tag} in shared file names', () => {
   it('names the file after the rule tag the item matched', () => {
-    const tag = ruleTypeTag(['next', 'retro/alpha'], ['sparring', 'retro']);
+    const tag = setupTypeTag(['next', 'retro/alpha'], ['sparring', 'retro']);
     expect(tag).toBe('retro');
-    const rendered = renderSharedFileName({template: '{tag} {subtag} {year}', ruleName: 'Sessions', tag, subtag: 'alpha', date: '2026-10-02'});
+    const rendered = renderSharedFileName({template: '{tag} {subtag} {year}', fallbackName: 'Sessions', tag, subtag: 'alpha', date: '2026-10-02', ...NO_OWNER});
     expect(rendered).toBe('retro alpha 2026');
-    expect(renderSharedFileName({template: '{TAG} {year}', ruleName: 'S', tag: 'sparring', subtag: '', date: '2026-10-02'})).toBe('sparring 2026');
+    expect(renderSharedFileName({template: '{TAG} {year}', fallbackName: 'S', tag: 'sparring', subtag: '', date: '2026-10-02', ...NO_OWNER})).toBe('sparring 2026');
   });
   it('leaves {tag} empty when no rule tag matches', () => {
-    expect(ruleTypeTag(['retrox/a', 'other'], ['retro'])).toBe('');
-    expect(renderSharedFileName({template: 'Notes {tag} {year}', ruleName: 'Notes', subtag: '', date: '2026-10-02'})).toBe('Notes 2026');
+    expect(setupTypeTag(['retrox/a', 'other'], ['retro'])).toBe('');
+    expect(renderSharedFileName({template: 'Notes {tag} {year}', fallbackName: 'Notes', subtag: '', date: '2026-10-02', ...NO_OWNER})).toBe('Notes 2026');
   });
   it('matches a plain rule tag and keeps the first match in text order', () => {
-    expect(ruleTypeTag(['Sparring', 'retro/a'], ['RETRO', 'sparring'])).toBe('sparring');
+    expect(setupTypeTag(['Sparring', 'retro/a'], ['RETRO', 'sparring'])).toBe('sparring');
+  });
+});
+
+describe('note choice text (docs/dev/history/technical-design-note-setups.md §4.4)', () => {
+  const full = 'Note/2 Areas/Coaching/2026-11 workshop offsite.note';
+  const loopPlan: NoteCreationPlan = {kind: 'new-page', file: '2026-11 workshop offsite.note', absolutePath: '/x', setupName: 'Workshop'};
+  const notebook: NoteCreationPlan = {kind: 'new-shared-file', file: 'Sparring/sparring peter 2026.note', absolutePath: '/y', setupName: 'Sparring'};
+  const own: NoteCreationPlan = {kind: 'new-own-file', file: 'Todos/Draft.note', absolutePath: '/z', setupName: 'Team'};
+
+  it('one place: the plain confirm', () => {
+    expect(noteChoiceText(loopPlan, full)).toEqual({
+      text: 'Workshop: new page in 2026-11 workshop offsite.note',
+      detail: `Adds a page for this item to ${full}.`,
+      labels: ['Add page'],
+    });
+  });
+
+  it('more places: one button for the best other one, every place in the detail', () => {
+    const t = noteChoiceText({...loopPlan, alternatives: [notebook, own]}, full);
+    expect(t.labels).toEqual(['Add page', 'In Sparring']);
+    expect(t.detail).toContain('Or: Sparring: new file Sparring/sparring peter 2026.note');
+    expect(t.detail).toContain('Or: Team: new note Todos/Draft.note');
+    expect(noteChoiceText({...loopPlan, alternatives: [own]}, full).labels).toEqual(['Add page', 'Own note']);
   });
 });

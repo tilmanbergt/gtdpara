@@ -7,13 +7,7 @@ import {
   stripAllTags,
 } from '../../src/domain/markdown';
 import {setBareTag, setNowTag, stripBareTags} from '../../src/domain/flowState';
-import {
-  createEmptyTagRule,
-  TagRule,
-  resolveNoteTemplate,
-  ruleSubtag,
-  tagMatchesRuleTag,
-} from '../../src/domain/tagRules';
+import {createNoteSetup, matchingSetups, NoteSetup, setupSubtag, tagMatchesSetupTag} from '../../src/domain/noteSetups';
 
 // docs/dev/history/technical-design-split-by-tag.md §3.1 / §3.2
 
@@ -78,43 +72,37 @@ describe('nested tags - whole-tag guards', () => {
   });
 });
 
-describe('nested tags - Tag Rule matching', () => {
-  const rule = (id: string, tags: string[], extra: Partial<TagRule> = {}): TagRule => ({
-    ...createEmptyTagRule(id, 'meeting'),
-    name: id,
-    tags,
-    enabled: true,
-    ...extra,
+describe('nested tags - Note setup matching', () => {
+  const setup = (id: string, tags: string[]): NoteSetup => ({...createNoteSetup(id, 'thread'), name: id, tags});
+
+  it('tagMatchesSetupTag: itself and children only', () => {
+    expect(tagMatchesSetupTag('coaching', 'coaching')).toBe(true);
+    expect(tagMatchesSetupTag('coaching/sabina', 'coaching')).toBe(true);
+    expect(tagMatchesSetupTag('coaching/sabina/2026', 'coaching')).toBe(true);
+    expect(tagMatchesSetupTag('coachingx', 'coaching')).toBe(false);
+    expect(tagMatchesSetupTag('coaching', 'coaching/sabina')).toBe(false);
   });
 
-  it('tagMatchesRuleTag: itself and children only', () => {
-    expect(tagMatchesRuleTag('coaching', 'coaching')).toBe(true);
-    expect(tagMatchesRuleTag('coaching/sabina', 'coaching')).toBe(true);
-    expect(tagMatchesRuleTag('coaching/sabina/2026', 'coaching')).toBe(true);
-    expect(tagMatchesRuleTag('coachingx', 'coaching')).toBe(false);
-    expect(tagMatchesRuleTag('coaching', 'coaching/sabina')).toBe(false);
-  });
-
-  it('resolveNoteTemplate matches a rule through a nested tag', () => {
-    const coaching = rule('Coaching', ['coaching']);
-    expect(resolveNoteTemplate('meeting', ['coaching/sabina'], [coaching])).toBe(coaching);
-    expect(resolveNoteTemplate('meeting', ['coachingx'], [coaching])).toBeNull();
+  it('matchingSetups matches a setup through a nested tag', () => {
+    const coaching = setup('Coaching', ['coaching']);
+    expect(matchingSetups(['coaching/sabina'], [coaching])).toEqual([coaching]);
+    expect(matchingSetups(['coachingx'], [coaching])).toEqual([]);
   });
 
   it('keeps list order as priority', () => {
-    const first = rule('Sabina', ['coaching/sabina']);
-    const second = rule('Coaching', ['coaching']);
-    expect(resolveNoteTemplate('meeting', ['coaching/sabina'], [first, second])).toBe(first);
-    expect(resolveNoteTemplate('meeting', ['coaching/sabina'], [second, first])).toBe(second);
-    expect(resolveNoteTemplate('meeting', ['coaching'], [first, second])).toBe(second);
+    const first = setup('Sabina', ['coaching/sabina']);
+    const second = setup('Coaching', ['coaching']);
+    expect(matchingSetups(['coaching/sabina'], [first, second])[0]).toBe(first);
+    expect(matchingSetups(['coaching/sabina'], [second, first])[0]).toBe(second);
+    expect(matchingSetups(['coaching'], [first, second])).toEqual([second]);
   });
 
-  it('ruleSubtag: first nested tag wins, deeper nesting kept, none -> ""', () => {
-    expect(ruleSubtag(['next', 'coaching/sabina', 'coaching/tom'], ['coaching'])).toBe('sabina');
-    expect(ruleSubtag(['coaching/sabina/2026'], ['coaching'])).toBe('sabina/2026');
-    expect(ruleSubtag(['coaching'], ['coaching'])).toBe('');
-    expect(ruleSubtag(['coachingx/a'], ['coaching'])).toBe('');
-    expect(ruleSubtag(['Coaching/Sabina'], ['COACHING'])).toBe('sabina');
-    expect(ruleSubtag(['team/a'], ['coaching', 'team'])).toBe('a');
+  it('setupSubtag: first nested tag wins, deeper nesting kept, none -> ""', () => {
+    expect(setupSubtag(['next', 'coaching/sabina', 'coaching/tom'], ['coaching'])).toBe('sabina');
+    expect(setupSubtag(['coaching/sabina/2026'], ['coaching'])).toBe('sabina/2026');
+    expect(setupSubtag(['coaching'], ['coaching'])).toBe('');
+    expect(setupSubtag(['coachingx/a'], ['coaching'])).toBe('');
+    expect(setupSubtag(['Coaching/Sabina'], ['COACHING'])).toBe('sabina');
+    expect(setupSubtag(['team/a'], ['coaching', 'team'])).toBe('a');
   });
 });

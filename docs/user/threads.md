@@ -90,7 +90,7 @@ When you rename a meeting later, gtdpara still finds its todos by the meeting's 
 
 ## Tending counterparts
 
-The counterparts you work with belong to an area together with its projects, or to a project without an area. `#101/mieke` in the Atruvia area and in one of its projects is one counterpart; the same name in another area is a different one. Only nested tags whose type is the tag of one of your Tag Rules (see [Note templates](note-templates.md)), and `#wf/name` and `#owe/name`, make counterparts; other nested tags such as `#tax/2026` don't.
+The counterparts you work with belong to an area together with its projects, or to a project without an area. `#101/mieke` in the Atruvia area and in one of its projects is one counterpart; the same name in another area is a different one. Only nested tags whose type is a tag of one of your Thread setups (see [Note setups](note-setups.md)), and `#wf/name` and `#owe/name`, make counterparts; other nested tags such as `#tax/2026` don't.
 
 A counterpart you use for the first time is **new**: gtdpara asks you, in the Weekly Review's **Tending threads** and on the Current page's **Threads** tab, whether to **Tend** it (it stays active) or **Not** (it is set aside, inactive). Nothing is decided for you. Your answer is one line in the area's file (`area.txt`), or in the project's file for a project without an area:
 
@@ -106,8 +106,8 @@ See [Projects and Areas](projects-and-areas.md) for the Threads tab and [Weekly 
 
 ## Since last time on a meeting note
 
-A Meeting rule can place the piece **Since last time**: on the meeting's note it prints what happened in the meeting's thread since the previous meeting of that thread - what was agreed then, what you owe, wait for and should raise, and what got done since. See [Note templates](note-templates.md).
+A Meeting page can have the piece **Since last time**: on the meeting's note it prints what happened in the meeting's thread since the previous meeting of that thread - what was agreed then, what you owe, wait for and should raise, and what got done since. See [Note setups](note-setups.md).
 
 ## Naming shared notes by type
 
-One Tag Rule can serve several types: with the tags `sparring` and `retro` and the shared file name `{tag} {subtag} {year}`, `#retro/alpha` meetings go into `retro alpha 2026`. See [Note templates](note-templates.md).
+One Note setup can serve several types: with the tags `sparring` and `retro` and the notebook name `{tag} {subtag} {year}`, `#retro/alpha` meetings go into `retro alpha 2026`. See [Note setups](note-setups.md).

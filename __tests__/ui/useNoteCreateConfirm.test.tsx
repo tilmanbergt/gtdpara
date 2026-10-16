@@ -15,10 +15,10 @@ const plan: NoteCreationPlan = {
   kind: 'new-page',
   file: 'Meetings/Coaching sabina 2026.note',
   absolutePath: '/storage/emulated/0/Note/2 Areas/Coaching/Meetings/Coaching sabina 2026.note',
-  ruleName: 'Coaching',
+  setupName: 'Coaching',
 };
 
-let confirm: (p: NoteCreationPlan) => Promise<boolean> = async () => false;
+let confirm: (p: NoteCreationPlan) => Promise<number | null> = async () => null;
 let list: StatusEntry[] = [];
 
 function Probe(): null {
@@ -40,56 +40,73 @@ function mount() {
 }
 
 describe('useNoteCreateConfirm', () => {
-  it('shows the plan in the slot and resolves true on the button', async () => {
+  it('shows the plan in the slot and resolves 0 on the button', async () => {
     mount();
-    let result: Promise<boolean> = Promise.resolve(false);
+    let result: Promise<number | null> = Promise.resolve(null);
     act(() => {
       result = confirm(plan);
     });
     expect(list).toHaveLength(1);
-    expect(list[0].msg).toMatchObject({kind: 'confirm', text: 'Rule Coaching: new page in Meetings/Coaching sabina 2026.note'});
+    expect(list[0].msg).toMatchObject({kind: 'confirm', text: 'Coaching: new page in Meetings/Coaching sabina 2026.note'});
     expect(list[0].msg.detail).toContain('Note/2 Areas/Coaching/Meetings/Coaching sabina 2026.note');
     act(() => list[0].msg.actions![0].onPress());
-    await expect(result).resolves.toBe(true);
+    await expect(result).resolves.toBe(0);
     expect(list).toHaveLength(0);
   });
 
-  it('resolves false on ✕', async () => {
+  it('resolves null on ✕', async () => {
     mount();
-    let result: Promise<boolean> = Promise.resolve(true);
+    let result: Promise<number | null> = Promise.resolve(0);
     act(() => {
       result = confirm(plan);
     });
     act(() => list[0].msg.onCancel!());
-    await expect(result).resolves.toBe(false);
+    await expect(result).resolves.toBeNull();
     expect(list).toHaveLength(0);
   });
 
   it('a second request cancels the first one', async () => {
     mount();
-    let first: Promise<boolean> = Promise.resolve(true);
-    let second: Promise<boolean> = Promise.resolve(false);
+    let first: Promise<number | null> = Promise.resolve(0);
+    let second: Promise<number | null> = Promise.resolve(null);
     act(() => {
       first = confirm(plan);
     });
     act(() => {
       second = confirm({...plan, kind: 'new-shared-file'});
     });
-    await expect(first).resolves.toBe(false);
+    await expect(first).resolves.toBeNull();
     expect(list).toHaveLength(1);
     expect(list[0].msg.text).toContain('new file');
     act(() => list[0].msg.actions![0].onPress());
-    await expect(second).resolves.toBe(true);
+    await expect(second).resolves.toBe(0);
   });
 
   it('unmounting resolves a pending confirm false', async () => {
     const renderer = mount();
-    let result: Promise<boolean> = Promise.resolve(true);
+    let result: Promise<number | null> = Promise.resolve(0);
     act(() => {
       result = confirm(plan);
     });
     act(() => renderer.unmount());
-    await expect(result).resolves.toBe(false);
+    await expect(result).resolves.toBeNull();
+  });
+});
+
+describe('useNoteCreateConfirm with an alternative', () => {
+  it('shows a second button and resolves 1 on it', async () => {
+    mount();
+    const alternative: NoteCreationPlan = {kind: 'new-page', file: 'Lab x 2026.note', absolutePath: '/n/Lab x 2026.note', setupName: 'Sparring'};
+    let result: Promise<number | null> = Promise.resolve(null);
+    act(() => {
+      result = confirm({...plan, alternatives: [alternative]});
+    });
+    expect(list[0].msg.actions!.map(a => [a.label, a.primary])).toEqual([
+      ['Add page', true],
+      ['In Sparring', false],
+    ]);
+    act(() => list[0].msg.actions![1].onPress());
+    await expect(result).resolves.toBe(1);
   });
 });
 
@@ -105,13 +122,13 @@ describe('useNoteCreateConfirm in a kept tab', () => {
         </StatusProvider>,
       );
     });
-    let result: Promise<boolean> = Promise.resolve(true);
+    let result: Promise<number | null> = Promise.resolve(0);
     act(() => {
       result = confirm(plan);
     });
     expect(list).toHaveLength(1);
     act(() => activity.set(false));
-    await expect(result).resolves.toBe(false);
+    await expect(result).resolves.toBeNull();
     expect(list).toHaveLength(0);
   });
 });

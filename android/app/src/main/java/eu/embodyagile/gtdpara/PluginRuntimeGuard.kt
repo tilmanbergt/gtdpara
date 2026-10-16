@@ -171,14 +171,4 @@ object PluginRuntimeGuard {
     } catch (e: Throwable) {
         -1
     }
-
-    /**
-     * Ends the plugin host process - a controlled version of what the crash
-     * does. The host is restarted by the system on the next plugin tap and
-     * loads only the newest build. Settings and files are untouched.
-     */
-    fun killHostProcess(reason: String) {
-        Log.w(TAG, "killHostProcess: $reason build=$buildId pid=${Process.myPid()}")
-        Process.killProcess(Process.myPid())
-    }
 }

@@ -42,7 +42,7 @@ import {loadSettings} from '../storage/settingsStorage';
 import {WeeklyMeetingEntry} from '../storage/weeklyAggregate';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
-import {MeetingRowLayout, MeetingRowProps, MeetingTrackingConfig} from '../ui/MeetingRow';
+import {MeetingRowLayout, MeetingRowProps, MeetingTrackingConfig, trackingSetups} from '../ui/MeetingRow';
 import {entryDate} from '../domain/meetingSpan';
 import {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {useCachedItems} from '../ui/useCachedItems';
@@ -275,7 +275,7 @@ export function usePlanningScreen({logTag}: Options) {
   );
 
   const trackingFor = (entry: WeeklyMeetingEntry): MeetingTrackingConfig => ({
-    rules: settings?.tagRules ?? [],
+    setups: trackingSetups(settings),
     onToggle: kind => handleToggleMeetingTracking(entry, kind),
   });
 

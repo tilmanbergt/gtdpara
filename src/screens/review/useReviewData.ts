@@ -6,7 +6,8 @@
  * only `load` and `refreshFromCache` rebuild, so a step's lists don't change
  * under the user while they work through it.
  */
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import {noteSetupConfig} from '../../domain/noteSetups';
 import {GtdParaSettings, ResolvedParaPaths} from '../../domain/settings';
 import {CachedItem, getCachedData, rebuildCache, setCachedInbox} from '../../storage/dataCache';
 import {loadProjectFile, ProjectFileState} from '../../storage/projectFile';
@@ -56,7 +57,7 @@ export function useReviewData(): ReviewData {
       setSettings(loadedSettings);
       let cache = getCachedData();
       if (!cache || forceRebuild) cache = await rebuildCache(loadedSettings);
-      setAggregate(buildReviewAggregate(cache.items, new Date(), loadedSettings.tagRules));
+      setAggregate(buildReviewAggregate(cache.items, new Date(), noteSetupConfig(loadedSettings)));
       setInboxPath(cache.paths.inboxFolder);
       setPaths(cache.paths);
       setCachedInbox(await loadProjectFile('inbox', cache.paths.inboxFolder));
@@ -73,11 +74,11 @@ export function useReviewData(): ReviewData {
     load(false);
   }, [load]);
 
-  const tagRules = settings?.tagRules;
+  const noteSetups = useMemo(() => (settings ? noteSetupConfig(settings) : undefined), [settings]);
   const refreshFromCache = useCallback(() => {
     const cache = getCachedData();
-    if (cache) setAggregate(buildReviewAggregate(cache.items, new Date(), tagRules));
-  }, [tagRules]);
+    if (cache) setAggregate(buildReviewAggregate(cache.items, new Date(), noteSetups));
+  }, [noteSetups]);
 
   return {items, settings, setSettings, aggregate, inbox, inboxPath, paths, loading, error, load, refreshFromCache};
 }

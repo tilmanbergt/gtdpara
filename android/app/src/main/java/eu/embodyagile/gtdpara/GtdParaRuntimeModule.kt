@@ -1,8 +1,6 @@
 package eu.embodyagile.gtdpara
 
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.os.Process
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -13,8 +11,8 @@ import com.facebook.react.bridge.WritableNativeMap
 
 /**
  * JS surface for PluginRuntimeGuard (docs/dev/technical-design-host-update-crash.md):
- * lets the UI ask "is an older gtdpara build still loaded in this host
- * process?" and, if so, offer a controlled restart of the host process.
+ * lets the debug bundle and the start log ask "is an older gtdpara build
+ * still loaded in this host process?".
  *
  * JS side: supernote/pluginRuntime.ts (bridge name "GtdParaRuntime").
  */
@@ -27,8 +25,6 @@ class GtdParaRuntimeModule(reactContext: ReactApplicationContext) :
 
     companion object {
         private const val NAME = "GtdParaRuntime"
-        /** Gives the promise and the log line time to leave the process before it ends. */
-        private const val KILL_DELAY_MS = 400L
     }
 
     override fun getName(): String = NAME
@@ -70,17 +66,5 @@ class GtdParaRuntimeModule(reactContext: ReactApplicationContext) :
         } catch (e: Throwable) {
             promise.reject("E_DIAGNOSTICS", "${e.javaClass.simpleName}: ${e.message}", e)
         }
-    }
-
-    /**
-     * Ends the plugin host process shortly after resolving. The next tap on
-     * the plugin starts a fresh host process with only the newest build.
-     */
-    @ReactMethod
-    fun restartPluginHost(reason: String?, promise: Promise) {
-        PluginRuntimeGuard.trace("$NAME.restartPluginHost")
-        promise.resolve(true)
-        val why = reason ?: "requested from JS"
-        Handler(Looper.getMainLooper()).postDelayed({ PluginRuntimeGuard.killHostProcess(why) }, KILL_DELAY_MS)
     }
 }

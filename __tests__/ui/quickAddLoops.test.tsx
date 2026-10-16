@@ -17,7 +17,7 @@ jest.mock('../../src/storage/tagUsage', () => ({
   recordTagsUsed: async () => undefined,
 }));
 jest.mock('../../src/ui/useAbbrevItems', () => ({useAbbrevItems: () => []}));
-jest.mock('../../src/ui/useLoopKinds', () => ({useLoopKinds: () => ({kinds: ['workshop'], rules: {}})}));
+jest.mock('../../src/ui/useLoopKinds', () => ({useLoopKinds: () => ({kinds: ['workshop'], setups: {}})}));
 const mockLoops: Array<{tag: string}> = [];
 jest.mock('../../src/storage/dataCache', () => ({
   findCachedItem: (path: string) => (path === '/a' ? {path, loops: mockLoops} : undefined),

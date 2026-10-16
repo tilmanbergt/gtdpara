@@ -1,9 +1,9 @@
 /**
  * "Mark for later" - the pure part (docs/dev/history/technical-design-lasso-0.8.md
  * §3.1-§3.2, §3.8, §3.10): the `## Marks` line format, mark ids, which
- * project/area/Inbox owns a mark, icon geometry, the shifted copy of the
- * stored strokes that recognition uses (§2.1), and the
- * grouping of the marks column.
+ * project/area/Inbox owns a mark, icon geometry, the stored strokes, the
+ * private data file, and the grouping of the
+ * marks column.
  *
  * No React Native, no sn-plugin-lib, no I/O (design-overview.md §3).
  */
@@ -113,7 +113,7 @@ export function resolveMarkPath(ownerFolder: string, notePath: string): string {
 
 /**
  * Which file a new mark goes into (§3.2): the project/area whose folder holds
- * the note (any depth - Todos/, Meetings/, shared Tag Rule notes), else the
+ * the note (any depth - Todos/, Meetings/, notebooks), else the
  * Inbox (Inbox folder, Resources, Archive, PDFs in Document/, loose notes).
  * `hasItem` says whether that project/area is known (its data file exists);
  * an unknown one falls back to the Inbox too.
@@ -329,9 +329,12 @@ export function checkPolygon(box: PxRect): PxPoint[] {
 }
 
 // ---------------------------------------------------------------------------
-// Stored strokes and the shifted copy for recognition (§2.1, §3.4)
+// Stored strokes (§3.4, docs/dev/history/technical-design-new-firmware.md)
 
-/** One stroke as saved at mark time: EMR points flattened [x0, y0, x1, y1, ...]. */
+/**
+ * One stroke as saved at mark time: page-size pixel points flattened
+ * [x0, y0, x1, y1, ...] (the page's real size from PluginFileAPI.getPageSize).
+ */
 export interface StoredStroke {
   thickness: number | null;
   penColor: number | null;
@@ -341,33 +344,30 @@ export interface StoredStroke {
   pressures: number[];
 }
 
-/** Where the shifted copy starts, in EMR units from the top-left. */
-export const SHIFT_ORIGIN_EMR = 300;
+export interface PageSize {
+  width: number;
+  height: number;
+}
 
-/**
- * The same strokes moved so the smallest x and y sit at SHIFT_ORIGIN_EMR.
- * The host recognizer maps points with the page size it is given; on the
- * A5 X the points use a larger EMR range than that size implies, so text low
- * on the page fell outside and failed (error 117) or came back partial.
- * Moving the strokes to the top-left keeps them inside on every device.
- * Relative positions (lines, words) are unchanged.
- */
-export function shiftStrokes(strokes: StoredStroke[], origin = SHIFT_ORIGIN_EMR): StoredStroke[] {
-  let minX = Infinity;
-  let minY = Infinity;
+/** The smallest rect around every stroke point, plus the point count; null rect when there are no points. */
+export function strokeBounds(strokes: StoredStroke[]): {rect: PxRect | null; points: number} {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  let points = 0;
   for (const s of strokes) {
     for (let i = 0; i + 1 < s.points.length; i += 2) {
-      if (s.points[i] < minX) {minX = s.points[i];}
-      if (s.points[i + 1] < minY) {minY = s.points[i + 1];}
+      const x = s.points[i];
+      const y = s.points[i + 1];
+      if (x < left) {left = x;}
+      if (x > right) {right = x;}
+      if (y < top) {top = y;}
+      if (y > bottom) {bottom = y;}
+      points++;
     }
   }
-  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {return strokes.map(s => ({...s, points: [...s.points]}));}
-  const dx = origin - minX;
-  const dy = origin - minY;
-  return strokes.map(s => ({
-    ...s,
-    points: s.points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy)),
-  }));
+  return {rect: points > 0 ? {left, top, right, bottom} : null, points};
 }
 
 // ---------------------------------------------------------------------------
@@ -396,7 +396,12 @@ export function joinInReadingOrder(pieces: TextPiece[], lineTolerance = 20): str
 // ---------------------------------------------------------------------------
 // The private data file (§3.3)
 
-export const MARK_DATA_VERSION = 1;
+/**
+ * 2: stroke points are page-size pixels (sn-plugin-lib 0.2.x). 1 (and files
+ * without a version): EMR points from older builds - their handwriting is
+ * not sent to the recognizer (docs/dev/history/technical-design-new-firmware.md D2).
+ */
+export const MARK_DATA_VERSION = 2;
 
 export interface MarkDataFile {
   version: number;
@@ -405,8 +410,10 @@ export interface MarkDataFile {
   path: string;
   page: number;
   rect: PxRect | null;
-  displaySize: {width: number; height: number} | null;
-  pageSize: {width: number; height: number} | null;
+  /** On-screen size; only version-1 marks have one, newer marks write null. */
+  displaySize: PageSize | null;
+  /** The page's real size, the space of `rect` and the stroke points. */
+  pageSize: PageSize | null;
   textBoxText: string;
   strokes: StoredStroke[];
   icon: {box: PxRect; placed: boolean} | null;
@@ -416,6 +423,20 @@ export interface MarkDataFile {
    * the `## Marks` line itself never gets it.
    */
   recognizedText?: string;
+}
+
+/**
+ * True when the mark's handwriting can go to the recognizer: strokes saved
+ * as page-size pixels (version 2 or later). A mark with only text-box text
+ * needs no recognizer; an older mark's strokes are in another unit.
+ */
+export function canRecognize(data: MarkDataFile): boolean {
+  return typeof data.version === 'number' && data.version >= 2 && data.strokes.length > 0;
+}
+
+/** Handwriting saved by an older gtdpara that won't be recognized: the user types the text from the picture. */
+export function isOldStrokeMark(data: MarkDataFile): boolean {
+  return data.strokes.length > 0 && !canRecognize(data);
 }
 
 /** Parses mark.json; null when it isn't one. */

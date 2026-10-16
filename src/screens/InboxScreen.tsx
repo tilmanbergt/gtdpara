@@ -90,7 +90,7 @@ import {groupTasksByFlowState} from '../domain/flowState';
 import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
 import {splitAndSortMeetings, todayIso} from '../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
-import {TagRule} from '../domain/tagRules';
+import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../domain/noteSetups';
 import {ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {findCachedItem, getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
@@ -207,8 +207,8 @@ export default function InboxScreen({
   const mainTabs = visibleTabs(MEETINGS_MAIN_TABS, mainTabState, 'google', features.googleCalendar);
   const mainTab = mainTabs.activeKey;
   const [icsUrl, setIcsUrl] = useState('');
-  // Tag Rules for the meeting rows' prep/review checkpoint icon (loaded with the rest of the settings in `load`).
-  const [tagRules, setTagRules] = useState<TagRule[]>([]);
+  // Note setups for the meeting rows' prep/review checkpoint icon (loaded with the rest of the settings in `load`).
+  const [noteSetups, setNoteSetups] = useState<NoteSetupConfig>(EMPTY_NOTE_SETUP_CONFIG);
 
   const {
     target: editTarget,
@@ -240,7 +240,7 @@ export default function InboxScreen({
       const loadedSettings = await loadSettings();
       setHideDone(loadedSettings.hideDoneInboxTasks);
       setIcsUrl(loadedSettings.googleCalendarIcsUrl);
-      setTagRules(loadedSettings.tagRules);
+      setNoteSetups(noteSetupConfig(loadedSettings));
       let cache = getCachedData();
       if (!cache || forceRebuild) {
         cache = await rebuildCache(loadedSettings);
@@ -352,7 +352,7 @@ export default function InboxScreen({
    * creates or opens the task's note via `openOrCreateTodoNote`.
    * `options.forceOwnTarget: true` - Inbox items have no Project/Area to
    * anchor a shared file to (§9), so this always keeps the own-note
-   * behavior even if the matched Tag Rule is configured as a shared target.
+   * behavior even if the matched Note setup has a notebook.
    */
   const handleTaskNote = (taskIndex: number) => {
     Keyboard.dismiss();
@@ -499,7 +499,7 @@ export default function InboxScreen({
     });
   };
   const trackingFor = (meetingIndex: number): MeetingTrackingConfig => ({
-    rules: tagRules,
+    setups: noteSetups,
     onToggle: kind => handleToggleMeetingTracking(meetingIndex, kind),
   });
 

@@ -4,21 +4,20 @@ import {tagsAsWords} from '../../src/domain/markdown';
 import {NOTE_HEADING_USERDATA, notePieceUserData} from '../../src/domain/meetingNoteBlock';
 import {staleManagedNums, TITLE_ELEMENT_TYPE} from '../../src/domain/noteFindability';
 import {DEFAULT_SETTINGS} from '../../src/domain/settings';
+import {createDefaultMeetingPage} from '../../src/domain/noteSetups';
 import {
-  addPieceToRule,
-  createDefaultMeetingRule,
-  createEmptyTagRule,
+  addPiece,
   dateTitleText,
-  hasUntouchedDefaultPieces,
-  PIECE_CONTEXTS,
+  emptyPageLayout,
   pieceIsHeading,
+  PIECE_PAGES,
   renderPieceText,
   setPieceHeading,
   withDefaultPieces,
-} from '../../src/domain/tagRules';
+} from '../../src/domain/pageLayout';
 
-const piece = (type: Parameters<typeof addPieceToRule>[1], heading?: boolean) => ({
-  ...addPieceToRule(createEmptyTagRule('1', 'meeting'), type).pieces[0],
+const piece = (type: Parameters<typeof addPiece>[1], heading?: boolean) => ({
+  ...addPiece(emptyPageLayout(), type).pieces[0],
   ...(heading === undefined ? {} : {heading}),
 });
 
@@ -36,7 +35,7 @@ describe('pieceIsHeading', () => {
     expect(pieceIsHeading(piece('link', true))).toBe(false);
   });
   it('is set per piece by setPieceHeading', () => {
-    const rule = withDefaultPieces(createEmptyTagRule('1', 'meeting'));
+    const rule = withDefaultPieces(emptyPageLayout(), 'meeting');
     const off = setPieceHeading(rule, 0, false);
     expect(off.pieces.map(pieceIsHeading)).toEqual([false, false, false]);
     expect(setPieceHeading(off, 1, true).pieces.map(pieceIsHeading)).toEqual([false, true, false]);
@@ -44,29 +43,22 @@ describe('pieceIsHeading', () => {
   });
 });
 
-describe('Date & title piece and new-rule defaults', () => {
-  it('belongs to meeting and loop rules only', () => {
-    expect(PIECE_CONTEXTS.dateTitle).toEqual(['meeting', 'loop']);
+describe('Date & title piece and new-page defaults', () => {
+  it('belongs to Meeting and First pages only', () => {
+    expect(PIECE_PAGES.dateTitle).toEqual(['meeting', 'first']);
   });
-  it('new meeting rules start with Date & title (heading), Time, Linked file', () => {
-    const rule = withDefaultPieces(createEmptyTagRule('1', 'meeting'));
+  it('new Meeting pages start with Date & title (heading), Time, Linked file', () => {
+    const rule = withDefaultPieces(emptyPageLayout(), 'meeting');
     expect(rule.pieces.map(p => p.type)).toEqual(['dateTitle', 'time', 'link']);
     expect(rule.pieces[0].heading).toBeUndefined();
-    expect(createDefaultMeetingRule('1').pieces.map(p => p.type)).toEqual(['dateTitle', 'time', 'link', 'related']);
+    expect(createDefaultMeetingPage().pieces.map(p => p.type)).toEqual(['dateTitle', 'time', 'link', 'related']);
   });
-  it('new todo rules start with Title, its switch set on explicitly, and Linked file', () => {
-    const rule = withDefaultPieces(createEmptyTagRule('1', 'todo'));
+  it('new Todo pages start with Title, its switch set on explicitly, and Linked file', () => {
+    const rule = withDefaultPieces(emptyPageLayout(), 'todo');
     expect(rule.pieces.map(p => [p.type, p.heading])).toEqual([
       ['title', true],
       ['link', undefined],
     ]);
-    expect(hasUntouchedDefaultPieces(rule)).toBe(true);
-    expect(hasUntouchedDefaultPieces(setPieceHeading(rule, 0, false))).toBe(false);
-  });
-  it('treats a switch equal to the default as untouched', () => {
-    const rule = withDefaultPieces(createEmptyTagRule('1', 'meeting'));
-    expect(hasUntouchedDefaultPieces(setPieceHeading(rule, 0, true))).toBe(true);
-    expect(hasUntouchedDefaultPieces(setPieceHeading(rule, 0, false))).toBe(false);
   });
   it('keeps context tags as words without `#`, nested ones with their slash, and drops gtdpara’s own', () => {
     expect(tagsAsWords('Retro demand #retro/demand')).toBe('Retro demand retro/demand');

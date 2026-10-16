@@ -1,10 +1,13 @@
 import {
   bookmarkPolygon,
+  canRecognize,
   checkPolygon,
   formatMarkLine,
   groupMarks,
   iconBox,
   isMarkId,
+  isOldStrokeMark,
+  MarkDataFile,
   markCreatedAt,
   markLinkPath,
   markOwner,
@@ -18,8 +21,8 @@ import {
   markUserData,
   resolveMarkPath,
   serializeMarkLines,
-  shiftStrokes,
   StoredStroke,
+  strokeBounds,
 } from '../../src/domain/marks';
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';
 import {Mark} from '../../src/domain/types';
@@ -151,26 +154,60 @@ describe('icons', () => {
   });
 });
 
-describe('shiftStrokes', () => {
+describe('strokeBounds', () => {
   const stroke = (points: number[]): StoredStroke => ({
     thickness: 1,
     penColor: 0,
     penType: 10,
     layerNum: 0,
     points,
-    pressures: points.filter((_, i) => i % 2 === 0).map(() => 100),
+    pressures: [],
   });
-  it('moves all strokes so the minimum sits at the origin, keeping relative positions', () => {
-    const out = shiftStrokes([stroke([18000, 15000, 18100, 15050]), stroke([17500, 15200])]);
-    expect(out[0].points).toEqual([800, 300, 900, 350]);
-    expect(out[1].points).toEqual([300, 500]);
+  it('spans every point of every stroke and counts the points', () => {
+    expect(strokeBounds([stroke([100, 200, 300, 150]), stroke([50, 900])])).toEqual({
+      rect: {left: 50, top: 150, right: 300, bottom: 900},
+      points: 3,
+    });
   });
-  it('leaves empty input alone and does not mutate', () => {
-    const input = [stroke([])];
-    expect(shiftStrokes(input)[0].points).toEqual([]);
-    const s = [stroke([5000, 6000])];
-    shiftStrokes(s);
-    expect(s[0].points).toEqual([5000, 6000]);
+  it('has no rect without points and ignores a dangling coordinate', () => {
+    expect(strokeBounds([])).toEqual({rect: null, points: 0});
+    expect(strokeBounds([stroke([]), stroke([7])])).toEqual({rect: null, points: 0});
+  });
+});
+
+describe('canRecognize / isOldStrokeMark', () => {
+  const s: StoredStroke = {thickness: 1, penColor: 0, penType: 10, layerNum: 0, points: [10, 20], pressures: []};
+  const data = (over: Partial<MarkDataFile>): MarkDataFile => ({
+    version: 2,
+    id: 'm-1',
+    path: '/x/A.note',
+    page: 0,
+    rect: null,
+    displaySize: null,
+    pageSize: null,
+    textBoxText: '',
+    strokes: [s],
+    icon: null,
+    ...over,
+  });
+  it('recognizes version 2 strokes', () => {
+    expect(canRecognize(data({}))).toBe(true);
+    expect(isOldStrokeMark(data({}))).toBe(false);
+  });
+  it('does not send version 1 strokes, with or without kept text', () => {
+    expect(canRecognize(data({version: 1}))).toBe(false);
+    expect(isOldStrokeMark(data({version: 1}))).toBe(true);
+    expect(canRecognize(data({version: 1, recognizedText: 'Call Anna'}))).toBe(false);
+  });
+  it('treats a file without a version as old', () => {
+    const noVersion = data({});
+    delete (noVersion as Partial<MarkDataFile>).version;
+    expect(canRecognize(noVersion)).toBe(false);
+    expect(isOldStrokeMark(noVersion)).toBe(true);
+  });
+  it('a text-box-only mark needs no recognizer and is not old', () => {
+    expect(canRecognize(data({strokes: [], textBoxText: 'Typed'}))).toBe(false);
+    expect(isOldStrokeMark(data({version: 1, strokes: [], textBoxText: 'Typed'}))).toBe(false);
   });
 });
 

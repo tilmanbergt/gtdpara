@@ -6,7 +6,7 @@ Threads you tend, loops you close: a thread (see [Threads](threads.md)) is an on
 
 ## Kinds of loops
 
-A loop is named by a nested tag, `#<kind>/<name>`, for example `#workshop/teamoffsite` or `#read/deepwork`. The kinds come from your Tag Rules: a rule with the context **Loop** on the tag `workshop` makes every `#workshop/<name>` a loop. Each kind can have its own note template, see [Note templates](note-templates.md).
+A loop is named by a nested tag, `#<kind>/<name>`, for example `#workshop/teamoffsite` or `#read/deepwork`. The kinds come from your Note setups: a setup of the kind **Loop** on the tag `workshop` makes every `#workshop/<name>` a loop. Each kind has its own pages for the loop note, see [Note setups](note-setups.md).
 
 - Only the full tag counts: `#workshop/teamoffsite`. A plain `#teamoffsite` is just a tag.
 - A loop belongs to exactly one Area or Project: the one its line is in. The Inbox never holds loops.
@@ -24,7 +24,7 @@ Type only the loop's tag into Quick Add, for example `#workshop/teamoffsite`. Th
 
 ## Where loops show
 
-On an Area's page, the **Projects** tab lists the loops after the projects; a Project's page has a **Loops** tab for its own loops. Both list them, each marked ○, sorted by main date. Each row shows the main date, the next meeting and the open, next and waiting-for todos; the note icon opens the loop note (or creates it from the Loop rule), the clip opens the linked file. Tap a loop to open its overview.
+On an Area's page, the **Projects** tab lists the loops after the projects; a Project's page has a **Loops** tab for its own loops. Both list them, each marked ○, sorted by main date. Each row shows the main date, the next meeting and the open, next and waiting-for todos; the note icon opens the loop note (or creates it from the Loop setup), the clip opens the linked file. Tap a loop to open its overview.
 
 - **Linking a file** to a loop - the book's PDF or epub, the offer, the brief: tap **+** and the clip on a loop without a file, or **Link file** in its overview. The Files pane asks you to pick a file, like linking a file to a todo; tap it. To link another one, remove the file in **Edit** (✕) first: a loop has one linked file. Its note is separate - the place for your own notes.
 
@@ -43,11 +43,11 @@ Tap a loop row, or a loop tag in any todo or meeting of its Area or Project, to 
 
 ## The loop note
 
-Every loop has one note, from start to end, in its Area's or Project's folder. Its name comes from the Loop rule (see [Note templates](note-templates.md)), for example `2026-11 workshop teamoffsite`.
+Every loop has one note, from start to end, in its Area's or Project's folder. Its name comes from the Loop setup (see [Note setups](note-setups.md)), for example `2026-11 workshop teamoffsite`.
 
-- The 📓 on a loop row, or **Note ›** in the overview, opens it. The first time, the status line asks, then the note is created: its first page is the loop's own, filled from the Loop rule.
-- A meeting or todo of the loop gets its note as a page in the loop note, meetings by date after the loop's page. If a rule on one of its other tags makes its note - a thread rule on `#jf`, say - that rule's note wins, and the meeting still shows in the loop.
-- Prep and review tracking applies when any rule matching the meeting asks for it.
+- The 📓 on a loop row, or **Note ›** in the overview, opens it. The first time, the status line asks, then the note is created: its first page is the loop's own, filled from the Loop setup's First page.
+- A todo of the loop gets its note as a page in the loop note. A meeting does too, unless it also carries the tag of a Thread setup - `#jf`, say: a meeting goes to the thread first. When both are possible, the question before the note is created offers the other place as a second button; the meeting still shows in the loop. Pages follow the timeline after the loop's page, see [Note setups](note-setups.md).
+- Prep and review tracking applies when any setup matching the meeting asks for it.
 
 ## Editing a loop
 

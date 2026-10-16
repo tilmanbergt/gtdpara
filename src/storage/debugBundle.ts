@@ -20,6 +20,7 @@ import {collectPerfStats} from './perfStats';
 import {counterpartScopes} from '../domain/counterparts';
 import {getCachedData} from './dataCache';
 import {errorMessage} from '../utils/errorMessage';
+import {didNoteSetupMigrationFail} from './noteSetupMigrationState';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -61,8 +62,27 @@ export function summarizeSettings(s: GtdParaSettings): string[] {
     `          calendar ${s.googleCalendarIcsUrl.trim() ? 'configured' : 'not configured'}, ${onOff(f.googleCalendar)}` +
       ` · gmail ${s.gmailEmail.trim() ? 'configured' : 'not configured'}, ${onOff(f.gmail)}`,
     `          keepTabs ${onOff(s.keepTabsAlive)} · perfTracing ${onOff(s.perfTracing)} · debugLogging ${onOff(s.debugLogging)}` +
-      ` · tagRules ${s.tagRules.length} · reviewSteps recorded ${Object.keys(s.reviewSteps ?? {}).length}`,
+      ` · reviewSteps recorded ${Object.keys(s.reviewSteps ?? {}).length}`,
+    noteSetupsLine(s, didNoteSetupMigrationFail()),
   ];
+}
+
+/**
+ * "note setups: thread 3 · loop 1 · off 1 · notebook 2 · default pages 2 · default notebook no · migrated yes"
+ * (docs/dev/history/technical-design-note-setups.md §8) - counts only, never names or tags.
+ * `migrated`: yes when the setups came from Tag Rules, no for a fresh start, failed when
+ * the migration failed in this session.
+ */
+export function noteSetupsLine(s: GtdParaSettings, migrationFailed: boolean): string {
+  const setups = s.noteSetups ?? [];
+  const on = setups.filter(x => x.enabled);
+  const migrated = migrationFailed ? 'failed' : s.noteSetupsMigrated && (s.tagRules ?? []).length > 0 ? 'yes' : 'no';
+  return (
+    `note setups: thread ${on.filter(x => x.kind === 'thread').length} · loop ${on.filter(x => x.kind === 'loop').length}` +
+    ` · off ${setups.length - on.length} · notebook ${on.filter(x => x.kind === 'thread' && x.notebook).length}` +
+    ` · default pages ${Object.keys(s.noteSetupDefaults?.pages ?? {}).length} · default notebook ${s.noteSetupDefaults?.notebook ? 'yes' : 'no'}` +
+    ` · migrated ${migrated}`
+  );
 }
 
 export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new Date()): Promise<string[]> {
@@ -95,7 +115,7 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
   lines.push(`data: ${data}`);
   lines.push(await marksLine());
   lines.push(counterpartsLine());
-  lines.push(loopsLine(settings));
+  lines.push(loopsLine());
   lines.push(`log file: ${isFileLoggingOn() ? `ON (${LOG_FILE_NAME})` : 'OFF'}`);
   const errors = getRecentErrors(10);
   lines.push(`recent errors (${errors.length}):`);
@@ -123,13 +143,12 @@ function counterpartsLine(): string {
   return `counterparts: active ${active} · inactive ${inactive} (${withSection} scopes with a ## Threads section)`;
 }
 
-/** "loops: rules 1 · active 4 · done 2 · dropped 1" (docs/dev/history/technical-design-loops.md §5) - counts only, never names or tags. */
-function loopsLine(settings: GtdParaSettings): string {
-  const rules = settings.tagRules.filter(r => r.enabled && r.context === 'loop').length;
+/** "loops: active 4 · done 2 · dropped 1" (docs/dev/history/technical-design-loops.md §5) - counts only, never names or tags; the Loop setups are counted on the note setups line. */
+function loopsLine(): string {
   const items = getCachedData()?.items;
-  if (!items) return `loops: rules ${rules} · lines not available (no cache)`;
+  if (!items) return 'loops: lines not available (no cache)';
   const count = (status: string) => items.reduce((sum, item) => sum + item.loops.filter(l => l.status === status).length, 0);
-  return `loops: rules ${rules} · active ${count('active')} · done ${count('done')} · dropped ${count('dropped')}`;
+  return `loops: active ${count('active')} · done ${count('done')} · dropped ${count('dropped')}`;
 }
 
 /** "marks: open 3 (inbox 1 · items 2) · data 3 · pending icons 0" (lasso 0.8 §3.10) - counts only. */

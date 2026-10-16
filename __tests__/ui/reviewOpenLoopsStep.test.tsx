@@ -25,11 +25,11 @@ jest.mock('../../src/supernote/pluginPermissions', () => ({
 }));
 jest.mock('../../src/storage/settingsStorage', () => {
   const s = jest.requireActual('../../src/domain/settings');
-  const rules = jest.requireActual('../../src/domain/tagRules');
+  const setups = jest.requireActual('../../src/domain/noteSetups');
   const stored = {
     ...s.DEFAULT_SETTINGS,
     lastSeenVersion: '99.0.0',
-    tagRules: [{...rules.createEmptyTagRule('r1', 'loop'), name: 'Workshops', tags: ['workshop']}],
+    noteSetups: [{...setups.createNoteSetup('r1', 'loop'), name: 'Workshops', tags: ['workshop']}],
   };
   return {
     loadSettings: async () => stored,

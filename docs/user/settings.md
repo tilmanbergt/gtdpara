@@ -16,9 +16,9 @@ How many projects and areas fit into daily, weekly and monthly focus. Lowering a
 
 Two tabs, only visible when the matching experimental integration is switched on in Advanced. See [Google Calendar and Gmail](integrations.md).
 
-## Tag Rules
+## Note setups
 
-How new notes look, see [Note templates](note-templates.md). A rule is saved with **Create** or **Save** in its editor; the Save button at the bottom isn't needed here. **Heading style** at the top (Black, Light grey, Dark grey, Shadow) is saved as soon as you tap it.
+Where the notes of todos and meetings go and how they look, see [Note setups](note-setups.md). A setup is saved with **Save** on its own page; the Save button at the bottom isn't needed here. **Heading style** at the top (Black, Light grey, Dark grey, Shadow) is saved as soon as you tap it.
 
 ## Advanced
 
@@ -33,6 +33,6 @@ Switches on this tab take effect immediately.
 
 ## About
 
-- version, build number and device
+- the version of the installed build (a test build shows the coming version and its stage, for example `0.15.0 beta`), build number and device
 - **Debug logging** and **Export debug bundle**, see [Troubleshooting](troubleshooting.md)
 - **What's new**: the release notes of this and earlier versions

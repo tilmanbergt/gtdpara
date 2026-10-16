@@ -74,3 +74,5 @@ A mark is one line in a `## Marks` section of the project's `project.txt`, the a
 Date and time, the note, the page and an id. Deleting the line by hand discards the mark. The picture and the handwriting are kept in the plugin's own storage on the device, not in your folders, and are removed once the mark is processed.
 
 If a picture is missing (for example after the plugin was removed and installed again), the mark still works: type the text yourself.
+
+Marks made with gtdpara 0.14 or older (or an early 0.15 beta) and not processed yet are not recognized: the marks screen says "Marked with an older gtdpara - type the text from the picture." Type the text from the picture and save as usual.

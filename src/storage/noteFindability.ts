@@ -2,8 +2,8 @@
  * Makes note pages findable (docs/dev/history/technical-design-projects-findable-notes.md):
  *
  * - **Headings** (§2.6, step 5 of the writing order): after
- *   storage/meetingNoteContent.ts's `populateNoteFromRule` has inserted the
- *   rule's textboxes, every piece with the Heading switch on
+ *   storage/meetingNoteContent.ts's `populatePage` has inserted the
+ *   layout's textboxes, every piece with the Heading switch on
  *   (`pieceIsHeading`) and some text gets a title element over its textbox,
  *   so Supernote lists it in the note's table of contents. Content first,
  *   headings second: a heading that can't be written is logged and skipped,
@@ -19,31 +19,31 @@
 import {notePieceUserData} from '../domain/meetingNoteBlock';
 import {planPageKeywords} from '../domain/noteFindability';
 import {NoteHeadingStyle} from '../domain/settings';
-import {pieceIsHeading, TagRule} from '../domain/tagRules';
+import {PageLayout, pieceIsHeading} from '../domain/pageLayout';
 import {deleteKeyWord, getElements, getKeyWords, insertElements, insertKeyWord} from '../supernote/fileSystem';
 import {buildTitleElement, ElementWithTitle} from '../supernote/noteTitles';
 import {recycleElements} from '../supernote/sdkElements';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logWarn} from '../utils/log';
 
-/** The indexes of `definition`'s pieces that become headings: switch on and non-empty text. */
-export function headingPieceIndexes(definition: TagRule, pieceContent: readonly string[]): number[] {
-  return definition.pieces.flatMap((piece, index) => (pieceIsHeading(piece) && (pieceContent[index] ?? '') !== '' ? [index] : []));
+/** The indexes of `layout`'s pieces that become headings: switch on and non-empty text. */
+export function headingPieceIndexes(layout: PageLayout, pieceContent: readonly string[]): number[] {
+  return layout.pieces.flatMap((piece, index) => (pieceIsHeading(piece) && (pieceContent[index] ?? '') !== '' ? [index] : []));
 }
 
 /**
  * Inserts one title element per heading piece over the textbox
- * `populateNoteFromRule` just wrote for it (found by its per-piece marker),
+ * `populatePage` just wrote for it (found by its per-piece marker),
  * all in one `insertElements` call. Never throws.
  */
 export async function applyPieceHeadings(
   notePath: string,
   page: number,
-  definition: TagRule,
+  layout: PageLayout,
   pieceContent: readonly string[],
   style: NoteHeadingStyle,
 ): Promise<void> {
-  const indexes = headingPieceIndexes(definition, pieceContent);
+  const indexes = headingPieceIndexes(layout, pieceContent);
   if (indexes.length === 0) return;
   const titles: ElementWithTitle[] = [];
   try {

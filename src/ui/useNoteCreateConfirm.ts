@@ -3,19 +3,18 @@
  * linked (docs/dev/history/technical-design-split-by-tag.md §3.5). Every screen with
  * note icons passes the returned callback to
  * `openOrCreateMeetingNote`/`openOrCreateTodoNote` as `confirmCreate`.
- * A thin wrapper over useStatusConfirm (same one-at-a-time and
- * ✕-on-hide/unmount rules).
+ * When more than one setup matches, a second button offers the best other
+ * place (docs/dev/history/technical-design-note-setups.md §4.4); the result
+ * is the chosen place's index, `null` on ✕. Built on useStatusChoice (same
+ * one-at-a-time and ✕-on-hide/unmount rules).
  */
 import {useCallback} from 'react';
-import {noteCreationConfirmText} from '../domain/fileChangeText';
-import {NoteCreationPlan} from '../domain/noteCreationPlan';
+import {noteChoiceText} from '../domain/fileChangeText';
+import {NoteCreateConfirm, NoteCreationPlan} from '../domain/noteCreationPlan';
 import {displayPath} from '../supernote/fileSystem';
-import {useStatusConfirm} from './useStatusConfirm';
+import {useStatusChoice} from './useStatusChoice';
 
-export function useNoteCreateConfirm(name: string): (plan: NoteCreationPlan) => Promise<boolean> {
-  const confirm = useStatusConfirm(name);
-  return useCallback(
-    (plan: NoteCreationPlan) => confirm(noteCreationConfirmText(plan, displayPath(plan.absolutePath))),
-    [confirm],
-  );
+export function useNoteCreateConfirm(name: string): NoteCreateConfirm {
+  const choose = useStatusChoice(name);
+  return useCallback((plan: NoteCreationPlan) => choose(noteChoiceText(plan, displayPath(plan.absolutePath))), [choose]);
 }

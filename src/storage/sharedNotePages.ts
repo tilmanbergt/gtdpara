@@ -14,26 +14,21 @@
  * decides own-vs-shared or reads a Task/Meeting.
  *
  * The four functions §4 names (`ensureSharedNoteFile`/`findKeywordPage`/
- * `insertChronologicalPage`/`renameKeywordAt`) record one attempt +
+ * `insertItemPage`/`renameKeywordAt`) record one attempt +
  * success/failure + timing entry per call via `recordDebugLogEntry`
  * (`supernote/fileSystem.ts`'s on-device diagnostic file), so §10's open
  * risks can be checked on the device without `adb logcat`. Their
  * `try`/`catch` only adds the log entry and always rethrows the original
  * error unchanged. `writeRecreatedNotice` uses a plain `log()` instead.
  */
-import {
-  chronologicalInsertIndex,
-  findExactKeywordPage,
-  insertTodoPageIndex,
-  PageKeyword,
-  recreatedPageNoticeText,
-} from '../domain/sharedNotePages';
+import {findExactKeywordPage, PageKeyword, recreatedPageNoticeText} from '../domain/sharedNotePages';
+import {pageMarks, timelineInsertIndex} from '../domain/pageOrder';
 import {
   DEFAULT_PIECE_FONT_SIZE,
   DEFAULT_PIECE_X,
   DEFAULT_PIECE_Y,
   pieceWidthPx,
-} from '../domain/tagRules';
+} from '../domain/pageLayout';
 import {estimatePieceTextHeight} from '../domain/meetingNoteBlock';
 import {
   createElement,
@@ -137,51 +132,31 @@ export async function findKeywordPage(filePath: string, keyword: string): Promis
 
 /**
  * Inserts a brand-new page for `keyword` into `filePath` and returns its
- * index (design doc §4's `insertChronologicalPage`). `isDated` selects the
- * ordering rule: `true` (meetings) inserts chronologically among existing
- * dated pages (`domain/sharedNotePages.ts`'s `chronologicalInsertIndex`);
- * `false` (todos) always appends (`insertTodoPageIndex`) - todos have no
- * date to order by (§4/§9 of the design doc).
- *
- * Reads the keyword index only when `isDated` (the undated/todo path needs
- * nothing but the page count) - a small, deliberate optimization over always
- * reading it, since a todo-heavy shared file never needs its keywords for
- * this decision at all.
+ * index. `date` (YYYY-MM-DD) is the item's date - a meeting's date, a todo's
+ * creation date; domain/pageOrder.ts decides the position from it and the
+ * file's keywords (note-setups design §13).
  */
-export async function insertChronologicalPage(
-  filePath: string,
-  keyword: string,
-  template: string,
-  isDated: boolean,
-): Promise<number> {
+export async function insertItemPage(filePath: string, keyword: string, template: string, date: string): Promise<number> {
   const start = Date.now();
   try {
-    let index: number;
-    let totalPagesBefore: number;
-    if (isDated) {
-      const {keywords, totalPages} = await readAllKeywords(filePath);
-      index = chronologicalInsertIndex(keywords, totalPages, keyword);
-      totalPagesBefore = totalPages;
-    } else {
-      totalPagesBefore = await getNoteTotalPageNum(filePath);
-      index = insertTodoPageIndex(totalPagesBefore);
-    }
-    log('insertChronologicalPage: inserting', filePath, `page=${index}`, keyword);
+    const {keywords, totalPages} = await readAllKeywords(filePath);
+    const index = timelineInsertIndex(pageMarks(keywords, totalPages), date);
+    log('insertItemPage: inserting', `page=${index}`, date);
     await insertNotePage(filePath, index, template);
     await insertKeyWord(filePath, index, keyword);
-    await recordDebugLogEntry('insertChronologicalPage', true, Date.now() - start, {
+    await recordDebugLogEntry('insertItemPage', true, Date.now() - start, {
       filePath,
       keyword,
-      isDated,
-      totalPagesBefore,
+      date,
+      totalPagesBefore: totalPages,
       insertedPage: index,
     });
     return index;
   } catch (e) {
-    await recordDebugLogEntry('insertChronologicalPage', false, Date.now() - start, {
+    await recordDebugLogEntry('insertItemPage', false, Date.now() - start, {
       filePath,
       keyword,
-      isDated,
+      date,
       errorMessage: errorMessage(e),
     });
     throw e;
@@ -254,7 +229,7 @@ export async function renameKeywordAt(
  * freshly recreated page - one plain text element, positioned/sized the same
  * way a definition's own first piece would be (`DEFAULT_PIECE_X/Y/FONT_SIZE`,
  * `estimatePieceTextHeight` - the same constants and height estimate
- * `storage/meetingNoteContent.ts`'s `populateNoteFromRule` uses for a
+ * `storage/meetingNoteContent.ts`'s `populatePage` uses for a
  * page's first piece), since the recreated page is otherwise blank at the
  * moment this runs (the caller writes it before populating the page's real
  * content, so this notice ends up first, unlike the pieces which follow at

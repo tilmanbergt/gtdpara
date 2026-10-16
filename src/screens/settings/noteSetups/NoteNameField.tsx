@@ -1,9 +1,9 @@
 /**
- * The note-name field of the Tag Rule form: the name template with its
+ * The note-name field of the setup page: the name template with its
  * placeholder chips (tapping one inserts it at the cursor) and what the
- * template gives as a file name. Used for a Todo/Meeting rule's shared file
+ * template gives as a file name. Used for a notebook's name
  * (docs/dev/history/technical-design-split-by-tag.md §3.6) and for a Loop
- * rule's loop note (docs/dev/history/technical-design-loops.md §3.1).
+ * setup's loop note (docs/dev/history/technical-design-loops.md §3.1).
  */
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';

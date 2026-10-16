@@ -22,9 +22,9 @@ import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
 import {setOpenMarksHandler} from './src/ui/marksNav';
 import {MarkScope} from './src/domain/marks';
-import StaleBuildBanner from './src/ui/StaleBuildBanner';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
-import {getMarkOutcome, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
+import {logStaleBuilds} from './src/supernote/pluginRuntime';
+import {getMarkOutcome, holdStartForMark, isMarkInFlight, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
 import {useLoopEvents} from './src/ui/useLoopEvents';
 import {useLoopLinkNavigation} from './src/screens/area/useLoopLinkArm';
@@ -35,6 +35,7 @@ import {activeReviewSteps, isReviewOverdue} from './src/domain/reviewSteps';
 import {featuresOf, shouldShowWhatsNew} from './src/domain/features';
 import {setFeatures, useFeatures} from './src/ui/featureStore';
 import {useStatus} from './src/ui/status/StatusProvider';
+import {useNoteSetupsNotice} from './src/ui/useNoteSetupsNotice';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
 import {decideLanding} from './src/domain/returnContext';
@@ -111,14 +112,13 @@ interface CurrentItem {
 type Mode = 'loading' | 'capture' | 'tabs' | 'focus';
 
 // The central status slot (docs/dev/history/technical-design-status-slot.md) needs its
-// provider above every mode, so App itself is only the provider + the
-// always-mounted StaleBuildBanner publisher; the real shell is AppShell.
+// provider above every mode, so App itself is only the provider; the real
+// shell is AppShell.
 // Keep this `export default` - index.js is untyped JS, so tsc can't catch
 // a missing default export here (see the project's App.tsx crash notes).
 export default function App(): React.JSX.Element {
   return (
     <StatusProvider>
-      <StaleBuildBanner />
       <AppRoot />
     </StatusProvider>
   );
@@ -200,14 +200,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // Loops: a todo that is only a loop tag becomes its loop after the save (storage/loops.ts).
   useLoopEvents();
   useLoopLinkNavigation(stableOpenItem);
-  // Leftovers of an interrupted PDF export live only in the plugin's private
-  // temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2) - clear
-  // them once per start. Best-effort: older native builds lack the call.
-  useEffect(() => {
-    getPrivateTempDir()
-      .then(dir => deleteTempTree(dir))
-      .catch(e => log('App: private temp clean-up skipped', errorMessage(e)));
-  }, []);
+  // Once per start, by the first reorient() that lands on the tabs (never
+  // while "Mark for later" or Capture still has its lasso picture in the
+  // temp folder): clear leftovers of an interrupted PDF export from the
+  // private temp folder (docs/dev/history/technical-design-inkhub-submission.md §3.2;
+  // best-effort, older native builds lack the call), and log whether an
+  // older build is still loaded (supernote/pluginRuntime.ts logStaleBuilds).
+  const startHousekeepingRef = useRef(false);
 
   // Re-checks the current note's Project/Area and jumps straight there - on
   // initial mount, AND every time our own sidebar button is pressed again.
@@ -300,9 +299,17 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     // any earlier record intact.
     setOpenPathObserver({onOpening: path => recordPluginOpen(path)});
 
-    const reorient = async () => {
+    // While "Mark for later" saves, App starts nothing (no landing, Files
+    // pane, cache build or temp clean-up; storage/marks.ts holdStartForMark).
+    // The press can arrive before or during the first reads: checked at both.
+    const reorient = async (): Promise<void> => {
+      if (isMarkInFlight()) await holdStartForMark();
       try {
         const [loadedSettings, currentPath] = await Promise.all([loadSettings(), getCurrentNotePath()]);
+        if (isMarkInFlight()) {
+          await holdStartForMark();
+          return reorient();
+        }
         perfEnable(loadedSettings.perfTracing === true);
         // Experimental switches + debug-log file (docs/dev/history/technical-design-about-debug-experimental.md).
         setFeatures(featuresOf(loadedSettings));
@@ -319,6 +326,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         if (cancelled || routedByLassoButtonRef.current) return;
 
         setSettings(loadedSettings);
+        if (!startHousekeepingRef.current) {
+          startHousekeepingRef.current = true;
+          getPrivateTempDir()
+            .then(dir => deleteTempTree(dir))
+            .catch(e => log('App: private temp clean-up skipped', errorMessage(e)));
+          logStaleBuilds();
+        }
         // Only files changed outside gtdpara are read again (technical-design-files-0.6.md §3.2).
         refreshCache(loadedSettings).catch(e =>
           logError('App: background cache refresh failed', errorMessage(e)),
@@ -569,10 +583,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // "Updated to x.y.z" notice (docs/dev/history/technical-design-about-debug-experimental.md
   // §3.6, P3). Only a tap on "What's new" or ✕ stores lastSeenVersion - not
-  // merely showing it - because after an update the first start is often cut
-  // short by the stale-build restart (StaleBuildBanner, which also wins the
-  // status slot: warning outranks info), so the notice must survive to the
-  // next start.
+  // merely showing it - a first start after an update can be short (the
+  // user only marks something, or a warning outranks info in the status
+  // slot), so the notice must survive to the next start.
   const [whatsNewAcknowledged, setWhatsNewAcknowledged] = useState(false);
   const acknowledgeWhatsNew = () => {
     setWhatsNewAcknowledged(true);
@@ -605,6 +618,11 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     log('App: switched to profile', next.activeProfileId);
     onProfileSwitched();
   };
+  useNoteSetupsNotice(settings, () => {
+    setSettingsTab('templates');
+    setActiveTab('settings');
+    setMode('tabs');
+  });
   const showWhatsNew =
     settings !== null && !whatsNewAcknowledged && shouldShowWhatsNew(settings.lastSeenVersion, BUILD_INFO);
   useStatus(

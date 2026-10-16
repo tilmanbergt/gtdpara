@@ -1,12 +1,12 @@
 /**
- * Settings: one screen with sub-tabs (Folders, Focus, Calendar, Gmail, Tag
- * Rules, Advanced, About). Calendar and Gmail show only while their
+ * Settings: one screen with sub-tabs (Folders, Focus, Calendar, Gmail, Note
+ * setups, Advanced, About). Calendar and Gmail show only while their
  * experimental switch is on.
  *
  * Folders, Focus, Calendar and Gmail edit one shared draft
  * (useSettingsDraft.ts) that only the Save button at the bottom writes.
- * Everything else takes effect at once: Tag Rules saves each rule itself
- * (tagRules/), and the switches on Advanced and About write immediately and
+ * Everything else takes effect at once: Note setups saves each setup itself
+ * (noteSetups/), and the switches on Advanced and About write immediately and
  * update the draft too, so a later Save can't write an old value back.
  *
  * `initialTab` lets another screen land on a tab (e.g. a Google Calendar
@@ -36,9 +36,9 @@ import AboutTab from './AboutTab';
 import AdvancedTab from './AdvancedTab';
 import {CalendarTab, FocusTab, FoldersTab, GmailTab} from './DraftTabs';
 import {styles} from './settingsStyles';
-import TagRulesTab from './tagRules/TagRulesTab';
-import {useMyStylePngs} from './tagRules/useMyStylePngs';
-import {useTagRuleDraft} from './tagRules/useTagRuleDraft';
+import NoteSetupsTab from './noteSetups/NoteSetupsTab';
+import {useMyStylePngs} from './noteSetups/useMyStylePngs';
+import {useNoteSetupDraft} from './noteSetups/useNoteSetupDraft';
 import {useSettingsDraft} from './useSettingsDraft';
 
 export type SettingsTab = 'folders' | 'focus' | 'calendar' | 'gmail' | 'templates' | 'advanced' | 'about';
@@ -47,7 +47,7 @@ const SETTINGS_TABS: MiniTabDef<SettingsTab>[] = [
   {key: 'focus', label: 'Focus'},
   {key: 'calendar', label: 'Calendar'},
   {key: 'gmail', label: 'Gmail'},
-  {key: 'templates', label: 'Tag Rules'},
+  {key: 'templates', label: 'Note setups'},
   {key: 'advanced', label: 'Advanced'},
   {key: 'about', label: 'About'},
 ];
@@ -77,7 +77,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
 
   const draft = useSettingsDraft();
   const {values, setValues, setSaveError} = draft;
-  const tagRules = useTagRuleDraft(values, setValues);
+  const noteSetups = useNoteSetupDraft(values, setValues);
   const myStyle = useMyStylePngs();
 
   // Integrity Check and Fix file names (Advanced) - result and its action in the status slot.
@@ -212,7 +212,9 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
           {activeTab === 'focus' && <FocusTab draft={draft} {...tabProps} />}
           {activeTab === 'calendar' && <CalendarTab draft={draft} {...tabProps} />}
           {activeTab === 'gmail' && <GmailTab draft={draft} {...tabProps} />}
-          {activeTab === 'templates' && <TagRulesTab draft={tagRules} tagRules={values.tagRules} headingStyle={values.noteHeadingStyle} myStyle={myStyle} {...tabProps} />}
+          {activeTab === 'templates' && (
+            <NoteSetupsTab draft={noteSetups} values={values} myStyle={myStyle} {...tabProps} />
+          )}
           {activeTab === 'advanced' && (
             <AdvancedTab
               activeProfileId={values.activeProfileId}
@@ -246,7 +248,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
             <Pressable
               onPress={() => {
                 draft.handleResetDefaults();
-                tagRules.handleCancelDefinitionEdit();
+                noteSetups.handleCancel();
               }}
               style={styles.resetButton}>
               <Text style={[styles.resetText, {color: textColor}]}>Reset to defaults</Text>

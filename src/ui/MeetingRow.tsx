@@ -24,7 +24,8 @@ import {isHighlight} from '../domain/monthHighlight';
 import {MeetingSpanDay} from '../domain/meetingSpan';
 import {meetingDisplayTitle, MeetingTrackingKind, resolveMeetingTracking} from '../domain/meetingTracking';
 import HighlightMark from './HighlightMark';
-import {TagRule} from '../domain/tagRules';
+import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../domain/noteSetups';
+import {GtdParaSettings} from '../domain/settings';
 import {Meeting} from '../domain/types';
 import {ClipIcon, TrackingBoxIcon} from './icons';
 import {renderTaggableText} from './TaggableText';
@@ -33,7 +34,7 @@ import {perfCount} from '../utils/perf';
 
 /**
  * What a screen supplies to switch a meeting list's prep/review icons on: the
- * Tag Rules (`settings.tagRules`) and its own persist step.
+ * Note setups (`trackingSetups(settings)`) and its own persist step.
  * `onToggle(kind)` must flip the checkpoint on the CURRENT copy of the
  * meeting inside the screen's usual meetings mutator (domain/
  * meetingTracking.ts's `toggleMeetingTrackingAt`), not on the `meeting` the
@@ -41,8 +42,13 @@ import {perfCount} from '../utils/perf';
  * to `MeetingRow`'s `tracking` prop.
  */
 export interface MeetingTrackingConfig {
-  rules: TagRule[];
+  setups: NoteSetupConfig;
   onToggle: (kind: MeetingTrackingKind) => void;
+}
+
+/** The Note setups a row's tracking icon reads, from the screen's settings (none while they load). */
+export function trackingSetups(settings: Pick<GtdParaSettings, 'noteSetups' | 'noteSetupDefaults'> | null | undefined): NoteSetupConfig {
+  return settings ? noteSetupConfig(settings) : EMPTY_NOTE_SETUP_CONFIG;
 }
 
 export type MeetingRowLayout = 'oneLine' | 'twoLine';
@@ -111,7 +117,7 @@ function MeetingRowV2({
   const cell = meetingTimeCell(meeting, span, time);
   const continuesBefore = span?.part === 'middle' || span?.part === 'last';
   const continuesAfter = span?.part === 'first' || span?.part === 'middle';
-  const trackingState = tracking ? resolveMeetingTracking(meeting, tracking.rules) : null;
+  const trackingState = tracking ? resolveMeetingTracking(meeting, tracking.setups) : null;
   const highlighted = isHighlight(meeting);
   const done = state === 'done';
 

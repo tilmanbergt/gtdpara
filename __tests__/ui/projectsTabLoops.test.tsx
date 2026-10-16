@@ -12,7 +12,7 @@ jest.mock('../../src/storage/linkedFiles', () => ({openLinkedFile: jest.fn()}));
 jest.mock('../../src/ui/useLoopNote', () => ({useLoopNote: () => () => undefined}));
 jest.mock('../../src/storage/loops', () => ({trackLoop: jest.fn(async () => undefined)}));
 jest.mock('../../src/ui/status/StatusProvider', () => ({useErrorStatus: () => undefined}));
-const mockKinds = {kinds: ['workshop'], rules: {}};
+const mockKinds = {kinds: ['workshop'], setups: {}};
 jest.mock('../../src/ui/useLoopKinds', () => ({useLoopKinds: () => mockKinds}));
 let mockItems: unknown[] = [];
 jest.mock('../../src/ui/useCachedItems', () => ({useCachedItems: () => mockItems}));

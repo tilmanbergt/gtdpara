@@ -5,22 +5,22 @@ import {
   counterpartTag,
   inactiveLeaves,
   oneOffLabel,
-  ruleTypesOf,
+  threadTypesOf,
   scopeOwnerOf,
 } from '../../src/domain/counterparts';
 import {parseThreadsSpan} from '../../src/domain/threadsSection';
 import {item, meeting, task} from '../../test-helpers/fixtures';
 
 const NOW = new Date(2026, 9, 8, 12, 0);
-const TYPES = ruleTypesOf([
+const TYPES = threadTypesOf([
   {enabled: true, tags: ['#101', 'retro/team']},
   {enabled: false, tags: ['coaching']},
   {enabled: true, tags: []},
 ]);
 const lines = (text: string) => parseThreadsSpan(`## Threads\n${text}`).threads;
 
-describe('ruleTypesOf', () => {
-  it('takes the first segment of enabled rule tags, then wf and owe', () => {
+describe('threadTypesOf', () => {
+  it('takes the first segment of enabled thread setup tags, then wf and owe', () => {
     expect(TYPES).toEqual(['101', 'retro', 'wf', 'owe']);
   });
 });

@@ -59,18 +59,18 @@
  *   actionable open tasks, and a #next task always counts as actionable
  *   (isActionableOpenTask only excludes Someday/Maybe).
  * - meetingsToClose (docs/dev/history/technical-design-meeting-tracking.md): meetings whose
- *   Tag Rule tracks "review after", that are over, not yet `#reviewed`, and
+ *   Note setup tracks "review after", that are over, not yet `#reviewed`, and
  *   within the last REVIEW_LOOKBACK_DAYS. The predicate is domain/
  *   meetingTracking.ts's `isReviewOutstanding` - the same resolution the Daily
- *   row's icon uses, so the two can't disagree. Needs the Tag Rules
- *   (`definitions`), which are settings, not item data, so the caller passes
- *   them in (an empty list -> nothing tracked -> empty bucket).
+ *   row's icon uses, so the two can't disagree. Needs the Note setups
+ *   (`noteSetups`), which are settings, not item data, so the caller passes
+ *   them in (none -> nothing tracked -> empty bucket).
  */
 import {isFocused} from '../domain/destination';
 import {countMeetingsInRange} from '../domain/meetingSpan';
 import {meetingTimestampMs, splitAndSortMeetings} from '../domain/meetingTime';
 import {isReviewOutstanding} from '../domain/meetingTracking';
-import {TagRule} from '../domain/tagRules';
+import {EMPTY_NOTE_SETUP_CONFIG, NoteSetupConfig} from '../domain/noteSetups';
 import {ReviewStepId} from '../domain/reviewSteps';
 import {Meeting, Task} from '../domain/types';
 import {weekAheadRangeIso} from '../domain/weekDate';
@@ -188,7 +188,7 @@ export function nextTasksFor(item: ReviewItemRef, tasks: Task[]): ReviewNextTask
 export function buildReviewAggregate(
   items: CachedItem[],
   now: Date = new Date(),
-  definitions: TagRule[] = [],
+  noteSetups: NoteSetupConfig = EMPTY_NOTE_SETUP_CONFIG,
 ): ReviewAggregate {
   const week = weekAheadRangeIso(now);
 
@@ -213,7 +213,7 @@ export function buildReviewAggregate(
       if (countMeetingsInRange([meeting], week.start, week.end) > 0) {
         weekMeetings.push({item, meetingIndex, meeting});
       }
-      if (isReviewOutstanding(meeting, definitions, now)) {
+      if (isReviewOutstanding(meeting, noteSetups, now)) {
         meetingsToClose.push({item, meetingIndex, meeting});
       }
     });

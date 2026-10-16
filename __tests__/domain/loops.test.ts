@@ -13,7 +13,7 @@ import {
   loopsInUse,
 } from '../../src/domain/loops';
 import {newLoopLine, parseLoopsSpan, writeLoopsIntoContent, withLoopLine} from '../../src/domain/loopsSection';
-import {ruleTypesOf} from '../../src/domain/counterparts';
+import {threadTypesOf} from '../../src/domain/counterparts';
 import {renderSharedFileName} from '../../src/domain/sharedNotePages';
 import {newTask, parseTaskInput} from '../../src/domain/taskEdit';
 import {Meeting, Task} from '../../src/domain/types';
@@ -35,15 +35,15 @@ function meeting(title: string, date: string, extra: Partial<Meeting> = {}): Mee
 
 describe('loop kinds', () => {
   const rules = [
-    {enabled: true, context: 'loop', tags: ['#Workshop', 'read']},
-    {enabled: false, context: 'loop', tags: ['trip']},
-    {enabled: true, context: 'meeting', tags: ['workshop', 'retro']},
+    {enabled: true, kind: 'loop', tags: ['#Workshop', 'read']},
+    {enabled: false, kind: 'loop', tags: ['trip']},
+    {enabled: true, kind: 'thread', tags: ['retro']},
   ];
-  it('are the tags of enabled Loop rules', () => {
+  it('are the tags of enabled Loop setups', () => {
     expect(loopKindsOf(rules)).toEqual(['workshop', 'read']);
   });
-  it('never become counterpart types, whatever rule shares the tag', () => {
-    expect(ruleTypesOf(rules)).toEqual(['retro', 'wf', 'owe']);
+  it('never become counterpart types', () => {
+    expect(threadTypesOf(rules)).toEqual(['retro', 'wf', 'owe']);
   });
   it('name a loop by the full tag only', () => {
     expect(loopOf('workshop/teamoffsite', KINDS)).toEqual({kind: 'workshop', name: 'teamoffsite', tag: 'workshop/teamoffsite'});
@@ -120,14 +120,20 @@ describe('members, blockers, New and ideas', () => {
 
 describe('the loop note name', () => {
   const loop = {kind: 'workshop', name: 'teamoffsite', tag: 'workshop/teamoffsite'};
+  const owner = {itemName: 'Leadership Program', itemAbbrev: 'LP'};
   it('takes the main date, or leaves the date out', () => {
-    expect(loopNoteBaseName(undefined, loop, '2026-11-14')).toBe('2026-11 workshop teamoffsite');
-    expect(loopNoteBaseName('', loop, null)).toBe('workshop teamoffsite');
-    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, '2026-11-04')).toBe('teamoffsite 04.11.2026');
-    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, null)).toBe('teamoffsite');
+    expect(loopNoteBaseName(undefined, loop, '2026-11-14', owner)).toBe('2026-11 workshop teamoffsite');
+    expect(loopNoteBaseName('', loop, null, owner)).toBe('workshop teamoffsite');
+    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, '2026-11-04', owner)).toBe('teamoffsite 04.11.2026');
+    expect(loopNoteBaseName('{subtag} {day}.{month}.{year}', loop, null, owner)).toBe('teamoffsite');
+  });
+  it('takes {name} and {abbr} from the loop’s owner', () => {
+    expect(loopNoteBaseName('{abbr} {subtag} {year}', loop, '2026-11-04', owner)).toBe('LP teamoffsite 2026');
+    expect(loopNoteBaseName('{name} {subtag}', loop, null, {itemName: 'Garden', itemAbbrev: ''})).toBe('Garden teamoffsite');
+    expect(loopNoteBaseName('{abbr} {subtag}', loop, null, {itemName: 'Garden', itemAbbrev: ''})).toBe('Garden teamoffsite');
   });
   it('drops date placeholders with their separator for shared notes too', () => {
-    const base = {ruleName: 'Retro', tag: 'retro', subtag: 'demand'};
+    const base = {fallbackName: 'Retro', tag: 'retro', subtag: 'demand', itemName: '', itemAbbrev: ''};
     expect(renderSharedFileName({...base, template: '{tag}-{year}', date: ''})).toBe('retro');
     expect(renderSharedFileName({...base, template: '{tag} {subtag} {year}', date: '2026-10-07'})).toBe('retro demand 2026');
     expect(renderSharedFileName({...base, template: '{year}_{month}_{day} {tag}', date: '2026-10-07'})).toBe('2026_10_07 retro');

@@ -5,7 +5,7 @@ jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), log
 import {buildPageAnchor, parsePageAnchor, parseSharedNoteAnchor, stripPageAnchor} from '../../src/domain/sharedNotePages';
 import {collectOpenMarks} from '../../src/domain/marks';
 import {checkHashNotePath} from '../../src/domain/integrityCheck';
-import {nextToRecognize, PREFETCH} from '../../src/ui/capture/useRecognitionQueue';
+import {nextToRecognize, PREFETCH, settledRecognition} from '../../src/ui/capture/useRecognitionQueue';
 import {Mark} from '../../src/domain/types';
 
 describe('page anchors', () => {
@@ -70,5 +70,17 @@ describe('nextToRecognize', () => {
     const results = new Map(ids.slice(0, 1 + PREFETCH).map(id => [id, {state: 'done' as const, text: ''}]));
     expect(nextToRecognize(ids, 'a', results)).toBeNull();
     expect(nextToRecognize(ids, null, new Map())).toBe('a');
+  });
+});
+
+describe('settledRecognition', () => {
+  it('is done with text, failed with an error, empty otherwise', () => {
+    expect(settledRecognition(' Call Anna ', null)).toEqual({state: 'done', text: 'Call Anna'});
+    expect(settledRecognition('', '117: failed')).toEqual({state: 'failed', text: ''});
+    expect(settledRecognition('  ', null)).toEqual({state: 'empty', text: ''});
+  });
+  it('keeps the old-mark flag', () => {
+    expect(settledRecognition('', null, true)).toEqual({state: 'empty', text: '', old: true});
+    expect(settledRecognition('Order toner', null, true)).toEqual({state: 'done', text: 'Order toner', old: true});
   });
 });

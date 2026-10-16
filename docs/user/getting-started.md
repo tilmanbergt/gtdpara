@@ -3,10 +3,10 @@
 ## Install
 
 1. Download the newest `gtdpara-x.y.z.snplg` from the Releases page on GitHub (github.com/tilmanbergt/gtdpara).
-2. Copy it to your Supernote and install it as a plugin. Your firmware needs plugin support.
+2. Copy it to your Supernote and install it as a plugin. gtdpara needs the plugin firmware: A5 X and A6 X Chauvet 2.27.42 or later, Manta and Nomad Chauvet 3.30.45 or later.
 3. Open any note, open the plugin sidebar and tap the gtdpara icon.
 
-To update later, install the newer file over the old one. Read the **Upgrade notes** in "What's new" (Settings → About) first. If a message says the old version is still loaded, tap **Restart** once.
+To update later, install the newer file over the old one. Read the **Upgrade notes** in "What's new" (Settings → About) first.
 
 ## First setup
 
@@ -29,7 +29,7 @@ Want to look around first without touching your own files? Go to **Settings → 
 - **Inbox**: everything captured but not yet filed
 - **Current**: the project or area you opened last, with its todos, meetings, files and notes
 - **Review**: the Weekly Review, one step at a time
-- **Settings**: folders, focus counts, Tag Rules, advanced options, About
+- **Settings**: folders, focus counts, Note setups, advanced options, About
 
 **?** opens this help, starting at the page for the tab you are on. **✕ Close** in the help closes it again; the tab behind it stays exactly as it was. ✕ closes the plugin. When you open gtdpara, it reads the files you changed outside it again. To read all files again, use **Reload all files** in Settings → Advanced.
 

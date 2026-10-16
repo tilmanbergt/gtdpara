@@ -1,5 +1,5 @@
 /** The tending roster and the counterpart predicate (docs/dev/history/technical-design-tending-threads.md §1.2.1, §3.9.4, §3.10). */
-import {ruleTypesOf} from '../../src/domain/counterparts';
+import {threadTypesOf} from '../../src/domain/counterparts';
 import {deriveMeetingFields} from '../../src/domain/markdown';
 import {meetingKey} from '../../src/domain/provenance';
 import {emptyTaskFields} from '../../src/domain/taskLine';
@@ -11,7 +11,7 @@ import {item, meeting, task} from '../../test-helpers/fixtures';
 
 const NOW = new Date(2026, 9, 8, 12, 0, 0);
 const INBOX = '/Note/2 Areas/0 Inbox';
-const TYPES = ruleTypesOf([{enabled: true, tags: ['101', 'retro']}]);
+const TYPES = threadTypesOf([{enabled: true, tags: ['101', 'retro']}]);
 
 function m(date: string, title: string, extra: Partial<Meeting> = {}): Meeting {
   return meeting(date, title, {...deriveMeetingFields(title), ...extra});

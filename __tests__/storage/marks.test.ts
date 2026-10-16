@@ -14,12 +14,12 @@ const mockState = {
 
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 jest.mock('../../src/supernote/lassoRead', () => ({
-  readLasso: async () => mockState.snap,
-  isEmptyLasso: (s: {strokes: unknown[]; textBoxText: string}) => s.strokes.length === 0 && !s.textBoxText.trim(),
-  saveLassoPreview: async (target: string) => {
-    mockState.calls.push('preview');
-    return target;
+  // The picture is taken inside the read, right after path and page.
+  readLasso: async (opts: {previewPath?: string} = {}) => {
+    if (opts.previewPath) {mockState.calls.push('preview');}
+    return {picture: opts.previewPath ?? null, ...mockState.snap};
   },
+  isEmptyLasso: (s: {strokes: unknown[]; textBoxText: string}) => s.strokes.length === 0 && !s.textBoxText.trim(),
 }));
 jest.mock('../../src/supernote/strokeRecognition', () => ({recognizeStrokes: jest.fn()}));
 jest.mock('../../src/supernote/lasso', () => ({
@@ -38,11 +38,13 @@ jest.mock('../../src/supernote/markIcons', () => ({
   },
 }));
 jest.mock('../../src/supernote/fileSystem', () => ({
-  ensureFolderExists: async () => undefined,
+  getPrivateTempDir: async () => '/private/tmp',
+  moveFile: async (from: string, to: string) => {
+    mockState.calls.push(`picture:${from}->${to}`);
+  },
   readTextFile: async (path: string) => (path.endsWith('Garden/project.txt') ? '## Tasks\n' : null),
 }));
 jest.mock('../../src/storage/markData', () => ({
-  markDataFolder: async (id: string) => `/private/data/marks/${id}`,
   markPicturePath: async (id: string) => `/private/data/marks/${id}/picture.png`,
   writeMarkData: async (data: Record<string, unknown>) => {
     mockState.calls.push('data');
@@ -72,7 +74,15 @@ jest.mock('../../src/storage/dataCache', () => ({
 }));
 
 import {DEFAULT_SETTINGS, resolvePaths} from '../../src/domain/settings';
-import {createMarkFromLasso, outcomeNeedsScreen, recognizeMark} from '../../src/storage/marks';
+import {
+  createMarkFromLasso,
+  outcomeNeedsScreen,
+  recognizeMark,
+  storedMarkRecognition,
+  trackMarkPress,
+  whenMarkSettled,
+} from '../../src/storage/marks';
+import {log} from '../../src/utils/log';
 import {recognizeStrokes} from '../../src/supernote/strokeRecognition';
 
 const paths = resolvePaths(DEFAULT_SETTINGS);
@@ -81,7 +91,6 @@ const snap = (over: Record<string, unknown> = {}) => ({
   path: `${paths.projects}/Garden/Plan.note`,
   page: 2,
   rect: {left: 10, top: 10, right: 400, bottom: 120},
-  displaySize: {width: 1404, height: 1872},
   pageSize: {width: 1404, height: 1872},
   textBoxText: '',
   strokes: [stroke],
@@ -92,6 +101,7 @@ const snap = (over: Record<string, unknown> = {}) => ({
 });
 
 beforeEach(() => {
+  (log as jest.Mock).mockClear();
   mockState.snap = snap();
   mockState.iconPlaced = true;
   mockState.addFails = false;
@@ -106,7 +116,27 @@ it('saves into the project the note belongs to, in the designed order, silently'
   const outcome = await createMarkFromLasso(NOW);
   expect(outcome.kind).toBe('saved');
   expect(outcomeNeedsScreen(outcome)).toBe(false);
-  expect(mockState.calls).toEqual(['preview', 'lassoGone', 'icon', 'data', 'line:project:Plan.note:']);
+  const id = (log as jest.Mock).mock.calls.find(c => c[0] === 'marks: saved')?.[1];
+  expect(mockState.calls).toEqual([
+    'preview',
+    'lassoGone',
+    'icon',
+    `picture:/private/tmp/mark-${id}.png->/private/data/marks/${id}/picture.png`,
+    'data',
+    'line:project:Plan.note:',
+  ]);
+  expect(mockState.written).toEqual([
+    expect.objectContaining({version: 2, displaySize: null, pageSize: {width: 1404, height: 1872}}),
+  ]);
+  expect(log).toHaveBeenCalledWith('marks: saved', expect.any(String), 'project', 'strokes=1', 'textBoxChars=0', 'picture=true', 'icon=true', expect.stringMatching(/^totalMs=/), expect.stringMatching(/^ms=\{"lasso":\d+,"lassoGone":\d+,"icon":\d+,"picture":\d+,"data":\d+,"line":\d+\}$/));
+});
+
+it('keeps the mark without a picture when the host made none', async () => {
+  mockState.snap = snap({picture: null});
+  const outcome = await createMarkFromLasso(NOW);
+  expect(outcome.kind).toBe('saved');
+  expect(mockState.calls.some(c => c.startsWith('picture:'))).toBe(false);
+  expect(log).toHaveBeenCalledWith('marks: saved', expect.any(String), 'project', 'strokes=1', 'textBoxChars=0', 'picture=false', 'icon=true', expect.any(String), expect.any(String));
 });
 
 it('puts marks from outside projects/areas into the Inbox with an absolute path, keeping text-box text', async () => {
@@ -116,10 +146,11 @@ it('puts marks from outside projects/areas into the Inbox with an absolute path,
   expect(mockState.calls).toContain('line:inbox:/storage/emulated/0/Document/Spec.pdf:Order toner');
 });
 
-it('says so when the lasso is empty, without touching anything', async () => {
+it('says so when the lasso is empty, without touching the note', async () => {
   mockState.snap = snap({strokes: [], textBoxText: ' '});
   expect((await createMarkFromLasso(NOW)).kind).toBe('empty');
-  expect(mockState.calls).toEqual([]);
+  // Only the picture taken into the temp folder before the lasso was known to be empty.
+  expect(mockState.calls).toEqual(['preview']);
 });
 
 it('keeps the mark but reports a missing icon', async () => {
@@ -138,7 +169,7 @@ it('takes the icon and data back when the line cannot be written', async () => {
 
 describe('recognizeMark keeps the text (checkpoint B)', () => {
   const open = {mark: {id: 'm-1', createdAt: '2026-10-05 10:42', notePath: 'Plan.note', page: 0, text: null}, owner: {type: 'inbox'}, absPath: '/x/Plan.note'} as never;
-  const data = {id: 'm-1', strokes: [stroke], textBoxText: '', page: 0, displaySize: {width: 1404, height: 1872}};
+  const data = {version: 2, id: 'm-1', strokes: [stroke], textBoxText: '', page: 0, displaySize: null, pageSize: {width: 1404, height: 1872}};
   it('recognizes once and writes the text into the mark data', async () => {
     mockState.data = data;
     (recognizeStrokes as jest.Mock).mockResolvedValueOnce({text: 'Call Anna', error: null, ms: 5});
@@ -151,5 +182,64 @@ describe('recognizeMark keeps the text (checkpoint B)', () => {
     expect((await recognizeMark(open)).text).toBe('Call Anna');
     expect(recognizeStrokes).not.toHaveBeenCalled();
     expect(mockState.written).toEqual([]);
+  });
+  it('recognizes with the page size', async () => {
+    mockState.data = data;
+    (recognizeStrokes as jest.Mock).mockClear().mockResolvedValueOnce({text: 'x', error: null, ms: 1});
+    await recognizeMark(open);
+    expect(recognizeStrokes).toHaveBeenCalledWith([stroke], '', {width: 1404, height: 1872}, 0);
+  });
+});
+
+describe('recognizeMark with marks from an older gtdpara (version 1)', () => {
+  const open = {mark: {id: 'm-1', createdAt: '2026-10-05 10:42', notePath: 'Plan.note', page: 0, text: null}, owner: {type: 'inbox'}, absPath: '/x/Plan.note'} as never;
+  const v1 = {version: 1, id: 'm-1', strokes: [stroke], textBoxText: '', page: 0, displaySize: {width: 1404, height: 1872}, pageSize: null};
+  beforeEach(() => (recognizeStrokes as jest.Mock).mockClear());
+  it('keeps using text recognized before', async () => {
+    mockState.data = {...v1, recognizedText: 'Call Anna'};
+    expect(await recognizeMark(open)).toMatchObject({text: 'Call Anna', old: false});
+    expect(recognizeStrokes).not.toHaveBeenCalled();
+  });
+  it('does not send old handwriting to the recognizer and says so', async () => {
+    mockState.data = v1;
+    expect(await recognizeMark(open)).toMatchObject({text: '', error: null, old: true, missing: false});
+    expect(recognizeStrokes).not.toHaveBeenCalled();
+    expect(mockState.written).toEqual([]);
+    expect(log).toHaveBeenCalledWith('marks: old mark, not recognized', 'm-1');
+  });
+  it('keeps the text-box text of an old mark', async () => {
+    mockState.data = {...v1, textBoxText: 'Order toner'};
+    expect(await recognizeMark(open)).toMatchObject({text: 'Order toner', old: true});
+  });
+  it('the preload reports an old mark the same way, and kept text first', async () => {
+    mockState.data = v1;
+    expect(await storedMarkRecognition(open)).toEqual({text: '', old: true});
+    mockState.data = {...v1, recognizedText: 'Call Anna'};
+    expect(await storedMarkRecognition(open)).toEqual({text: 'Call Anna', old: false});
+    mockState.data = {...v1, version: 2};
+    expect(await storedMarkRecognition(open)).toBeNull();
+  });
+});
+
+describe('whenMarkSettled', () => {
+  it('resolves at once without a mark, and only after a tracked press settles', async () => {
+    let done = false;
+    await whenMarkSettled().then(() => (done = true));
+    expect(done).toBe(true);
+    let finish!: () => void;
+    const job = trackMarkPress(() => new Promise<void>(r => (finish = r)));
+    let settled = false;
+    const wait = whenMarkSettled().then(() => (settled = true));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    finish();
+    await job;
+    await wait;
+    expect(settled).toBe(true);
+  });
+  it('settles on a failed press too', async () => {
+    const job = trackMarkPress(() => Promise.reject(new Error('x')));
+    await expect(job).rejects.toThrow('x');
+    await expect(whenMarkSettled()).resolves.toBeUndefined();
   });
 });

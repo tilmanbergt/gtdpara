@@ -92,3 +92,14 @@ without BOM) before it's copied to `build/generated`. `buildPlugin.sh` is not ch
 
 ## 6. Open
 - If the crash still occurs, report it to Ratta with the tombstone and these logs.
+
+## 7. Since 0.15.0
+
+gtdpara 0.15.0 requires Ratta's public plugin firmware (A5X/A6X Chauvet 2.27.42, Manta/Nomad
+Chauvet 3.30.45), which lists a fix for "a PluginHost crash when upgrading a plugin". On the
+device (Tilman, 2026-10-13, test 7 of `docs/dev/history/technical-design-new-firmware.md` §6)
+the old build is unloaded on install: `staleBuilds` stayed empty, the warning never showed.
+Decision D5 (a): the warning (`ui/StaleBuildBanner.tsx`) and the controlled restart
+(`restartPluginHost`, `PluginRuntimeGuard.killHostProcess`) are removed. The detection stays:
+`getRuntimeDiagnostics` feeds the debug bundle ("stale builds n") and App logs
+`pluginRuntime: stale builds n=<count>` once per start, so a regression shows in the next bundle.

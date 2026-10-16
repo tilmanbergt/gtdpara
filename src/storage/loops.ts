@@ -40,7 +40,10 @@ import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
 import {applyItemRawContent, CachedItem, findCachedItem, setTasksWrittenHook, updateItemLoops} from './dataCache';
 import {getLoopKinds, LoopKindsState} from './loopKinds';
+import {NoteSetup} from '../domain/noteSetups';
+import {NoteOwnerNames} from '../domain/sharedNotePages';
 import {classifyNotePath, sanitizeFileNameComponent} from './noteLinks';
+import {noteOwnerNames} from './noteOwner';
 import {dataFilePath, saveLoops} from './projectFile';
 
 export type LoopEvent =
@@ -94,9 +97,14 @@ export function conversionsOf(item: Pick<CachedItem, 'tasks' | 'loops'>, kinds: 
   return out;
 }
 
-/** The loop note's base name for `loop` under its kind's Loop rule. */
-export function loopNoteName(kinds: LoopKindsState, loop: LoopRef, mainDate: string | null): string {
-  return sanitizeFileNameComponent(loopNoteBaseName(kinds.rules[loop.kind]?.sharedFileName, loop, mainDate));
+/** The loop note's base name for `loop` of the item at `ownerPath` under its kind's Loop setup. */
+export function loopNoteName(kinds: LoopKindsState, loop: LoopRef, mainDate: string | null, ownerPath: string): string {
+  return loopNoteFileName(kinds.setups[loop.kind] ?? null, loop, mainDate, noteOwnerNames(ownerPath));
+}
+
+/** The loop note's base name for `loop` under `setup` (its note name; the default name without one). */
+export function loopNoteFileName(setup: Pick<NoteSetup, 'notebook'> | null, loop: LoopRef, mainDate: string | null, owner: NoteOwnerNames): string {
+  return sanitizeFileNameComponent(loopNoteBaseName(setup?.notebook?.name, loop, mainDate, owner));
 }
 
 async function carryNote(item: CachedItem, task: Task, name: string): Promise<string | null> {
@@ -140,7 +148,7 @@ async function convertLoopTodos(path: string): Promise<void> {
     for (const c of conversions) {
       let noteMovedTo: string | null = null;
       try {
-        noteMovedTo = await carryNote(item, c.task, loopNoteName(kindsState, c.loop, c.task.dueDate));
+        noteMovedTo = await carryNote(item, c.task, loopNoteName(kindsState, c.loop, c.task.dueDate, item.path));
       } catch (e) {
         logError('Loops: moving the note failed', errorMessage(e));
       }
@@ -166,8 +174,8 @@ export async function trackLoop(ownerPath: string, tag: string): Promise<void> {
 }
 
 /** The loop note's file name in its owner (`<name>.note`). */
-export function loopNoteFile(kinds: LoopKindsState, loop: LoopRef, mainDate: string | null): string {
-  return `${loopNoteName(kinds, loop, mainDate)}.note`;
+export function loopNoteFile(kinds: LoopKindsState, loop: LoopRef, mainDate: string | null, ownerPath: string): string {
+  return `${loopNoteName(kinds, loop, mainDate, ownerPath)}.note`;
 }
 
 function ownerFile(item: CachedItem, file: string): string {
@@ -207,8 +215,8 @@ export async function updateLoop(
     });
     if (!ok) return false;
   }
-  const oldFile = loopNoteFile(kindsState, oldLoop, beforeLine.mainDate);
-  const newFile = loopNoteFile(kindsState, next.loop, next.mainDate);
+  const oldFile = loopNoteFile(kindsState, oldLoop, beforeLine.mainDate, before.path);
+  const newFile = loopNoteFile(kindsState, next.loop, next.mainDate, before.path);
   const moveNote = oldFile !== newFile && (await fileExists(ownerFile(before, oldFile)));
   if (moveNote) {
     if (await fileExists(ownerFile(before, newFile))) throw new Error(`A note named ${newFile} exists already in ${before.name}.`);

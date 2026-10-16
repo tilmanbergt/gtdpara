@@ -15,7 +15,8 @@ Prerequisites (Windows is the tested setup):
 
 - Node.js 18 or newer, `npm install` in the repo root
 - Android SDK + JDK as required by React Native 0.79 (Android Studio is the easiest way to get both)
-- A Supernote with plugin support to test on
+- A Supernote with the plugin firmware to test on (A5 X / A6 X Chauvet 2.27.42, Manta / Nomad Chauvet
+  3.30.45 or later; gtdpara pins `sn-plugin-lib` 0.2.3, which needs it)
 
 Build the plugin package:
 
@@ -86,7 +87,7 @@ that don't exist, so `npm test` catches most slips.
 | `src/screens/review/` | Weekly Review: the shell (`ReviewScreen.tsx`: hub, navigation, visit record), shared data (`useReviewData.ts`, `useFrozenStepList.ts`, `reviewVisit.ts`) and one component per step in `steps/` |
 | `src/screens/thread/` | The thread overview overlay: frame (`ThreadOverview.tsx`), its sections and `useThreadActions.ts`; hosted with the help by `screens/useAppOverlays.tsx`. Also tending: the Current page's `ThreadsTab.tsx`, Review's `ThreadSummary.tsx` and their shared `useTending.ts` |
 | `src/screens/projectData/` | The Current page's Todos and Meetings lists and the counterpart filter, used by `screens/ProjectDataPanel.tsx` |
-| `src/screens/settings/` | Settings: the shell (`Settings.tsx`), the Save-draft (`useSettingsDraft.ts`) and its tabs (`DraftTabs.tsx`), Advanced/About/Profiles, and Tag Rules in `tagRules/` (list, rule form, background, Add piece) |
+| `src/screens/settings/` | Settings: the shell (`Settings.tsx`), the Save-draft (`useSettingsDraft.ts`) and its tabs (`DraftTabs.tsx`), Advanced/About/Profiles, and Note setups in `noteSetups/` (list, setup page, tag picker, page layout with its Pieces/Add/Background panels, draft hooks) |
 | `src/ui/` | Shared components (QuickAddWidget, PagedSection, MeetingRow, …) and styles |
 | `src/utils/` | Logging, performance tracing, e-ink refresh helpers |
 | `android/…/eu/embodyagile/gtdpara/` | Native modules: file access, Gmail IMAP, PDF, text measurement, runtime guard |

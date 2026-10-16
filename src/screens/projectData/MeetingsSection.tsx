@@ -9,7 +9,7 @@ import {Keyboard, View} from 'react-native';
 import {Meeting} from '../../domain/types';
 import {splitAndSortMeetings} from '../../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../domain/meetingTracking';
-import {TagRule} from '../../domain/tagRules';
+import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../../domain/noteSetups';
 import {CachedItem, getCachedData} from '../../storage/dataCache';
 import {openOrCreateMeetingNote} from '../../storage/meetingNoteContent';
 import {loadSettings} from '../../storage/settingsStorage';
@@ -79,14 +79,14 @@ export default function MeetingsSection({
   const mainTabs = visibleTabs(MEETINGS_MAIN_TABS, mainTabState, 'google', features.googleCalendar);
   const mainTab = mainTabs.activeKey;
   const [icsUrl, setIcsUrl] = useState('');
-  // Tag Rules for the rows' prep/review checkpoint icon - same one-shot load.
-  const [tagRules, setTagRules] = useState<TagRule[]>([]);
+  // Note setups for the rows' prep/review checkpoint icon - same one-shot load.
+  const [noteSetups, setNoteSetups] = useState<NoteSetupConfig>(EMPTY_NOTE_SETUP_CONFIG);
   useEffect(() => {
     let cancelled = false;
     loadSettings().then(s => {
       if (cancelled) return;
       setIcsUrl(s.googleCalendarIcsUrl);
-      setTagRules(s.tagRules);
+      setNoteSetups(noteSetupConfig(s));
     });
     return () => {
       cancelled = true;
@@ -136,7 +136,7 @@ export default function MeetingsSection({
     });
   };
   const trackingFor = (index: number): MeetingTrackingConfig => ({
-    rules: tagRules,
+    setups: noteSetups,
     onToggle: trackingKind => handleToggleTracking(index, trackingKind),
   });
 

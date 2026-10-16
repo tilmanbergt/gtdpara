@@ -24,7 +24,7 @@ jest.mock('../../src/storage/dataCache', () => ({
   updateItemLoops: () => undefined,
 }));
 jest.mock('../../src/storage/loopKinds', () => ({
-  getLoopKinds: () => ({kinds: ['workshop'], rules: {}}),
+  getLoopKinds: () => ({kinds: ['workshop'], setups: {}}),
 }));
 jest.mock('../../src/storage/noteLinks', () => ({sanitizeFileNameComponent: (name: string) => name}));
 

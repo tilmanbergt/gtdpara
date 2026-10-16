@@ -1,26 +1,28 @@
 /**
  * Builds and writes note-creation content (docs/dev/technical-design-meeting-
  * notes.md §5, docs/dev/history/technical-design-note-templates.md §4/§5): the
- * per-piece textboxes a `TagRule` describes - always regenerated from
+ * per-piece textboxes a page layout describes - always regenerated from
  * scratch, never merged/diffed against what was there before (the "always
  * regenerate, discard edits" decision).
  *
  * One population path (docs/dev/history/technical-design-linked-file-piece.md):
- * `populateNoteFromRule` - one element per non-empty piece, positioned/
+ * `populatePage` - one element per non-empty piece, positioned/
  * sized from that piece's own x/y/fontSize/maxWidth. A `link` piece becomes a
  * tappable link element to the item's `linkedFile` (only when that file still
- * exists); a rule without a `link` piece writes no link at all. A Meeting or
- * Todo that matches no rule gets no content. Older notes still carrying a
+ * exists); a layout without a `link` piece writes no link at all. A page
+ * without a layout (a blank Default page) gets no content. Older notes still carrying a
  * legacy marker get it cleaned up on their next refresh
  * (isNoteTemplateManagedElement recognises both).
  *
  * The file name is narrower than its content (it is not meeting-only);
  * §4/§8 name `storage/noteTemplateContent.ts` as the intended name.
  *
- * `refreshMeetingNoteBlock` and `refreshTodoNoteBlock` resolve a definition,
- * render its pieces and call `populateNoteFromRule`. Both gate the
+ * `refreshMeetingNoteBlock` and `refreshTodoNoteBlock` take the layout of
+ * the page's Note setup (storage/noteTargets.ts's `layoutForLink`,
+ * docs/dev/history/technical-design-note-setups.md §4.4), render its pieces
+ * and call `populatePage`. Both gate the
  * *re*-populate-on-open path on a freeze rule (domain/meetingTime.ts's
- * `isMeetingAutoUpdateFrozen` / domain/tagRules.ts's
+ * `isMeetingAutoUpdateFrozen` / domain/pageLayout.ts's
  * `isTodoAutoUpdateFrozen`) via an `isInitialPopulation` option that only
  * the note-*creation* call sites set - see either freeze function's own doc
  * comment for why creation always bypasses it.
@@ -33,7 +35,7 @@
  * trigger can't satisfy).
  *
  * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md §5/§12):
- * `deleteStaleManagedElements`, `buildLinkElement` and `populateNoteFromRule`
+ * `deleteStaleManagedElements`, `buildLinkElement` and `populatePage`
  * take a `page` parameter, defaulting to `0` where optional, so own-note
  * call sites need no page. `refreshMeetingNoteBlock`/`refreshTodoNoteBlock`
  * expose it as `options.page` (also defaulting to `0`).
@@ -44,14 +46,14 @@
  * cycle: this file imports `resolveNotePath`/`createLinkedNote` from
  * noteLinks.ts, and the entry points need `refreshMeetingNoteBlock`/
  * `refreshTodoNoteBlock` from this file. `storage/sharedNotePages.ts` stays
- * the page engine and knows nothing about Task/Meeting or which target a
- * definition resolves to.
+ * the page engine and knows nothing about Task/Meeting or which note a
+ * setup picks.
  *
  * Textbox metrics + per-piece max width
- * (docs/dev/history/technical-design-textbox-metrics.md): `populateNoteFromRule`
+ * (docs/dev/history/technical-design-textbox-metrics.md): `populatePage`
  * builds each rect via `storage/notePieceMetrics.ts`'s `measureNotePieceRect`
  * (real on-device text measurement, content-fit width, capped at each
- * piece's own `maxWidthPx` - see domain/tagRules.ts's `NotePiece`) and
+ * piece's own `maxWidthPx` - see domain/pageLayout.ts's `NotePiece`) and
  * the element itself via `supernote/noteElements.ts`'s `buildTextboxElement`.
  */
 import {linkTypeForExtension, notePieceUserData} from '../domain/meetingNoteBlock';
@@ -62,14 +64,14 @@ import {tagsAsWords} from '../domain/markdown';
 import {
   dateTitleText,
   isTodoAutoUpdateFrozen,
-  TagRule,
+  PageLayout,
   pieceMaxWidthPx,
   PieceRenderContext,
   renderPieceText,
-  resolveNoteTemplate,
-} from '../domain/tagRules';
-import {NoteCreationPlan} from '../domain/noteCreationPlan';
-import {meetingPageKeyword, todoPageKeyword} from '../domain/sharedNotePages';
+} from '../domain/pageLayout';
+import {layoutFor} from '../domain/noteSetups';
+import {NoteCreateConfirm, NoteCreationPlan} from '../domain/noteCreationPlan';
+import {joinNotePath, meetingPageKeyword, parseSharedNoteAnchor, todoPageKeyword} from '../domain/sharedNotePages';
 import {DEFAULT_SETTINGS, GtdParaSettings, NoteHeadingStyle, ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {
@@ -101,8 +103,8 @@ import {applyPieceHeadings, syncPageKeywords} from './noteFindability';
 import {measureNoteLinkRect, measureNotePieceRect} from './notePieceMetrics';
 import {errorMessage} from '../utils/errorMessage';
 import {ItemNoteAnchorResolution, resolveItemNote} from './itemNotePlan';
-import {getLoopKinds} from './loopKinds';
 import {ensureLoopNoteFile, loopNoteOf} from './loopNotes';
+import {layoutForLink} from './noteTargets';
 
 /**
  * `linkedFile`'s bare file name (e.g. "Kickoff deck.pdf" from
@@ -188,7 +190,7 @@ async function buildLinkElement(params: {
 }
 
 /**
- * Step 1 of populateNoteFromRule below: reads `page` and deletes every
+ * Step 1 of populatePage below: reads `page` and deletes every
  * element this feature ever wrote, plus titles that cover only those
  * (domain/noteFindability.ts's staleManagedNums), leaving everything else -
  * handwriting, the user's own textboxes and their titles - untouched. The
@@ -207,7 +209,7 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
 }
 
 /**
- * (Re)builds `notePath`'s `page` from `definition`'s pieces
+ * (Re)builds `notePath`'s `page` from `layout`'s pieces
  * (docs/dev/history/technical-design-note-templates.md §4). Steps: read every
  * existing element on `page`, delete any carrying ANY marker this feature
  * has ever used (isNoteTemplateManagedElement - not just the per-piece
@@ -220,21 +222,18 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  * §5) - an own note lives on page 0; a shared-target note passes its
  * resolved page explicitly.
  *
- * `pieceContent[i]` is `definition.pieces[i]` already rendered to text (the
+ * `pieceContent[i]` is `layout.pieces[i]` already rendered to text (the
  * caller - refreshMeetingNoteBlock below - builds this via
- * domain/tagRules.ts's renderPieceText, since which fields feed a piece
+ * domain/pageLayout.ts's renderPieceText, since which fields feed a piece
  * is context-specific and this function shouldn't need to know that). A
  * piece whose rendered text is `''` (an unset `time`, a `related` piece
  * with nothing to show) gets no element at all - same "omit rather than
  * show empty" convention (a `link` piece is empty when the item has no
  * linked file or the file is missing).
  *
- * Deviates from technical-design-note-templates.md §4's literal signature
- * (`populateNoteFromRule(notePath, definition, pieceContent,
- * settings)`): of the settings only the heading style is needed
- * (`headingStyle`) - positioning is fully piece-driven, and background
- * selection (storage/noteLinks.ts's resolveNoteBackgroundTemplate) happens
- * at note-*creation* time, not here.
+ * Of the settings only the heading style is needed (`headingStyle`) -
+ * positioning is fully piece-driven, and the background (storage/
+ * noteLinks.ts's backgroundOf) is set at note-*creation* time, not here.
  *
  * Last, the pieces with the Heading switch on get their title elements
  * (storage/noteFindability.ts's applyPieceHeadings,
@@ -245,11 +244,11 @@ async function deleteStaleManagedElements(notePath: string, page: number): Promi
  * docs/dev/history/technical-design-linked-file-piece.md) - the caller passes it only when the file
  * exists, and sets the matching `linkedFileName` on the render context, so a
  * `link` piece's text is non-empty exactly when this is set. No link is
- * written for a definition without a `link` piece.
+ * written for a layout without a `link` piece.
  */
-export async function populateNoteFromRule(
+export async function populatePage(
   notePath: string,
-  definition: TagRule,
+  layout: PageLayout,
   pieceContent: string[],
   linkedFileAbsolutePath: string | null = null,
   page = 0,
@@ -260,8 +259,8 @@ export async function populateNoteFromRule(
   const elements: Element[] = [];
   const linkElements = new Set<Element>();
 
-  for (let index = 0; index < definition.pieces.length; index++) {
-    const piece = definition.pieces[index];
+  for (let index = 0; index < layout.pieces.length; index++) {
+    const piece = layout.pieces[index];
     const text = pieceContent[index] ?? '';
     if (!text) continue;
 
@@ -313,21 +312,20 @@ export async function populateNoteFromRule(
       await insertElements(notePath, page, withoutLinks);
     }
   }
-  await applyPieceHeadings(notePath, page, definition, pieceContent, headingStyle);
+  await applyPieceHeadings(notePath, page, layout, pieceContent, headingStyle);
 }
 
 /**
  * The per-screen-callable wrapper (§6) behind every note create/open
  * (docs/dev/history/technical-design-note-templates.md §5).
  *
- * Resolves `resolveNoteTemplate('meeting', meeting.tags,
- * settings.tagRules)`. When it finds a
- * definition, renders every piece via domain/tagRules.ts's
- * renderPieceText (building a PieceRenderContext from this Meeting + its
- * related todos) and calls populateNoteFromRule. When it returns
- * `null` (no matching/enabled Meeting definition) nothing is written, same
- * as Todos (docs/dev/history/technical-design-linked-file-piece.md §4: the user's
- * rules decide the layout).
+ * Takes the Meeting page layout of the setup the note belongs to
+ * (`linkedLayout`). When there is one, renders every piece via
+ * domain/pageLayout.ts's renderPieceText (building a PieceRenderContext
+ * from this Meeting + its related todos) and calls populatePage. Without
+ * one (a blank Default page) nothing is written, same as Todos
+ * (docs/dev/history/technical-design-linked-file-piece.md §4: the user's
+ * setups decide the layout).
  *
  * `inbox` is an explicit optional 4th param, defaulting to `null` - non-
  * Inbox screens call this with 3 args; InboxScreen.tsx/
@@ -365,15 +363,15 @@ export async function refreshMeetingNoteBlock(
   const notePath = await resolveNotePath(itemPath, meeting.notePath);
   const paths = resolvePaths(settings);
 
-  // Keywords don't depend on a rule (§2.7 of the findable-notes design).
+  // Keywords don't depend on a setup (§2.7 of the findable-notes design).
   await syncPageKeywords(notePath, page, {date: itemDateKeyword(meeting), tags: contextTagsOf(meeting.tags)});
 
-  const definition = resolveNoteTemplate('meeting', meeting.tags, settings.tagRules);
-  if (!definition) return;
+  const layout = linkedLayout(itemPath, meeting.notePath, notePath, {tags: meeting.tags, pageKind: 'meeting', settings, fileDate: meeting.date});
+  if (!layout) return;
 
   const items = getCachedData()?.items ?? [];
   const relatedTodos = relatedItemsFor(items, inbox, meeting.tags);
-  const linked = definition.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, meeting.linkedFile) : null;
+  const linked = layout.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, meeting.linkedFile) : null;
 
   const ctx: PieceRenderContext = {
     title: tagsAsWords(meetingDisplayTitle(meeting)),
@@ -382,15 +380,32 @@ export async function refreshMeetingNoteBlock(
     // '' means "no time given" (Meeting.time's own convention) - left
     // unset on ctx rather than passed through as '', so renderPieceText's
     // `ctx.time ?? ''` for a `time` piece and its "meeting only, only when
-    // set" contract (domain/tagRules.ts §4) both read the same way
-    // whether the meeting has no time or the definition has no time piece.
+    // set" contract (domain/pageLayout.ts) both read the same way
+    // whether the meeting has no time or the layout has no time piece.
     time: meeting.time || undefined,
     relatedItems: relatedTodos.map(t => ({text: t.task.text})),
     linkedFileName: linked?.fileName,
-    sinceLast: definition.pieces.some(p => p.type === 'sinceLast') ? buildSinceLast(meeting, itemPath, items, sinceLastInbox()) : null,
+    sinceLast: layout.pieces.some(p => p.type === 'sinceLast') ? buildSinceLast(meeting, itemPath, items, sinceLastInbox()) : null,
   };
-  const pieceContent = definition.pieces.map(piece => renderPieceText(piece, ctx));
-  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page, settings.noteHeadingStyle);
+  const pieceContent = layout.pieces.map(piece => renderPieceText(piece, ctx));
+  await populatePage(notePath, layout, pieceContent, linked?.absolutePath ?? null, page, settings.noteHeadingStyle);
+}
+
+/**
+ * The layout of the page `storedNotePath` links to: the page kind's layout of
+ * the setup whose note this is (storage/noteTargets.ts's `layoutForLink`).
+ * `resolvedPath` is `resolveNotePath`'s reading of the link - a shared page
+ * when it is the anchor's file, else the item's own note.
+ */
+function linkedLayout(
+  itemPath: string,
+  storedNotePath: string,
+  resolvedPath: string,
+  input: {tags: readonly string[]; pageKind: 'meeting' | 'todo'; settings: GtdParaSettings; fileDate: string},
+): PageLayout | null {
+  const anchor = parseSharedNoteAnchor(storedNotePath);
+  const linkedFile = anchor && resolvedPath === joinNotePath(itemPath, anchor.filePath) ? anchor.filePath : null;
+  return layoutForLink({...input, itemPath, forceOwn: false, linkedFile});
 }
 
 /** The shared Inbox as the thread aggregates take it (the "Since last time" piece resolves provenance against it too). */
@@ -408,9 +423,8 @@ function sinceLastInbox(): ThreadInboxInput | null {
  * handlers in ProjectDataPanel.tsx's TodosSection, DailyView.tsx,
  * ReviewScreen.tsx and InboxScreen.tsx.
  *
- * `resolveNoteTemplate('todo', ...)` returning `null` (no matching/enabled
- * Todo definition) means `populateNoteFromRule` is never called at
- * all: the note stays blank - the same rule Meetings follow.
+ * No Todo page layout (a blank Default page) means `populatePage` is never
+ * called at all: the note stays blank - the same as for Meetings.
  *
  * `ctx.title` is `tagsAsWords(task.text)`, as for a Meeting: context tags
  * stay as words without `#`, gtdpara's own (`#next`, `#wf/…`) go (see
@@ -419,9 +433,9 @@ function sinceLastInbox(): ThreadInboxInput | null {
  * with this task's own `tags` and excluding this task's own `notePath` so
  * it never lists itself (see storage/meetingNoteAggregate.ts's doc
  * comment on `excludeNotePath`). No `date`/`time` fields are set on `ctx` -
- * those piece types are meeting-only (domain/tagRules.ts's
- * `PIECE_CONTEXTS`), so a Todo definition's Add-piece list never offers them
- * in the first place.
+ * those piece types are meeting-only (domain/pageLayout.ts's
+ * `PIECE_PAGES`), so a Todo page's Add list never offers them in the first
+ * place.
  *
  * `options.page` - same meaning and default as
  * `refreshMeetingNoteBlock`'s own (see that function's doc comment).
@@ -442,24 +456,24 @@ export async function refreshTodoNoteBlock(
 
   await syncPageKeywords(notePath, page, {date: itemDateKeyword(task), tags: contextTagsOf(task.tags)});
 
-  const definition = resolveNoteTemplate('todo', task.tags, settings.tagRules);
-  if (!definition) return;
+  const layout = linkedLayout(itemPath, task.notePath, notePath, {tags: task.tags, pageKind: 'todo', settings, fileDate: todayIso()});
+  if (!layout) return;
 
   const items = getCachedData()?.items ?? [];
   const relatedTodos = relatedItemsFor(items, inbox, task.tags, task.notePath);
-  const linked = definition.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, task.linkedFile) : null;
+  const linked = layout.pieces.some(p => p.type === 'link') ? await existingLinkedFile(paths, task.linkedFile) : null;
 
   const ctx: PieceRenderContext = {
     title: tagsAsWords(task.text),
     relatedItems: relatedTodos.map(t => ({text: t.task.text})),
     linkedFileName: linked?.fileName,
   };
-  const pieceContent = definition.pieces.map(piece => renderPieceText(piece, ctx));
-  await populateNoteFromRule(notePath, definition, pieceContent, linked?.absolutePath ?? null, page, settings.noteHeadingStyle);
+  const pieceContent = layout.pieces.map(piece => renderPieceText(piece, ctx));
+  await populatePage(notePath, layout, pieceContent, linked?.absolutePath ?? null, page, settings.noteHeadingStyle);
 }
 
 /**
- * Fills page 1 of a loop note from its Loop rule
+ * Fills page 1 of a loop note from its Loop setup's First page
  * (docs/dev/history/technical-design-loops.md §4.4): the title is the loop
  * as words (`workshop teamoffsite`), the date-and-title piece puts the main
  * date in front when there is one, and a `link` piece links the loop's
@@ -467,17 +481,18 @@ export async function refreshTodoNoteBlock(
  */
 export async function populateLoopNotePage(
   notePath: string,
-  rule: TagRule,
+  layout: PageLayout | null,
   loop: {kind: string; name: string},
   mainDate: string | null,
   linkedFile: string | null,
   settings: GtdParaSettings,
 ): Promise<void> {
-  const linked = rule.pieces.some(p => p.type === 'link') ? await existingLinkedFile(resolvePaths(settings), linkedFile ?? undefined) : null;
+  if (!layout) return;
+  const linked = layout.pieces.some(p => p.type === 'link') ? await existingLinkedFile(resolvePaths(settings), linkedFile ?? undefined) : null;
   const title = `${loop.kind} ${loop.name.replace(/\//g, ' ')}`;
   const ctx: PieceRenderContext = {title, dateTitle: dateTitleText(mainDate ?? '', title), linkedFileName: linked?.fileName};
-  const pieceContent = rule.pieces.map(piece => renderPieceText(piece, ctx));
-  await populateNoteFromRule(notePath, rule, pieceContent, linked?.absolutePath ?? null, 0, settings.noteHeadingStyle);
+  const pieceContent = layout.pieces.map(piece => renderPieceText(piece, ctx));
+  await populatePage(notePath, layout, pieceContent, linked?.absolutePath ?? null, 0, settings.noteHeadingStyle);
 }
 
 // ---- Open-or-create entry point (docs/dev/history/technical-design-shared-note-pages.md §6-§8;
@@ -486,28 +501,29 @@ export async function populateLoopNotePage(
 /** Fills the first page of a loop note `anchor`'s plan just created (storage/loopNotes.ts). */
 async function fillLoopPage(anchor: ItemNoteAnchorResolution, settings: GtdParaSettings): Promise<void> {
   const target = anchor.loopPage;
-  const rule = target ? getLoopKinds().rules[target.loop.kind] : undefined;
-  if (!target || !rule) return;
-  await populateLoopNotePage(anchor.absolutePath, rule, target.loop, target.line.mainDate, target.line.linkedFile, settings);
+  if (!target) return;
+  const layout = layoutFor(target.setup, 'first', settings.noteSetupDefaults);
+  await populateLoopNotePage(anchor.absolutePath, layout, target.loop, target.line.mainDate, target.line.linkedFile, settings);
 }
 
 /**
  * The loop note's note-icon tap (a loop row, the overview's Note ›): opens
  * the loop's note at its first page, or - after `confirmCreate` - creates it
- * with that page filled from the Loop rule. False when the user cancelled.
+ * with that page filled from the Loop setup's First page. False when the user cancelled.
  */
 export async function openOrCreateLoopNote(
   ownerPath: string,
   tag: string,
   settings: GtdParaSettings,
-  confirmCreate?: (plan: NoteCreationPlan) => Promise<boolean>,
+  confirmCreate?: NoteCreateConfirm,
 ): Promise<boolean> {
   const note = loopNoteOf(ownerPath, tag);
   if (!(await fileExists(note.absolutePath))) {
-    const plan: NoteCreationPlan = {kind: 'new-shared-file', file: `${note.fileName}.note`, absolutePath: note.absolutePath, ruleName: note.rule?.name ?? null};
-    if (confirmCreate && !(await confirmCreate(plan))) return false;
-    await ensureLoopNoteFile(ownerPath, note, settings);
-    if (note.rule) await populateLoopNotePage(note.absolutePath, note.rule, note.loop, note.line.mainDate, note.line.linkedFile, settings);
+    const plan: NoteCreationPlan = {kind: 'new-shared-file', file: `${note.fileName}.note`, absolutePath: note.absolutePath, setupName: note.setup?.name ?? null};
+    if (confirmCreate && (await confirmCreate(plan)) === null) return false;
+    await ensureLoopNoteFile(ownerPath, note, settings.noteSetupDefaults);
+    const layout = layoutFor(note.setup, 'first', settings.noteSetupDefaults);
+    await populateLoopNotePage(note.absolutePath, layout, note.loop, note.line.mainDate, note.line.linkedFile, settings);
   }
   await openPath(note.absolutePath, 0);
   return true;
@@ -538,10 +554,11 @@ export interface OpenOrCreateNoteOptions {
   /**
    * Asked before anything is created, recreated or linked (split-by-tag
    * design §3.5) - every screen passes `ui/useNoteCreateConfirm.ts`'s
-   * callback. Resolving `false` cancels: nothing is written, nothing opened.
+   * callback. It resolves the chosen place (0 = the plan, n = alternative n,
+   * note-setups design §4.4); `null` cancels: nothing is written, nothing opened.
    * Without it the plan is carried out directly (non-UI callers).
    */
-  confirmCreate?: (plan: NoteCreationPlan) => Promise<boolean>;
+  confirmCreate?: NoteCreateConfirm;
 }
 
 /**
@@ -574,10 +591,10 @@ export async function openOrCreateMeetingNote(
       subfolder: MEETINGS_SUBFOLDER,
       settings,
       tags: meeting.tags,
-      context: 'meeting',
+      pageKind: 'meeting',
       currentKeyword,
       baseName: meetingNoteBaseName(meeting),
-      isDated: true,
+      pageDate: itemDateKeyword(meeting) ?? todayIso(),
       fileDate: meeting.date,
       forceOwnTarget: options.forceOwnTarget ?? false,
       collisionCheck: oldKeyword => meetingKeywordStillUsed(itemPath, oldKeyword),
@@ -607,8 +624,9 @@ export async function openOrCreateMeetingNote(
 
 /**
  * The Todo counterpart to `openOrCreateMeetingNote` above - same shape, same
- * contract. A todo has no date, so the `{year}`/`{quarter}`/`{month}`
- * placeholders use the day the note is created.
+ * contract. The `{year}`/`{quarter}`/`{month}` placeholders use the day the
+ * note is created; a new page in a shared note goes by the todo's creation
+ * date (today when it has none).
  */
 export async function openOrCreateTodoNote(
   task: Task,
@@ -625,10 +643,10 @@ export async function openOrCreateTodoNote(
       subfolder: TODOS_SUBFOLDER,
       settings,
       tags: task.tags,
-      context: 'todo',
+      pageKind: 'todo',
       currentKeyword,
       baseName: todoNoteBaseName(task),
-      isDated: false,
+      pageDate: itemDateKeyword(task) ?? todayIso(),
       fileDate: todayIso(),
       forceOwnTarget: options.forceOwnTarget ?? false,
       collisionCheck: oldKeyword => todoKeywordStillUsed(itemPath, oldKeyword),

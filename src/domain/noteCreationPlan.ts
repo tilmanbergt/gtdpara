@@ -9,7 +9,7 @@
  */
 
 export type NoteCreationPlanKind =
-  /** First-time note in its own file (no rule, an own-target rule, or an Inbox item). */
+  /** First-time note in its own file (no setup, a setup without a notebook, or an Inbox item). */
   | 'new-own-file'
   /** First-time note as a new page in a shared file that already exists. */
   | 'new-page'
@@ -30,8 +30,22 @@ export interface NoteCreationPlan {
   file: string;
   /** The same file as an absolute path (for the detail text's full location). */
   absolutePath: string;
-  /** The Tag Rule that decided this, if any - shown as "Rule <name>: ..." for first-time notes. */
-  ruleName: string | null;
+  /** The Note setup that decided this, if any - shown as "<name>: ..." for first-time notes. */
+  setupName: string | null;
   /** `link-page` only: the keyword of the existing page. */
   keyword?: string;
+  /**
+   * First-time notes only: the other places this note could go, best first
+   * (docs/dev/history/technical-design-note-setups.md §1.2, §4.4) - other
+   * setups that match and lead to a different file. Absent when there is
+   * no other place.
+   */
+  alternatives?: NoteCreationPlan[];
 }
+
+/**
+ * Asks before a note is created, recreated or linked: resolves the chosen
+ * place - 0 = the plan itself, n = `plan.alternatives[n - 1]` - or `null`
+ * (✕: nothing is written). ui/useNoteCreateConfirm.ts shows it in the status slot.
+ */
+export type NoteCreateConfirm = (plan: NoteCreationPlan) => Promise<number | null>;

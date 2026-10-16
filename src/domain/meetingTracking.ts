@@ -1,8 +1,8 @@
 /**
  * Meeting prep/review tracking (docs/dev/history/technical-design-meeting-tracking.md).
  *
- * A Tag Rule (domain/tagRules.ts's TagRule) can switch on
- * two checkpoints for the meetings it resolves for: "prepare before" and
+ * A Note setup (domain/noteSetups.ts, docs/dev/history/technical-design-note-setups.md
+ * §4.2) can switch on two checkpoints for the meetings it matches: "prepare before" and
  * "review after". Neither creates a todo - each is a single tick on the
  * meeting itself, stored as a bare `#prepped` / `#reviewed` tag on the meeting
  * line (same mechanism as `#now` on tasks, via domain/flowState.ts's
@@ -21,7 +21,7 @@
 import {hasBareTag, setBareTag, stripBareTags} from './flowState';
 import {deriveMeetingFields} from './markdown';
 import {isoDateOffset, meetingAutoUpdateCutoffMs} from './meetingTime';
-import {TagRule, resolveNoteTemplate, tagMatchesRuleTag} from './tagRules';
+import {matchingSetups, MeetingTracking, NoteSetupConfig} from './noteSetups';
 import {Meeting} from './types';
 
 export type MeetingTrackingKind = 'prep' | 'review';
@@ -41,41 +41,32 @@ export const REVIEW_LOOKBACK_DAYS = 7;
 type TrackedMeeting = Pick<Meeting, 'date' | 'time' | 'tags' | 'cancelled'> & Partial<Pick<Meeting, 'endTime' | 'days'>>;
 
 /**
- * Every enabled meeting rule `tags` match, or the default one when none does
- * (docs/dev/history/technical-design-loops.md §1.2): a meeting of a loop
- * that also carries a thread's tag is tracked when either rule asks for it.
+ * The tracking of every enabled setup `tags` match, or the Default's when
+ * none does (docs/dev/history/technical-design-loops.md §1.2): a meeting of a
+ * loop that also carries a thread's tag is tracked when either setup asks.
  */
-function matchingMeetingRules(tags: readonly string[], definitions: TagRule[]): TagRule[] {
-  const tagsLower = tags.map(t => t.toLowerCase());
-  const matched = definitions.filter(
-    d =>
-      d.enabled &&
-      d.context === 'meeting' &&
-      d.tags.some(ruleTag => tagsLower.some(tag => tagMatchesRuleTag(tag, ruleTag.toLowerCase()))),
-  );
-  if (matched.length > 0) return matched;
-  const fallback = resolveNoteTemplate('meeting', [...tags], definitions);
-  return fallback ? [fallback] : [];
+function matchingTracking(tags: readonly string[], config: NoteSetupConfig): MeetingTracking[] {
+  const matched = matchingSetups(tags, config.setups);
+  return matched.length > 0 ? matched.map(s => s.tracking) : [config.defaults.tracking];
 }
 
 /**
  * Which checkpoint is current for `meeting` right now and whether it's done -
- * or `null` when nothing is tracked in the current phase (no matching rule,
- * none of the matching rules tracks this phase, or the meeting is
+ * or `null` when nothing is tracked in the current phase (none of the
+ * matching setups - or the Default - tracks this phase, or the meeting is
  * cancelled). The one
  * function both the row icon and the review aggregate call, so they can never
  * disagree.
  */
 export function resolveMeetingTracking(
   meeting: TrackedMeeting,
-  definitions: TagRule[],
+  config: NoteSetupConfig,
   now: Date = new Date(),
 ): MeetingTrackingState | null {
   if (meeting.cancelled) return null;
-  const matching = matchingMeetingRules(meeting.tags, definitions);
-  if (matching.length === 0) return null;
+  const matching = matchingTracking(meeting.tags, config);
   const kind: MeetingTrackingKind = now.getTime() > meetingAutoUpdateCutoffMs(meeting) ? 'review' : 'prep';
-  const tracked = matching.some(rule => (kind === 'prep' ? rule.trackPrep : rule.trackReview));
+  const tracked = matching.some(t => (kind === 'prep' ? t.trackPrep : t.trackReview));
   if (!tracked) return null;
   return {kind, done: hasBareTag(meeting.tags, TRACKING_TAG[kind])};
 }
@@ -87,18 +78,17 @@ export function resolveMeetingTracking(
  */
 export function isReviewOutstanding(
   meeting: TrackedMeeting,
-  definitions: TagRule[],
+  config: NoteSetupConfig,
   now: Date = new Date(),
 ): boolean {
-  const state = resolveMeetingTracking(meeting, definitions, now);
+  const state = resolveMeetingTracking(meeting, config, now);
   if (!state || state.kind !== 'review' || state.done) return false;
   return meeting.date >= isoDateOffset(-REVIEW_LOOKBACK_DAYS, now);
 }
 
-/** Short label for what a rule tracks, for the Tag Rules list ("prep", "review", "prep + review") - '' when nothing (or when the rule isn't a meeting rule, whose flags are ignored). */
-export function trackingSummary(rule: Pick<TagRule, 'context' | 'trackPrep' | 'trackReview'>): string {
-  if (rule.context !== 'meeting') return '';
-  return [rule.trackPrep ? 'prep' : '', rule.trackReview ? 'review' : ''].filter(Boolean).join(' + ');
+/** Short label for what a setup tracks, for the Note setups list ("prep", "review", "prep + review") - '' when nothing. */
+export function trackingSummary(tracking: MeetingTracking): string {
+  return [tracking.trackPrep ? 'prep' : '', tracking.trackReview ? 'review' : ''].filter(Boolean).join(' + ');
 }
 
 /**

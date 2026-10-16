@@ -90,6 +90,11 @@
  * grey out every other root (never remove them) while either a refile or an
  * area-assignment is being picked.
  *
+ * Three top tabs: **Threads**, **Loops** (Projects on an Area) and **Files**
+ * (FileBrowserPane's `groupLabel`, docs/dev/history/technical-design-note-setups-finish.md
+ * §2): the roots share the Files tab, and a second row inside it picks
+ * Project · Area (when assigned) · Resources, or Area · Resources.
+ *
  * The first tab, **Threads** (screens/thread/ThreadsTab.tsx, an `extraTabs`
  * entry of FileBrowserPane), is shown when the page opens. An arm (link a
  * file, refile, assign Area) switches to the matching file root and back to
@@ -425,7 +430,10 @@ export default function ItemDetail({
   const fileBrowserRoots: FileBrowserRoot[] = paths
     ? kind === 'project'
       ? [
-          {key: 'project', label: 'Project Files', rootPath: path, ...(browseRoot ? {alternate: browseRoot} : {})},
+          {key: 'project', label: 'Project Files', shortLabel: 'Project', rootPath: path, ...(browseRoot ? {alternate: browseRoot} : {})},
+          ...(assignedArea
+            ? [disableOthersWhileArming({key: 'area', label: 'Area Files', shortLabel: 'Area', rootPath: `${paths.areas}/${assignedArea}`})]
+            : []),
           disableOthersWhileArming({
             key: 'resources',
             label: 'Resources',
@@ -433,12 +441,9 @@ export default function ItemDetail({
             defaultSubfolder: resourceFolderState?.defaultResourceFolder ?? null,
             onSetDefaultSubfolder: handleSetDefaultResourceFolder,
           }),
-          ...(assignedArea
-            ? [disableOthersWhileArming({key: 'area', label: 'Area Files', rootPath: `${paths.areas}/${assignedArea}`})]
-            : []),
         ]
       : [
-          disableOthersWhileArming({key: 'project', label: 'Area Files', rootPath: path}),
+          disableOthersWhileArming({key: 'project', label: 'Area Files', shortLabel: 'Area', rootPath: path}),
           disableOthersWhileArming({
             key: 'resources',
             label: 'Resources',
@@ -546,6 +551,7 @@ export default function ItemDetail({
               resetKey={path}
               onActiveLocationChange={(rootKey, folderPath) => setActiveFilesLocation({rootKey, path: folderPath})}
               extraTabs={extraTabs}
+              groupLabel="Files"
               textColor={textColor}
               borderColor={borderColor}
             />

@@ -5,7 +5,8 @@
  * storage/settingsStorage.ts.
  */
 import {INBOX_FILE_NAME} from './types';
-import {TagRule} from './tagRules';
+import type {LegacyTagRule, MigrationReport} from './noteSetupMigration';
+import type {NoteSetup, NoteSetupDefaults} from './noteSetups';
 import {ReviewStepsMap} from './reviewSteps';
 
 export interface GtdParaSettings {
@@ -80,22 +81,30 @@ export interface GtdParaSettings {
    */
   focusModeActive: boolean;
   /**
-   * The user-editable catalog of note creation definitions (
-   * docs/dev/history/technical-design-note-templates.md) - context + optional tag match + background +
-   * an ordered set of content pieces, resolved by domain/tagRules.ts's
-   * resolveNoteTemplate. Plugin config, not PARA content, same reasoning as
-   * every other field here. Meeting- and Todo-note creation resolve against
-   * this list at note-creation/refresh time (storage/
-   * meetingNoteContent.ts's refreshMeetingNoteBlock/refreshTodoNoteBlock).
-   * Each definition carries its own background `template` - there is no
-   * global note background setting.
+   * Note setups (docs/dev/history/technical-design-note-setups.md §3.2): one
+   * per thing tracked - tags, kind, where notes go, tracking, own page
+   * layouts. List order is priority among setups of the same kind.
    */
-  tagRules: TagRule[];
+  noteSetups: NoteSetup[];
+  /** The Default: the page per kind and the tracking for items no setup matches. */
+  noteSetupDefaults: NoteSetupDefaults;
+  /** Next `NoteSetup.id` - a simple counter. */
+  nextNoteSetupId: number;
+  /** The Tag Rules migration report, shown above the Note setups list until dismissed; null when there is none. */
+  noteSetupsNotice: MigrationReport | null;
   /**
-   * Simple incrementing counter used as the next `TagRule.id`
-   * (domain/tagRules.ts's `createEmptyTagRule`) - simpler than a UUID and
-   * enough here.
+   * Whether the Tag Rules of this settings blob or profile were migrated to
+   * Note setups (domain/noteSetupMigration.ts). False in DEFAULT_SETTINGS, so
+   * stored settings and profile files from 0.14 and earlier migrate once,
+   * also after a profile switch fills their missing keys from the defaults.
    */
+  noteSetupsMigrated: boolean;
+  /**
+   * 0.14's Tag Rules, kept as stored: the backup, and what 0.14 reads after a
+   * downgrade. Only the migration reads them; nothing writes them.
+   */
+  tagRules: LegacyTagRule[];
+  /** 0.14's Tag Rule id counter, kept as stored with `tagRules`. */
   nextTagRuleId: number;
   /**
    * The style of the title elements gtdpara writes for heading pieces
@@ -199,6 +208,11 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   hideDoneInboxTasks: false,
   googleCalendarIcsUrl: '',
   focusModeActive: false,
+  noteSetups: [],
+  noteSetupDefaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}, notebook: null},
+  nextNoteSetupId: 1,
+  noteSetupsNotice: null,
+  noteSetupsMigrated: false,
   tagRules: [],
   nextTagRuleId: 1,
   noteHeadingStyle: 3,

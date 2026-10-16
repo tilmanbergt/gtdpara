@@ -8,7 +8,7 @@
  * archive); everything else can be prepared while they are open.
  */
 import {Meeting, Task} from '../types';
-import {TagRule} from '../tagRules';
+import {NoteSetupConfig} from '../noteSetups';
 import {meetingDisplayTitle, resolveMeetingTracking} from '../meetingTracking';
 import {CloseOutPlan} from './plan';
 
@@ -59,7 +59,7 @@ export interface ReadinessInput {
   /** YYYY-MM-DD. */
   today: string;
   now: Date;
-  tagRules: TagRule[];
+  noteSetups: NoteSetupConfig;
   /** Every OTHER project/area (and the Inbox) - for links into this folder. */
   others: OtherItemLinks[];
   /** Base-root-relative path of the project folder, as linkedFile values spell it. */
@@ -104,12 +104,12 @@ export function evaluateReadiness(input: ReadinessInput): Finding[] {
       : {id: 'futureMeetings', severity: 'ok', label: 'No future meetings', caption: '', items: []},
   );
 
-  // Past meetings whose review checkpoint (per Tag Rule) is still open - no lookback window: closing a project should see all of them.
+  // Past meetings whose review checkpoint (per Note setup) is still open - no lookback window: closing a project should see all of them.
   const toCloseOut = input.meetings
     .map((m, index) => ({m, index}))
     .filter(({m}) => m.date < input.today)
     .filter(({m}) => {
-      const state = resolveMeetingTracking(m, input.tagRules, input.now);
+      const state = resolveMeetingTracking(m, input.noteSetups, input.now);
       return state !== null && !state.done;
     });
   out.push(

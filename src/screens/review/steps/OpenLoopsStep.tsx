@@ -172,7 +172,7 @@ export default function OpenLoopsStep({data, stepEntryToken, onAddTask, textColo
       renderDetail={renderDetail}
       actedOnKeys={frozen.actedOn}
       resetKey={stepEntryToken}
-      emptyHint="No open loops. A Tag Rule with the context Loop makes its tag a kind of loop (#workshop/<name>)."
+      emptyHint="No open loops. A Note setup of the kind Loop makes its tag a kind of loop (#workshop/<name>)."
       textColor={textColor}
       borderColor={borderColor}
     />

@@ -1,12 +1,20 @@
 /**
- * Reads the active lasso once into plain data (docs/dev/technical-design-
- * lasso-0.8.md §3.4): where it is, its text boxes' text, and every stroke's
- * points and pressures. Capture and "Mark for later" both start here, so
- * recognition never works on live elements with the page size again (the
- * root cause of the "second lasso recognizes nothing" bug, §2.1).
+ * Reads the active lasso once into plain data
+ * (docs/dev/history/technical-design-lasso-0.8.md §3.4): where it is, its
+ * text boxes' text, and every stroke's points and pressures. Capture and "Mark for later" both start
+ * here, and both recognize from this saved data.
+ *
+ * Every coordinate read here - rect, stroke points, text-box rects - is a
+ * pixel on the page's real size (`pageSize`, PluginFileAPI.getPageSize;
+ * docs/dev/history/technical-design-new-firmware.md).
+ *
+ * With `previewPath` the lasso picture is taken first, right after path and
+ * page: on a cold plugin start the host can drop the lasso while the slower
+ * reads run (error 904 "No lasso action has been performed"), so the picture
+ * must not wait for them.
  */
 import {PluginCommAPI, PluginFileAPI} from 'sn-plugin-lib';
-import {joinInReadingOrder, PxPoint, PxRect, StoredStroke, TextPiece} from '../domain/marks';
+import {joinInReadingOrder, PxPoint, PxRect, StoredStroke, strokeBounds, TextPiece} from '../domain/marks';
 import {log, logWarn} from '../utils/log';
 import {
   ELEMENT_TYPE_STROKE,
@@ -26,8 +34,9 @@ export interface LassoSnapshot {
   /** 0-based page; null when unknown. */
   page: number | null;
   rect: PxRect | null;
-  displaySize: Size | null;
   pageSize: Size | null;
+  /** The picture written when `previewPath` was given; null when none or it failed. */
+  picture: string | null;
   /** Text-box text in reading order ('' when none). */
   textBoxText: string;
   strokes: StoredStroke[];
@@ -67,8 +76,17 @@ async function readStroke(el: SdkElement): Promise<StoredStroke | null> {
   };
 }
 
+/** Coordinate diagnostics for the log: numbers only. */
+function sizeText(size: Size | null): string {
+  return size ? `${Math.round(size.width)}x${Math.round(size.height)}` : 'null';
+}
+
+function rectText(rect: PxRect | null): string {
+  return rect ? [rect.left, rect.top, rect.right, rect.bottom].map(v => Math.round(v)).join(',') : 'null';
+}
+
 /** Never throws; whatever couldn't be read is null/empty and listed in `errors`. */
-export async function readLasso(): Promise<LassoSnapshot> {
+export async function readLasso(opts: {previewPath?: string} = {}): Promise<LassoSnapshot> {
   const timings: Record<string, number> = {};
   const errors: string[] = [];
   let elements: SdkElement[] = [];
@@ -76,8 +94,8 @@ export async function readLasso(): Promise<LassoSnapshot> {
     path: null,
     page: null,
     rect: null,
-    displaySize: null,
     pageSize: null,
+    picture: null,
     textBoxText: '',
     strokes: [],
     elementCount: 0,
@@ -93,6 +111,9 @@ export async function readLasso(): Promise<LassoSnapshot> {
     snap.page = pageR?.success && typeof pageR.result === 'number' ? pageR.result : null;
     if (snap.page == null) {errors.push('getCurrentPageNum: ' + errText(pageR, 'no page'));}
 
+    const previewPath = opts.previewPath;
+    if (previewPath) {snap.picture = await timed(timings, 'preview', () => saveLassoPreview(previewPath));}
+
     const rectR = (await timed(timings, 'rect', () => PluginCommAPI.getLassoRect())) as SdkResponse<PxRect>;
     snap.rect = rectR?.success && rectR.result ? rectR.result : null;
     if (!snap.rect) {errors.push('getLassoRect: ' + errText(rectR, 'no rect'));}
@@ -102,8 +123,6 @@ export async function readLasso(): Promise<LassoSnapshot> {
     if (!elR?.success) {errors.push('getLassoElements: ' + errText(elR, 'failed'));}
     snap.elementCount = elements.length;
 
-    const dispR = (await timed(timings, 'displaySize', () => PluginCommAPI.getPageDisplaySize())) as SdkResponse<Size>;
-    snap.displaySize = dispR?.success && dispR.result ? dispR.result : null;
     if (snap.path && snap.page != null) {
       try {
         const sizeR = (await timed(timings, 'pageSize', () =>
@@ -136,12 +155,17 @@ export async function readLasso(): Promise<LassoSnapshot> {
   } finally {
     recycleElements(elements);
   }
+  const bounds = strokeBounds(snap.strokes);
   log(
     'lassoRead: done',
     `elements=${snap.elementCount}`,
     `strokes=${snap.strokes.length}`,
     `textBoxChars=${snap.textBoxText.length}`,
     `page=${snap.page}`,
+    `pageSize=${sizeText(snap.pageSize)}`,
+    `rect=${rectText(snap.rect)}`,
+    `strokeBounds=${rectText(bounds.rect)}`,
+    `points=${bounds.points}`,
     JSON.stringify(timings),
     errors.length ? `errors=${errors.join(' | ')}` : '',
   );

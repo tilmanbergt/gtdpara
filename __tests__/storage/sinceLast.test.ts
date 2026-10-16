@@ -2,7 +2,7 @@
 import {deriveMeetingFields} from '../../src/domain/markdown';
 import {meetingKey} from '../../src/domain/provenance';
 import {renderSinceLast, SINCE_LAST_BLOCK_LINES} from '../../src/domain/sinceLastText';
-import {renderPieceText} from '../../src/domain/tagRules';
+import {renderPieceText} from '../../src/domain/pageLayout';
 import {emptyTaskFields} from '../../src/domain/taskLine';
 import {Meeting, Task} from '../../src/domain/types';
 import {buildSinceLast} from '../../src/storage/sinceLast';

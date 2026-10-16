@@ -6,6 +6,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 import {GtdParaSettings} from '../../domain/settings';
+import {buildVersionText} from '../../domain/buildVersionText';
 import {BUILD_INFO} from '../../generated/buildInfo';
 import {CHANGELOG} from '../../generated/changelog';
 import {exportDebugBundle} from '../../storage/debugBundle';
@@ -85,7 +86,7 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
   return (
     <View style={styles.row}>
       <View style={[styles.column, styles.columnLeft]}>
-        <Text style={[styles.title, {color: textColor}]}>gtdpara {b.version}</Text>
+        <Text style={[styles.title, {color: textColor}]}>gtdpara {buildVersionText(b)}</Text>
         <Text style={[styles.line, {color: textColor}]}>
           build {b.versionCode || 'dev'} · {builtDate}
         </Text>

@@ -5,22 +5,31 @@
  * data cache being there.
  *
  * Order (the line in project.txt / area.txt / Inbox.txt is the commit point):
- *   1. read the lasso once (strokes, text boxes, page, rect)
- *   2. picture of the lasso into the mark's private folder
- *   3. remove the lasso
- *   4. bookmark icon into the note, save the note
- *   5. mark.json (strokes etc.)
- *   6. the `## Marks` line - if that fails, the icon and data are removed again
+ *   1. read the lasso once: path and page, then at once the picture into the
+ *      private temp folder (the host can drop the lasso during slower reads
+ *      on a cold start; the temp folder needs no permission check), then
+ *      rect, strokes, text boxes, page size
+ *   2. remove the lasso
+ *   3. bookmark icon into the note, save the note
+ *   4. the picture moved into the mark's private folder, mark.json (strokes
+ *      etc.) - the first file write, so the first permission check comes
+ *      after the lasso is read
+ *   5. the `## Marks` line - if that fails, the icon and data are removed again
+ *
+ * While a mark is saved, App starts nothing else (whenMarkSettled): no
+ * landing, no Files pane, no cache build, no temp clean-up, so a cold start
+ * doesn't compete with the lasso reads
+ * (docs/dev/history/technical-design-new-firmware.md, steps F3b/F3c).
  *
  * The outcome is silent when everything worked. Otherwise it is kept in
  * `markOutcome` for App's small result screen (opened via showPluginView).
  */
 import {findEnclosingItem, resolvePaths} from '../domain/settings';
-import {isEmptyLasso, readLasso, saveLassoPreview} from '../supernote/lassoRead';
+import {isEmptyLasso, readLasso} from '../supernote/lassoRead';
 import {setLassoBoxState} from '../supernote/lasso';
 import {changeMarkIcon, insertBookmark} from '../supernote/markIcons';
-import {ensureFolderExists, readTextFile} from '../supernote/fileSystem';
-import {collectOpenMarks, MARK_DATA_VERSION, markCreatedAt, markOwner, MarkScope, newMarkId, OpenMark, PxRect} from '../domain/marks';
+import {getPrivateTempDir, moveFile, readTextFile} from '../supernote/fileSystem';
+import {collectOpenMarks, isOldStrokeMark, MARK_DATA_VERSION, MarkDataFile, markCreatedAt, markOwner, MarkScope, newMarkId, OpenMark, PxRect} from '../domain/marks';
 import {RecognitionResult, recognizeStrokes} from '../supernote/strokeRecognition';
 import {Mark} from '../domain/types';
 import {log, logError, logWarn} from '../utils/log';
@@ -29,7 +38,6 @@ import {
   addPendingIconChange,
   cleanOrphanedMarkData,
   deleteMarkData,
-  markDataFolder,
   markPicturePath,
   PendingIconChange,
   readMarkData,
@@ -79,6 +87,46 @@ export function outcomeNeedsScreen(o: MarkOutcome): boolean {
 // ---- the flow ----
 
 let running = false;
+let inFlight: Promise<unknown> | null = null;
+
+/**
+ * Runs the Mark button's whole job (index.js) and marks it as in flight from
+ * the first, synchronous moment on, so App can wait for it.
+ */
+export function trackMarkPress<T>(job: () => Promise<T>): Promise<T> {
+  const run = job();
+  const settled = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  inFlight = settled;
+  settled.then(() => {
+    if (inFlight === settled) {inFlight = null;}
+  });
+  return run;
+}
+
+/** True while the Mark button's job runs. */
+export function isMarkInFlight(): boolean {
+  return inFlight !== null;
+}
+
+/** Resolves once no mark is being saved (at once when none is). Never rejects. */
+export function whenMarkSettled(): Promise<void> {
+  return inFlight ? inFlight.then(() => undefined) : Promise.resolve();
+}
+
+/**
+ * App's start waits here while a mark is saved, so a cold start from the
+ * Mark button doesn't slow the lasso reads (step F3c of
+ * docs/dev/history/technical-design-new-firmware.md). Logs how long it held.
+ */
+export async function holdStartForMark(): Promise<void> {
+  const t = Date.now();
+  log('App: start held while a mark is saved');
+  await whenMarkSettled();
+  log('App: start resumed after the mark', `ms=${Date.now() - t}`);
+}
 
 async function ownerFor(absNotePath: string) {
   const settings = await loadSettings();
@@ -102,12 +150,26 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
   }
   running = true;
   const t0 = Date.now();
+  const steps: Record<string, number> = {};
+  let tStep = t0;
+  const step = (name: string) => {
+    const t = Date.now();
+    steps[name] = t - tStep;
+    tStep = t;
+  };
   const id = newMarkId(now);
   let iconPlaced = false;
   let path: string | null = null;
   let page: number | null = null;
   try {
-    const snap = await readLasso();
+    let tempPicture: string | undefined;
+    try {
+      tempPicture = `${await getPrivateTempDir()}/mark-${id}.png`;
+    } catch (e) {
+      logWarn('marks: no temp folder for the picture', errorMessage(e));
+    }
+    const snap = await readLasso({previewPath: tempPicture});
+    step('lasso');
     path = snap.path;
     page = snap.page;
     if (isEmptyLasso(snap)) {
@@ -118,17 +180,27 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       return {kind: 'failed', detail: 'Could not tell which note and page the lasso is on.'};
     }
 
-    await ensureFolderExists(await markDataFolder(id));
-    const picture = await saveLassoPreview(await markPicturePath(id));
-
     try {
       await setLassoBoxState(2);
     } catch (e) {
       logWarn('marks: removing the lasso failed', errorMessage(e));
     }
+    step('lassoGone');
 
     const icon = snap.rect ? await insertBookmark(page, snap.rect, id) : null;
     iconPlaced = !!icon?.placed;
+    step('icon');
+
+    let picture = false;
+    if (snap.picture) {
+      try {
+        await moveFile(snap.picture, await markPicturePath(id));
+        picture = true;
+      } catch (e) {
+        logWarn('marks: keeping the picture failed', id, errorMessage(e));
+      }
+    }
+    step('picture');
 
     await writeMarkData({
       version: MARK_DATA_VERSION,
@@ -136,12 +208,13 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       path,
       page,
       rect: snap.rect,
-      displaySize: snap.displaySize,
+      displaySize: null,
       pageSize: snap.pageSize,
       textBoxText: snap.textBoxText,
       strokes: snap.strokes,
       icon: icon ? {box: icon.box, placed: icon.placed} : null,
     });
+    step('data');
 
     const ref = await ownerFor(path);
     const mark: Mark = {
@@ -153,6 +226,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       text: snap.strokes.length === 0 && snap.textBoxText ? snap.textBoxText : null,
     };
     await addMarkLine(ref, mark);
+    step('line');
 
     log(
       'marks: saved',
@@ -160,9 +234,10 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
       ref.kind,
       `strokes=${snap.strokes.length}`,
       `textBoxChars=${snap.textBoxText.length}`,
-      `picture=${picture !== null}`,
+      `picture=${picture}`,
       `icon=${iconPlaced}`,
       `totalMs=${Date.now() - t0}`,
+      `ms=${JSON.stringify(steps)}`,
     );
     if (!iconPlaced) {
       return {kind: 'iconMissing', id, page, rect: snap.rect, detail: icon?.error ?? 'no lasso rect'};
@@ -170,7 +245,7 @@ export async function createMarkFromLasso(now = new Date()): Promise<MarkOutcome
     return {kind: 'saved', id};
   } catch (e) {
     const detail = errorMessage(e);
-    logError('marks: saving failed', id, detail);
+    logError('marks: saving failed', id, detail, `totalMs=${Date.now() - t0}`, `ms=${JSON.stringify(steps)}`);
     // Not saved: take back what is already there.
     if (iconPlaced && path && page != null) {await changeMarkIcon({id, path, page}, 'remove', path);}
     await deleteMarkData(id);
@@ -204,22 +279,33 @@ export function listOpenMarks(scope: MarkScope): OpenMark[] {
   return collectOpenMarks(cache.items, getCachedInbox(), cache.paths.inboxFolder, scope);
 }
 
+/** What an old mark (domain/marks.ts isOldStrokeMark) offers instead of recognition: its text-box text only. */
+function oldMarkText(id: string, data: MarkDataFile): string {
+  log('marks: old mark, not recognized', id);
+  return data.textBoxText.trim();
+}
+
 /**
- * Recognizes a mark from its saved strokes (shifted copies, §3.4) - once:
+ * Recognizes a mark from its saved strokes (§3.4) - once:
  * the result is kept in its mark.json and returned from there next time. A
  * mark that only holds text-box text needs no recognition. `missing` = the
  * private data is gone (e.g. after reinstalling) - the line still works,
- * the text has to be typed.
+ * the text has to be typed. `old` = handwriting saved by an older gtdpara
+ * in another unit (docs/dev/history/technical-design-new-firmware.md D2):
+ * not sent to the recognizer, the text is typed from the picture.
  */
-export async function recognizeMark(open: OpenMark): Promise<RecognitionResult & {missing: boolean}> {
+export async function recognizeMark(open: OpenMark): Promise<RecognitionResult & {missing: boolean; old: boolean}> {
   const data = await readMarkData(open.mark.id);
   if (!data) {
-    return {text: open.mark.text ?? '', error: open.mark.text ? null : 'mark data missing', ms: 0, missing: true};
+    return {text: open.mark.text ?? '', error: open.mark.text ? null : 'mark data missing', ms: 0, missing: true, old: false};
   }
   if (data.recognizedText) {
-    return {text: data.recognizedText, error: null, ms: 0, missing: false};
+    return {text: data.recognizedText, error: null, ms: 0, missing: false, old: false};
   }
-  const result = await recognizeStrokes(data.strokes, data.textBoxText, data.displaySize ?? data.pageSize, data.page);
+  if (isOldStrokeMark(data)) {
+    return {text: oldMarkText(open.mark.id, data), error: null, ms: 0, missing: false, old: true};
+  }
+  const result = await recognizeStrokes(data.strokes, data.textBoxText, data.pageSize, data.page);
   if (result.text.trim()) {
     try {
       await writeMarkData({...data, recognizedText: result.text});
@@ -227,7 +313,7 @@ export async function recognizeMark(open: OpenMark): Promise<RecognitionResult &
       logWarn('marks: keeping recognized text failed', open.mark.id, errorMessage(e));
     }
   }
-  return {...result, missing: false};
+  return {...result, missing: false, old: false};
 }
 
 export interface FinishResult {
@@ -289,9 +375,16 @@ export async function cleanMarkDataOrphans(): Promise<void> {
   }
 }
 
-/** Recognized text kept from an earlier open (null when there is none yet). Cheap: one small file read. */
-export async function storedMarkText(open: OpenMark): Promise<string | null> {
-  if (open.mark.text) {return open.mark.text;}
+/**
+ * What is known about a mark's text without the recognizer (null: it still
+ * needs recognizing): text kept from an earlier open, or an old mark
+ * (`old`), whose text is typed. Cheap: one small file read.
+ */
+export async function storedMarkRecognition(open: OpenMark): Promise<{text: string; old: boolean} | null> {
+  if (open.mark.text) {return {text: open.mark.text, old: false};}
   const data = await readMarkData(open.mark.id);
-  return data?.recognizedText || null;
+  if (!data) {return null;}
+  if (data.recognizedText) {return {text: data.recognizedText, old: false};}
+  if (isOldStrokeMark(data)) {return {text: oldMarkText(open.mark.id, data), old: true};}
+  return null;
 }

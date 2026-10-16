@@ -37,7 +37,7 @@ import {
   pieceWidthPx,
   pieceIsHeading,
   PieceType,
-} from '../domain/tagRules';
+} from '../domain/pageLayout';
 import {MYSTYLE_FOLDER} from '../supernote/fileSystem';
 import {COLORS, FONT} from './theme';
 
@@ -70,7 +70,7 @@ interface Props {
   pieces: NotePiece[];
   selectedIndex: number | null;
   onSelectPiece: (index: number) => void;
-  /** '' = blank/no template picked - same convention TagRule.template uses; renders no <Image> at all. */
+  /** '' = blank/no template picked - same convention PageLayout.template uses; renders no <Image> at all. */
   background: string;
   textColor: string;
   borderColor: string;

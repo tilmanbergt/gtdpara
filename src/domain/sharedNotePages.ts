@@ -2,12 +2,12 @@
  * Shared Note Pages (docs/dev/history/technical-design-shared-note-pages.md).
  *
  * Pure domain layer for the "file this Todo/Meeting's note as a PAGE in one
- * shared `.note` per Project/Area, located by keyword" Tag Rule option
- * (`TagRule.noteTarget === 'shared'`, domain/tagRules.ts).
+ * shared `.note` per Project/Area, located by keyword" mechanism behind a
+ * Note setup's notebook and the loop note (domain/noteSetups.ts).
  * Covers everything this feature needs that doesn't touch the device:
  * encoding/decoding the anchor stored in `Task.notePath`/`Meeting.notePath`,
- * deriving a page's keyword from the item it belongs to, and the pure array
- * math behind chronological page insertion. Zero RN/SDK imports (design-
+ * deriving a page's keyword from the item it belongs to (where a new page
+ * goes is domain/pageOrder.ts). Zero RN/SDK imports (design-
  * overview.md §3) - the actual PluginFileAPI calls (insertNotePage/
  * insertKeyWord/getKeyWords/deleteKeyWord/...) live in the sibling
  * `storage/sharedNotePages.ts`, which calls into this file for
@@ -18,7 +18,6 @@ import {RESERVED_BARE_TAGS, stripBareTags} from './flowState';
 import {setDueInLine} from './markdown';
 import {meetingDisplayTitle} from './meetingTracking';
 import {Meeting, Task} from './types';
-import {isBareDateKeyword} from './noteFindability';
 
 /**
  * A shared-target note's anchor: which file, and which keyword locates this
@@ -86,7 +85,7 @@ export function buildSharedNoteAnchor(filePath: string, keyword: string): string
  * This relies on `filePath` never containing `#`:
  * `sanitizeFileNameComponent` (storage/noteLinks.ts) strips `#` from every
  * file name it builds - own todo/meeting note names (which would otherwise
- * keep context tags like `#daily`) and a shared rule's file name alike.
+ * keep context tags like `#daily`) and a notebook's file name alike.
  * `keyword` stays untouched.
  */
 export function parseSharedNoteAnchor(notePath: string): SharedNoteAnchor | null {
@@ -116,8 +115,8 @@ export function joinNotePath(itemPath: string, target: string): string {
 
 /**
  * A meeting's page keyword: `"YYYY-MM-DD <display title>"` (design doc §3) -
- * date first so `parseKeywordLeadingDate` below can recover it for
- * chronological insertion. `meetingDisplayTitle` (domain/meetingTracking.ts)
+ * date first so `parseKeywordLeadingDate` below can recover it (the page
+ * order reads it on pages from before 0.13, domain/pageOrder.ts). `meetingDisplayTitle` (domain/meetingTracking.ts)
  * already strips `#prepped`/`#reviewed` and any other bare state tags, so
  * those never leak into the keyword - same title text `meetingNoteBaseName`
  * (storage/noteLinks.ts) already uses for an own-note file name, just not
@@ -166,53 +165,6 @@ export function findExactKeywordPage(existingKeywords: PageKeyword[], keyword: s
 }
 
 /**
- * Where a NEW dated page should be inserted among `totalPages` existing
- * pages, given every keyword already on file (design doc §4's
- * `insertChronologicalPage`, dated/meeting case). Only the first
- * parseable-date keyword found for each page counts as that page's "date"
- * for ordering; a page can carry several keywords, and pages with no dated
- * keyword at all (foreign content, or a page this feature wrote for an
- * undated todo keyword) are skipped when deciding where the new page goes -
- * never treated as "after" or "before", so they can't force a dated page to
- * the wrong end of the file. Ties (an existing page with the SAME leading
- * date) are inserted after - new same-day pages append within the day
- * rather than jumping ahead of same-day siblings.
- *
- * `newKeyword` with no parseable leading date (shouldn't happen for a
- * meeting keyword this feature builds itself - defensive only) is treated
- * as unorderable and appended at the very end, same as
- * `insertTodoPageIndex` below always does.
- */
-export function chronologicalInsertIndex(
-  existingKeywords: PageKeyword[],
-  totalPages: number,
-  newKeyword: string,
-): number {
-  const newDate = parseKeywordLeadingDate(newKeyword);
-  if (newDate === null) return totalPages;
-
-  const firstDateByPage = new Map<number, string>();
-  for (const kw of existingKeywords) {
-    // A bare date keyword (domain/noteFindability.ts) is a page's date keyword, not its anchor:
-    // only anchors order pages, so a todo page carrying its creation date stays unordered.
-    if (firstDateByPage.has(kw.page) || isBareDateKeyword(kw.keyword)) continue;
-    const date = parseKeywordLeadingDate(kw.keyword);
-    if (date !== null) firstDateByPage.set(kw.page, date);
-  }
-
-  for (let page = 0; page < totalPages; page++) {
-    const date = firstDateByPage.get(page);
-    if (date !== undefined && date > newDate) return page;
-  }
-  return totalPages;
-}
-
-/** A todo page always appends at the end (design doc §4/§9: todos have no date to order by) - named for symmetry with `chronologicalInsertIndex`, not because it does any real math. */
-export function insertTodoPageIndex(totalPages: number): number {
-  return totalPages;
-}
-
-/**
  * The line written onto a page recreated after its keyword went missing
  * (design doc §7) - one place so the wording can't drift between call
  * sites. `isoDate` is the recreation date (`YYYY-MM-DD`), supplied by the
@@ -225,17 +177,25 @@ export function recreatedPageNoticeText(isoDate: string): string {
 
 // ---- Shared file-name placeholders (docs/dev/history/technical-design-split-by-tag.md §3.3) ----
 
-/** The placeholders a Tag Rule's "Shared file name" understands, in the order the Settings chips show them. */
-export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{year}', '{quarter}', '{month}', '{day}'];
+/** The placeholders a notebook name understands, in the order the Settings chips show them. */
+export const SHARED_FILE_NAME_PLACEHOLDERS: readonly string[] = ['{tag}', '{subtag}', '{name}', '{abbr}', '{year}', '{quarter}', '{month}', '{day}'];
 
-export interface SharedFileNameInput {
-  /** The rule's "Shared file name" (or its rule name when that field is blank) - `resolvedSharedFileName`. */
+/** The Project or Area a note belongs to, for `{name}` and `{abbr}` (storage/noteOwner.ts resolves it). */
+export interface NoteOwnerNames {
+  /** Its folder name; `''` when unknown. */
+  itemName: string;
+  /** Its abbreviation (`abbrev:`); `''` when it has none. */
+  itemAbbrev: string;
+}
+
+export interface SharedFileNameInput extends NoteOwnerNames {
+  /** The notebook name (or the setup name when that field is blank). */
   template: string;
-  /** Fallback when the rendered name comes out empty. */
-  ruleName: string;
-  /** `ruleTypeTag(...)` (domain/tagRules.ts) - the rule tag the item matched; `''` when none. */
+  /** Fallback when the rendered name comes out empty (the setup name). */
+  fallbackName: string;
+  /** `setupTypeTag(...)` (domain/noteSetups.ts) - the setup tag the item matched; `''` when none. */
   tag?: string;
-  /** `ruleSubtag(...)` (domain/tagRules.ts) - `''` when the item has no nested tag under the rule. */
+  /** `setupSubtag(...)` (domain/noteSetups.ts) - `''` when the item has no nested tag under the setup's tags. */
   subtag: string;
   /** `YYYY-MM-DD` - a meeting's own date, today for a todo, a loop's main date; `''` when there is none. */
   date: string;
@@ -245,16 +205,17 @@ export interface SharedFileNameInput {
 const DATE_PLACEHOLDER_RUN = /[-._]?\{(?:year|quarter|month|day)\}(?:[-._]\{(?:year|quarter|month|day)\})*/gi;
 
 /**
- * Renders a shared file's base name (no folder, no ".note") from the rule's
- * template: `{tag}` -> the rule tag the item matched, `{subtag}` -> the
- * nested-tag part (both lowercased), `{year}` -> `2026`,
+ * Renders a shared file's base name (no folder, no ".note") from the
+ * notebook name: `{tag}` -> the setup tag the item matched, `{subtag}` -> the
+ * nested-tag part (both lowercased), `{name}` -> the Project's or Area's name,
+ * `{abbr}` -> its abbreviation (its name without one), `{year}` -> `2026`,
  * `{quarter}` -> `Q4`, `{month}` -> `10`, `{day}` -> `07`. Without a date
  * the date placeholders are left out together with the `-`, `.` or `_`
  * joining them (`{year}-{month} {tag}` -> `{tag}`). Placeholders are matched
  * case-insensitively; any other `{...}` text is left exactly as typed. Runs
  * of whitespace collapse and the ends are trimmed, so a missing subtag
  * doesn't leave a double space (`Coaching {subtag} {year}` -> `Coaching 2026`).
- * An empty result falls back to `ruleName` (e.g. the field is just
+ * An empty result falls back to `fallbackName` (e.g. the field is just
  * `{subtag}` and the item has no subtag). Filename sanitizing (illegal
  * characters, `#`, the `/` of a deeper subtag) is the caller's job -
  * storage/noteLinks.ts's `sanitizeFileNameComponent`, as for every other
@@ -266,11 +227,20 @@ export function renderSharedFileName(input: SharedFileNameInput): string {
   const month = match ? match[2] : '';
   const day = match ? match[3] : '';
   const quarter = match ? `Q${Math.floor((Number(month) - 1) / 3) + 1}` : '';
-  const values: Record<string, string> = {tag: input.tag ?? '', subtag: input.subtag, year, quarter, month, day};
+  const values: Record<string, string> = {
+    tag: input.tag ?? '',
+    subtag: input.subtag,
+    name: input.itemName,
+    abbr: input.itemAbbrev || input.itemName,
+    year,
+    quarter,
+    month,
+    day,
+  };
   const template = match ? input.template : input.template.replace(DATE_PLACEHOLDER_RUN, '');
   const rendered = template
-    .replace(/\{(tag|subtag|year|quarter|month|day)\}/gi, (_all, key: string) => values[key.toLowerCase()])
+    .replace(/\{(tag|subtag|name|abbr|year|quarter|month|day)\}/gi, (_all, key: string) => values[key.toLowerCase()])
     .replace(/\s+/g, ' ')
     .trim();
-  return rendered || input.ruleName.trim();
+  return rendered || input.fallbackName.trim();
 }

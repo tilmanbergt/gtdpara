@@ -1,18 +1,17 @@
 /**
- * Handwriting recognition from saved stroke data (docs/dev/technical-design-
- * lasso-0.8.md §2.1, §3.4) - one path for Capture and for marks.
+ * Handwriting recognition from saved stroke data - one path for Capture and
+ * for marks (docs/dev/history/technical-design-lasso-0.8.md §3.4,
+ * docs/dev/history/technical-design-new-firmware.md).
  *
- * The strokes are rebuilt as new elements from their points, moved to the
- * top-left first (domain/marks.ts shiftStrokes), and recognized with the
- * page size. On the A5 X the points use a larger EMR range than the page
- * size implies; with the original positions everything below ~1368 px fell
- * outside and failed (117) or came back partial.
+ * The strokes are rebuilt as new elements from their points, where they were
+ * drawn, and recognized with the page's real size: with sn-plugin-lib 0.2.x
+ * stroke points and the recognition size are both page-size pixels.
  *
  * One recognition at a time: calls are chained, the host recognizer is
  * never asked twice at once.
  */
 import {PluginCommAPI} from 'sn-plugin-lib';
-import {shiftStrokes, StoredStroke} from '../domain/marks';
+import {PageSize, StoredStroke} from '../domain/marks';
 import {log, logWarn} from '../utils/log';
 import {
   ELEMENT_TYPE_STROKE,
@@ -23,8 +22,6 @@ import {
   SdkResponse,
 } from './sdkElements';
 import {errorMessage} from '../utils/errorMessage';
-
-type Size = {width: number; height: number};
 
 export interface RecognitionResult {
   /** Recognized handwriting and text-box text, joined by a line break ('' when nothing). */
@@ -71,12 +68,13 @@ async function buildStrokes(strokes: StoredStroke[], page: number): Promise<SdkE
 /**
  * Recognizes `strokes` and appends `textBoxText`. Never throws: a failure
  * comes back as `error` with whatever text there is (the text boxes').
- * `size` is the page size the strokes were drawn on (display size preferred).
+ * `size` is the page's real size the strokes were read on; without it
+ * nothing is recognized (error 'no page size').
  */
 export function recognizeStrokes(
   strokes: StoredStroke[],
   textBoxText: string,
-  size: Size | null,
+  size: PageSize | null,
   page = 0,
 ): Promise<RecognitionResult> {
   const boxText = textBoxText.trim();
@@ -89,7 +87,7 @@ export function recognizeStrokes(
     let buildMs = 0;
     try {
       if (!size) {throw new Error('no page size');}
-      built = await buildStrokes(shiftStrokes(strokes), page);
+      built = await buildStrokes(strokes, page);
       buildMs = Date.now() - t0;
       const r = (await PluginCommAPI.recognizeElements(built, size)) as SdkResponse<string>;
       if (r?.success) {recognized = (r.result ?? '').trim();}

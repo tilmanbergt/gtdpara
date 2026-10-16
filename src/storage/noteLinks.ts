@@ -8,9 +8,8 @@
 import {RESERVED_BARE_TAGS, setFlowStateTag, stripBareTags} from '../domain/flowState';
 import {setDueInLine} from '../domain/markdown';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
-import {NoteContext, resolveNoteTemplate} from '../domain/tagRules';
+import {PageLayout} from '../domain/pageLayout';
 import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, SharedNoteAnchor} from '../domain/sharedNotePages';
-import {GtdParaSettings} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {createNote, ensureFolderExists, fileExists, insertKeyWord, MYSTYLE_FOLDER} from '../supernote/fileSystem';
 import {errorMessage} from '../utils/errorMessage';
@@ -31,8 +30,8 @@ const BLANK_TEMPLATE_NAME = 'style_white';
 
 /**
  * Background for `storage/standaloneNotes.ts`'s `createStandaloneNote`
- * (Project/Area standalone notes, which are not wired through
- * `resolveNoteTemplate`/`TagRule`, so they get a blank note). A trivial
+ * (Project/Area standalone notes, which no Note setup covers, so they get
+ * a blank note). A trivial
  * constant, kept as its own named function so a future per-context
  * standalone-note background (see createStandaloneNote's doc comment) has
  * an obvious place to grow into.
@@ -42,24 +41,13 @@ export function getNoteTemplate(): string {
 }
 
 /**
- * Resolves the MyStyle background a linked note (createLinkedNote below)
- * should use, the same way `storage/meetingNoteContent.ts` resolves that
- * note's *content*: `resolveNoteTemplate(context, tags, ...)`, using the
- * matched definition's own `template` field (`''` meaning blank/
- * `style_white`, same convention as `TagRule.template`). Falls back to blank
- * (`BLANK_TEMPLATE_NAME`) when no matching/enabled definition exists for
- * this context+tags - mirroring `refreshMeetingNoteBlock`/
- * `refreshTodoNoteBlock`, which do nothing in that case - so a context with
- * zero definitions configured gets a blank note.
+ * The MyStyle background of a page with `layout` (its `template`; `''`
+ * means blank/`style_white`), blank without a layout - the same layout
+ * `storage/meetingNoteContent.ts` fills the page from
+ * (docs/dev/history/technical-design-note-setups.md §4.4).
  */
-export function resolveNoteBackgroundTemplate(
-  settings: GtdParaSettings,
-  context: NoteContext,
-  tags: string[],
-): string {
-  const definition = resolveNoteTemplate(context, tags, settings.tagRules);
-  if (!definition) return BLANK_TEMPLATE_NAME;
-  return definition.template ? `${MYSTYLE_FOLDER}/${definition.template}` : BLANK_TEMPLATE_NAME;
+export function backgroundOf(layout: PageLayout | null): string {
+  return layout?.template ? `${MYSTYLE_FOLDER}/${layout.template}` : BLANK_TEMPLATE_NAME;
 }
 
 /**
@@ -104,18 +92,14 @@ export function todoNoteBaseName(task: Pick<Task, 'text'>): string {
  * link keeps working if the Project/Area folder itself is later renamed or
  * moved, since it's always resolved against the item's current path.
  *
- * `tags` is the Task's/Meeting's own tags at the moment of creation (used
- * by `resolveNoteBackgroundTemplate`). `context` isn't a separate parameter -
- * it's derived from `subfolder`, since MEETINGS_SUBFOLDER only ever pairs
- * with a Meeting and TODOS_SUBFOLDER with a Task; a second parameter that
- * has to agree with the first would be one more way to get it wrong.
+ * `background` is the MyStyle background of the page's layout
+ * (`backgroundOf`).
  */
 export async function createLinkedNote(
   itemPath: string,
   subfolder: typeof MEETINGS_SUBFOLDER | typeof TODOS_SUBFOLDER,
   baseName: string,
-  settings: GtdParaSettings,
-  tags: string[],
+  background: string,
   /** The final file name (with ".note"), when the caller already picked it - storage/meetingNoteContent.ts plans the name first so the confirm text shows the real one (technical-design-split-by-tag.md §3.5). */
   plannedFileName?: string,
   /** Page-1 keywords (the item's free tags, docs/dev/history/technical-design-cleanup-0.5.md S7) - see insertNoteKeywords. */
@@ -126,9 +110,8 @@ export async function createLinkedNote(
 
   const fileName = plannedFileName ?? (await collisionFreeName(folderPath, baseName, '.note'));
 
-  const context: NoteContext = subfolder === MEETINGS_SUBFOLDER ? 'meeting' : 'todo';
   const absolutePath = `${folderPath}/${fileName}`;
-  await createNote(absolutePath, resolveNoteBackgroundTemplate(settings, context, tags), true);
+  await createNote(absolutePath, background, true);
   await insertNoteKeywords(absolutePath, keywords);
 
   const relativePath = `${subfolder}/${fileName}`;
