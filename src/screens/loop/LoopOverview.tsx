@@ -41,7 +41,7 @@ import {useLinkedFileMissing} from '../usePlanningScreen';
 import AheadSection, {NextOffer} from '../thread/AheadSection';
 import LookingBackSection, {SINCE_KEY} from '../thread/LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from '../thread/PastMeetingPanel';
-import {meetingEntryKey, taskEntryKey, useThreadActions} from '../thread/useThreadActions';
+import {meetingEntryKey, taskEntryKey, useEntryActions} from '../../ui/useEntryActions';
 
 /** Ahead's fixed list height (dp), as in the thread overview; Looking back takes the rest. */
 const AHEAD_VIEWPORT_DP = 480;
@@ -73,7 +73,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
   const {textColor, borderColor, placeholderColor} = useThemeColors();
   const items = useCachedItems();
   const {kinds} = useLoopKinds();
-  const actions = useThreadActions();
+  const actions = useEntryActions();
   const {edit} = actions;
   const ask = useStatusConfirm('LoopOverview.confirm');
   const openNote = useLoopNote('LoopOverview');

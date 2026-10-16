@@ -22,7 +22,7 @@ import TaskRow, {taskRowHeight, taskRowLines} from '../../ui/TaskRow';
 import {TASK_COLUMN_WIDTH_PX} from '../../ui/taskRowLayout';
 import {FONT, SPACING} from '../../ui/theme';
 import {SUB_HEAD_HEIGHT} from './AheadSection';
-import {taskEntryKey, ThreadActions} from './useThreadActions';
+import {EntryActions, taskEntryKey} from '../../ui/useEntryActions';
 
 type PanelRow = {kind: 'head'; key: string; label: string} | {kind: 'task'; key: string; entry: ThreadTaskEntry};
 
@@ -56,7 +56,7 @@ function meetingRows(past: PastMeeting, today: string): PanelRow[] {
 
 interface Props {
   selection: PanelSelection | null;
-  actions: ThreadActions;
+  actions: EntryActions;
   textColor: string;
   borderColor: string;
 }

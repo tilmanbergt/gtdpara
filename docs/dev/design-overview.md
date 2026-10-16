@@ -109,7 +109,7 @@ the thread overview otherwise.
   row per past meeting with agreed/done/open counts). Right: Quick Add, then `PastMeetingPanel`
   (the selected past meeting, the latest by default, and its agreed todos; or, for the "Since"
   row, those done todos by done date, no note button and no provenance in Quick Add).
-  Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `useThreadActions.ts`
+  Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `ui/useEntryActions.ts`
   (the same write paths as Daily). Detail: `docs/dev/history/technical-design-tending-threads.md`.
 - **Loop overview** (an overlay) — `screens/loop/LoopOverview.tsx`: one loop in its owner. The
   thread overview's sections over `storage/loopAggregate.ts` (the thread lists limited to the

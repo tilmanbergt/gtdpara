@@ -14,7 +14,7 @@ import {PastMeeting, ThreadOverview} from '../../storage/threadAggregate';
 import MeetingRow, {MEETING_ROW_HEIGHT} from '../../ui/MeetingRow';
 import PagedSection from '../../ui/PagedSection';
 import {COLORS, FONT} from '../../ui/theme';
-import {meetingEntryKey} from './useThreadActions';
+import {meetingEntryKey} from '../../ui/useEntryActions';
 
 /** The selection key of the "Since" row; meeting rows use `meetingEntryKey`. */
 export const SINCE_KEY = 'since';

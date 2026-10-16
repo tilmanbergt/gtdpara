@@ -1,6 +1,7 @@
 /**
- * Every action the thread overview offers on its rows and in its Quick Add
- * (docs/dev/history/technical-design-tending-threads.md §3.5.3): add, edit,
+ * Every action the thread and loop overviews offer on their rows and in their
+ * Quick Add (docs/dev/history/technical-design-tending-threads.md §3.5.3,
+ * docs/dev/history/technical-design-engage.md §3.6): add, edit,
  * delete (cancel) and quick-file todos and meetings, tick todos done, the
  * prep/review icon, notes and linked files. The same write paths Daily uses:
  * storage/itemMutations.ts (`mutateEntryTasks`/`mutateEntryMeetings` on the
@@ -9,15 +10,15 @@
  */
 import {useEffect, useState} from 'react';
 import {Keyboard} from 'react-native';
-import {AbbrevFileMatch} from '../../domain/abbrev';
-import {Destination, destinationLabel} from '../../domain/destination';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../domain/meetingTracking';
-import {todayIso} from '../../domain/meetingTime';
-import {GtdParaSettings} from '../../domain/settings';
-import {withTaskCancelled, withTaskDone} from '../../domain/taskEdit';
-import {Meeting, Task} from '../../domain/types';
-import {getCachedData, setCachedInbox} from '../../storage/dataCache';
-import {itemTarget, moveMeeting, moveTask} from '../../storage/entryMove';
+import {AbbrevFileMatch} from '../domain/abbrev';
+import {Destination, destinationLabel} from '../domain/destination';
+import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
+import {todayIso} from '../domain/meetingTime';
+import {GtdParaSettings} from '../domain/settings';
+import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
+import {Meeting, Task} from '../domain/types';
+import {getCachedData, setCachedInbox} from '../storage/dataCache';
+import {itemTarget, moveMeeting, moveTask} from '../storage/entryMove';
 import {
   addMeetingToDestination,
   addTaskToDestination,
@@ -27,26 +28,26 @@ import {
   buildTask,
   mutateEntryMeetings,
   mutateEntryTasks,
-} from '../../storage/itemMutations';
-import {openLinkedFile} from '../../storage/linkedFiles';
-import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../storage/meetingNoteContent';
-import {loadSettings} from '../../storage/settingsStorage';
-import {ThreadMeetingEntry, ThreadTaskEntry} from '../../storage/threadAggregate';
-import {MeetingTrackingConfig, trackingSetups} from '../../ui/MeetingRow';
-import {MeetingQuickAddFields, QuickFilePayload} from '../../ui/QuickAddWidget';
-import {useActionError} from '../../ui/useActionError';
-import {useCachedInbox} from '../../ui/useCachedInbox';
-import {useEditTarget} from '../../ui/useEditTarget';
-import {useEntryMoveUi} from '../../ui/useEntryMoveUi';
-import {useNoteCreateConfirm} from '../../ui/useNoteCreateConfirm';
-import {errorMessage} from '../../utils/errorMessage';
-import {log, logError} from '../../utils/log';
-import {requestEinkRefresh} from '../../utils/screenRefresh';
+} from '../storage/itemMutations';
+import {openLinkedFile} from '../storage/linkedFiles';
+import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
+import {loadSettings} from '../storage/settingsStorage';
+import {ThreadMeetingEntry, ThreadTaskEntry} from '../storage/threadAggregate';
+import {MeetingTrackingConfig, trackingSetups} from './MeetingRow';
+import {MeetingQuickAddFields, QuickFilePayload} from './QuickAddWidget';
+import {useActionError} from './useActionError';
+import {useCachedInbox} from './useCachedInbox';
+import {useEditTarget} from './useEditTarget';
+import {useEntryMoveUi} from './useEntryMoveUi';
+import {useNoteCreateConfirm} from './useNoteCreateConfirm';
+import {errorMessage} from '../utils/errorMessage';
+import {log, logError} from '../utils/log';
+import {requestEinkRefresh} from '../utils/screenRefresh';
 
 const LOG = 'ThreadOverview';
 
 /** The row open in Quick Add's edit mode: `<item path>#<index>`. */
-export interface ThreadEditKey {
+export interface EntryEditKey {
   type: 'task' | 'meeting';
   key: string;
 }
@@ -54,7 +55,7 @@ export interface ThreadEditKey {
 export const taskEntryKey = (e: ThreadTaskEntry) => `${e.item.path}#${e.taskIndex}`;
 export const meetingEntryKey = (e: ThreadMeetingEntry) => `${e.item.path}#${e.meetingIndex}`;
 
-export function useThreadActions() {
+export function useEntryActions() {
   const inbox = useCachedInbox();
   const paths = getCachedData()?.paths ?? null;
   const inboxPath = paths?.inboxFolder ?? null;
@@ -66,7 +67,7 @@ export function useThreadActions() {
   }, []);
   const confirmNoteCreate = useNoteCreateConfirm(`${LOG}.noteCreateConfirm`);
   const moveUi = useEntryMoveUi(LOG);
-  const edit = useEditTarget<ThreadEditKey>();
+  const edit = useEditTarget<EntryEditKey>();
   const widgetAction = useActionError(`${LOG}.widgetError`, `${LOG}: widget action failed`);
   const rowAction = useActionError(`${LOG}.rowError`, `${LOG}: row action failed`);
   const ctx = {inbox, inboxPath};
@@ -220,4 +221,4 @@ export function useThreadActions() {
   };
 }
 
-export type ThreadActions = ReturnType<typeof useThreadActions>;
+export type EntryActions = ReturnType<typeof useEntryActions>;

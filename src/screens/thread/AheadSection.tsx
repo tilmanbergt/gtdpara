@@ -15,7 +15,7 @@ import PagedSection from '../../ui/PagedSection';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../ui/TaskRow';
 import {TASK_COLUMN_WIDTH_PX} from '../../ui/taskRowLayout';
 import {FONT} from '../../ui/theme';
-import {meetingEntryKey, taskEntryKey, ThreadActions} from './useThreadActions';
+import {EntryActions, meetingEntryKey, taskEntryKey} from '../../ui/useEntryActions';
 
 export const SUB_HEAD_HEIGHT = 30;
 
@@ -31,7 +31,7 @@ export interface NextOffer {
 
 interface Props {
   overview: ThreadOverview;
-  actions: ThreadActions;
+  actions: EntryActions;
   nextOffers: NextOffer[];
   viewportHeight: number;
   /** Other sub-head labels (the loop overview's); the thread's by default. */

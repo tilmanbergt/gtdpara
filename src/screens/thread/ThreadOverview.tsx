@@ -38,7 +38,7 @@ import {log} from '../../utils/log';
 import AheadSection, {NextOffer} from './AheadSection';
 import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
-import {meetingEntryKey, taskEntryKey, useThreadActions} from './useThreadActions';
+import {meetingEntryKey, taskEntryKey, useEntryActions} from '../../ui/useEntryActions';
 
 /** Ahead's fixed list height (dp), design §3.5.2; Looking back takes the rest of the column. */
 const AHEAD_VIEWPORT_DP = 480;
@@ -72,7 +72,7 @@ export default function ThreadOverview(props: Props): React.JSX.Element {
 function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Element {
   const {textColor, borderColor, placeholderColor} = useThemeColors();
   const items = useCachedItems();
-  const actions = useThreadActions();
+  const actions = useEntryActions();
   const {inbox, inboxPath, edit} = actions;
   const [lens, setLens] = useState<ThreadLens>(request.lens);
   const overview = useMemo(
