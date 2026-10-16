@@ -207,10 +207,11 @@ export function useEntryActions(name = 'ThreadOverview') {
     if (moved) edit.cancel();
   };
 
-  /** Opens (or creates, after the confirm) the todo's note; resolves true when nothing failed. */
-  const taskNote = (entry: ThreadTaskEntry): Promise<boolean> =>
-    rowAction.runSave(async () => {
-      const {task, changed} = await openOrCreateTodoNote(entry.task, entry.item.path, await currentSettings(), null, {
+  /** Opens (or creates, after the confirm) the todo's note; resolves true only when a note was opened (not cancelled, no error). */
+  const taskNote = async (entry: ThreadTaskEntry): Promise<boolean> => {
+    let opened = false;
+    const ok = await rowAction.runSave(async () => {
+      const {task, changed, cancelled} = await openOrCreateTodoNote(entry.task, entry.item.path, await currentSettings(), null, {
         confirmCreate: confirmNoteCreate,
       });
       if (changed) {
@@ -219,6 +220,15 @@ export function useEntryActions(name = 'ThreadOverview') {
           return tasks;
         });
       }
+      opened = !cancelled;
+    });
+    return ok && opened;
+  };
+  /** Opens a linked file (at its page); resolves true when it opened, else the status slot shows why. */
+  const openTaskFile = (linkedFile: string): Promise<boolean> =>
+    rowAction.runSave(async () => {
+      if (!paths) throw new Error('The files are not loaded yet.');
+      await openLinkedFile(paths, linkedFile);
     });
   const meetingNote = (entry: ThreadMeetingEntry) =>
     rowAction.run(async () => {
@@ -269,6 +279,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     meetingNote,
     tracking,
     openFile,
+    openTaskFile,
   };
 }
 

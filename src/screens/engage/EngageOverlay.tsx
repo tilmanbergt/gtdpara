@@ -5,8 +5,8 @@
  * the reducer's (domain/engageFlow.ts); every write goes through
  * ui/useEntryActions.ts, Close loop… through ui/useCloseLoop.ts.
  */
-import React from 'react';
-import {Text, View} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {LayoutChangeEvent, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {EngageAck, EngageRequest} from '../../domain/engageFlow';
 import {EngageFlowChoice, isNextTask} from '../../domain/engageOptions';
@@ -21,7 +21,7 @@ import {useCloseLoop} from '../../ui/useCloseLoop';
 import {useEntryActions} from '../../ui/useEntryActions';
 import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';
-import {useEinkRefreshOnLoad} from '../../utils/screenRefresh';
+import {requestEinkRefresh, useEinkRefreshOnLoad} from '../../utils/screenRefresh';
 import AckLine from './AckLine';
 import Celebration from './Celebration';
 import EngageFooter from './EngageFooter';
@@ -62,6 +62,25 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
   useEinkRefreshOnLoad(source === null);
   const {owner, screen, ack} = state;
 
+  // Over the transparent backdrop the A5 X can keep showing the previous panel
+  // after a change (the note behind is not redrawn), so the panel never gets
+  // smaller while it is open and every screen change asks for a refresh.
+  const [panelHeight, setPanelHeight] = useState(0);
+  const onPanelLayout = (e: LayoutChangeEvent) => {
+    const height = Math.round(e.nativeEvent.layout.height);
+    if (height > panelHeight) setPanelHeight(height);
+  };
+  useEffect(() => {
+    log(`${NAME}: screen`, screen.kind, 'panelHeight=' + panelHeight);
+    requestEinkRefresh();
+    // Logged and refreshed per screen; the height is read, not a trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen.kind, ack === null]);
+  const press = (what: string, run: () => void) => {
+    log(`${NAME}: press`, what);
+    run();
+  };
+
   const titleOf = (todo: EngageTodoRef) => taskRowLayout(todo.task, ENGAGE_TEXT_WIDTH, 'flat').title;
 
   const act = async (todo: EngageTodoRef, kind: EngageAck['kind'], wasCurrent: boolean) => {
@@ -89,10 +108,19 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
       if (!changed) return;
       key = {...key, taskText: changed.afterText};
     }
+    // Picking only makes the todo current; its note and file are in the Now box.
     dispatch({type: 'picked', key});
     if (owner) await setEngageCurrent(owner, key);
-    // The todo's note comes to the front, so the panel goes; without a note the todo just becomes current.
-    if (todo.task.notePath && (await actions.taskNote(todo))) onClose();
+  };
+
+  /** The Now box's note and file: once one opened, it is in front and the panel goes. */
+  const openNote = async (todo: EngageTodoRef) => {
+    log(`${NAME}: action`, 'note', todo.task.notePath ? 'open' : 'new');
+    if (await actions.taskNote(todo)) onClose();
+  };
+  const openFile = async (linkedFile: string) => {
+    log(`${NAME}: action`, 'file');
+    if (await actions.openTaskFile(linkedFile)) onClose();
   };
 
   const homeName = (o: EngageOwner) => source?.items.find(i => i.path === ownerHomePath(o))?.name ?? '';
@@ -144,7 +172,8 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
                 onDone={() => act(current, 'done', true)}
                 onRemoveNext={() => act(current, 'unnext', true)}
                 onSomeday={() => act(current, 'someday', true)}
-                onOpen={() => pick(current)}
+                onNote={() => openNote(current)}
+                onFile={openFile}
                 textColor={textColor}
                 borderColor={borderColor}
               />
@@ -168,8 +197,8 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
                 label={ENGAGE_TEXT.quickAdd}
                 cancelLabel={ENGAGE_TEXT.cancel}
                 expanded={screen.kind === 'quickAdd'}
-                onExpand={() => dispatch({type: 'expandQuickAdd'})}
-                onCollapse={() => dispatch({type: 'collapseQuickAdd'})}
+                onExpand={() => press('quickAdd', () => dispatch({type: 'expandQuickAdd'}))}
+                onCollapse={() => press('quickAddCancel', () => dispatch({type: 'collapseQuickAdd'}))}
                 destination={destination}
                 ownerTag={owner.kind === 'item' ? null : owner.tag}
                 layoutKey="engage"
@@ -189,16 +218,16 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
   const nothingToPick = screen.kind === 'options' && !view.currentTodo && view.options?.next.length === 0 && view.options.plan.length === 0;
   const select =
     screen.kind === 'focusDone'
-      ? {kind: 'new' as const, onPress: () => dispatch({type: 'selectNewFocus'})}
+      ? {kind: 'new' as const, onPress: () => press('selectNewFocus', () => dispatch({type: 'selectNewFocus'}))}
       : screen.kind === 'ownerEmpty' || nothingToPick
-        ? {kind: 'next' as const, onPress: () => dispatch({type: 'selectFocus'})}
+        ? {kind: 'next' as const, onPress: () => press('selectFocus', () => dispatch({type: 'selectFocus'}))}
         : undefined;
   const onFocusScreen = screen.kind === 'selectFocus';
 
   return (
     <View style={[styles.root, {backgroundColor: rootBackground}]}>
       <StatusFrame>
-        <View style={[styles.panel, {backgroundColor: background, borderColor: textColor}]}>
+        <View style={[styles.panel, {backgroundColor: background, borderColor: textColor, minHeight: panelHeight}]} onLayout={onPanelLayout}>
           <EngageHeader
             title={view.title}
             heading={onFocusScreen || screen.kind === 'focusDone' || !owner ? ENGAGE_TEXT.heading : undefined}
@@ -207,16 +236,14 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
             textColor={textColor}
           />
           {body()}
-          {screen.kind === 'quickAdd' ? null : (
-            <EngageFooter
-              select={select}
-              closeIsMain={screen.kind === 'ownerEmpty' || screen.kind === 'focusDone'}
-              onOpenGtdpara={onOpenGtdpara}
-              onClose={onClose}
-              textColor={textColor}
-              borderColor={borderColor}
-            />
-          )}
+          <EngageFooter
+            select={select}
+            closeIsMain={screen.kind === 'ownerEmpty' || screen.kind === 'focusDone'}
+            onOpenGtdpara={() => press('openGtdpara', onOpenGtdpara)}
+            onClose={() => press('close', onClose)}
+            textColor={textColor}
+            borderColor={borderColor}
+          />
         </View>
       </StatusFrame>
     </View>

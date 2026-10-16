@@ -3,7 +3,10 @@
  * (docs/dev/history/technical-design-engage.md §3.12), so a wording change is
  * one file. Pure.
  */
+import {formatDate, formatDayHeader} from './dateFormat';
 import {OwnerLine} from './engageOptions';
+import {titleCaseSlug} from './flowState';
+import {Task} from './types';
 
 export const ENGAGE_TEXT = {
   /** The owner pages' button (Project, Area, loop, thread). */
@@ -29,6 +32,8 @@ export const ENGAGE_TEXT = {
   openGtdpara: 'Open gtdpara',
   close: 'Close',
   cancel: 'Cancel',
+  openNote: 'Note ›',
+  newNote: '+ Note',
   back: '‹ Back',
 } as const;
 
@@ -63,4 +68,31 @@ export const ENGAGE_NOTICE = {
 /** The candidate prompt after a Done elsewhere in gtdpara (R5). */
 export function noNextPromptText(ownerName: string): string {
   return `${ownerName} has no next action. Pick one:`;
+}
+
+/**
+ * The Now box's details line (D11 follow-up): what is set of the due date
+ * (or a Waiting For's counterpart and follow-up date) and the meeting the
+ * todo was agreed in; empty when none is set. Dates through dateFormat.
+ */
+export function nowDetailsText(task: Pick<Task, 'flowState' | 'waitingOn' | 'dueDate' | 'fields'>, today: string): string {
+  const parts: string[] = [];
+  if (task.flowState === 'waiting-for') {
+    const who = task.waitingOn ? titleCaseSlug(task.waitingOn) : '';
+    parts.push(`Waiting for${who ? ` ${who}` : ''}${task.dueDate ? ` · follow up ${formatDate(task.dueDate, today)}` : ''}`);
+  } else if (task.dueDate) {
+    parts.push(`Due ${formatDate(task.dueDate, today)}${task.dueDate < today ? ' - overdue' : ''}`);
+  }
+  const key = task.fields.meeting;
+  if (key) {
+    const m = /^(\d{4}-\d{2}-\d{2})\s+(.*)$/.exec(key.trim());
+    parts.push(m ? `Agreed in ${m[2]} · ${formatDayHeader(m[1], today)}` : `Agreed in ${key.trim()}`);
+  }
+  return parts.join('   ');
+}
+
+/** The Now box's linked-file button: "File: <name> ›", page links without their `#page=N`. */
+export function linkedFileButtonText(linkedFile: string): string {
+  const name = linkedFile.replace(/#page=\d+$/, '').split('/').pop() ?? linkedFile;
+  return `File: ${name} ›`;
 }

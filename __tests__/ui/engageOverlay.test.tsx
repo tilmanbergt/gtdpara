@@ -29,6 +29,21 @@ jest.mock('../../src/storage/settingsStorage', () => ({
   saveSettings: async () => undefined,
   patchSettings: async (patch: object) => (mockSettings.current = {...mockSettings.current, ...patch}),
 }));
+const mockNoteOpen: {cancelled: boolean; calls: number} = {cancelled: false, calls: 0};
+jest.mock('../../src/storage/meetingNoteContent', () => ({
+  ...jest.requireActual('../../src/storage/meetingNoteContent'),
+  openOrCreateTodoNote: async (task: unknown) => {
+    mockNoteOpen.calls++;
+    return {task, changed: false, cancelled: mockNoteOpen.cancelled, outcome: null};
+  },
+}));
+const mockOpenedFiles: string[] = [];
+jest.mock('../../src/storage/linkedFiles', () => ({
+  ...jest.requireActual('../../src/storage/linkedFiles'),
+  openLinkedFile: async (_paths: unknown, linkedFile: string) => {
+    mockOpenedFiles.push(linkedFile);
+  },
+}));
 const AREAS = '/storage/emulated/0/Note/2 Areas';
 const mockFiles: Record<string, string> = {};
 const mockNote: {path: string | null} = {path: null};
@@ -115,6 +130,9 @@ beforeEach(() => {
     noteSetups: [{...createNoteSetup('r1', 'loop'), name: 'Workshops', tags: ['workshop']}],
   };
   mockNote.path = null;
+  mockNoteOpen.cancelled = false;
+  mockNoteOpen.calls = 0;
+  mockOpenedFiles.length = 0;
   clearCachedData();
 });
 
@@ -148,6 +166,40 @@ describe('EngageOverlay screens', () => {
     await press(r, 'Undo');
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [ ] Book room');
     expect(texts(r)).toContain('Working on');
+    act(() => r.unmount());
+  });
+
+  it('Now box: details, Note › and File: <name> ›; each closes the panel once opened, a cancelled note does not', async () => {
+    area('Coaching', [
+      '## Tasks',
+      '- [ ] Send offer #wf/anna-meier → [[Todos/Send offer.note]] +[[3 Resources/Offer v2.pdf]] [meeting:: 2026-10-07 Retro alpha] [due:: 2026-10-19]',
+    ]);
+    mockNote.path = `${COACHING}/Todos/Send offer.note`;
+    const {r, onClose} = await open({via: 'button'});
+    expect(texts(r)).toContain('Working on');
+    expect(texts(r).some(t => t.startsWith('Waiting for Anna Meier · follow up ') && t.includes('Agreed in Retro alpha'))).toBe(true);
+    expect(texts(r)).toContain('File: Offer v2.pdf ›');
+
+    mockNoteOpen.cancelled = true;
+    await press(r, 'Note ›');
+    expect(mockNoteOpen.calls).toBe(1);
+    expect(onClose).not.toHaveBeenCalled();
+    mockNoteOpen.cancelled = false;
+    await press(r, 'Note ›');
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    await press(r, 'File: Offer v2.pdf ›');
+    expect(mockOpenedFiles).toEqual(['3 Resources/Offer v2.pdf']);
+    expect(onClose).toHaveBeenCalledTimes(2);
+    act(() => r.unmount());
+  });
+
+  it('Now box without a note offers + Note', async () => {
+    area('Coaching', ['## Tasks', '- [ ] Plan dinner #next']);
+    const {r} = await open({via: 'ownerPage', owner: {kind: 'item', itemPath: COACHING}});
+    await press(r, 'Plan dinner');
+    expect(texts(r)).toContain('Working on');
+    expect(texts(r)).toContain('+ Note');
     act(() => r.unmount());
   });
 
@@ -218,6 +270,8 @@ describe('EngageOverlay screens', () => {
     const widget = quickAdd(r);
     expect(widget).toHaveLength(1);
     expect(widget[0].props.fixedDestination).toMatchObject({type: 'item', kind: 'area', path: COACHING});
+    // Close stays in its place while Quick Add is open.
+    expect(r.root.findAll(n => n.props.label === 'Close' && typeof n.props.onPress === 'function')).toHaveLength(1);
     await act(async () => widget[0].props.onAddTask('Ring venue', widget[0].props.fixedDestination));
     await settle();
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('Ring venue');

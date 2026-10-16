@@ -93,6 +93,12 @@ export const engageStyles = StyleSheet.create({
     marginBottom: SPACING.sm,
     includeFontPadding: false,
   },
+  nowDetails: {
+    fontSize: FONT.small,
+    marginTop: -SPACING.xs,
+    marginBottom: SPACING.sm,
+    includeFontPadding: false,
+  },
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
