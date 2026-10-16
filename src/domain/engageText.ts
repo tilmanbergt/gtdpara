@@ -60,9 +60,9 @@ export function ackLabel(kind: 'done' | 'someday' | 'unnext' | 'next'): string {
   }
 }
 
-/** The way back to the todo you worked on in another owner (Addendum "Engage follows the note"). */
-export function backLineText(ownerName: string, todoTitle: string): string {
-  return `↩ ${ownerName} · ${todoTitle}`;
+/** The way back to the todo you worked on in another owner (Addendum "Engage follows the note"); the line cuts it to fit. */
+export function backLineText(todoTitle: string): string {
+  return `Continue with ${todoTitle}`;
 }
 
 /** The options screen's tab labels, with the rows each lists. */

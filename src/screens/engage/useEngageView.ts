@@ -14,7 +14,7 @@ export interface EngageView {
   lists: EngageLists | null;
   title: OwnerTitle | null;
   /** The way back, found again and ready to show; null when there is none or it is gone. */
-  back: {ownerName: string; todo: EngageTodoRef} | null;
+  back: {todo: EngageTodoRef} | null;
   /** The focus screen's owner lines (S9/S11). */
   lines: OwnerLine[];
   /** Today's focus items, for S10. */
@@ -30,7 +30,7 @@ export function useEngageView(state: EngageState, source: EngageSource | null): 
     const options = owner ? optionsOf(owner, source, nowMs, currentTodo ? todoKeyOf(currentTodo) : null) : null;
     const backTodo = state.back ? resolveTodoKey(state.back.key, source) : null;
     return {
-      back: state.back && backTodo ? {ownerName: ownerTitle(state.back.owner, source).name, todo: backTodo} : null,
+      back: state.back && backTodo ? {todo: backTodo} : null,
       options,
       lists: options ? engageListsOf(options, currentTodo) : null,
       title: owner ? ownerTitle(owner, source) : null,

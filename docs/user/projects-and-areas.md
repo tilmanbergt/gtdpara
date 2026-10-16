@@ -17,7 +17,7 @@ Tapping a project or area opens it on the **Current** tab:
 - **Focus**: daily, weekly and monthly focus, each with an optional goal for the week or month
 - **Status**: Active, On Hold, Done (projects only) - and Close out… or Archive…
 - **Files pane**: three tabs. On a project: **Threads** (open when the page opens), **Loops** and **Files**. On an area: **Threads**, **Projects** (its projects at a glance) and **Files**. Inside **Files** a second row picks the place: **Project**, **Area** (once one is assigned) and **Resources** on a project; **Area** and **Resources** on an area. **Files** opens on the page's own folder.
-- **Todos** and **Meetings**, grouped and paged, with Quick Add above them
+- **Todos** and **Meetings**, grouped and paged, with Quick Add above them. Todos are grouped Next, Plan (no flow state: planned, not yet next), Waiting For, Someday and Maybe
 
 ## Status
 

@@ -424,6 +424,10 @@ Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the C
 
 **Engage follows the note.** Built as in the addendum above: `decideOpening` (pure, table-tested) and `back` in the reducer (`open`, `ownerChosen`, `picked`, `goBack`); `screens/engage/BackLine.tsx` shows the line on the options and owner-empty screens. Choosing an owner from the focus list no longer forgets the stored current todo.
 
+**The way back reads "Continue with <todo>"** (medium, underlined, cut to one line) instead of "↩ <owner> · <todo>" - the arrow was too small to read as a control on the device.
+
+**Plan in the Current tab.** In line with the tabs, `groupTasksByFlowState` groups a Project's or Area's todos Next, Plan (untagged), Waiting For, Someday, Maybe; the Inbox keeps "Other" (not processed yet) last.
+
 **Sizes.** `App.tsx` 991 → 997 (one mode branch, the listener branch, the engage store subscription, the flash fix; the `captureNonce` comment was shortened to make room); `DailyView.tsx` 1537 → 1536.
 
 ## Appendix A. Screens S1-S11 (approved UI draft)

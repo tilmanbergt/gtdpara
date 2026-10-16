@@ -249,7 +249,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
             textColor={textColor}
           />
           {view.back && (screen.kind === 'options' || screen.kind === 'ownerEmpty') ? (
-            <BackLine ownerName={view.back.ownerName} todo={view.back.todo} onPress={goBack} textColor={textColor} />
+            <BackLine todo={view.back.todo} onPress={goBack} textColor={textColor} />
           ) : null}
           {body()}
           <EngageFooter

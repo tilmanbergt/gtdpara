@@ -120,7 +120,7 @@ export default function TodosSection({
       label: `○ ${group.loop!.tag.split('/').slice(1).join('/')}${group.loop!.mainDate ? ` · ${formatDate(group.loop!.mainDate, todayIso())}` : ''}`,
       entries: group.todos.map(({task, index}) => ({task, index})),
     })),
-    ...groupTasksByFlowState(tasks).map(group => ({...group, entries: group.entries.filter(e => !inLoop.has(e.index))})),
+    ...groupTasksByFlowState(tasks, 'item').map(group => ({...group, entries: group.entries.filter(e => !inLoop.has(e.index))})),
   ].filter(group => group.entries.length > 0);
   const groups =
     hideDone || filter

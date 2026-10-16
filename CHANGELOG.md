@@ -20,12 +20,17 @@ or your project/area files are stored.
   another part of today's focus, only when you ask. Engage follows the note you are in: on a
   todo's note, its page in a loop note or in a shared notebook, that todo is the one you are
   working on; on any other note of a project, area, loop or thread, that one is shown, and
-  **↩ …** takes you back to the todo you were working on. See the help page "Engage".
+  **Continue with …** takes you back to the todo you were working on. See the help page "Engage".
 - **Engage ›** at the top of a project's or area's page, a loop overview and a thread overview
   opens Engage for it.
 - **After Done**: when you tick off the last `#next` of a project, area, loop or thread on Daily,
   the Current tab or an overview, the status line offers up to three todos of its plan to make
   the next one, or **Later**.
+
+### Changed
+- **A project's or area's todos** are grouped Next, **Plan** (todos without a flow state - planned,
+  not yet next), Waiting For, Someday, Maybe. Untagged todos used to come last, as "Other". The
+  Inbox keeps "Other" last: there they are not processed yet.
 
 ### Fixed
 - **Related items on a note** listed every `#next` todo when the note's todo had `#next` (the

@@ -248,7 +248,7 @@ describe('EngageOverlay screens', () => {
     act(() => r.unmount());
   });
 
-  it('Engage follows the note: another project\'s note switches, "↩" goes back to the todo worked on', async () => {
+  it('Engage follows the note: another project\'s note switches, "Continue with" goes back to the todo worked on', async () => {
     area('Coaching', ['## Tasks', '- [ ] Draft agenda #next', '- [ ] Book room #next']);
     area('Writing', ['## Tasks', '- [ ] Outline #next']);
     mockSettings.current = {
@@ -259,12 +259,12 @@ describe('EngageOverlay screens', () => {
     const {r} = await open({via: 'button'});
     expect(texts(r)).toContain('Writing');
     expect(texts(r)).toContain('Next action');
-    expect(texts(r)).toContain('↩ Coaching · Book room');
-    await press(r, '↩ Coaching · Book room');
+    expect(texts(r)).toContain('Continue with Book room');
+    await press(r, 'Continue with Book room');
     expect(texts(r)).toContain('Coaching');
     expect(texts(r)).toContain('Working on');
     expect(rendered(r)).toContain('Book room');
-    expect(texts(r).some(t => t.startsWith('↩'))).toBe(false);
+    expect(texts(r).some(t => t.startsWith('Continue with'))).toBe(false);
     act(() => r.unmount());
   });
 
