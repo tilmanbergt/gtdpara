@@ -66,13 +66,14 @@ describe('MarkOutcomeScreen', () => {
 });
 
 describe('index.js', () => {
-  it('registers sidebar, Capture and the Mark button (showType 0) with its own listener', () => {
+  it('registers sidebar, Engage, Capture and the Mark button (showType 0) with its own listener', () => {
     jest.isolateModules(() => {
       jest.doMock('../../App', () => () => null);
       require('../../index.js');
     });
     expect(mockButtons).toEqual([
       {type: 1, id: 100, showType: 1},
+      {type: 1, id: 400, showType: 1},
       {type: 2, id: 200, showType: 1},
       {type: 2, id: 300, showType: 0},
     ]);
