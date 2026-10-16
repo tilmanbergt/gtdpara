@@ -234,14 +234,14 @@ export interface TaskGroup {
 
 /**
  * A Project's or Area's todos (docs/dev/history/technical-design-engage.md,
- * Addendum "Next and Plan tabs"): an untagged todo there is planned - it
- * comes right after Next, before what waits on others and what is shelved
+ * Addendum "Plan across the app"): an untagged todo there is planned - it
+ * comes after Next and what waits on others, before what is shelved
  * (Someday: later; Maybe: perhaps never).
  */
 const ITEM_GROUP_ORDER: Array<{key: TaskGroup['key']; label: string}> = [
   {key: 'next', label: 'Next'},
-  {key: 'other', label: 'Plan'},
   {key: 'waiting-for', label: 'Waiting For'},
+  {key: 'other', label: 'Plan'},
   {key: 'someday', label: 'Someday'},
   {key: 'maybe', label: 'Maybe'},
 ];

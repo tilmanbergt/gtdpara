@@ -720,8 +720,8 @@ with its count and last-reviewed date, and the steps themselves, one component e
 | Focus reset | ritual | `FocusResetStep` (monthly and weekly slots) |
 
 `storage/reviewAggregate.ts` builds the lists from the cache: stalled projects and neglected
-areas are Active items with no actionable open task (Someday/Maybe don't count; Waiting For does),
-with shelved tasks offered for promotion; unfocused next items are Active items in no focus at all
+areas are Active items with no open next action (`#next`/`#now`) and no open Waiting For - a plan
+todo alone is no next action - with their Plan, Someday and Maybe todos offered for promotion; unfocused next items are Active items in no focus at all
 with an open `#next` task that has no due date; meetings to close out come from
 `isReviewOutstanding`.
 

@@ -10,8 +10,9 @@
  * - Meetings: not cancelled. The last one is the latest that is over
  *   (`meetingEndMs <= now`), the next one the soonest that is not.
  * - Open todos: not done, not cancelled. `next`: open and flow state `next`.
- * - Stalled: no actionable open todo - the Review's definition
- *   (storage/reviewAggregate.ts's `isActionableOpenTask`).
+ * - Stalled: no open next action or Waiting For - the Review's definition
+ *   (storage/reviewAggregate.ts's `isActionableOpenTask`); a plan alone is
+ *   no next action.
  * - Oldest Waiting For: today minus the created date of the oldest open
  *   Waiting For todo (the age the thread overview shows); those without a
  *   created date give no age.

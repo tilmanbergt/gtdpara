@@ -389,6 +389,18 @@ Pure parts: `engageListsOf` (`domain/engageOptions.ts`) decides the Now box todo
 
 Pure: `decideOpening` in `domain/engageOwner.ts`; the reducer keeps `back` (`open`, `ownerChosen`, `picked`, `goBack`).
 
+## Addendum: Plan across the app
+
+**Decided (Tilman).** The tabs make an untagged todo in a Project or Area *planned*: Next is what you do, Waiting For moves through others, Plan is planned but not next, Someday comes later, Maybe perhaps never. The rest of the app follows:
+
+1. **Current tab grouping** (`groupTasksByFlowState(tasks, 'item')`): Next, Waiting For, Plan, Someday, Maybe. The Inbox keeps "Other" last (`'inbox'`): there an untagged todo is not processed yet.
+2. **Stalled / neglected** (Review steps "Stalled projects" and "Neglected areas"): an item is stalled when it has no open `#next` (or `#now`) and no open Waiting For - a plan alone is no next action (Allen). `isActionableOpenTask` (storage/reviewAggregate.ts) is that rule; the step's "not next" list (`shelvedTasksFor`) holds the Plan, Someday and Maybe todos, in that order, each with "→ Next".
+3. **"no next action"** on an Area's Projects tab and on the loop rows (storage/projectGlance.ts's `glanceSignals`, used by storage/loopGlance.ts) follows the same rule.
+4. **Review "Unfocused next items"** gets **Remove #next** on a todo: it goes back to the plan (`engageFlowText(text, null)`, which also drops `#now`).
+5. **Week and Month focus cards** show "n Next · n Plan · meetings" instead of the Someday count.
+
+Not changed: Daily and focus mode (next actions only), Quick Add's flow chips (backlog), the thread/loop overviews' "I owe" (a promise stays visible even when shelved).
+
 ## As built
 
 Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the Checkpoint B device test. Where the build differs from the sections above:
@@ -426,7 +438,7 @@ Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the C
 
 **The way back reads "Continue with <todo>"** (medium, underlined, cut to one line) instead of "↩ <owner> · <todo>" - the arrow was too small to read as a control on the device.
 
-**Plan in the Current tab.** In line with the tabs, `groupTasksByFlowState` groups a Project's or Area's todos Next, Plan (untagged), Waiting For, Someday, Maybe; the Inbox keeps "Other" (not processed yet) last.
+**Plan across the app.** Built as in the addendum above. The Current tab's order is Next, Waiting For, Plan, Someday, Maybe (Tilman: Waiting For before Plan). The Review step's list of not-next todos is headed "Plan, Someday, Maybe (no next action yet)". Tests: reviewAggregate (plan-only stalled, list order), projectGlance (plan-only "no next action"), periodFocusCards (Plan count), flowState (both orders).
 
 **Sizes.** `App.tsx` 991 → 997 (one mode branch, the listener branch, the engage store subscription, the flash fix; the `captureNonce` comment was shortened to make room); `DailyView.tsx` 1537 → 1536.
 

@@ -22,23 +22,23 @@
  *   Only its length is used, as the hub's count; the step itself is
  *   screens/ReviewWeekAhead.tsx.
  * - stalledProjects: Active projects with zero *actionable* open tasks -
- *   not done, not cancelled, and NOT tagged Someday or Maybe (
- *   technical-design-tags.md: a project whose only open tasks are all shelved to
- *   Someday/Maybe has no real next action either; Waiting For tasks still
- *   count, since they represent real, if blocked, follow-up). Each stalled
- *   entry carries its own next-2-upcoming-meetings (not bounded to the
- *   week-ahead window above - a stalled project's only near-term touchpoint
- *   might be three weeks out, and that's still worth surfacing) AND its own
- *   `shelvedTasks` - the Someday/Maybe tasks excluded from the "is it
- *   stalled" check - so the Stalled Projects step can still show them, with
- *   a quick way to promote one to Next right there.
+ *   a next action (`#next`/`#now`) or Waiting For (real, if blocked,
+ *   follow-up); a plan todo (no flow state) or one shelved to Someday/Maybe
+ *   is no next action (docs/dev/history/technical-design-engage.md, Addendum
+ *   "Plan across the app"). Each stalled entry carries its own
+ *   next-2-upcoming-meetings (not bounded to the week-ahead window above - a
+ *   stalled project's only near-term touchpoint might be three weeks out,
+ *   and that's still worth surfacing) AND its own `shelvedTasks` - the Plan,
+ *   Someday and Maybe todos the "is it stalled" check leaves out - so the
+ *   Stalled Projects step can show them, with a quick way to promote one to
+ *   Next right there.
  * - doneProjects: projects at status 'done' - Areas never reach this status
  *   (domain/types.ts's ItemStatus doc comment), so this is projects only.
  * - onHoldItems: Projects AND Areas at status 'on-hold', kind on each entry
  *   distinguishes them - Weekly Review's On Hold step reviews both kinds
  *   together.
  * - neglectedAreas: the Areas counterpart of stalledProjects, same
- *   Someday/Maybe-excluded/shelvedTasks treatment.
+ *   rule and shelvedTasks treatment.
  * - unfocusedNextItems (docs/dev/history/technical-design-daily-todo-filter.md,
  *   docs/dev/history/technical-design-review-monthly-focus.md §1): Active Projects
  *   AND Areas, not currently focused *at all* (`domain/destination.ts`'s
@@ -56,8 +56,7 @@
  *   review step can offer per-task Someday/Maybe/Done/Cancel/Set-due-date
  *   actions plus a whole-item "Add to Daily/Weekly focus" action. Can never
  *   overlap with stalledProjects/neglectedAreas: those require *zero*
- *   actionable open tasks, and a #next task always counts as actionable
- *   (isActionableOpenTask only excludes Someday/Maybe).
+ *   actionable open tasks, and a #next task always counts as actionable.
  * - meetingsToClose (docs/dev/history/technical-design-meeting-tracking.md): meetings whose
  *   Note setup tracks "review after", that are over, not yet `#reviewed`, and
  *   within the last REVIEW_LOOKBACK_DAYS. The predicate is domain/
@@ -100,7 +99,7 @@ export interface ReviewProjectEntry {
   item: ReviewItemRef;
   /** Up to 2 nearest not-cancelled upcoming meetings for this item, any date - not bounded to weekMeetings' week. */
   upcomingMeetings: ReviewMeetingEntry[];
-  /** This item's own open Someday/Maybe tasks - excluded from the stalled/neglected check itself (see the module doc comment) but surfaced here so the UI can offer a one-tap promote-to-Next. */
+  /** This item's own open Plan, Someday and Maybe todos - left out of the stalled/neglected check itself (see the module doc comment) but surfaced here so the UI can offer a one-tap promote-to-Next. */
   shelvedTasks: ReviewShelvedTaskEntry[];
 }
 
@@ -142,18 +141,22 @@ function nextUpcomingMeetings(item: ReviewItemRef, meetings: Meeting[], now: Dat
 }
 
 /**
- * Not done, not cancelled, and not shelved to Someday/Maybe - see the
- * module doc comment. Exported so screens/ReviewScreen.tsx can apply the
- * exact same "does this count as open work" rule when it live-recomputes a
- * frozen Stalled/Neglected card's task list against the current cache,
- * instead of drifting from this file's own definition.
+ * Open and moving: a next action (`#next`, `#now`) or Waiting For. A plan
+ * todo (no flow state) is no next action, Someday/Maybe are shelved
+ * (docs/dev/history/technical-design-engage.md, Addendum "Plan across the
+ * app"). An item without one is stalled. Exported so screens/ReviewScreen.tsx
+ * and storage/projectGlance.ts apply the exact same rule, instead of
+ * drifting from this file's own definition.
  */
 export function isActionableOpenTask(task: Task): boolean {
-  return !task.done && !task.cancelled && task.flowState !== 'someday' && task.flowState !== 'maybe';
+  return !task.done && !task.cancelled && (task.flowState === 'next' || task.flowState === 'waiting-for' || task.now);
 }
 
+const NOT_NEXT_ORDER = [null, 'someday', 'maybe'];
+
 /**
- * This item's own open Someday/Maybe tasks, for ReviewProjectEntry.shelvedTasks.
+ * This item's own open todos that are not next: the Plan, then Someday, then
+ * Maybe, each in file order - for ReviewProjectEntry.shelvedTasks.
  * Exported for the same reason as isActionableOpenTask above - ReviewScreen.tsx
  * reuses this to keep a frozen card's shelved-task list live (e.g. so a
  * just-promoted task disappears from it immediately, rather than only after
@@ -162,7 +165,8 @@ export function isActionableOpenTask(task: Task): boolean {
 export function shelvedTasksFor(item: ReviewItemRef, tasks: Task[]): ReviewShelvedTaskEntry[] {
   return tasks
     .map((task, taskIndex) => ({item, taskIndex, task}))
-    .filter(({task}) => !task.done && !task.cancelled && (task.flowState === 'someday' || task.flowState === 'maybe'));
+    .filter(({task}) => !task.done && !task.cancelled && !isActionableOpenTask(task))
+    .sort((a, b) => NOT_NEXT_ORDER.indexOf(a.task.flowState) - NOT_NEXT_ORDER.indexOf(b.task.flowState));
 }
 
 /**

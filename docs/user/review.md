@@ -19,12 +19,12 @@ Tap a step to open it. Inside a step:
 - **Tending threads**: the people, teams and series you work with (counterparts, see [Threads](threads.md)), per area or project. See below.
 - **Gmail inbox**: only with the experimental Gmail integration, see [integrations](integrations.md)
 - **Inbox to zero**: file or finish everything in the Inbox. Open lasso marks count too; the card **n marks to process** opens them, see [Lasso](lasso.md)
-- **Stalled projects**: active projects without any open todo you can act on. Someday and Maybe todos don't count (Waiting for does); you can promote one of them to Next with one tap.
+- **Stalled projects**: active projects without a next action: no open `#next` todo and nothing you wait for. Planned todos (no flow state), Someday and Maybe don't count. The step lists them - the plan first - and **→ Next** makes one the next action with one tap.
 - **Open loops**: your loops (see [Loops](loops.md)), per area or project. See below.
 - **Done awaiting review**: projects marked Done - close them out or archive them
 - **On Hold reconsideration**: paused projects and areas - keep them paused or reactivate them
-- **Neglected areas**: the same for areas - no open todo you can act on
-- **Unfocused next items**: projects and areas with a `#next` todo (without due date) but no daily, weekly or monthly focus. Add them to focus, or park the todo.
+- **Neglected areas**: the same for areas - no next action and nothing you wait for
+- **Unfocused next items**: projects and areas with a `#next` todo (without due date) but no daily, weekly or monthly focus. Add them to focus, or park the todo: **Remove #next** puts it back into the plan, **Someday** and **Maybe** shelve it.
 - **Focus reset**: choose weekly and monthly focus and goals. Switch between **Week** and **Month** at the top; each shows the same focus panel as the Week and Month tabs (tap an empty slot, then pick a project or area)
 
 Steps that list several projects show them on the left; tap one to work on it on the right.

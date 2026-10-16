@@ -17,7 +17,7 @@ Tapping a project or area opens it on the **Current** tab:
 - **Focus**: daily, weekly and monthly focus, each with an optional goal for the week or month
 - **Status**: Active, On Hold, Done (projects only) - and Close out… or Archive…
 - **Files pane**: three tabs. On a project: **Threads** (open when the page opens), **Loops** and **Files**. On an area: **Threads**, **Projects** (its projects at a glance) and **Files**. Inside **Files** a second row picks the place: **Project**, **Area** (once one is assigned) and **Resources** on a project; **Area** and **Resources** on an area. **Files** opens on the page's own folder.
-- **Todos** and **Meetings**, grouped and paged, with Quick Add above them. Todos are grouped Next, Plan (no flow state: planned, not yet next), Waiting For, Someday and Maybe
+- **Todos** and **Meetings**, grouped and paged, with Quick Add above them. Todos are grouped Next, Waiting For, Plan (no flow state: planned, not yet next), Someday and Maybe
 
 ## Status
 
@@ -56,7 +56,7 @@ To open another project or area, use the Projects or Areas tab.
 On an area page, the **Projects** tab lists the projects assigned to the area: active ones first, by name, then a folded row `2 on hold ▸`. Done and archived projects are not listed. Each row has two lines:
 
 - the project's name (and `on hold` in the folded group), with **›**;
-- `last 30.9. · next 14.10.`: its latest meeting and the next one (`—` when there is none), and `7 open · 2 next · w/f 12 d`: open todos, how many of them are `#next`, and how long the oldest thing you wait for has waited. A project without a todo you can act on (Someday/Maybe don't count) shows `no next action` instead of the `#next` count, as in the Review's "Stalled projects".
+- `last 30.9. · next 14.10.`: its latest meeting and the next one (`—` when there is none), and `7 open · 2 next · w/f 12 d`: open todos, how many of them are `#next`, and how long the oldest thing you wait for has waited. A project without a next action - no `#next` todo and nothing you wait for; planned, Someday and Maybe todos don't count - shows `no next action` instead of the `#next` count, as in the Review's "Stalled projects". Loops show it the same way.
 
 Tap a row to open the project. To browse the projects' folders, open the project; while you link a file, the tab shows them (see above).
 

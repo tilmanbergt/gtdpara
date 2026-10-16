@@ -28,9 +28,16 @@ or your project/area files are stored.
   the next one, or **Later**.
 
 ### Changed
-- **A project's or area's todos** are grouped Next, **Plan** (todos without a flow state - planned,
-  not yet next), Waiting For, Someday, Maybe. Untagged todos used to come last, as "Other". The
-  Inbox keeps "Other" last: there they are not processed yet.
+- **A project's or area's todos** are grouped Next, Waiting For, **Plan** (todos without a flow
+  state - planned, not yet next), Someday, Maybe. Untagged todos used to come last, as "Other".
+  The Inbox keeps "Other" last: there they are not processed yet.
+- **Stalled projects and neglected areas** (Weekly Review), and "no next action" on an area's
+  Projects tab and on loops: a project needs a `#next` todo (or something you wait for) to count
+  as moving - planned todos alone no longer do. The Review step lists the plan first, with
+  **→ Next**.
+- **Unfocused next items** (Weekly Review): **Remove #next** puts a todo back into the plan.
+- **Week and Month focus cards** show how many todos are planned: "2 Next · 5 Plan · 1 meeting"
+  (instead of the Someday count).
 
 ### Fixed
 - **Related items on a note** listed every `#next` todo when the note's todo had `#next` (the

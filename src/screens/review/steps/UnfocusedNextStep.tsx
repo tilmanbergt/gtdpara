@@ -10,6 +10,7 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {isFocused} from '../../../domain/destination';
 import {setFlowStateTag} from '../../../domain/flowState';
+import {engageFlowText} from '../../../domain/engageOptions';
 import {todayIso} from '../../../domain/meetingTime';
 import {withTaskCancelled, withTaskDone, withTaskDue, withTaskText} from '../../../domain/taskEdit';
 import {GtdParaSettings} from '../../../domain/settings';
@@ -181,7 +182,7 @@ function UnfocusedNextTaskDetail({
   items: CachedItem[];
   settings: GtdParaSettings | null;
   onOpenItem: (item: ReviewItemRef) => void;
-  onTaskAction: (entry: ReviewNextTaskEntry, action: 'someday' | 'maybe' | 'done' | 'cancel') => Promise<void>;
+  onTaskAction: (entry: ReviewNextTaskEntry, action: 'unnext' | 'someday' | 'maybe' | 'done' | 'cancel') => Promise<void>;
   onSetDueDate: (entry: ReviewNextTaskEntry, dueDate: string | null) => Promise<void>;
   onAddToDailyFocus: (item: ReviewItemRef) => Promise<void>;
   onAddToWeeklyFocus: (item: ReviewItemRef) => Promise<void>;
@@ -214,9 +215,9 @@ function UnfocusedNextTaskDetail({
       .finally(() => setPending(false));
   };
 
-  const TASK_ACTIONS = ['someday', 'maybe', 'done', 'cancel'] as const;
+  const TASK_ACTIONS = ['unnext', 'someday', 'maybe', 'done', 'cancel'] as const;
   const taskActionLabel = (action: (typeof TASK_ACTIONS)[number]): string =>
-    action === 'someday' ? 'Someday' : action === 'maybe' ? 'Maybe' : action === 'done' ? 'Done' : 'Cancel';
+    action === 'unnext' ? 'Remove #next' : action === 'someday' ? 'Someday' : action === 'maybe' ? 'Maybe' : action === 'done' ? 'Done' : 'Cancel';
 
   const currentParent = reviewCurrentItem(entry.item, items);
   const dailyFocused = items.filter(i => i.dailyFocus && i.kind === entry.item.kind);
@@ -392,7 +393,7 @@ export default function UnfocusedNextStep({
    */
   const handleUnfocusedNextTaskAction = async (
     entry: ReviewNextTaskEntry,
-    action: 'someday' | 'maybe' | 'done' | 'cancel',
+    action: 'unnext' | 'someday' | 'maybe' | 'done' | 'cancel',
   ): Promise<void> => {
     const cachedItem = findCachedItem(entry.item.path);
     const current = cachedItem?.tasks[entry.taskIndex];
@@ -404,6 +405,9 @@ export default function UnfocusedNextStep({
       nextTasks[entry.taskIndex] = withTaskDone(current, true, todayIso());
     } else if (action === 'cancel') {
       nextTasks[entry.taskIndex] = withTaskCancelled(current, true);
+    } else if (action === 'unnext') {
+      // Back to the plan (Addendum "Plan across the app"); #now goes with #next.
+      nextTasks[entry.taskIndex] = withTaskText(current, engageFlowText(current.text, null));
     } else {
       nextTasks[entry.taskIndex] = withTaskText(current, setFlowStateTag(current.text, action));
     }

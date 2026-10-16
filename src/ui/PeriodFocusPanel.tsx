@@ -319,7 +319,7 @@ function FixedSlotSection({
               </Pressable>
             </View>
             <Text style={[styles.cardCountRow, {color: textColor}]}>
-              {card?.nextCount ?? 0} Next · {card?.somedayCount ?? 0} Someday · {meetingCount} {meetingWord}
+              {card?.nextCount ?? 0} Next · {card?.planCount ?? 0} Plan · {meetingCount} {meetingWord}
             </Text>
             {/* key={periodKey}: forces a clean remount (resets any in-progress
                 edit/draft) when the displayed period changes - see GoalRow. */}

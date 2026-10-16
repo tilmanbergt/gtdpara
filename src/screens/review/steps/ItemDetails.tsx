@@ -154,7 +154,7 @@ export function ReviewItemDetail({
       {shelvedTasks.length > 0 && (
         <View style={styles.cardShelved}>
           <Text style={[common.subheading, styles.cardShelvedHeading, {color: textColor}]}>
-            Someday / Maybe (not counted as open work)
+            Plan, Someday, Maybe (no next action yet)
           </Text>
           {shelvedTasks.map(shelved => (
             <View key={shelved.taskIndex} style={styles.shelvedRow}>
