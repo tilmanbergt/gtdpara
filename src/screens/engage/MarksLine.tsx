@@ -15,13 +15,15 @@ import {engageStyles as styles} from './engageStyles';
 
 interface Props {
   owner: EngageOwner;
+  /** The name of the owner's item (its scope owner for a thread). */
+  itemName: string;
   textColor: string;
 }
 
-export default function MarksLine({owner, textColor}: Props): React.JSX.Element | null {
+export default function MarksLine({owner, itemName, textColor}: Props): React.JSX.Element | null {
   const scope: MarkScope = {type: 'item', path: ownerHomePath(owner)};
   const marks = useOpenMarks(scope);
-  const text = marksLineText(marks.length, owner.kind);
+  const text = marksLineText(marks.length, itemName);
   if (!text) return null;
   return (
     <Text style={[styles.marksLine, {color: textColor}]} onPress={() => openMarks(scope, 'engage')} suppressHighlighting>

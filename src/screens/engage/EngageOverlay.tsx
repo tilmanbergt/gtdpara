@@ -95,6 +95,8 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
     if (todo.task.notePath && (await actions.taskNote(todo))) onClose();
   };
 
+  const homeName = (o: EngageOwner) => source?.items.find(i => i.path === ownerHomePath(o))?.name ?? '';
+
   const choose = (next: EngageOwner) => {
     log(`${NAME}: action`, 'owner', next.kind);
     forget(next);
@@ -125,7 +127,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
               textColor={textColor}
               borderColor={borderColor}
             />
-            {owner ? <MarksLine owner={owner} textColor={textColor} /> : null}
+            {owner ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
           </>
         );
       case 'quickAdd':
@@ -160,7 +162,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
                 borderColor={borderColor}
               />
             ) : null}
-            {screen.kind === 'options' && options?.next.length === 0 ? <MarksLine owner={owner} textColor={textColor} /> : null}
+            {screen.kind === 'options' && options?.next.length === 0 ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
             {destination ? (
               <CollapsedQuickAdd
                 label={ENGAGE_TEXT.quickAdd}

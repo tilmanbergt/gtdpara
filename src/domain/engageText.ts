@@ -42,11 +42,10 @@ export function ackLabel(kind: 'done' | 'someday' | 'unnext'): string {
   return kind === 'done' ? 'Done:' : kind === 'someday' ? 'Someday:' : 'No longer #next:';
 }
 
-/** The marks line (S6/S8); empty for none. */
-export function marksLineText(count: number, ownerKind: 'item' | 'loop' | 'thread'): string {
+/** The marks line (S6/S8): marks belong to a Project or Area, so it names that item; empty for none. */
+export function marksLineText(count: number, itemName: string): string {
   if (count === 0) return '';
-  const where = ownerKind === 'loop' ? 'in this loop' : ownerKind === 'thread' ? 'in this scope' : 'here';
-  return `${count} mark${count === 1 ? '' : 's'} to process ${where} ›`;
+  return `${count} mark${count === 1 ? '' : 's'} to process in ${itemName} ›`;
 }
 
 /** One owner line of S9/S11: "Kind · Name · 2 next ›" or "· pick next ›". */
