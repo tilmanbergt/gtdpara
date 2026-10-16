@@ -785,7 +785,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // The Engage panel over the note (docs/dev/history/technical-design-engage.md §3.8).
-  if (mode === 'engage') return <EngageOverlay key={engageNonce} onClose={() => PluginManager.closePluginView()} />;
+  if (mode === 'engage') return <EngageOverlay key={engageNonce} request={{via: 'button'}} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} />;
 
   if (mode === 'capture') {
     // The lasso-capture overlay gets the status slot at its top too (D11).

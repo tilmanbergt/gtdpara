@@ -14,7 +14,7 @@ const ack = (wasCurrent: boolean): EngageAck => ({
   undo: {itemPath: '/a', taskIndex: 1, before: task('Brief #next'), afterText: 'Brief #next'},
 });
 const options = (ownerEmpty: boolean): EngageOptions => ({next: [], plan: [], ownerEmpty});
-const data = (ownerEmpty: boolean, dailyLeft = 2, ring: 'daily' | 'weekly' = 'daily'): EngageEvent => ({type: 'dataChanged', options: options(ownerEmpty), ring, dailyLeft});
+const data = (ownerEmpty: boolean, dailyLeft = 2, ring: 'daily' | 'weekly' = 'daily'): EngageEvent => ({type: 'dataChanged', options: options(ownerEmpty), ring, dailyLeft, current: KEY});
 
 const S = {
   options: {kind: 'options'},
@@ -97,6 +97,13 @@ describe('engageFlow state', () => {
     const events: EngageEvent[] = [data(true, 0), {type: 'selectFocus'}, {type: 'selectNewFocus'}, {type: 'back'}, {type: 'expandQuickAdd'}, {type: 'undone'}];
     for (const event of events) expect(engageFlow(state(S.options), event).owner).toEqual(OWNER);
     expect(engageFlow(state(S.daily), {type: 'ownerChosen', owner: OTHER})).toMatchObject({owner: OTHER, current: null, ack: null});
+  });
+  it('dataChanged takes the current todo as found again, or drops it', () => {
+    const moved = {...KEY, taskIndex: 5};
+    expect(engageFlow(state(S.options), {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), current: moved}).current).toEqual(moved);
+    expect(engageFlow(state(S.options), {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), current: null}).current).toBeNull();
+    const from = state(S.options);
+    expect(engageFlow(from, {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), current: {...KEY}}).current).toBe(from.current);
   });
   it('undone without an ack is a no-op', () => {
     const s = state(S.options);

@@ -83,10 +83,10 @@ describe('App with the Engage button', () => {
     act(() => mockButtons.press!({id: ENGAGE_BUTTON_ID}));
     await settle();
     expect(texts(r)).toContain('Engage next');
-    expect(texts(r)).toContain('File: Sparring.note');
-    expect(texts(r)).toContain('Page: 3 (index 2)');
+    // A note outside every Project/Area and no focus: the week's (empty) focus list.
+    expect(texts(r)).toContain("This week's focus");
     expect(texts(r)).not.toContain('Daily');
-    expect(log).toHaveBeenCalledWith('EngageOverlay: spike', 'page=2', 'pathKnown=yes');
+    expect(log).toHaveBeenCalledWith('EngageOverlay: opened', 'owner=none', 'via=button', 'current=no');
 
     const close = r.root.findAll(n => n.props.label === 'Close' && typeof n.props.onPress === 'function')[0];
     await act(async () => close.props.onPress());

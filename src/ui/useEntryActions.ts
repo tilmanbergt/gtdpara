@@ -207,8 +207,9 @@ export function useEntryActions(name = 'ThreadOverview') {
     if (moved) edit.cancel();
   };
 
-  const taskNote = (entry: ThreadTaskEntry) =>
-    rowAction.run(async () => {
+  /** Opens (or creates, after the confirm) the todo's note; resolves true when nothing failed. */
+  const taskNote = (entry: ThreadTaskEntry): Promise<boolean> =>
+    rowAction.runSave(async () => {
       const {task, changed} = await openOrCreateTodoNote(entry.task, entry.item.path, await currentSettings(), null, {
         confirmCreate: confirmNoteCreate,
       });

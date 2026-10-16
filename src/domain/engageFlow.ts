@@ -63,7 +63,12 @@ export type EngageEvent =
   | {type: 'ownerChosen'; owner: EngageOwner}
   | {type: 'expandQuickAdd'}
   | {type: 'collapseQuickAdd'}
-  | {type: 'dataChanged'; options: EngageOptions | null; ring: FocusRing; dailyLeft: number};
+  /**
+   * The cache changed: the owner's options, the effective ring, how many
+   * owners today's focus still has, and the current todo found again
+   * (`resolveTodoKey`; null when it is gone, D7).
+   */
+  | {type: 'dataChanged'; options: EngageOptions | null; ring: FocusRing; dailyLeft: number; current: EngageTodoKey | null};
 
 export const INITIAL_ENGAGE_STATE: EngageState = {
   owner: null,
@@ -114,10 +119,16 @@ export function engageFlow(state: EngageState, event: EngageEvent): EngageState 
   }
 }
 
+function sameKey(a: EngageTodoKey | null, b: EngageTodoKey | null): boolean {
+  return a === b || (sameTodo(a, b) && a!.taskText === b!.taskText);
+}
+
 /** The only place the owner-empty and all-done transitions live. */
 function onDataChanged(state: EngageState, event: Extract<EngageEvent, {type: 'dataChanged'}>): EngageState {
   const ownerEmpty = event.options?.ownerEmpty ?? false;
-  const next = {...state, ownerEmpty, ring: event.ring};
+  // The same key keeps its object, so a hook that reacts to `current` doesn't run again for nothing.
+  const current = sameKey(state.current, event.current) ? state.current : event.current;
+  const next = {...state, ownerEmpty, ring: event.ring, current};
   const focusDone = event.ring === 'daily' && event.dailyLeft === 0;
   switch (state.screen.kind) {
     case 'options':

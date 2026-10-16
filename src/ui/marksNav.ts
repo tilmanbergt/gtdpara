@@ -8,7 +8,7 @@
 import {MarkScope} from '../domain/marks';
 import {logWarn} from '../utils/log';
 
-export type MarksReturnTo = 'inbox' | 'current' | 'review' | 'closeOut';
+export type MarksReturnTo = 'inbox' | 'current' | 'review' | 'closeOut' | 'engage';
 
 type Handler = (scope: MarkScope, returnTo: MarksReturnTo) => void;
 
