@@ -92,3 +92,60 @@ export function buildContents(input: {
   }
   return entries.sort((a, b) => a.page - b.page || a.y - b.y);
 }
+
+// ---- Which textbox a heading covers ----
+
+export interface PageRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** What `headingText` reads of a page's elements (the SDK's Element fits after mapping). */
+export interface PageElementForHeading {
+  numInPage: number;
+  /** A textbox: its rect and text. */
+  textbox?: {rect: PageRect; text: string} | null;
+  /** A title element: its rect and the `numInPage`s it covers. */
+  title?: {rect: PageRect; trail: readonly number[]} | null;
+}
+
+/** Positions of a title as getTitles and a title element report it differ by rounding at most. */
+const SAME_TITLE_PX = 3;
+
+function area(r: PageRect): number {
+  return Math.max(0, r.right - r.left) * Math.max(0, r.bottom - r.top);
+}
+
+function overlap(a: PageRect, b: PageRect): number {
+  return area({left: Math.max(a.left, b.left), top: Math.max(a.top, b.top), right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom)});
+}
+
+/**
+ * The typed text under a heading, or null (handwriting). getTitles' own
+ * `controlTrailNums` don't always name the page's `numInPage`s, so three ways,
+ * first hit wins: (1) the trail getTitles gives; (2) the trail of the page's
+ * title element at the same position (what gtdpara writes and Supernote keeps,
+ * domain/noteFindability.ts); (3) the textbox the heading's rectangle covers
+ * most - at least half of the textbox or of the heading.
+ */
+export function headingText(heading: {rect: PageRect; trail: readonly number[]}, elements: readonly PageElementForHeading[]): string | null {
+  const textboxes = elements.filter(el => el.textbox?.text.trim());
+  const byTrail = (trail: readonly number[]) => textboxes.find(el => trail.includes(el.numInPage))?.textbox?.text ?? null;
+  const direct = byTrail(heading.trail);
+  if (direct) return direct;
+  const same = elements.find(
+    el => el.title && Math.abs(el.title.rect.left - heading.rect.left) <= SAME_TITLE_PX && Math.abs(el.title.rect.top - heading.rect.top) <= SAME_TITLE_PX,
+  );
+  const viaElement = same?.title ? byTrail(same.title.trail) : null;
+  if (viaElement) return viaElement;
+  let best: {text: string; covered: number} | null = null;
+  for (const el of textboxes) {
+    const box = el.textbox!;
+    const covered = overlap(heading.rect, box.rect);
+    const enough = covered > 0 && covered >= 0.5 * Math.min(area(box.rect) || Infinity, area(heading.rect) || Infinity);
+    if (enough && (!best || covered > best.covered)) best = {text: box.text, covered};
+  }
+  return best?.text ?? null;
+}

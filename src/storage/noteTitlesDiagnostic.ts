@@ -2,25 +2,43 @@
  * Diagnostic for the Contents of a home notebook
  * (docs/dev/history/technical-design-home-notebooks.md §3.5, §5 S0): on the
  * note the plugin was opened from, how many headings `getTitles` returns, how
- * long that takes, and for each heading whether a textbox among the elements
- * it covers (`controlTrailNums` = their `numInPage`) was found, and whether
- * that textbox is gtdpara's own. Runs only while Debug logging is on; logs
- * counts, ms and yes/no only - never file names or texts.
+ * long that takes, and for each heading whether the Contents finds its
+ * textbox, and whether that textbox is gtdpara's own, with the numbers that
+ * decide it (trails, rectangles, element types). Runs only while Debug
+ * logging is on; logs counts, ms, numbers and yes/no only - never file names
+ * or texts.
  */
 import {isNoteTemplateManagedElement} from '../domain/meetingNoteBlock';
+import {headingText} from '../domain/notebookContents';
 import {getElements, getNoteTotalPageNum} from '../supernote/fileSystem';
-import {getTitles, NoteTitle} from '../supernote/noteTitles';
+import {ElementWithTitle, getTitles, NoteTitle} from '../supernote/noteTitles';
 import {recycleElements} from '../supernote/sdkElements';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logWarn} from '../utils/log';
+import {headingElementsOf, titleRect} from './notebookContents';
 
-/** `p<page>:yes|own|no` for each title on one page: a covered textbox found (own = gtdpara's), or none. */
-function coveredTextboxes(page: number, titles: NoteTitle[], elements: Awaited<ReturnType<typeof getElements>>): string[] {
-  return titles.map(title => {
-    const covered = elements.filter(el => (title.controlTrailNums ?? []).includes(el.numInPage) && el.textBox);
-    if (covered.length === 0) return `p${page}:no`;
-    return `p${page}:${covered.some(el => isNoteTemplateManagedElement(el.userData)) ? 'own' : 'yes'}`;
+/** A rectangle as `l,t,r,b`, rounded. */
+const rectText = (r: {left: number; top: number; right: number; bottom: number}) => [r.left, r.top, r.right, r.bottom].map(Math.round).join(',');
+
+/**
+ * For each title on one page: `p<page>:yes|own|no` - a covered textbox found
+ * the way the Contents finds it (domain/notebookContents.ts's `headingText`;
+ * own = gtdpara's) - with getTitles' trail and rectangle; then the page's
+ * elements as `num:type[@rect][>trail]`. Numbers only.
+ */
+function describePage(page: number, titles: NoteTitle[], elements: ElementWithTitle[]): string {
+  const onPage = headingElementsOf(elements);
+  const found = titles.map(title => {
+    const text = headingText({rect: titleRect(title), trail: title.controlTrailNums ?? []}, onPage);
+    const own = text !== null && elements.some(el => el.textBox?.textContentFull === text && isNoteTemplateManagedElement(el.userData));
+    return `p${page}:${text === null ? 'no' : own ? 'own' : 'yes'} trail=[${(title.controlTrailNums ?? []).join(',')}] at=${rectText(titleRect(title))}`;
   });
+  const els = elements.map(el => {
+    const rect = el.textBox?.textRect ? `@${rectText(el.textBox.textRect)}` : el.title ? `@${rectText(titleRect(el.title))}` : '';
+    const trail = el.title ? `>[${(el.title.controlTrailNums ?? []).join(',')}]` : '';
+    return `${el.numInPage}:${el.type}${rect}${trail}`;
+  });
+  return `${found.join(' ')} els ${els.join(' ')}`;
 }
 
 /** Logs the headings of the note at `notePath` (see module comment). Never throws. */
@@ -38,7 +56,7 @@ export async function logNoteTitlesDiagnostic(notePath: string): Promise<void> {
     for (const [page, pageTitles] of [...byPage].sort((a, b) => a[0] - b[0])) {
       const elements = await getElements(page, notePath);
       try {
-        found.push(...coveredTextboxes(page, pageTitles, elements));
+        found.push(describePage(page, pageTitles, elements as ElementWithTitle[]));
       } finally {
         recycleElements(elements);
       }
@@ -48,7 +66,7 @@ export async function logNoteTitlesDiagnostic(notePath: string): Promise<void> {
       `${totalPages} pages`,
       `${titles.length} titles in ${titlesMs} ms`,
       `${byPage.size} pages with titles`,
-      `textbox ${found.join(' ') || '-'}`,
+      `textbox ${found.join(' | ') || '-'}`,
       `total ${Date.now() - start} ms`,
     );
   } catch (e) {

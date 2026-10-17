@@ -9,11 +9,20 @@
  * each time (domain/notebookContents.ts), so a renamed todo shows at once.
  * Logs counts and ms only - never headings or file names.
  */
-import {buildContents, ContentsEntry, ContentsItem, ContentsTitle, gtdparaPages} from '../domain/notebookContents';
+import {
+  buildContents,
+  ContentsEntry,
+  ContentsItem,
+  ContentsTitle,
+  gtdparaPages,
+  headingText,
+  PageElementForHeading,
+  PageRect,
+} from '../domain/notebookContents';
 import {todayIso} from '../domain/meetingTime';
 import {PageKeyword} from '../domain/sharedNotePages';
 import {getElements, statFiles} from '../supernote/fileSystem';
-import {getTitles, NoteTitle} from '../supernote/noteTitles';
+import {ElementWithTitle, getTitles, NoteTitle} from '../supernote/noteTitles';
 import {recycleElements} from '../supernote/sdkElements';
 import {log} from '../utils/log';
 import {readAllKeywords} from './sharedNotePages';
@@ -31,10 +40,18 @@ export function cachedContentsCount(): number {
   return cache.size;
 }
 
-/** The typed text of the textbox `title` covers on its page, or null (handwriting, or nothing found). */
-function coveredText(title: NoteTitle, elements: Awaited<ReturnType<typeof getElements>>): string | null {
-  const covered = elements.find(el => (title.controlTrailNums ?? []).includes(el.numInPage) && el.textBox?.textContentFull);
-  return covered?.textBox?.textContentFull ?? null;
+/** A heading's rectangle as getTitles reports it. */
+export function titleRect(title: Pick<NoteTitle, 'X' | 'Y' | 'width' | 'height'>): PageRect {
+  return {left: title.X, top: title.Y, right: title.X + title.width, bottom: title.Y + title.height};
+}
+
+/** A page's elements as domain/notebookContents.ts's `headingText` reads them. */
+export function headingElementsOf(elements: readonly ElementWithTitle[]): PageElementForHeading[] {
+  return elements.map(el => ({
+    numInPage: el.numInPage,
+    textbox: el.textBox?.textRect ? {rect: el.textBox.textRect, text: el.textBox.textContentFull ?? ''} : null,
+    title: el.title ? {rect: titleRect(el.title), trail: el.title.controlTrailNums ?? []} : null,
+  }));
 }
 
 async function readNotebook(path: string, mtimeMs: number, item: ContentsItem, today: string): Promise<ReadNotebook> {
@@ -50,7 +67,8 @@ async function readNotebook(path: string, mtimeMs: number, item: ContentsItem, t
   for (const [page, pageTitles] of byPage) {
     const elements = await getElements(page, path);
     try {
-      for (const title of pageTitles) read.push({page, y: title.Y, text: coveredText(title, elements)});
+      const onPage = headingElementsOf(elements);
+      for (const title of pageTitles) read.push({page, y: title.Y, text: headingText({rect: titleRect(title), trail: title.controlTrailNums ?? []}, onPage)});
     } finally {
       recycleElements(elements);
     }

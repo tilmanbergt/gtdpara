@@ -4,7 +4,12 @@ jest.mock('sn-plugin-lib', () => ({PluginCommAPI: {recycleElement: jest.fn()}, P
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 let mockMtime = 1;
 const mockGetElements = jest.fn(async (page: number, _path: string) =>
-  page === 2 ? [{numInPage: 4, textBox: {textContentFull: 'Intent\nmore'}}, {numInPage: 5, textBox: null}] : [],
+  page === 2
+    ? [
+        {numInPage: 4, textBox: {textContentFull: 'Intent\nmore', textRect: {left: 0, top: 200, right: 500, bottom: 260}}},
+        {numInPage: 5, textBox: null},
+      ]
+    : [],
 );
 jest.mock('../../src/supernote/fileSystem', () => ({
   statFiles: async (paths: string[]) => paths.map(path => ({path, exists: true, lastModified: mockMtime, size: 1})),
@@ -12,8 +17,8 @@ jest.mock('../../src/supernote/fileSystem', () => ({
 }));
 const mockGetTitles = jest.fn(async (_path: string, _pages: number[]) => [
   {page: 0, X: 0, Y: 100, width: 1, height: 1, style: 3, controlTrailNums: [1]},
-  {page: 2, X: 0, Y: 300, width: 1, height: 1, style: 3, controlTrailNums: [5]},
-  {page: 2, X: 0, Y: 200, width: 1, height: 1, style: 3, controlTrailNums: [4]},
+  {page: 2, X: 0, Y: 300, width: 500, height: 60, style: 3, controlTrailNums: [5]},
+  {page: 2, X: 0, Y: 200, width: 500, height: 60, style: 3, controlTrailNums: [9]},
 ]);
 jest.mock('../../src/supernote/noteTitles', () => ({getTitles: (p: string, pages: number[]) => mockGetTitles(p, pages)}));
 jest.mock('../../src/storage/sharedNotePages', () => ({
@@ -25,7 +30,7 @@ import {cachedContentsCount, loadContents} from '../../src/storage/notebookConte
 const item = {name: 'Lead', tasks: [], meetings: []};
 
 describe('loadContents', () => {
-  it('reads once, looks textboxes up only where gtdpara titles nothing, and caches by modification time', async () => {
+  it('reads once, finds a heading\'s textbox by position when its trail names nothing, looks textboxes up only where gtdpara titles nothing, and caches by modification time', async () => {
     const entries = await loadContents('/n/Lead 2026.note', item);
     expect(entries.map(e => [e.page, e.text, e.source])).toEqual([
       [0, 'Lead', 'home'],

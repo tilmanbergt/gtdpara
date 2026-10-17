@@ -1,5 +1,5 @@
 // docs/dev/history/technical-design-home-notebooks.md §3.5, §6: the Contents of a home notebook.
-import {buildContents, HANDWRITTEN_HEADING} from '../../src/domain/notebookContents';
+import {buildContents, HANDWRITTEN_HEADING, headingText} from '../../src/domain/notebookContents';
 
 const item = {
   name: 'Website relaunch',
@@ -49,5 +49,29 @@ describe('buildContents', () => {
 
   it('an empty notebook has no entries', () => {
     expect(buildContents({keywords: [], titles: [], item, today: '2026-10-17'})).toEqual([]);
+  });
+});
+
+describe('headingText', () => {
+  const rect = (left: number, top: number, right: number, bottom: number) => ({left, top, right, bottom});
+  const box = (numInPage: number, r: ReturnType<typeof rect>, text: string) => ({numInPage, textbox: {rect: r, text}});
+
+  it('by the heading\'s own trail', () => {
+    expect(headingText({rect: rect(0, 0, 10, 10), trail: [2]}, [box(1, rect(500, 500, 600, 600), 'A'), box(2, rect(900, 900, 950, 950), 'B')])).toBe('B');
+  });
+
+  it('by the trail of the page\'s title element at the same position, when getTitles\' trail names nothing', () => {
+    const elements = [box(1, rect(500, 500, 600, 600), 'A'), {numInPage: 3, title: {rect: rect(101, 99, 300, 150), trail: [1]}}];
+    expect(headingText({rect: rect(100, 100, 300, 150), trail: [7]}, elements)).toBe('A');
+  });
+
+  it('by position: the textbox the heading covers most', () => {
+    const elements = [box(1, rect(100, 100, 700, 160), 'Intent'), box(2, rect(100, 400, 700, 460), 'Other')];
+    expect(headingText({rect: rect(90, 95, 710, 165), trail: []}, elements)).toBe('Intent');
+  });
+
+  it('handwriting: no textbox under it', () => {
+    expect(headingText({rect: rect(90, 95, 710, 165), trail: []}, [box(1, rect(100, 400, 700, 460), 'Other')])).toBeNull();
+    expect(headingText({rect: rect(90, 95, 710, 165), trail: []}, [box(1, rect(100, 100, 700, 160), '   ')])).toBeNull();
   });
 });
