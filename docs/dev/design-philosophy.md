@@ -87,9 +87,20 @@ Within the working day, the rhythm is picking and working through a small set:
 - No clock, no timer, no suggested pause. Nothing auto-advances into the next set; the moment
   after finishing waits, unhurried, until you act or leave. **Never auto-suggest or auto-select
   the next set** - the instant the app does that, the gap stops being protected.
+- Across the app the same rule holds: nothing is suggested unasked. Next options appear only
+  when you ask for them, or right after you finish something, and only from what you already
+  chose (the same owner, your focus). Nothing is chosen for you.
 - **Sessions are held lightly.** There is no stored session, start time or membership list; the
   only remembered fact is whether focus mode is on. Reopening the plugin while it's on returns
   straight to it.
+
+**Engage: one at a time, in the owner you chose.** Engage is the doing step while you work in a
+note: one owner at a time - a Project, an Area, a loop or a thread - with the todo you are on, or
+its one next action, on top. Its other `#next` todos and its plan are a tab apart; a plan todo
+becomes a next action only by your tap, and only a next action can be the one you work on. It never moves on to another
+owner by itself; "Select next focus" lists today's focus only when asked, and after a Done
+elsewhere in the app the one offer is a pick from that same owner's plan. One tap in, one or two
+taps to decide, and the panel is gone - the note is where the work happens.
 
 Rest needs no mechanism of its own. A "Rest" area tracked like other areas would trip Review's
 stalled/neglected detection - backwards for something meant to be rested, not worked. The gap

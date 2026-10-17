@@ -195,4 +195,16 @@ describe('App with a loop overview', () => {
     expect(area).toContain('- workshop/teamoffsite: active, 2026-11-14, [[2 Areas/Coaching/Brief.pdf]]');
     act(() => r.unmount());
   });
+
+  it('"Engage ›" opens the Engage panel with the loop as owner (docs/dev/history/technical-design-engage.md §3.7)', async () => {
+    const r = await renderApp();
+    // Earlier tests rename workshop/offsite to workshop/teamoffsite (still active) and close workshop/old.
+    await act(async () => openOverview({tag: 'workshop/teamoffsite', ownerPath: AREA}));
+    await settle();
+    await pressText(r, 'Engage ›');
+    await settle();
+    expect(texts(r)).toContain('Loop');
+    expect(texts(r)).toContain('Open gtdpara');
+    act(() => r.unmount());
+  });
 });

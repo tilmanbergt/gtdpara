@@ -232,7 +232,22 @@ export interface TaskGroup {
   entries: Array<{task: Task; index: number}>;
 }
 
-const GROUP_ORDER: Array<{key: TaskGroup['key']; label: string}> = [
+/**
+ * A Project's or Area's todos (docs/dev/history/technical-design-engage.md,
+ * Addendum "Plan across the app"): an untagged todo there is planned - it
+ * comes after Next and what waits on others, before what is shelved
+ * (Someday: later; Maybe: perhaps never).
+ */
+const ITEM_GROUP_ORDER: Array<{key: TaskGroup['key']; label: string}> = [
+  {key: 'next', label: 'Next'},
+  {key: 'waiting-for', label: 'Waiting For'},
+  {key: 'other', label: 'Plan'},
+  {key: 'someday', label: 'Someday'},
+  {key: 'maybe', label: 'Maybe'},
+];
+
+/** The Inbox's todos: an untagged one there is not processed yet, not planned - "Other", last. */
+const INBOX_GROUP_ORDER: Array<{key: TaskGroup['key']; label: string}> = [
   {key: 'next', label: 'Next'},
   {key: 'waiting-for', label: 'Waiting For'},
   {key: 'someday', label: 'Someday'},
@@ -249,7 +264,7 @@ const GROUP_ORDER: Array<{key: TaskGroup['key']; label: string}> = [
  * technical-design-status-archive.md §7 already established for the
  * Projects/Areas list's status sections.
  */
-export function groupTasksByFlowState(tasks: Task[]): TaskGroup[] {
+export function groupTasksByFlowState(tasks: Task[], source: 'item' | 'inbox'): TaskGroup[] {
   const indexed = tasks.map((task, index) => ({task, index})).filter(({task}) => !task.cancelled);
   const buckets: Record<TaskGroup['key'], Array<{task: Task; index: number}>> = {
     next: [],
@@ -261,7 +276,7 @@ export function groupTasksByFlowState(tasks: Task[]): TaskGroup[] {
   for (const entry of indexed) {
     buckets[entry.task.flowState ?? 'other'].push(entry);
   }
-  return GROUP_ORDER.map(group => ({...group, entries: buckets[group.key]})).filter(
+  return (source === 'item' ? ITEM_GROUP_ORDER : INBOX_GROUP_ORDER).map(group => ({...group, entries: buckets[group.key]})).filter(
     group => group.entries.length > 0,
   );
 }

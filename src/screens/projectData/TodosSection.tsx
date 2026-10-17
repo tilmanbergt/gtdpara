@@ -17,6 +17,7 @@ import {withTaskDone} from '../../domain/taskEdit';
 import {todayIso} from '../../domain/meetingTime';
 import {openOrCreateTodoNote} from '../../storage/meetingNoteContent';
 import {loadSettings, saveSettings} from '../../storage/settingsStorage';
+import {useEngagePrompt} from '../../ui/useEngagePrompt';
 import {useNoteCreateConfirm} from '../../ui/useNoteCreateConfirm';
 import PagedSection from '../../ui/PagedSection';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../ui/TaskRow';
@@ -119,7 +120,7 @@ export default function TodosSection({
       label: `○ ${group.loop!.tag.split('/').slice(1).join('/')}${group.loop!.mainDate ? ` · ${formatDate(group.loop!.mainDate, todayIso())}` : ''}`,
       entries: group.todos.map(({task, index}) => ({task, index})),
     })),
-    ...groupTasksByFlowState(tasks).map(group => ({...group, entries: group.entries.filter(e => !inLoop.has(e.index))})),
+    ...groupTasksByFlowState(tasks, 'item').map(group => ({...group, entries: group.entries.filter(e => !inLoop.has(e.index))})),
   ].filter(group => group.entries.length > 0);
   const groups =
     hideDone || filter
@@ -140,6 +141,7 @@ export default function TodosSection({
       ({task, index}): TodoFlatRow => ({kind: 'entry', rowKey: `task-${index}`, task, index}),
     ),
   ]);
+  const engagePrompt = useEngagePrompt('TodosSection');
   const runAction = async (fn: () => Promise<void>) => {
     setActionError(null);
     try {
@@ -157,6 +159,7 @@ export default function TodosSection({
       const next = tasks.slice();
       next[index] = withTaskDone(next[index], !next[index].done, todayIso());
       await onSave(next);
+      if (!tasks[index].done) engagePrompt.afterDone(itemPath, tasks[index]);
     });
   };
 

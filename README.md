@@ -56,6 +56,9 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
   one tap starts one, its todos are grouped together, it has one note from start to end, and it
   closes when nothing is open
 - **Daily, Week and Month** views with meetings, due todos and next actions from what you focus on
+- **Engage**: a second sidebar button shows a small panel over the note you work in - what you
+  are working on (done, note, linked file) and the next actions of its project, area, loop or
+  thread; when none is left, the plan to pick from
 - **Focus mode** (`#now`): only the few things you are doing right now
 - **Quick Add** for todos, meetings and notes, with tags, due dates and refiling
 - **Projects & Areas** with status, scope, abbreviations and linked files

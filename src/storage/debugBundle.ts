@@ -58,7 +58,7 @@ export function summarizeSettings(s: GtdParaSettings): string[] {
     `${s.monthlyFocusProjectCount}/${s.monthlyFocusAreaCount}`,
   ].join(' ');
   return [
-    `settings: profile ${s.activeProfileId} · folders ${customFolders ? 'custom' : 'default'} · focus d/w/m ${focus} · focusMode ${onOff(s.focusModeActive)}`,
+    `settings: profile ${s.activeProfileId} · folders ${customFolders ? 'custom' : 'default'} · focus d/w/m ${focus} · focusMode ${onOff(s.focusModeActive)} · engage current todo ${s.engageCurrent ? 'yes' : 'no'}`,
     `          calendar ${s.googleCalendarIcsUrl.trim() ? 'configured' : 'not configured'}, ${onOff(f.googleCalendar)}` +
       ` · gmail ${s.gmailEmail.trim() ? 'configured' : 'not configured'}, ${onOff(f.gmail)}`,
     `          keepTabs ${onOff(s.keepTabsAlive)} · perfTracing ${onOff(s.perfTracing)} · debugLogging ${onOff(s.debugLogging)}` +

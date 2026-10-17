@@ -7,7 +7,7 @@ import App from './App';
 import {name as appName} from './app.json';
 
 import { PluginManager } from 'sn-plugin-lib';
-import {LASSO_BUTTON_ID, MARK_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
+import {ENGAGE_BUTTON_ID, LASSO_BUTTON_ID, MARK_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
 import {createMarkFromLasso, outcomeNeedsScreen, setMarkOutcome, trackMarkPress} from './src/storage/marks';
 import {loadSettings} from './src/storage/settingsStorage';
 import {log, logError} from './src/utils/log';
@@ -22,6 +22,17 @@ PluginManager.registerButton(1, ['NOTE', 'DOC'], {
   name: 'gtdpara',
   icon: Image.resolveAssetSource(
     require('./assets/icon.png'),
+  ).uri,
+  showType: 1,
+});
+
+// "Engage" (docs/dev/history/technical-design-engage.md §3.8): a second sidebar
+// button that opens the Engage panel over the note; App.tsx routes it.
+PluginManager.registerButton(1, ['NOTE', 'DOC'], {
+  id: ENGAGE_BUTTON_ID,
+  name: 'Engage',
+  icon: Image.resolveAssetSource(
+    require('./assets/engage.png'),
   ).uri,
   showType: 1,
 });

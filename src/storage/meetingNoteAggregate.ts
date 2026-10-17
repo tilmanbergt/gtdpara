@@ -26,6 +26,7 @@
  * different tasks sharing the exact same relative note path, which nothing in
  * this app allows.
  */
+import {contextTagsOf} from '../domain/flowState';
 import {parseSharedNoteAnchor} from '../domain/sharedNotePages';
 import {GtdParaKind, Task} from '../domain/types';
 import {CachedItem} from './dataCache';
@@ -49,8 +50,13 @@ export interface MeetingNoteInboxInput {
 
 /**
  * A task qualifies when it's open (not done, not cancelled) and shares at
- * least one tag with `tags` - regardless of flowState (see the module doc
- * comment). An empty `tags` array produces `[]` (no special case).
+ * least one context tag with `tags` - regardless of flowState (see the module
+ * doc comment). Only context tags count (domain/flowState.ts's
+ * `contextTagsOf`, the same set a note gets as keywords): the reserved words
+ * (`#next`, `#now`, `#someday`, `#maybe`, `#prepped`, `#reviewed`,
+ * `#monthly`), Waiting For and `#due:` say how an item stands, not what it is
+ * about, so `#next` on two todos makes them no more related than any two
+ * next actions. No context tag in `tags` produces `[]`.
  *
  * Scans every CachedItem in `items` (Projects + Areas; an item whose file
  * failed to load on the last cache rebuild is skipped defensively, same as
@@ -88,11 +94,12 @@ export function relatedItemsFor(
   excludeNotePath: string | null = null,
 ): MeetingRelevantTodo[] {
   const excludeKey = excludeIdentity(excludeNotePath);
+  const wanted = contextTagsOf(tags);
   const matches = (task: Task): boolean =>
     !task.done &&
     !task.cancelled &&
     (!excludeKey || excludeIdentity(task.notePath) !== excludeKey) &&
-    task.tags.some(tag => tags.includes(tag));
+    task.tags.some(tag => wanted.includes(tag));
 
   const result: MeetingRelevantTodo[] = [];
   for (const cachedItem of items) {

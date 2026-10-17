@@ -41,8 +41,9 @@ shell with no state carried over (§2.12). A "Mark for later" result screen
 
 **Mode and tabs.** Navigation is three independent pieces of state, with no back stack:
 
-- `mode`: `'loading' | 'tabs' | 'capture' | 'focus'`. `capture` shows `CaptureScreen` (§2.10)
-  instead of the tab shell; `focus` shows Daily's one-column focus mode (§2.7) without a TabBar.
+- `mode`: `'loading' | 'tabs' | 'capture' | 'focus' | 'engage'`. `capture` shows `CaptureScreen`
+  (§2.10) instead of the tab shell; `focus` shows Daily's one-column focus mode (§2.7) without a
+  TabBar; `engage` shows the Engage panel (§2.7) over the note.
 - `activeTab`: one of the nine tabs in `ui/TabBar.tsx` — **Projects, Areas, Daily, Week,
   Month, Inbox, Current, Review, Settings**.
 - `currentItem`: the Project or Area the **Current** tab shows. Tab switches leave it alone;
@@ -109,7 +110,7 @@ the thread overview otherwise.
   row per past meeting with agreed/done/open counts). Right: Quick Add, then `PastMeetingPanel`
   (the selected past meeting, the latest by default, and its agreed todos; or, for the "Since"
   row, those done todos by done date, no note button and no provenance in Quick Add).
-  Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `useThreadActions.ts`
+  Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `ui/useEntryActions.ts`
   (the same write paths as Daily). Detail: `docs/dev/history/technical-design-tending-threads.md`.
 - **Loop overview** (an overlay) — `screens/loop/LoopOverview.tsx`: one loop in its owner. The
   thread overview's sections over `storage/loopAggregate.ts` (the thread lists limited to the
@@ -155,6 +156,15 @@ start the capture event can arrive while `reorient()` is still awaiting; the lis
 registered before `reorient()` and sets `routedByLassoButtonRef` synchronously, and `reorient()`
 checks that ref before changing `mode` or `activeTab`. A `captureNonce` state value is
 `CaptureScreen`'s `key`, so every capture remounts the screen and reads the new selection.
+
+**Engage button.** `index.js` registers a second sidebar button, **Engage** (`ENGAGE_BUTTON_ID`).
+App's listener sets `routedByEngageButtonRef` (the same race guard as the lasso branch) and asks
+`ui/engageStore.ts` for a panel (`requestEngage({via: 'button'})`); "Engage ›" on ItemDetail,
+LoopOverview and ThreadOverview (`ui/EngageButton.tsx`) asks the same store with its owner. App
+switches to `mode: 'engage'` and keys `screens/engage/EngageOverlay.tsx` on the store's nonce, so
+every request opens a fresh panel. The Engage button never goes through `reorient()`; the
+gtdpara button switches a hidden Engage panel back to the tabs at once, then reorients. Process
+marks opened from the panel (`MarksReturnTo` `'engage'`) returns to it.
 
 ### 2.2 Data model and file format
 
@@ -562,6 +572,12 @@ Default with the standard Meeting and First pages; 0.14's Tag Rules are migrated
   year; `setupTypeTag` gives the setup tag the item matched, `setupSubtag` the nested part after
   it. `{name}`/`{abbr}` are the owning Project's or Area's folder name and abbreviation,
   resolved in storage (`storage/noteOwner.ts`) and passed in, for loop notes too.
+- **Page → entry.** Which todo or meeting a note page belongs to - its own note, a page link
+  (`<note>#page=N`) or its page in a shared notebook (keyword: `todoPageKeyword` /
+  `meetingPageKeyword`) - is answered once: `domain/notePageEntry.ts` (`notePageCandidates`, pure)
+  and `storage/notePageEntry.ts` (`entryForNotePage`, one `getKeyWords` call for that page). The
+  Engage panel uses it for todos and meetings (`storage/noteOwnerOf.ts`), Capture's provenance
+  for meetings only (`meetingForNotePage`).
 - **Loops.** A Loop setup's tags are loop kinds (`domain/loops.ts`'s `loopKindsOf`, readable at
   once through `storage/loopKinds.ts`); `#<kind>/<name>` is a loop, its line lives in the owner's
   `## Loops` section (`domain/loopsSection.ts`, on the generic `domain/statusSection.ts` that
@@ -648,6 +664,23 @@ Maybe), and when the tag is a Project/Area abbreviation, also everything belongi
 layout around the `#now` tasks; reopening the plugin lands back in it until it is left. Detail:
 `docs/dev/history/technical-design-now-focus-mode.md`.
 
+**Engage** (`mode: 'engage'`, `screens/engage/`) is the doing step over the note, next to focus
+mode and independent of it (`#now` is untouched). One owner at a time - a Project/Area, a loop or
+a thread (`domain/engageOwner.ts`) - with the Now box (the current todo, else the owner's only
+`#next`: details, Done, Remove #next or Someday, Note ›/+ Note, File ›) and two tabs, Next (the
+other `#next` todos, chosen to work on) and Plan (todos without a flow state, file order, made
+`#next` from there), five rows per page (`domain/engageOptions.ts` `engageListsOf`).
+One reducer (`domain/engageFlow.ts`) decides every screen: options, owner empty, select focus
+(today's or this week's owners in ring order), all done in today's focus, Quick Add. Writes go
+through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the current todo is
+per-profile app state in `settings.engageCurrent` (`storage/engageCurrent.ts`), found again by
+index and text. Opening follows the note (`decideOpening`): "Engage ›" > the note page's todo > the
+note's owner > the stored todo's owner, with "Continue with <todo>" back to the stored todo of another owner. The panel sits on a transparent root, so the note stays visible; it keeps its
+largest height while open, because the A5 X does not reliably redraw the note where a panel
+shrank. After a Done on Daily, the Current tab or an overview, `ui/useEngagePrompt.ts` offers
+the owner's plan in the status slot when its last `#next` was done. Detail:
+`docs/dev/history/technical-design-engage.md`.
+
 **Week and Month** share `screens/usePlanningScreen.ts` (loading and every meeting, focus and
 goal action). Both have Quick Add (to the Inbox) on the right, then either the shared day panel
 (after tapping a day) or the period focus panel (`ui/PeriodFocusPanel.tsx`, editable periods) or
@@ -687,8 +720,8 @@ with its count and last-reviewed date, and the steps themselves, one component e
 | Focus reset | ritual | `FocusResetStep` (monthly and weekly slots) |
 
 `storage/reviewAggregate.ts` builds the lists from the cache: stalled projects and neglected
-areas are Active items with no actionable open task (Someday/Maybe don't count; Waiting For does),
-with shelved tasks offered for promotion; unfocused next items are Active items in no focus at all
+areas are Active items with no open next action (`#next`/`#now`) and no open Waiting For - a plan
+todo alone is no next action - with their Plan, Someday and Maybe todos offered for promotion; unfocused next items are Active items in no focus at all
 with an open `#next` task that has no due date; meetings to close out come from
 `isReviewOutstanding`.
 
@@ -770,8 +803,8 @@ hidden when empty). Right: the picture, then `QuickAddWidget variant="capture"`:
 (`domain/captureFileTo.ts` plus recent destinations from `storage/destinationUsage.ts`), and Save
 buttons. "Link to this page" stores `<note>#page=N` as the item's `linkedFile`. When the source
 page is a meeting's (`storage/threadProvenance.ts`'s `meetingForNotePage`: its own note, a page
-link, or its page in a shared note - one `getKeyWords` call for that page), a saved todo gets
-that meeting as provenance (§2.4).
+link, or its page in a shared note - one `getKeyWords` call for that page; the meetings-only
+view of the page → entry lookup in §2.6), a saved todo gets that meeting as provenance (§2.4).
 
 **Recognition** (`supernote/lassoRead.ts`, `supernote/strokeRecognition.ts`). The lasso's strokes
 are read once (page-size pixel points, §4 "Page-size pixels everywhere"), rebuilt as new elements
@@ -1070,7 +1103,7 @@ place it happens.
 
 - Navigation is the tab model in `App.tsx`. A new persistent screen is a new `AppTab`, not its
   own header or back button; "✕ Close plugin" lives only in `TabBar`. Full-screen modes are
-  `capture` and `focus`; overlays (help, thread overview, mark outcome) leave the screen behind as
+  `capture`, `focus` and `engage`; overlays (help, thread overview, mark outcome) leave the screen behind as
   it is.
 - `reorient()` is the one place that decides where the plugin lands when it opens or comes back,
   and the one place that starts the cache refresh.

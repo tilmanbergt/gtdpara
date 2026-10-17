@@ -528,7 +528,7 @@ export default function InboxScreen({
   // Grouped by flow-state, same convention (and same index-safety rule) as
   // ProjectDataPanel.tsx's own TodosSection - see the module doc comment.
   const tasks = inbox?.tasks ?? [];
-  const groupsByFlowState = groupTasksByFlowState(tasks);
+  const groupsByFlowState = groupTasksByFlowState(tasks, 'inbox');
   const taskGroups = hideDone
     ? groupsByFlowState
         .map(group => ({...group, entries: group.entries.filter(({task}) => !task.done)}))

@@ -71,6 +71,12 @@ describe('buildProjectGlance', () => {
     expect(glanceCountsText(b)).toBe('0 open · no next action');
   });
 
+  it('a plan alone is no next action (Addendum "Plan across the app")', () => {
+    const p = item('project', 'P', {area: 'Home', tasks: [task('Order wood'), task('Cut boards')]});
+    const [row] = buildProjectGlance('Home', [p], TODAY, NOW);
+    expect(glanceCountsText(row)).toBe('2 open · no next action');
+  });
+
   it('gives no age for Waiting Fors without a created date', () => {
     const p = item('project', 'P', {area: 'Home', tasks: [task('Ask #wf/anna'), task('Do it #next')]});
     const [row] = buildProjectGlance('Home', [p], TODAY, NOW);

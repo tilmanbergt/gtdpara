@@ -113,6 +113,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ItemStatus} from '../domain/types';
 import {AbbrevValidation, ExistingAbbrev, validateAbbrev} from '../domain/abbrev';
+import EngageButton from '../ui/EngageButton';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {ensureItemCached, findCachedItem, frontMatterOf, getCachedData, updateItemFrontMatter} from '../storage/dataCache';
 import {saveFrontMatter} from '../storage/projectFile';
@@ -527,6 +528,9 @@ export default function ItemDetail({
             placeholderColor={placeholderColor}
           />
         )}
+        <View style={styles.engageButton}>
+          <EngageButton owner={{kind: 'item', itemPath: path}} textColor={textColor} borderColor={borderColor} />
+        </View>
       </View>
 
       <View style={styles.body}>
@@ -716,6 +720,9 @@ function AbbrevPill({
 }
 
 const styles = StyleSheet.create({
+  engageButton: {
+    marginLeft: 'auto',
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

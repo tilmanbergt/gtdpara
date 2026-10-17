@@ -24,6 +24,15 @@ describe('buildReviewAggregate', () => {
     expect(names(agg.stalledProjects)).toEqual(['Stalled']);
     expect(agg.stalledProjects[0].shelvedTasks.map(t => t.task.text)).toEqual(['Idea #someday']);
   });
+  it('a plan is no next action: plan-only items are stalled; the list shows Plan, Someday, Maybe (Addendum "Plan across the app")', () => {
+    const planned = [
+      item('project', 'Planned', {tasks: [task('Maybe later #maybe'), task('Order wood'), task('One day #someday'), task('Cut boards')]}),
+      item('project', 'Now', {tasks: [task('Saw #now')]}),
+    ];
+    const a = buildReviewAggregate(planned, NOW);
+    expect(names(a.stalledProjects)).toEqual(['Planned']);
+    expect(a.stalledProjects[0].shelvedTasks.map(t => t.task.text)).toEqual(['Order wood', 'Cut boards', 'One day #someday', 'Maybe later #maybe']);
+  });
   it('neglected = the same rule for areas', () => {
     expect(names(agg.neglectedAreas)).toEqual(['Quiet']);
   });

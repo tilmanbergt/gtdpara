@@ -23,8 +23,8 @@ export interface PeriodFocusCardData {
   item: CachedItem;
   /** Open (not done, not cancelled) #next tasks. */
   nextCount: number;
-  /** Open (not done, not cancelled) #someday tasks. */
-  somedayCount: number;
+  /** Open todos without a flow state: the plan (docs/dev/history/technical-design-engage.md, Addendum "Plan across the app"). */
+  planCount: number;
   /** Weekly: the item's not-cancelled meetings in the week. Monthly: its Month highlights in the month. */
   meetingCount: number;
   /** This item's goal for the period's key, or null. */
@@ -63,7 +63,7 @@ export function buildPeriodFocusCards(items: CachedItem[], period: Period, today
     cards.push({
       item,
       nextCount: openTasks.filter(t => t.flowState === 'next').length,
-      somedayCount: openTasks.filter(t => t.flowState === 'someday').length,
+      planCount: openTasks.filter(t => t.flowState === null).length,
       meetingCount: countMeetings(item.meetings, period),
       goal: goalFor(item, period.scope, period.key),
       secondaryGoal,

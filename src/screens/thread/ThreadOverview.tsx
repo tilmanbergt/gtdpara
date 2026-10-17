@@ -22,6 +22,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {todayIso} from '../../domain/meetingTime';
 import {isCounterpartType, ThreadLens} from '../../domain/threads';
+import {scopeOwnerOf} from '../../domain/counterparts';
 import {lensLabels} from '../../domain/threadText';
 import {buildThreadOverview, nextMeetingOffers, PastMeeting, ThreadItemRef} from '../../storage/threadAggregate';
 import MiniTabs from '../../ui/MiniTabs';
@@ -31,6 +32,7 @@ import {useProvenance} from '../../ui/quickAdd/useProvenance';
 import {OverviewRequest} from '../../ui/overviewStore';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useCachedItems} from '../../ui/useCachedItems';
+import EngageButton from '../../ui/EngageButton';
 import {getCachedData} from '../../storage/dataCache';
 import {useLinkedFileMissing} from '../usePlanningScreen';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
@@ -38,7 +40,7 @@ import {log} from '../../utils/log';
 import AheadSection, {NextOffer} from './AheadSection';
 import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
-import {meetingEntryKey, taskEntryKey, useThreadActions} from './useThreadActions';
+import {meetingEntryKey, taskEntryKey, useEntryActions} from '../../ui/useEntryActions';
 
 /** Ahead's fixed list height (dp), design §3.5.2; Looking back takes the rest of the column. */
 const AHEAD_VIEWPORT_DP = 480;
@@ -72,7 +74,7 @@ export default function ThreadOverview(props: Props): React.JSX.Element {
 function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Element {
   const {textColor, borderColor, placeholderColor} = useThemeColors();
   const items = useCachedItems();
-  const actions = useThreadActions();
+  const actions = useEntryActions();
   const {inbox, inboxPath, edit} = actions;
   const [lens, setLens] = useState<ThreadLens>(request.lens);
   const overview = useMemo(
@@ -140,6 +142,8 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
   const fixedDestination = destinationOf(seedItem ?? (origin.active && selected ? selected.entry.item : overview.owner));
   const labels = lensLabels(overview.thread);
   const counterpartOnly = isCounterpartType(overview.thread.type);
+  // Engage works on a thread inside a Project/Area scope; wf/owe name a counterpart, not a thread.
+  const scopeOwner = overview.owner && overview.owner.kind !== 'inbox' && !counterpartOnly ? scopeOwnerOf(overview.owner.path, items) : null;
 
   return (
     <View style={styles.overlay}>
@@ -172,6 +176,9 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             />
           </View>
         )}
+        {scopeOwner ? (
+          <EngageButton owner={{kind: 'thread', scopeOwnerPath: scopeOwner.path, tag: overview.thread.tag}} textColor={textColor} borderColor={borderColor} />
+        ) : null}
       </View>
       <View style={styles.body}>
         <View style={[styles.column, styles.left]}>

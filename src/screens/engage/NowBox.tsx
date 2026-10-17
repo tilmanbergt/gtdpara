@@ -1,0 +1,124 @@
+/**
+ * The current todo (S4, docs/dev/history/technical-design-engage.md §3.7):
+ * "Working on" - or "Next action" for the owner's only `#next` shown without
+ * being chosen (Addendum "Next and Plan tabs") - its title, a details line (due date or Waiting For with its
+ * follow-up, the meeting it was agreed in), a large check box on the right
+ * that marks it done, and - with `#next` - Remove
+ * #next, without it Someday (D11), then its note (Note › / + Note through
+ * the one note flow) and its linked file ("File: <name> ›").
+ */
+import React from 'react';
+import {Pressable, Text, View} from 'react-native';
+import {todayIso} from '../../domain/meetingTime';
+import {EngageTodoRef} from '../../domain/engageOwner';
+import {isNextTask} from '../../domain/engageOptions';
+import {
+  ENGAGE_TEXT,
+  linkedFileButtonText,
+  nowDetailsText,
+} from '../../domain/engageText';
+import PillButton from '../../ui/PillButton';
+import TaskLabels from '../../ui/TaskLabels';
+import {taskRowLayout} from '../../ui/taskRowLayout';
+import {ENGAGE_TEXT_WIDTH, engageStyles as styles} from './engageStyles';
+
+interface Props {
+  todo: EngageTodoRef;
+  caption: string;
+  onDone: () => void;
+  onRemoveNext: () => void;
+  onSomeday: () => void;
+  onNote: () => void;
+  onFile: (linkedFile: string) => void;
+  textColor: string;
+  borderColor: string;
+}
+
+export default function NowBox({
+  todo,
+  caption,
+  onDone,
+  onRemoveNext,
+  onSomeday,
+  onNote,
+  onFile,
+  textColor,
+  borderColor,
+}: Props): React.JSX.Element {
+  const today = todayIso();
+  const layout = taskRowLayout(
+    todo.task,
+    ENGAGE_TEXT_WIDTH,
+    'flat',
+    false,
+    today,
+  );
+  // Due and Waiting For are spelled out on the details line, so the title keeps only #next/#now.
+  const labels = layout.labels.filter(
+    l => l.kind === 'next' || l.kind === 'now',
+  );
+  const details = nowDetailsText(todo.task, today);
+  const next = isNextTask(todo.task);
+  const file = todo.task.linkedFile;
+  return (
+    <View style={[styles.nowBox, {borderColor: textColor}]}>
+      <View style={styles.nowRow}>
+        <View style={styles.nowMain}>
+          <Text style={[styles.caption, {color: textColor}]}>{caption}</Text>
+          <Text style={[styles.nowTitle, {color: textColor}]} numberOfLines={2}>
+            {layout.title}
+            <TaskLabels labels={labels} />
+          </Text>
+          {details ? (
+            <Text
+              style={[styles.nowDetails, {color: textColor}]}
+              numberOfLines={1}>
+              {details}
+            </Text>
+          ) : null}
+        </View>
+        <Pressable
+          onPress={onDone}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={ENGAGE_TEXT.done}
+          style={[styles.doneBox, {borderColor: textColor}]}>
+          <Text style={[styles.doneMark, {color: textColor}]}>✓</Text>
+        </Pressable>
+      </View>
+      <View style={styles.buttonRow}>
+        {next ? (
+          <PillButton
+            label={ENGAGE_TEXT.removeNext}
+            onPress={onRemoveNext}
+            textColor={textColor}
+            borderColor={borderColor}
+          />
+        ) : (
+          <PillButton
+            label={ENGAGE_TEXT.someday}
+            onPress={onSomeday}
+            textColor={textColor}
+            borderColor={borderColor}
+          />
+        )}
+        <PillButton
+          label={
+            todo.task.notePath ? ENGAGE_TEXT.openNote : ENGAGE_TEXT.newNote
+          }
+          onPress={onNote}
+          textColor={textColor}
+          borderColor={borderColor}
+        />
+        {file ? (
+          <PillButton
+            label={linkedFileButtonText(file)}
+            onPress={() => onFile(file)}
+            textColor={textColor}
+            borderColor={borderColor}
+          />
+        ) : null}
+      </View>
+    </View>
+  );
+}

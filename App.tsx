@@ -20,7 +20,9 @@ import InboxScreen from './src/screens/InboxScreen';
 import ReviewScreen from './src/screens/review/ReviewScreen';
 import CloseOutWizard from './src/screens/CloseOutWizard';
 import CaptureScreen, {CaptureRequest, CaptureReturnTo} from './src/screens/CaptureScreen';
+import EngageOverlay from './src/screens/engage/EngageOverlay';
 import {setOpenMarksHandler} from './src/ui/marksNav';
+import {getEngageRequest, requestEngage, subscribeEngage} from './src/ui/engageStore';
 import {MarkScope} from './src/domain/marks';
 import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {logStaleBuilds} from './src/supernote/pluginRuntime';
@@ -30,7 +32,7 @@ import {useLoopEvents} from './src/ui/useLoopEvents';
 import {useLoopLinkNavigation} from './src/screens/area/useLoopLinkArm';
 import {StatusProvider} from './src/ui/status/StatusProvider';
 import StatusFrame from './src/ui/status/StatusFrame';
-import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
+import {ENGAGE_BUTTON_ID, LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
 import {activeReviewSteps, isReviewOverdue} from './src/domain/reviewSteps';
 import {featuresOf, shouldShowWhatsNew} from './src/domain/features';
 import {setFeatures, useFeatures} from './src/ui/featureStore';
@@ -109,7 +111,7 @@ interface CurrentItem {
 // 'focus' (docs/dev/history/technical-design-now-focus-mode.md §4) is the same
 // DailyView instance as 'tabs'-mode Daily, just rendered with its
 // focusMode prop on instead of a separate screen component.
-type Mode = 'loading' | 'capture' | 'tabs' | 'focus';
+type Mode = 'loading' | 'capture' | 'tabs' | 'focus' | 'engage';
 
 // The central status slot (docs/dev/history/technical-design-status-slot.md) needs its
 // provider above every mode, so App itself is only the provider; the real
@@ -241,6 +243,13 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // flight knows not to clobber a capture screen a button event just routed
   // us to - see the race explained just above registerButtonListener below.
   const routedByLassoButtonRef = useRef(false);
+  // The same guard for the Engage button; every Engage request (button or
+  // "Engage ›") opens a fresh panel (docs/dev/history/technical-design-engage.md §3.8).
+  const routedByEngageButtonRef = useRef(false);
+  const engage = useSyncExternalStore(subscribeEngage, getEngageRequest);
+  useEffect(() => {
+    if (engage.nonce > 0) setMode('engage');
+  }, [engage.nonce]);
 
   // Whether we've landed on *something* (tabs or capture) at least once.
   // Only relevant to the reorient() catch block below: a failed *first*
@@ -253,25 +262,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // that first render).
   const hasLandedRef = useRef(false);
 
-  // Bumped on every Lasso-button press and used as CaptureScreen's `key`
-  // below, forcing a full unmount+remount on each press rather than
-  // re-rendering the same instance. A *second* capture while the app's JS
-  // instance is still alive from the first one (Save & Close and Cancel
-  // both leave `mode` as 'capture' - closePluginView() only hides the
-  // native view) would otherwise re-render CaptureScreen in place: its
-  // mount-only `useEffect(load, [load])` never re-fires (`load` is a stable
-  // useCallback), so the text field would keep showing the previous
-  // capture's text instead of the new selection's recognition. Forcing a
-  // remount via `key` resets every piece of CaptureScreen's local state
-  // (text, kind, destination, linkToSource, warnings) and re-runs `load()`
-  // against whatever is actually lassoed right now.
-  //
-  // Real useState, not useRef (docs/dev/history/technical-design-filing-unification.md
-  // §9): a ref mutation doesn't trigger a re-render, and when `mode` is
-  // already 'capture', `setMode('capture')` is a same-value call that React
-  // bails out of (Object.is), so the `key={captureNonce}` JSX line would
-  // never re-evaluate. `setCaptureNonce(n => n + 1)` always produces a new
-  // value, so the remount doesn't depend on `setMode`.
+  // Bumped on every Lasso-button press and used as CaptureScreen's `key`, so
+  // each capture remounts the screen: closePluginView() only hides the view
+  // and leaves `mode` at 'capture', and CaptureScreen's mount-only load would
+  // otherwise keep the previous capture's text, kind and destination. State,
+  // not a ref: `setMode('capture')` on an unchanged mode doesn't re-render
+  // (docs/dev/history/technical-design-filing-unification.md §9).
   const [captureNonce, setCaptureNonce] = useState(0);
   // What the capture screen shows (docs/dev/history/technical-design-lasso-0.8.md §3.7):
   // the lasso (lasso button) or open marks (a "marks to process" card).
@@ -323,7 +319,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         // i.e. every time the plugin is (re)opened - see
         // rememberLaunchNotePath's own doc comment in fileSystem.ts.
         rememberLaunchNotePath(currentPath);
-        if (cancelled || routedByLassoButtonRef.current) return;
+        if (cancelled || routedByLassoButtonRef.current || routedByEngageButtonRef.current) return;
 
         setSettings(loadedSettings);
         if (!startHousekeepingRef.current) {
@@ -416,7 +412,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         // A failed *first* attempt still needs to leave loading somehow;
         // a failed later attempt (already showing something) is left alone
         // rather than yanking the user back to Daily on a transient error.
-        if (!cancelled && !routedByLassoButtonRef.current && !hasLandedRef.current) {
+        if (!cancelled && !routedByLassoButtonRef.current && !routedByEngageButtonRef.current && !hasLandedRef.current) {
           hasLandedRef.current = true;
           setActiveTab('daily');
           setMode('tabs');
@@ -450,6 +446,8 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           perfBegin('reopen', 'sidebar');
           log('App: sidebar button pressed - reorienting');
           routedByLassoButtonRef.current = false;
+          routedByEngageButtonRef.current = false;
+          setMode(m => (m === 'engage' ? 'tabs' : m)); // the hidden panel must not show while reorient() runs
           reorient();
         } else if (event?.id === LASSO_BUTTON_ID) {
           log('App: lasso button pressed - opening capture screen');
@@ -458,6 +456,11 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           setCaptureNonce(n => n + 1);
           hasLandedRef.current = true;
           setMode('capture');
+        } else if (event?.id === ENGAGE_BUTTON_ID) {
+          routedByEngageButtonRef.current = true;
+          requestEngage({via: 'button'});
+          hasLandedRef.current = true;
+          setMode('engage');
         }
       },
     });
@@ -782,9 +785,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setMode('capture');
   };
   const exitCapture = () => {
-    setMode('tabs');
+    setMode(captureRequest.source === 'marks' && captureRequest.returnTo === 'engage' ? 'engage' : 'tabs');
     requestEinkRefresh();
   };
+
+  // The Engage panel over the note (docs/dev/history/technical-design-engage.md §3.8).
+  if (mode === 'engage') return <EngageOverlay key={engage.nonce} request={engage.request} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} />;
 
   if (mode === 'capture') {
     // The lasso-capture overlay gets the status slot at its top too (D11).

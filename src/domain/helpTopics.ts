@@ -6,7 +6,7 @@
 
 export const HELP_OVERVIEW_PAGE = 'index';
 
-/** Tab key (ui/TabBar.tsx AppTab) → docs/user page id. */
+/** Tab key (ui/TabBar.tsx AppTab), or the Engage mode, → docs/user page id. */
 export const HELP_PAGE_FOR_TAB: Record<string, string> = {
   projects: 'projects-and-areas',
   areas: 'projects-and-areas',
@@ -17,6 +17,7 @@ export const HELP_PAGE_FOR_TAB: Record<string, string> = {
   inbox: 'quick-add',
   review: 'review',
   settings: 'settings',
+  engage: 'engage',
 };
 
 export interface LastHelpPage {

@@ -9,6 +9,7 @@ gtdpara is a local plugin. There is no account, no server and no telemetry.
   folders, so you can read and edit them without gtdpara.
 - **Notes it creates for you** (linked notes, meeting notes, standalone notes), in the same folders.
 - **Plugin settings**, stored in the plugin's own storage on the device (Android AsyncStorage).
+  They include the todo you are working on in Engage: its text and the folder it is filed in.
 - **Lasso marks** ("Mark for later"): a picture and the handwriting strokes of each marked
   selection, plus the text once it is recognized, in the plugin's own private folder on the device -
   not in your folders. They are deleted when the mark is processed or discarded. Recognition runs
@@ -75,7 +76,7 @@ file unless you switch it on.
 ## Profiles
 
 Profiles (Settings → Advanced) are saved as JSON files in `EXPORT/gtdpara/profiles`. They contain
-your folder names, focus counts, Tag Rules, review dates, experimental switches and your Gmail
-address, but never the Gmail app password or the calendar link - those stay inside the plugin.
+your folder names, focus counts, Tag Rules, review dates, experimental switches, the todo you are
+working on in Engage (its text and folder) and your Gmail address, but never the Gmail app password or the calendar link - those stay inside the plugin.
 
 Please look through these files before attaching them to a bug report.

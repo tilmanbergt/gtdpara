@@ -10,6 +10,41 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Engage**: a second sidebar button, **Engage**, opens a small panel over the note you work in.
+  It shows the todo you are working on - with its due date or Waiting For, a large **✓** to tick it off, **Remove
+  #next** or **Someday**, **Note ›** (or **+ Note**) and **File: name ›** - and the other next
+  actions of its project, area, loop or thread on two tabs, **Next** and **Plan**: choose what to
+  work on from Next, make a plan todo a next action with **#next**; a project's only `#next`
+  stands on top by itself. **Undo** after every action; **Select next focus ›** moves on to
+  another part of today's focus, only when you ask. Engage follows the note you are in: on a
+  todo's note, its page in a loop note or in a shared notebook, that todo is the one you are
+  working on; on any other note of a project, area, loop or thread, that one is shown, and
+  **Continue with …** takes you back to the todo you were working on. See the help page "Engage".
+- **Engage ›** at the top of a project's or area's page, a loop overview and a thread overview
+  opens Engage for it.
+- **After Done**: when you tick off the last `#next` of a project, area, loop or thread on Daily,
+  the Current tab or an overview, the status line offers up to three todos of its plan to make
+  the next one, or **Later**.
+
+### Changed
+- **A project's or area's todos** are grouped Next, Waiting For, **Plan** (todos without a flow
+  state - planned, not yet next), Someday, Maybe. Untagged todos used to come last, as "Other".
+  The Inbox keeps "Other" last: there they are not processed yet.
+- **Stalled projects and neglected areas** (Weekly Review), and "no next action" on an area's
+  Projects tab and on loops: a project needs a `#next` todo (or something you wait for) to count
+  as moving - planned todos alone no longer do. The Review step lists the plan first, with
+  **→ Next**.
+- **Unfocused next items** (Weekly Review): **Remove #next** puts a todo back into the plan.
+- **Week and Month focus cards** show how many todos are planned: "2 Next · 5 Plan · 1 meeting"
+  (instead of the Someday count).
+
+### Fixed
+- **Related items on a note** listed every `#next` todo when the note's todo had `#next` (the
+  same for `#now`, `#someday`, `#maybe` and Waiting For): only tags about what an item is about,
+  like `#garden` or `#retro/alpha`, relate items now. A note that is still updated when it is
+  opened shows the right list the next time you open it.
+
 ## [0.15.0] — 2026-10-16
 
 ### New
