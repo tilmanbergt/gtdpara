@@ -174,3 +174,26 @@ export function homeNotebookGoTo(
   if (open && years.some(y => normalizeNotePath(y.absolutePath) === open)) return null;
   return current.absolutePath;
 }
+
+// ---- Notebook tab (§3.4) ----
+
+export const NOTEBOOK_TAB_TEXT = {
+  label: 'Notebook',
+  open: 'Open',
+  create: '+ Create notebook',
+} as const;
+
+/** The tab without any notebook file: what it will be. `relativeFile` as the note link names it. */
+export function homeNotebookEmptyText(relativeFile: string, kind: 'project' | 'area'): string {
+  return `No home notebook yet. It will be ${relativeFile} in this ${kind === 'project' ? 'Project' : 'Area'}'s folder.`;
+}
+
+/** This year's notebook is missing while earlier years exist. */
+export function homeNotebookMissingYearText(fileName: string): string {
+  return `${fileName} doesn't exist yet.`;
+}
+
+/** A year chip: the year, "+ <year>" for this year's missing file (a tap creates it). */
+export function yearChipLabel(year: {year: number; exists: boolean}): string {
+  return year.exists ? String(year.year) : `+ ${year.year}`;
+}

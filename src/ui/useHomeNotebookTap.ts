@@ -12,8 +12,12 @@
  * Existence is checked again on the tap, so a notebook deleted or made
  * outside gtdpara is not opened or created twice. Errors show in the status
  * slot; the created file is named there afterwards.
+ *
+ * `useHomeNotebookActions` also gives the Notebook tab its direct actions
+ * (§3.4): `create` (the "+ <year>" chip and Create notebook, after the same
+ * confirm) and `open` (a year's file, or a Contents row's page).
  */
-import {useCallback, useRef} from 'react';
+import {useCallback, useMemo, useRef} from 'react';
 import {homeNotebookCreatedText, homeNotebookYearChoiceText} from '../domain/fileChangeText';
 import {planHomeNotebookTap} from '../domain/homeNotebook';
 import {createHomeNotebook} from '../storage/homeNotebookCreate';
@@ -26,7 +30,7 @@ import {
 } from '../storage/homeNotebooks';
 import {findCachedItem} from '../storage/dataCache';
 import {loadSettings} from '../storage/settingsStorage';
-import {displayPath} from '../supernote/fileSystem';
+import {displayPath, fileExists} from '../supernote/fileSystem';
 import {log} from '../utils/log';
 import {useActionError} from './useActionError';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
@@ -35,7 +39,19 @@ import {useStatusApi} from './status/StatusProvider';
 
 let nextInstance = 0;
 
+export interface HomeNotebookActions {
+  tap: (nb: HomeNotebook) => void;
+  /** Creates this year's notebook after the confirm, and opens it on page 1. */
+  create: (nb: HomeNotebook) => void;
+  /** Opens a notebook file on its last viewed page, or on `page` (0-based). */
+  open: (path: string, page?: number) => void;
+}
+
 export function useHomeNotebookTap(name: string): (nb: HomeNotebook) => void {
+  return useHomeNotebookActions(name).tap;
+}
+
+export function useHomeNotebookActions(name: string): HomeNotebookActions {
   const confirmCreate = useNoteCreateConfirm(`${name}.homeNotebookCreate`);
   const chooseYear = useStatusChoice(`${name}.homeNotebookYear`);
   const {run} = useActionError(`${name}.homeNotebookError`, `${name}: home notebook failed`);
@@ -43,7 +59,24 @@ export function useHomeNotebookTap(name: string): (nb: HomeNotebook) => void {
   // Per instance: the Projects and Areas tabs are the same screen, both kept.
   const doneId = useRef(`${name}.homeNotebookDone.${++nextInstance}`).current;
 
-  return useCallback(
+  const created = useCallback(
+    async (nb: HomeNotebook, path: string) => {
+      await createHomeNotebook(nb, path, await loadSettings());
+      statusApi.show(doneId, {
+        kind: 'success',
+        text: homeNotebookCreatedText(nb.fileName, displayPath(nb.folder)),
+        onDismiss: () => statusApi.clear(doneId),
+      });
+    },
+    [statusApi, doneId],
+  );
+  const confirmNew = useCallback(
+    async (nb: HomeNotebook) =>
+      (await confirmCreate({kind: 'new-shared-file', file: `${nb.fileName}.note`, absolutePath: nb.absolutePath, setupName: null})) !== null,
+    [confirmCreate],
+  );
+
+  const tap = useCallback(
     (tapped: HomeNotebook) => {
       run(async () => {
         const settings = await loadSettings();
@@ -52,13 +85,10 @@ export function useHomeNotebookTap(name: string): (nb: HomeNotebook) => void {
         const years = nb.exists ? [] : await loadHomeNotebookYears(nb, settings);
         const plan = planHomeNotebookTap({absolutePath: nb.absolutePath, exists: nb.exists, years});
         log('HomeNotebookTap:', plan.kind);
-        let createPath: string | null = null;
         if (plan.kind === 'open') {
           await openHomeNotebook(plan.path);
         } else if (plan.kind === 'create') {
-          const fileName = `${nb.fileName}.note`;
-          const choice = await confirmCreate({kind: 'new-shared-file', file: fileName, absolutePath: plan.path, setupName: null});
-          if (choice !== null) createPath = plan.path;
+          if (await confirmNew(nb)) await created(nb, plan.path);
         } else {
           const openName = plan.openPath.slice(plan.openPath.lastIndexOf('/') + 1).replace(/\.note$/, '');
           const choice = await chooseYear(
@@ -70,19 +100,31 @@ export function useHomeNotebookTap(name: string): (nb: HomeNotebook) => void {
               openName,
             }),
           );
-          if (choice === 0) createPath = plan.createPath;
+          if (choice === 0) await created(nb, plan.createPath);
           if (choice === 1) await openHomeNotebook(plan.openPath);
-        }
-        if (createPath) {
-          await createHomeNotebook(nb, createPath, settings);
-          statusApi.show(doneId, {
-            kind: 'success',
-            text: homeNotebookCreatedText(nb.fileName, displayPath(nb.folder)),
-            onDismiss: () => statusApi.clear(doneId),
-          });
         }
       });
     },
-    [run, confirmCreate, chooseYear, statusApi, doneId],
+    [run, confirmNew, created, chooseYear],
   );
+
+  const create = useCallback(
+    (nb: HomeNotebook) => {
+      run(async () => {
+        await refreshHomeNotebookStates([nb.absolutePath]);
+        if (await fileExists(nb.absolutePath)) return openHomeNotebook(nb.absolutePath);
+        if (await confirmNew(nb)) await created(nb, nb.absolutePath);
+      });
+    },
+    [run, confirmNew, created],
+  );
+
+  const open = useCallback(
+    (path: string, page?: number) => {
+      run(() => openHomeNotebook(path, page));
+    },
+    [run],
+  );
+
+  return useMemo(() => ({tap, create, open}), [tap, create, open]);
 }

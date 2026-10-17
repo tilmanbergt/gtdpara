@@ -116,7 +116,8 @@ import {AbbrevValidation, ExistingAbbrev, validateAbbrev} from '../domain/abbrev
 import EngageButton from '../ui/EngageButton';
 import HomeNotebookButton from '../ui/HomeNotebookButton';
 import {useHomeNotebooks} from '../ui/useHomeNotebooks';
-import {useHomeNotebookTap} from '../ui/useHomeNotebookTap';
+import {useHomeNotebookActions} from '../ui/useHomeNotebookTap';
+import NotebookTab from './notebook/NotebookTab';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {ensureItemCached, findCachedItem, frontMatterOf, getCachedData, updateItemFrontMatter} from '../storage/dataCache';
 import {saveFrontMatter} from '../storage/projectFile';
@@ -248,7 +249,8 @@ export default function ItemDetail({
   // once the abbreviation is known ({abbr} in the notebook's name).
   const homeItems = useMemo(() => [{path, name, abbrev: resourceFolderState?.abbrev ?? null}], [path, name, resourceFolderState?.abbrev]);
   const homes = useHomeNotebooks(homeItems);
-  const tapHome = useHomeNotebookTap('ItemDetail');
+  const homeActions = useHomeNotebookActions('ItemDetail');
+  const homeNotebook = resourceFolderState ? homes.of(homeItems[0]) : null;
 
   // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.3):
   // re-derive quietly if this item's file changed while hidden.
@@ -515,6 +517,18 @@ export default function ItemDetail({
         />
       ),
     },
+    // The home notebook (docs/dev/history/technical-design-home-notebooks.md §3.4), while the Default has one.
+    ...(homeNotebook
+      ? [
+          {
+            key: 'notebook',
+            label: 'Notebook',
+            render: (viewportHeight: number | undefined) => (
+              <NotebookTab nb={homeNotebook} ownerKind={kind} actions={homeActions} viewportHeight={viewportHeight} textColor={textColor} borderColor={borderColor} />
+            ),
+          },
+        ]
+      : []),
   ];
 
 
@@ -538,7 +552,7 @@ export default function ItemDetail({
           />
         )}
         <View style={styles.engageButton}>
-          <HomeNotebookButton nb={resourceFolderState ? homes.of(homeItems[0]) : null} onPress={tapHome} variant="labeled" textColor={textColor} borderColor={borderColor} />
+          <HomeNotebookButton nb={homeNotebook} onPress={homeActions.tap} variant="labeled" textColor={textColor} borderColor={borderColor} />
           <EngageButton owner={{kind: 'item', itemPath: path}} textColor={textColor} borderColor={borderColor} />
         </View>
       </View>
