@@ -47,6 +47,7 @@ jest.mock('../../src/storage/linkedFiles', () => ({
 const AREAS = '/storage/emulated/0/Note/2 Areas';
 const mockFiles: Record<string, string> = {};
 const mockNote: {path: string | null} = {path: null};
+const mockOpenedNotes: Array<[string, number]> = [];
 jest.mock('../../src/supernote/fileSystem', () => ({
   ...jest.requireActual('../../src/supernote/fileSystem'),
   getCurrentNotePath: async () => mockNote.path,
@@ -60,7 +61,12 @@ jest.mock('../../src/supernote/fileSystem', () => ({
             const name = p.split('/').slice(-2)[0];
             return {name, path: `${folder}/${name}`, isFolder: true};
           })
-      : [],
+      : Object.keys(mockFiles)
+          .filter(p => p.slice(0, p.lastIndexOf('/')) === folder)
+          .map(p => ({name: p.slice(folder.length + 1), path: p, isFolder: false})),
+  openPath: async (path: string, page?: number) => {
+    mockOpenedNotes.push([path, page ?? -1]);
+  },
   readTextFile: async (path: string) => {
     if (path in mockFiles) return mockFiles[path];
     throw new Error(`no file ${path}`);
@@ -133,6 +139,7 @@ beforeEach(() => {
   mockNoteOpen.cancelled = false;
   mockNoteOpen.calls = 0;
   mockOpenedFiles.length = 0;
+  mockOpenedNotes.length = 0;
   clearCachedData();
 });
 
@@ -321,6 +328,44 @@ describe('EngageOverlay screens', () => {
     await settle();
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('Ring venue');
     expect(quickAdd(r)).toHaveLength(0);
+    act(() => r.unmount());
+  });
+});
+
+describe('EngageOverlay: Go to the home notebook (docs/dev/history/technical-design-home-notebooks.md §3.6)', () => {
+  const YEAR = new Date().getFullYear();
+  const notebook = `${COACHING}/Coaching ${YEAR}.note`;
+  const withHome = () => {
+    mockSettings.current = {...mockSettings.current, noteSetupDefaults: {...(mockSettings.current.noteSetupDefaults as object), notebook: {name: '{name} {year}', folder: ''}}};
+    area('Coaching', ['## Tasks', '- [ ] Call Anna #next → [[Todos/Call Anna.note]]']);
+    mockFiles[notebook] = '';
+  };
+
+  it('in another note of the Area: one line, a tap opens the notebook on its last viewed page and closes the panel', async () => {
+    withHome();
+    mockNote.path = `${COACHING}/Todos/Call Anna.note`;
+    const {r, onClose} = await open({via: 'button'});
+    expect(texts(r)).toContain(`Go to Coaching ${YEAR} ›`);
+    await press(r, `Go to Coaching ${YEAR} ›`);
+    expect(mockOpenedNotes).toEqual([[notebook, -1]]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    act(() => r.unmount());
+  });
+
+  it('inside the notebook itself: no line', async () => {
+    withHome();
+    mockNote.path = notebook;
+    const {r} = await open({via: 'button'});
+    expect(texts(r).some(t => t.startsWith('Go to '))).toBe(false);
+    act(() => r.unmount());
+  });
+
+  it('no notebook yet, or no Default notebook: no line (Engage never creates files)', async () => {
+    withHome();
+    delete mockFiles[notebook];
+    mockNote.path = `${COACHING}/Todos/Call Anna.note`;
+    const {r} = await open({via: 'button'});
+    expect(texts(r).some(t => t.startsWith('Go to '))).toBe(false);
     act(() => r.unmount());
   });
 });

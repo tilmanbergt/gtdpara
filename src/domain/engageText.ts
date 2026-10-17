@@ -61,6 +61,11 @@ export function ackLabel(kind: 'done' | 'someday' | 'unnext' | 'next'): string {
 }
 
 /** The way back to the todo you worked on in another owner (Addendum "Engage follows the note"); the line cuts it to fit. */
+/** The way to the owner's home notebook (docs/dev/history/technical-design-home-notebooks.md §3.6); `fileName` without ".note". */
+export function goToNotebookText(fileName: string): string {
+  return `Go to ${fileName} ›`;
+}
+
 export function backLineText(todoTitle: string): string {
   return `Continue with ${todoTitle}`;
 }

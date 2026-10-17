@@ -9,6 +9,7 @@
 import {sanitizeFileNameComponent} from './fileName';
 import {PieceRenderContext} from './pageLayout';
 import {periodLabel} from './period';
+import {normalizeNotePath} from './returnContext';
 import {renderSharedFileName} from './sharedNotePages';
 import {MonthlyGoal, WeeklyGoal} from './types';
 
@@ -153,4 +154,23 @@ export function homePageContext(item: {
   weeklyGoals: readonly WeeklyGoal[];
 }): PieceRenderContext {
   return {title: item.name, scope: item.scope.trim(), goals: homeGoalsText(item)};
+}
+
+// ---- Engage "Go to" (§3.6) ----
+
+/**
+ * Where Engage's "Go to <notebook> ›" leads: this year's home notebook when it
+ * exists and the open note is neither it nor one of its earlier years; else
+ * null (Engage never creates files). `years` as `homeNotebookYears` lists
+ * them, current first, with absolute paths.
+ */
+export function homeNotebookGoTo(
+  openNotePath: string | null,
+  years: ReadonlyArray<{absolutePath: string; exists: boolean}>,
+): string | null {
+  const current = years[0];
+  if (!current?.exists) return null;
+  const open = openNotePath ? normalizeNotePath(openNotePath) : null;
+  if (open && years.some(y => normalizeNotePath(y.absolutePath) === open)) return null;
+  return current.absolutePath;
 }

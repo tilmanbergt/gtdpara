@@ -13,10 +13,12 @@ import {EngageFlowChoice} from '../../domain/engageOptions';
 import {EngageOwner, EngageSource, EngageTodoRef, ownerHomePath, todoKeyOf} from '../../domain/engageOwner';
 import {ENGAGE_TEXT} from '../../domain/engageText';
 import {setEngageCurrent} from '../../storage/engageCurrent';
+import {openHomeNotebook} from '../../storage/homeNotebooks';
 import CollapsedQuickAdd from '../../ui/CollapsedQuickAdd';
 import StatusFrame from '../../ui/status/StatusFrame';
 import {taskRowLayout} from '../../ui/taskRowLayout';
 import {useThemeColors} from '../../ui/theme';
+import {useActionError} from '../../ui/useActionError';
 import {useCloseLoop} from '../../ui/useCloseLoop';
 import {useEntryActions} from '../../ui/useEntryActions';
 import {errorMessage} from '../../utils/errorMessage';
@@ -27,6 +29,7 @@ import BackLine from './BackLine';
 import Celebration from './Celebration';
 import EngageFooter from './EngageFooter';
 import EngageHeader from './EngageHeader';
+import GoToLine from './GoToLine';
 import {ENGAGE_BACKDROP_TRANSPARENT, ENGAGE_TEXT_WIDTH, engageStyles as styles} from './engageStyles';
 import MarksLine from './MarksLine';
 import NowBox from './NowBox';
@@ -34,6 +37,7 @@ import OptionTabs from './OptionTabs';
 import OwnerEmpty from './OwnerEmpty';
 import OwnerList from './OwnerList';
 import {useEngageFlow} from './useEngageFlow';
+import {useEngageGoTo} from './useEngageGoTo';
 import {useEngageView} from './useEngageView';
 
 const NAME = 'EngageOverlay';
@@ -60,6 +64,8 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
   const view = useEngageView(state, source);
   const actions = useEntryActions(NAME);
   const closeLoop = useCloseLoop(NAME);
+  const goTo = useEngageGoTo(state.owner);
+  const goToAction = useActionError(`${NAME}.goToError`, `${NAME}: opening the home notebook failed`);
   useEinkRefreshOnLoad(source === null);
   const {owner, screen, ack} = state;
 
@@ -117,6 +123,15 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
   const openFile = async (linkedFile: string) => {
     log(`${NAME}: action`, 'file');
     if (await actions.openTaskFile(linkedFile)) onClose();
+  };
+
+  /** "Go to <notebook> ›": the notebook comes to the front and the panel goes, like a todo's note. */
+  const openGoTo = (path: string) => {
+    log(`${NAME}: action`, 'goTo');
+    goToAction.run(async () => {
+      await openHomeNotebook(path);
+      onClose();
+    });
   };
 
   const homeName = (o: EngageOwner) => source?.items.find(i => i.path === ownerHomePath(o))?.name ?? '';
@@ -204,6 +219,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
               />
             ) : null}
             {screen.kind === 'options' && tab === 'plan' ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
+            {goTo && screen.kind === 'options' ? <GoToLine fileName={goTo.fileName} onPress={() => openGoTo(goTo.path)} textColor={textColor} /> : null}
             {destination ? (
               <CollapsedQuickAdd
                 label={ENGAGE_TEXT.quickAdd}

@@ -1,5 +1,5 @@
 // docs/dev/history/technical-design-home-notebooks.md §3.1, §6: the home notebook's name, its years and the tap plan.
-import {hasYear, homeGoalsText, homeNotebookName, homeNotebookYears, homePageContext, planHomeNotebookTap} from '../../src/domain/homeNotebook';
+import {hasYear, homeGoalsText, homeNotebookGoTo, homeNotebookName, homeNotebookYears, homePageContext, planHomeNotebookTap} from '../../src/domain/homeNotebook';
 import {createDefaultHomePage, pageKindsOf, seedNoteSetupDefaults} from '../../src/domain/noteSetups';
 import {defaultPageKinds} from '../../src/domain/noteSetupText';
 import {pieceIsHeading, PIECE_PAGES, renderPieceText} from '../../src/domain/pageLayout';
@@ -143,5 +143,24 @@ describe('Home page (§3.2)', () => {
     expect(defaultPageKinds({notebook: null})).toEqual(['meeting', 'todo', 'first']);
     expect(defaultPageKinds({notebook: {name: '{name}', folder: ''}})).toEqual(['meeting', 'todo', 'first', 'home']);
     expect(seedNoteSetupDefaults().pages.home).toEqual(createDefaultHomePage());
+  });
+});
+
+describe('homeNotebookGoTo (§3.6)', () => {
+  const y = (year: number, exists: boolean) => ({absolutePath: `/storage/emulated/0/Note/2 Areas/Lead/Lead ${year}.note`, exists});
+
+  it('leads to this year\'s notebook from any other note', () => {
+    expect(homeNotebookGoTo('/storage/emulated/0/Note/2 Areas/Lead/Todos/x.note', [y(2026, true)])).toBe(y(2026, true).absolutePath);
+    expect(homeNotebookGoTo(null, [y(2026, true)])).toBe(y(2026, true).absolutePath);
+  });
+
+  it('nothing inside the notebook or one of its earlier years, also in another path spelling', () => {
+    expect(homeNotebookGoTo('/sdcard/Note/2 Areas/Lead/Lead 2026.note', [y(2026, true)])).toBeNull();
+    expect(homeNotebookGoTo(y(2025, true).absolutePath, [y(2026, true), y(2025, true)])).toBeNull();
+  });
+
+  it('nothing when this year\'s notebook doesn\'t exist', () => {
+    expect(homeNotebookGoTo('/x.note', [y(2026, false), y(2025, true)])).toBeNull();
+    expect(homeNotebookGoTo('/x.note', [])).toBeNull();
   });
 });
