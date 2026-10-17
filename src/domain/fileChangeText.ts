@@ -118,6 +118,24 @@ export function noteChoiceText(plan: NoteCreationPlan, fullDisplay: string): Not
   };
 }
 
+/**
+ * A home notebook's new year (docs/dev/history/technical-design-home-notebooks.md
+ * §3.3): this year's file is missing, an earlier year's is there. `createName`
+ * is this year's notebook (no ".note"), `createDisplay` its full display path.
+ */
+export function homeNotebookYearChoiceText(args: {createName: string; createDisplay: string; createYear: number; openYear: number; openName: string}): NoteChoiceText {
+  return {
+    text: `No ${args.createName} yet.`,
+    detail: `Create ${args.createYear} creates ${args.createDisplay}. Open ${args.openYear} opens ${args.openName}.note.`,
+    labels: [`Create ${args.createYear}`, `Open ${args.openYear}`],
+  };
+}
+
+/** After a home notebook was created: the file and its folder. */
+export function homeNotebookCreatedText(fileName: string, folderDisplay: string): string {
+  return `Created ${fileName}.note in ${folderDisplay}.`;
+}
+
 /** A status-slot confirm: one line, tap-to-expand detail, the confirm button (✕ cancels). */
 export interface ConfirmText {
   text: string;

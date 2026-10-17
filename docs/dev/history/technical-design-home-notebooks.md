@@ -187,3 +187,15 @@ Smoke renders: ItemsList with icons, ItemDetail with the Notebook tab, NotebookT
 - Typed headings made by hand are expected to cover their textbox like gtdpara's own (`controlTrailNums` = its `numInPage`). Not a gate: S0 only logs what it sees; a heading that turns out otherwise shows as "Handwritten heading" and is dealt with then.
 - Goals piece = the latest monthly and the latest weekly goal (§3.2).
 - Earlier years' notebooks keep their names on rename.
+
+## As built
+
+Filled in step by step; differences from §3 and the reason.
+
+- **`getTitles`** lives in `supernote/noteTitles.ts`, not `supernote/fileSystem.ts`: that file is at its code-health baseline and may not grow.
+- **S0 diagnostic**: `storage/noteTitlesDiagnostic.ts`, called from `App.tsx`'s `reorient()` on the note the plugin was opened from, only while Debug logging is on. One line `NoteTitles: open note` with pages, titles, `getTitles` ms, and per title `p<page>:yes|own|no` (a covered textbox found; `own` = gtdpara's marker). Counts, ms and yes/no only.
+- **Tap flow** is its own hook, `ui/useHomeNotebookTap.ts` (one hook per file); `ui/HomeNotebookButton.tsx` is only the control and takes the notebook (`nb`) and `onPress` instead of the item, so a list has one tap hook per screen rather than one per row.
+- **`HomeNotebook`** also carries `itemAbbrev` (the years are rendered with the same `{abbr}`), `relativeFile` and `known` (the state cache has an answer). Until `known`, the icon's space stays empty, so no wrong icon is drawn and the row doesn't reflow. `loadHomeNotebookYears(nb, settings)` returns absolute paths; `openHomeNotebook(path, page?)` takes a path, because a year chip opens another year's file; `createHomeNotebook(nb, absolutePath)` creates the given year's file.
+- **State cache refresh** also runs when a screen is shown again, and on a tap (existence is checked again before open or create). A native build without `statFiles` falls back to one `fileExists` per file.
+- **Create confirm** is the existing note confirm for a `new-shared-file` plan without a setup name: "new file <file>.note" · Create, detail "Creates <full path> with a first page for this item." The year choice reads "No <notebook> yet." · Create <year> · Open <year> (texts in `domain/fileChangeText.ts`, as in the UI draft). After a create, "Created <file>.note in <folder>." shows in the status slot.
+- **Row height** on the Projects/Areas tabs: with the feature on, the name's line estimate uses the column width minus the icon (44), and a row is at least 36 tall.

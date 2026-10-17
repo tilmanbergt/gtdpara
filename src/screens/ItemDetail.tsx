@@ -109,11 +109,14 @@
  * remount this screen, which loads the item again; FileBrowserPane scans its
  * open folder itself whenever it (re)mounts or drills.
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ItemStatus} from '../domain/types';
 import {AbbrevValidation, ExistingAbbrev, validateAbbrev} from '../domain/abbrev';
 import EngageButton from '../ui/EngageButton';
+import HomeNotebookButton from '../ui/HomeNotebookButton';
+import {useHomeNotebooks} from '../ui/useHomeNotebooks';
+import {useHomeNotebookTap} from '../ui/useHomeNotebookTap';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {ensureItemCached, findCachedItem, frontMatterOf, getCachedData, updateItemFrontMatter} from '../storage/dataCache';
 import {saveFrontMatter} from '../storage/projectFile';
@@ -240,6 +243,12 @@ export default function ItemDetail({
       cancelled = true;
     };
   }, [kind, name, path]);
+
+  // Home notebook button in the header (docs/dev/history/technical-design-home-notebooks.md §3.3),
+  // once the abbreviation is known ({abbr} in the notebook's name).
+  const homeItems = useMemo(() => [{path, name, abbrev: resourceFolderState?.abbrev ?? null}], [path, name, resourceFolderState?.abbrev]);
+  const homes = useHomeNotebooks(homeItems);
+  const tapHome = useHomeNotebookTap('ItemDetail');
 
   // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.3):
   // re-derive quietly if this item's file changed while hidden.
@@ -529,6 +538,7 @@ export default function ItemDetail({
           />
         )}
         <View style={styles.engageButton}>
+          <HomeNotebookButton nb={resourceFolderState ? homes.of(homeItems[0]) : null} onPress={tapHome} variant="labeled" textColor={textColor} borderColor={borderColor} />
           <EngageButton owner={{kind: 'item', itemPath: path}} textColor={textColor} borderColor={borderColor} />
         </View>
       </View>
@@ -722,6 +732,7 @@ function AbbrevPill({
 const styles = StyleSheet.create({
   engageButton: {
     marginLeft: 'auto',
+    flexDirection: 'row',
   },
   headerRow: {
     flexDirection: 'row',
