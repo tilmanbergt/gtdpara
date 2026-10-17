@@ -56,6 +56,7 @@ Engage never moves on to another owner by itself. **Select next focus ›** list
 
 ## Quick Add, marks and leaving
 
+- **Go to** with the notebook's name, for example "Go to Garden renovation 2026 ›": when the owner is a project or area with a home notebook ([Projects and Areas](projects-and-areas.md)) and you are in another of its notes, this line opens the notebook and closes the panel.
 - **+ Quick Add** at the bottom opens Quick Add for the owner. For a loop or a thread, its tag is added to what you enter. **Cancel** folds it again.
 - When the owner's Project or Area has marks to process, a line says so; it opens Process marks, and Close there brings you back to Engage.
 - **Open gtdpara** opens the plugin as usual, **Close** (or ✕) closes the panel.

@@ -50,8 +50,9 @@ interface ItemSpec {
   monthlyGoal?: string;
 }
 
-function itemFile(spec: ItemSpec, today: Date): string {
-  const fm = [`kind: ${spec.kind}`, `status: ${spec.status ?? 'active'}`];
+/** `name:` is the item's name as gtdpara knows it, so renaming a demo folder shows the rename offer (docs/dev/history/technical-design-home-notebooks.md §3.7). */
+function itemFile(name: string, spec: ItemSpec, today: Date): string {
+  const fm = [`kind: ${spec.kind}`, `name: ${name}`, `status: ${spec.status ?? 'active'}`];
   if (spec.dailyFocus) {fm.push('dailyFocus: true');}
   if (spec.weeklyFocus) {fm.push('weeklyFocus: true');}
   if (spec.monthlyFocus) {fm.push('monthlyFocus: true');}
@@ -69,9 +70,9 @@ export function buildDemoFiles(today: Date): DemoFile[] {
   const monday = toWeekday(today, 1);
   const files: DemoFile[] = [];
   const project = (name: string, spec: Omit<ItemSpec, 'kind'>) =>
-    files.push({path: `1 Projects/${name}/project.txt`, content: itemFile({...spec, kind: 'project'}, today)});
+    files.push({path: `1 Projects/${name}/project.txt`, content: itemFile(name, {...spec, kind: 'project'}, today)});
   const area = (name: string, spec: Omit<ItemSpec, 'kind'>) =>
-    files.push({path: `2 Areas/${name}/area.txt`, content: itemFile({...spec, kind: 'area'}, today)});
+    files.push({path: `2 Areas/${name}/area.txt`, content: itemFile(name, {...spec, kind: 'area'}, today)});
 
   project('Garden renovation', {
     area: 'Home',
@@ -88,6 +89,7 @@ export function buildDemoFiles(today: Date): DemoFile[] {
     ],
     meetings: [`- ${d(3)} 10:00-11:00 Site visit with Marco #marco`],
     weeklyGoal: 'Beds measured and soil ordered',
+    monthlyGoal: 'Raised beds built and planted',
   });
   project('Team offsite', {
     area: 'Team',

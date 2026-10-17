@@ -62,6 +62,9 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
 - **Focus mode** (`#now`): only the few things you are doing right now
 - **Quick Add** for todos, meetings and notes, with tags, due dates and refiling
 - **Projects & Areas** with status, scope, abbreviations and linked files
+- **Home notebooks**: one notebook per project and area (and year), one tap away from every list -
+  with a Home page (scope and goals), a Notebook tab with its years and (experimental) its headings,
+  and a rename offer when you renamed the folder elsewhere
 - **Inbox + lasso capture** from handwriting, or **Mark for later** in one tap and process the marks later
 - **Weekly Review** hub with one clear step at a time
 - Works with **Obsidian** (Tasks and Dataview) through the Supernote Cloud Sync plugin

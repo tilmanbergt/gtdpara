@@ -10,6 +10,41 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Home notebooks**: every project and area has one notebook to go to - the Default note
+  setup's notebook made for it, for example "Garden renovation 2026.note" in its folder. A
+  notebook icon on the Projects and Areas tabs, on Daily's focus rows, on the Week and Month
+  focus cards and as **Notebook** at the top of a project's or area's page opens it on the page
+  you last looked at, or - after asking - creates it. With `{year}` in the name and only last
+  year's notebook there, it offers **Create 2027** or **Open 2026**. See "Home notebooks" on the help page
+  "Projects and Areas".
+- **Home page**: a new home notebook starts with a page showing the project's or area's name,
+  its Scope and its latest monthly and weekly goal - also when a todo's or meeting's note creates
+  it. Its layout is the Default's new **Home page** in Settings → Note setups.
+- **Notebook tab** on a project's or area's page, between Threads/Loops and Files: the notebook
+  with **Open**, a chip for every year, and **+ Create notebook** while there is none.
+- **Engage**: in another note of a project or area, **Go to** with its notebook's name opens the
+  home notebook.
+- **Renamed folders**: when a project's or area's folder was renamed outside gtdpara, its page
+  offers to rename this year's notebook too (**Rename** · **Not now**) and updates every link
+  into it. The Integrity Check lists such folders.
+
+### Changed
+- **New installs and the demo space** put every note of a project or area into one notebook per
+  year, its home notebook (Default note setup: One notebook, `{name} {year}`). Existing settings
+  are not changed.
+
+### Experimental
+- **Notebook contents**: the Notebook tab lists the notebook's headings in page order - pages
+  gtdpara made by their todo or meeting, typed headings by their text, handwritten ones as
+  "Handwritten heading"; a tap opens that page. Switch it off in Settings → Advanced.
+
+### Upgrade notes
+- gtdpara now notes each project's and area's name in its file (`name:` at the top), to notice
+  renamed folders. It is written when a home notebook is created or opened from gtdpara.
+- The Default note setup gets a **Home page** (Title, Scope, Latest goals). It is used only while
+  the Default uses one notebook.
+
 ## [0.16.0] — 2026-10-17
 
 ### New

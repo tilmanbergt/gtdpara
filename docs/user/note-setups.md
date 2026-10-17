@@ -69,7 +69,9 @@ Left, the page as it will look, with its background; tap a piece to select it. R
 
 ## The Default
 
-Tap **Default** at the top of the list. It has **Notes** (own note per item, or one notebook for everything no setup covers), **Tracking** and its three pages, each with **Edit ›**. Its pages are the Default layout of every setup that uses it, Loop setups' First pages included.
+Tap **Default** at the top of the list. It has **Notes** (own note per item, or one notebook for everything no setup covers), **Tracking** and its pages, each with **Edit ›**. Its pages are the Default layout of every setup that uses it, Loop setups' First pages included.
+
+A new install starts with **One notebook** named `{name} {year}` in each project's or area's own folder: every note of a project or area goes into one file per year. This notebook is each project's and area's home notebook ([Projects and Areas](projects-and-areas.md)); the Default then also has a **Home page**, the first page of every new home notebook (Title, Scope and Latest goals). A setup whose notebook has the same name and folder shares this file.
 
 ## Heading style
 
@@ -122,7 +124,7 @@ Once a note exists, the note icon opens it directly. A page stays where it was c
 
 ## Order of pages in a notebook
 
-A notebook - and a loop note - reads like a timeline. A new page goes where it belongs in time: a meeting by its date, a todo by the day it was created. A todo you create between two meetings lands between them; items of the same day keep the order you created them in. Pages you add yourself after an item's page stay with that item: a new page goes after them, never in between. In a loop note the loop's own page stays first. Pages are placed once, when they are created, and never moved later - a meeting whose date changes stays where it is.
+A notebook - and a loop note - reads like a timeline. A new page goes where it belongs in time: a meeting by its date, a todo by the day it was created. A todo you create between two meetings lands between them; items of the same day keep the order you created them in. Pages you add yourself after an item's page stay with that item: a new page goes after them, never in between. In a loop note the loop's own page stays first, in a home notebook its Home page. Pages are placed once, when they are created, and never moved later - a meeting whose date changes stays where it is.
 
 ## Finding notes again
 
