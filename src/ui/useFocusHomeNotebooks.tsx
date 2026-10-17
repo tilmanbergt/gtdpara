@@ -1,10 +1,10 @@
 /**
  * The home notebook icons of a focus panel
  * (docs/dev/history/technical-design-home-notebooks.md §3.3): Daily's focus
- * rows and Week's focus cards. One `useHomeNotebooks` for every focused item
+ * rows and the Week and Month focus cards. One `useHomeNotebooks` for every focused item
  * of the panel (one `statFiles` call), one tap hook, and the icon for an
- * item. Off (`enabled` false) it reads nothing and renders nothing - Month
- * and Review show the same panel without icons.
+ * item. Off (`enabled` false) it reads nothing and renders nothing - Review's
+ * focus step shows the same panel without icons.
  */
 import React, {useCallback} from 'react';
 import {CachedItem} from '../storage/dataCache';

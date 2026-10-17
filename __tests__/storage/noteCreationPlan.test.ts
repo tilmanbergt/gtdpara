@@ -190,7 +190,14 @@ describe('first-time note in the Default notebook (docs/dev/history/technical-de
     expect(sharedPages.insertItemPage).toHaveBeenCalledWith(file, expect.any(String), expect.any(String), expect.any(String));
   });
 
-  it('a setup’s notebook gets no Home page', async () => {
+  it('a setup whose notebook is the home notebook shares the file, Home page included', async () => {
+    const settings = {...withDefaultNotebook(), noteSetups: [coachingRule({notebook: {name: '{name} {year}', folder: ''}})]};
+    await openOrCreateMeetingNote(meeting('Session #coaching/sabina'), AREA, settings, null, {confirmCreate: recorder(true).confirm});
+    // The meeting's own date decides the year.
+    expect(fs.insertKeyWord).toHaveBeenCalledWith(`${AREA}/Coaching 2026.note`, 0, 'home');
+  });
+
+  it('a setup’s own notebook gets no Home page', async () => {
     await openOrCreateMeetingNote(meeting('Session #coaching/sabina'), AREA, withDefaultNotebook(), null, {confirmCreate: recorder(true).confirm});
     expect(fs.insertKeyWord).not.toHaveBeenCalledWith(expect.any(String), 0, 'home');
   });

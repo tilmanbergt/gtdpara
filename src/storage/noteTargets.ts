@@ -94,6 +94,19 @@ function place(candidate: NoteCandidate, input: NoteTargetInput, loops: ReturnTy
   return {candidate: {...candidate, target: 'own'}, shared: null};
 }
 
+/**
+ * The Default notebook's file for this note, relative to the item's folder -
+ * the item's home notebook (docs/dev/history/technical-design-home-notebooks.md
+ * §3.2) - or null without one. A setup whose notebook renders to the same
+ * file shares it, Home page included.
+ */
+export function defaultNotebookFile(input: NoteTargetInput): string | null {
+  const notebook = input.settings.noteSetupDefaults.notebook;
+  if (!notebook || input.forceOwn) return null;
+  const fileName = homeNotebookName({template: notebook.name, date: input.fileDate, ...noteOwnerNames(input.itemPath)});
+  return notebook.folder ? `${notebook.folder}/${fileName}.note` : `${fileName}.note`;
+}
+
 /** The places a first note of this item can go, best first, one per file (§4.1). */
 export function placeNoteCandidates(input: NoteTargetInput): PlacedCandidate[] {
   const config = noteSetupConfig(input.settings);

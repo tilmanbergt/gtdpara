@@ -74,7 +74,7 @@ interface Props {
    * self-measuring entirely (the escape hatch).
    */
   viewportHeight?: number;
-  /** The home notebook icon on each card (docs/dev/history/technical-design-home-notebooks.md §3.3): Week only. */
+  /** The home notebook icon on each card (docs/dev/history/technical-design-home-notebooks.md §3.3): Week and Month; Review's focus step passes false. */
   showHomeNotebooks?: boolean;
   textColor: string;
   borderColor: string;
@@ -94,7 +94,7 @@ function PeriodFocusPanel({
   onToggle,
   onSaveGoal,
   viewportHeight,
-  showHomeNotebooks = false,
+  showHomeNotebooks = true,
   textColor,
   borderColor,
   placeholderColor,

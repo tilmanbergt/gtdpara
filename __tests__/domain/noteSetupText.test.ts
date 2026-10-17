@@ -27,7 +27,8 @@ describe('row texts', () => {
   });
 
   it('the Default row', () => {
-    expect(defaultRowSummary(seedNoteSetupDefaults())).toBe('Meeting page · Todo page · First page · own note per item');
+    expect(defaultRowSummary(seedNoteSetupDefaults())).toBe('Meeting page · Todo page · First page · Home page · notebook {name} {year}');
+    expect(defaultRowSummary({...seedNoteSetupDefaults(), notebook: null})).toBe('Meeting page · Todo page · First page · own note per item');
     expect(defaultRowSummary({...seedNoteSetupDefaults(), notebook: {name: 'Daily', folder: ''}})).toContain('notebook Daily');
     expect(notesSummary(null, undefined)).toBe('own note per item');
   });

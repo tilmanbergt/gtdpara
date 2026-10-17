@@ -325,7 +325,14 @@ export function createDefaultHomePage(): PageLayout {
   return withDefaultPieces(emptyPageLayout(), 'home');
 }
 
-/** The Default a fresh install starts with: the standard Meeting, First and Home pages; no Todo page (blank); no tracking; own notes. */
+/**
+ * The Default's notebook on a fresh install: one notebook per Project or Area
+ * and year, in its folder - its home notebook
+ * (docs/dev/history/technical-design-home-notebooks.md §1).
+ */
+export const DEFAULT_HOME_NOTEBOOK: Notebook = {name: '{name} {year}', folder: ''};
+
+/** The Default a fresh install starts with: the standard Meeting, First and Home pages; no Todo page (blank); no tracking; every note in the home notebook. */
 export function seedNoteSetupDefaults(): NoteSetupDefaults {
   return {
     pages: {
@@ -334,6 +341,6 @@ export function seedNoteSetupDefaults(): NoteSetupDefaults {
       home: createDefaultHomePage(),
     },
     tracking: {...NO_TRACKING},
-    notebook: null,
+    notebook: {...DEFAULT_HOME_NOTEBOOK},
   };
 }

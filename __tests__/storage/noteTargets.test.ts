@@ -31,7 +31,7 @@ const sparring: NoteSetup = {
 };
 const workshop: NoteSetup = {...createNoteSetup('2', 'loop'), name: 'Workshop', tags: ['workshop'], pages: {todo: workshopTodo}};
 const team: NoteSetup = {...createNoteSetup('3', 'thread'), name: 'Team', tags: ['team']};
-const settings: GtdParaSettings = {...DEFAULT_SETTINGS, noteSetups: [sparring, workshop, team], noteSetupDefaults: seedNoteSetupDefaults()};
+const settings: GtdParaSettings = {...DEFAULT_SETTINGS, noteSetups: [sparring, workshop, team], noteSetupDefaults: {...seedNoteSetupDefaults(), notebook: null}};
 
 function input(tags: string[], extra: Partial<NoteTargetInput> = {}): NoteTargetInput {
   return {itemPath: AREA, tags, pageKind: 'todo', settings, fileDate: '2026-10-12', forceOwn: false, ...extra};

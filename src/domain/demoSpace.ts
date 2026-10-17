@@ -5,7 +5,7 @@
  * files are written by storage/demoSpace.ts. Everything here is written in
  * the normal project-file format, so it is also a readable example of it.
  */
-import {createNoteSetup, seedNoteSetupDefaults} from './noteSetups';
+import {createNoteSetup, DEFAULT_HOME_NOTEBOOK, seedNoteSetupDefaults} from './noteSetups';
 import {monthKeyOf} from './period';
 import {DEFAULT_SETTINGS, GtdParaSettings} from './settings';
 import {INBOX_FILE_NAME} from './types';
@@ -184,13 +184,18 @@ export function buildDemoFiles(today: Date): DemoFile[] {
   return files;
 }
 
-/** Per-profile settings of the demo profile: the demo folders, one Note setup (1:1 meetings, tracked), integrations off. */
+/**
+ * Per-profile settings of the demo profile: the demo folders, one Note setup
+ * (1:1 meetings, tracked), integrations off. The Default and the setup put
+ * their notes into the same file, each Project's and Area's home notebook.
+ */
 export function demoProfileSettings(): GtdParaSettings {
   const oneOnOne = {
     ...createNoteSetup('1', 'thread'),
     name: '1:1 meetings',
     tags: ['1on1'],
     tracking: {trackPrep: true, trackReview: true},
+    notebook: {...DEFAULT_HOME_NOTEBOOK},
   };
   return {
     ...DEFAULT_SETTINGS,
