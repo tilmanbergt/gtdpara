@@ -27,7 +27,7 @@ jest.mock('../../src/supernote/fileSystem', () => ({
 jest.mock('../../src/storage/dataCache', () => {
   const item = (name: string, status: string) => ({kind: 'project', name, path: `/n/1 Projects/${name}`, status, abbrev: null, dailyFocus: false, weeklyFocus: false, monthlyFocus: false});
   const cache = {items: [item('Garden', 'active'), item('Boat', 'on-hold'), item('Tax', 'done')], paths: {projects: '/n/1 Projects'}};
-  return {getCachedData: () => cache, getCacheVersion: () => 1, subscribeCache: () => () => undefined, rebuildCache: async () => cache, findCachedItem: () => undefined};
+  return {getCachedData: () => cache, getCacheVersion: () => 1, subscribeCache: () => () => undefined, subscribeFilesChecked: () => () => undefined, rebuildCache: async () => cache, findCachedItem: () => undefined};
 });
 
 import React from 'react';

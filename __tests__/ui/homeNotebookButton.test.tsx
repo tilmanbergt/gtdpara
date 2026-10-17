@@ -45,6 +45,7 @@ jest.mock('../../src/storage/meetingNoteContent', () => ({populateHomePage: (p: 
 jest.mock('../../src/storage/dataCache', () => ({
   findCachedItem: (path: string) => ({path, name: path.split('/').pop(), abbrev: null, scope: '', weeklyGoals: [], monthlyGoals: []}),
   subscribeCache: () => () => undefined,
+  subscribeFilesChecked: () => () => undefined,
 }));
 
 import React from 'react';

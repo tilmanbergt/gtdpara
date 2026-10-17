@@ -11,13 +11,25 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('sn-plugin-lib', () => ({PluginCommAPI: {}, PluginFileAPI: {}}));
 jest.mock('../../src/utils/screenRefresh', () => ({requestEinkRefresh: jest.fn(), useEinkRefreshOnLoad: jest.fn()}));
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
+let mockContentsOn = true;
 jest.mock('../../src/storage/settingsStorage', () => ({
   loadSettings: async () => {
     const s = jest.requireActual('../../src/domain/settings');
     const setups = jest.requireActual('../../src/domain/noteSetups');
-    return {...s.DEFAULT_SETTINGS, noteSetupDefaults: {...setups.seedNoteSetupDefaults(), notebook: {name: '{name} {year}', folder: ''}}};
+    return {
+      ...s.DEFAULT_SETTINGS,
+      notebookContentsEnabled: mockContentsOn,
+      noteSetupDefaults: {...setups.seedNoteSetupDefaults(), notebook: {name: '{name} {year}', folder: ''}},
+    };
   },
 }));
+const mockLoadContents = jest.fn(async (_path: string, _item: unknown) => [
+  {page: 0, y: 0, text: 'Lead', detail: '', source: 'home'},
+  {page: 3, y: 120, text: 'Handwritten heading', detail: '', source: 'handwritten'},
+]);
+jest.mock('../../src/storage/notebookContents', () => ({loadContents: (p: string, item: unknown) => mockLoadContents(p, item)}));
+jest.mock('../../src/ui/useCachedItems', () => ({useCachedItems: () => mockItems}));
+const mockItems = [{path: '/n/2 Areas/Lead', name: 'Lead', tasks: [], meetings: []}];
 let mockFiles: string[] = [];
 jest.mock('../../src/supernote/fileSystem', () => ({
   listFolderEntries: async (folder: string) => mockFiles.map(name => ({name, path: `${folder}/${name}`, isFolder: false})),
@@ -26,6 +38,7 @@ jest.mock('../../src/supernote/fileSystem', () => ({
 import React from 'react';
 import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
+import {StatusProvider} from '../../src/ui/status/StatusProvider';
 import NotebookTab from '../../src/screens/notebook/NotebookTab';
 import {HomeNotebook} from '../../src/storage/homeNotebooks';
 
@@ -46,8 +59,13 @@ const actions = {tap: jest.fn(), create: jest.fn(), open: jest.fn()};
 async function render(notebook: HomeNotebook) {
   let r!: TestRenderer.ReactTestRenderer;
   await act(async () => {
-    r = TestRenderer.create(<NotebookTab nb={notebook} ownerKind="area" actions={actions} textColor="#000" borderColor="#000" />);
+    r = TestRenderer.create(
+      <StatusProvider>
+        <NotebookTab nb={notebook} ownerKind="area" actions={actions} viewportHeight={600} textColor="#000" borderColor="#000" />
+      </StatusProvider>,
+    );
   });
+  await act(async () => undefined);
   await act(async () => undefined);
   return r;
 }
@@ -60,6 +78,7 @@ async function tapText(r: TestRenderer.ReactTestRenderer, label: string) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockContentsOn = true;
 });
 
 describe('NotebookTab', () => {
@@ -92,5 +111,25 @@ describe('NotebookTab', () => {
     expect(actions.create).toHaveBeenCalledTimes(1);
     await tapText(r, String(YEAR - 1));
     expect(texts(r)).toContain(`Lead ${YEAR - 1}`);
+  });
+});
+
+describe('NotebookTab Contents (§3.5)', () => {
+  it('lists the headings of the shown file; a row opens that page', async () => {
+    mockFiles = [`Lead ${YEAR}.note`];
+    const r = await render(nb(true));
+    expect(mockLoadContents).toHaveBeenCalledWith(`${FOLDER}/Lead ${YEAR}.note`, expect.objectContaining({name: 'Lead'}));
+    expect(texts(r)).toEqual(expect.arrayContaining(['Contents', 'p.1', 'Lead', 'p.4', 'Handwritten heading']));
+    await tapText(r, 'p.4');
+    expect(actions.open).toHaveBeenLastCalledWith(`${FOLDER}/Lead ${YEAR}.note`, 3);
+  });
+
+  it('switched off: name, years and Open only', async () => {
+    mockContentsOn = false;
+    mockFiles = [`Lead ${YEAR}.note`];
+    const r = await render(nb(true));
+    expect(mockLoadContents).not.toHaveBeenCalled();
+    expect(texts(r)).not.toContain('Contents');
+    expect(texts(r)).toContain('Open');
   });
 });

@@ -491,8 +491,25 @@ export function refreshCache(settings: GtdParaSettings): Promise<DataCache> {
   refreshInFlight = doRefreshCache(settings).finally(() => {
     refreshInFlight = null;
     perfEnd('cache:refresh', perfToken);
+    Array.from(filesCheckedListeners).forEach(listener => listener());
   });
   return refreshInFlight;
+}
+
+const filesCheckedListeners = new Set<() => void>();
+
+/**
+ * Called after every refreshCache, changed or not - it runs each time the
+ * plugin is opened, so this is the moment files outside the data files (a
+ * home notebook edited or made in Supernote,
+ * docs/dev/history/technical-design-home-notebooks.md §3.1, §3.5) may have
+ * changed too. Returns the unsubscribe function.
+ */
+export function subscribeFilesChecked(listener: () => void): () => void {
+  filesCheckedListeners.add(listener);
+  return () => {
+    filesCheckedListeners.delete(listener);
+  };
 }
 
 function samePaths(cachedPaths: ResolvedParaPaths, configured: ResolvedParaPaths): boolean {

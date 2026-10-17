@@ -181,7 +181,15 @@ export const NOTEBOOK_TAB_TEXT = {
   label: 'Notebook',
   open: 'Open',
   create: '+ Create notebook',
+  contents: 'Contents',
+  noContents: 'No headings yet.',
+  contentsError: "Contents can't be read right now.",
 } as const;
+
+/** A Contents row's page, 1-based as Supernote shows it. */
+export function contentsPageLabel(page: number): string {
+  return `p.${page + 1}`;
+}
 
 /** The tab without any notebook file: what it will be. `relativeFile` as the note link names it. */
 export function homeNotebookEmptyText(relativeFile: string, kind: 'project' | 'area'): string {

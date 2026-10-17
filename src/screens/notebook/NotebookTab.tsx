@@ -4,7 +4,8 @@
  * Loops/Projects tab and Files: the home notebook's name and Open, a chip for
  * every year present (current first; a missing current year reads "+ <year>"
  * and creates it), and - without any file - what it will be and Create
- * notebook. The selected chip decides which file Open uses. The years come
+ * notebook. The selected chip decides which file Open and the Contents
+ * (ContentsSection, when Settings › Advanced › Notebook contents is on) use. The years come
  * from one listing of the notebook's folder, read again when the notebook's
  * state changes (created, deleted); opening and creating go through
  * ui/useHomeNotebookTap.ts's actions.
@@ -22,6 +23,8 @@ import {HomeNotebookActions} from '../../ui/useHomeNotebookTap';
 import {errorMessage} from '../../utils/errorMessage';
 import {logError} from '../../utils/log';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
+import ContentsSection from './ContentsSection';
+import {useNotebookContents} from './useNotebookContents';
 
 interface Props {
   nb: HomeNotebook;
@@ -39,12 +42,16 @@ export default function NotebookTab({nb, ownerKind, actions, viewportHeight, tex
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [reload, setReload] = useState(0);
+  const [contentsOn, setContentsOn] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setError(null);
     loadSettings()
-      .then(settings => loadHomeNotebookYears(nb, settings))
+      .then(settings => {
+        setContentsOn(settings.notebookContentsEnabled !== false);
+        return loadHomeNotebookYears(nb, settings);
+      })
       .then(found => {
         if (cancelled) return;
         setYears(found);
@@ -62,13 +69,16 @@ export default function NotebookTab({nb, ownerKind, actions, viewportHeight, tex
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nb.absolutePath, nb.exists, reload]);
 
+  const current = years?.[0];
+  const showing = !!current && (current.exists || selected !== null);
+  const shown = years ? years.find(y => y.year === selected && y.exists) ?? (current?.exists ? current : years.find(y => y.exists)) ?? null : null;
+  const contents = useNotebookContents(showing && shown ? shown.absolutePath : null, nb.itemPath, contentsOn);
+
   const fill = viewportHeight === undefined ? styles.fill : undefined;
   if (error) return <View style={fill}><LoadErrorNotice error={error} onRetry={() => setReload(n => n + 1)} textColor={textColor} /></View>;
   if (!years) return <View style={fill}><Text style={[styles.caption, {color: textColor}]}>…</Text></View>;
 
-  const current = years[0];
-  const anyExists = years.some(y => y.exists);
-  if (!anyExists) {
+  if (!current || !shown) {
     return (
       <View style={fill}>
         <Text style={[styles.caption, {color: textColor}]}>{homeNotebookEmptyText(nb.relativeFile, ownerKind)}</Text>
@@ -79,10 +89,9 @@ export default function NotebookTab({nb, ownerKind, actions, viewportHeight, tex
     );
   }
 
-  const shown = years.find(y => y.year === selected && y.exists) ?? (current.exists ? current : years.find(y => y.exists)!);
   return (
     <View style={fill}>
-      {current.exists || selected !== null ? (
+      {showing ? (
         <View style={styles.nameRow}>
           <NotebookIcon size={20} color={textColor} />
           <Text style={[styles.name, {color: textColor}]} numberOfLines={1}>
@@ -96,7 +105,7 @@ export default function NotebookTab({nb, ownerKind, actions, viewportHeight, tex
       {years.length > 1 || !current.exists ? (
         <View style={styles.chips}>
           {years.map(y => {
-            const isShown = y.exists && y.absolutePath === shown.absolutePath && (current.exists || selected !== null);
+            const isShown = showing && y.absolutePath === shown.absolutePath;
             return (
               <Pressable
                 key={y.year}
@@ -109,9 +118,24 @@ export default function NotebookTab({nb, ownerKind, actions, viewportHeight, tex
           })}
         </View>
       ) : null}
+      {showing && contents ? (
+        <View style={styles.contents}>
+          <ContentsSection
+            entries={contents}
+            onOpenPage={page => actions.open(shown.absolutePath, page)}
+            resetKey={shown.absolutePath}
+            viewportHeight={viewportHeight === undefined ? undefined : Math.max(0, viewportHeight - CONTENTS_TOP_PX)}
+            textColor={textColor}
+            borderColor={borderColor}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
+
+/** Name row (~36) and one row of year chips (~32 with margins) above the Contents, for a caller's explicit viewport. */
+const CONTENTS_TOP_PX = 36 + 32;
 
 const styles = StyleSheet.create({
   fill: {flex: 1},
@@ -125,4 +149,5 @@ const styles = StyleSheet.create({
   chipMissing: {borderStyle: 'dashed'},
   chipText: {fontSize: FONT.small},
   chipTextSelected: {fontWeight: '700'},
+  contents: {flex: 1, marginTop: SPACING.xs},
 });

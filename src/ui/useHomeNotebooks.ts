@@ -4,13 +4,14 @@
  * gives an item's notebook with its known state, or null when the Default
  * has no notebook. One `statFiles` call per item set
  * (storage/homeNotebooks.ts's state cache), refreshed when the cache or a
- * notebook's folder changes and when the screen is shown again; the screen
+ * notebook's folder changes, when the plugin is opened again (the files are
+ * checked) and when the screen is shown again; the screen
  * never polls. Settings are read on mount and on show, like every other
  * reader of the Default.
  */
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {GtdParaSettings} from '../domain/settings';
-import {CachedItem, subscribeCache} from '../storage/dataCache';
+import {CachedItem, subscribeCache, subscribeFilesChecked} from '../storage/dataCache';
 import {HomeNotebook, homeNotebookOf, refreshHomeNotebookStates, subscribeHomeNotebookStates} from '../storage/homeNotebooks';
 import {loadSettings} from '../storage/settingsStorage';
 import {subscribeFolderChanges} from '../supernote/fileSystem';
@@ -70,10 +71,15 @@ export function useHomeNotebooks(items: readonly ItemRef[]): HomeNotebooks {
     const unsubscribeFolders = subscribeFolderChanges(folder => {
       if (activity.isActive() && foldersRef.current.has(folder)) refresh();
     });
+    // The plugin was opened again: a notebook may have been made or deleted in Supernote meanwhile.
+    const unsubscribeChecked = subscribeFilesChecked(() => {
+      if (activity.isActive()) refresh();
+    });
     return () => {
       unsubscribeStates();
       unsubscribeCache();
       unsubscribeFolders();
+      unsubscribeChecked();
     };
   }, [activity, refresh]);
 
