@@ -41,6 +41,8 @@ jest.mock('../../src/supernote/fileSystem', () => ({
     [...mockFiles].filter(f => f.startsWith(`${folder}/`) && !f.slice(folder.length + 1).includes('/')).map(f => ({name: f.slice(folder.length + 1), path: f, isFolder: false})),
 }));
 jest.mock('../../src/storage/sharedNotePages', () => ({ensureSharedNoteFile: (folder: string, fileName: string) => mockEnsureShared(folder, fileName)}));
+const mockRemember = jest.fn(async (_itemPath: string) => undefined);
+jest.mock('../../src/storage/homeNotebookRename', () => ({rememberItemName: (p: string) => mockRemember(p)}));
 jest.mock('../../src/storage/meetingNoteContent', () => ({populateHomePage: (p: string, item: unknown) => mockPopulateHome(p, item)}));
 jest.mock('../../src/storage/dataCache', () => ({
   findCachedItem: (path: string) => ({path, name: path.split('/').pop(), abbrev: null, scope: '', weeklyGoals: [], monthlyGoals: []}),
@@ -125,6 +127,8 @@ describe('home notebook icons', () => {
     await act(async () => tap(notebooks[0]!));
     await flush();
     expect(mockOpenPath).toHaveBeenCalledWith(garden, -1);
+    // Opening from gtdpara stores the item's name when it is missing (§3.7).
+    expect(mockRemember).toHaveBeenCalledWith(`${P}/Garden`);
   });
 
   it('creates a missing one with its Home page after the confirm, opens it on page 1 and names it', async () => {
@@ -138,6 +142,7 @@ describe('home notebook icons', () => {
     expect(mockInsertKeyWord).toHaveBeenCalledWith(boat, 0, 'home');
     expect(mockPopulateHome).toHaveBeenCalledWith(boat, expect.objectContaining({path: `${P}/Boat`}));
     expect(mockOpenPath).toHaveBeenCalledWith(boat, 0);
+    expect(mockRemember).toHaveBeenCalledWith(`${P}/Boat`);
     expect(list.map(e => e.msg.text)).toContain(`Created Boat ${YEAR}.note in Note/1 Projects/Boat.`);
   });
 

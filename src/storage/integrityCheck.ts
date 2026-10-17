@@ -36,6 +36,7 @@ import {
 } from '../domain/integrityCheck';
 import {FileFix, NoteRef, planFileNameFixes, unsafeFolderNames} from '../domain/fileNameFix';
 import {invalidFileNameChars} from '../domain/fileName';
+import {todayIso} from '../domain/meetingTime';
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
 import {GtdParaKind, Meeting, Task} from '../domain/types';
 import {collectArchivedItems} from '../domain/closeOut/archiveScan';
@@ -154,6 +155,8 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
   }
 
   const paths = resolvePaths(settings);
+  const defaultNotebook = settings.noteSetupDefaults.notebook;
+  const homeNotebookSpec = defaultNotebook ? {template: defaultNotebook.name, folder: defaultNotebook.folder, today: todayIso()} : null;
   log('runIntegrityCheck: start');
 
   // The device capabilities the domain-layer checks need (see
@@ -195,6 +198,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
             basePath: paths.base,
             resourcesPath: paths.resources,
             defaultResourceFolder: file.defaultResourceFolder,
+            homeNotebook: homeNotebookSpec && !target.inArchive ? homeNotebookSpec : null,
           },
           io,
         );

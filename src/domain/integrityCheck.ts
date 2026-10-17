@@ -29,7 +29,8 @@
 import {closeOutInterrupted, parsePlan} from './closeOut/plan';
 import {joinNotePath, parsePageAnchor, parseSharedNoteAnchor, stripPageAnchor} from './sharedNotePages';
 import {GtdParaKind, INBOX_FILE_NAME, Meeting, Task} from './types';
-import {parseMarksSpan} from './markdown';
+import {parseFrontMatter, parseMarksSpan} from './markdown';
+import {HomeNotebookSpec, readStoredName, renameCase, renamedNotebookMove, renameFindingText} from './homeNotebook';
 import {resolveMarkPath} from './marks';
 
 export interface IntegrityFinding {
@@ -58,6 +59,8 @@ export interface IntegrityCheckInput {
   resourcesPath: string;
   /** This item's frontmatter `defaultResourceFolder:` value (ProjectFileState.defaultResourceFolder), or null if never set. */
   defaultResourceFolder: string | null;
+  /** The Default's notebook, for the renamed-folder check (docs/dev/history/technical-design-home-notebooks.md §3.7); null without one, for the Inbox and for archived items. */
+  homeNotebook?: HomeNotebookSpec | null;
 }
 
 /** The device capabilities a check may need - kept to exactly what's used so a check can't reach further into the filesystem than "does this exact file/folder exist". */
@@ -368,6 +371,40 @@ export async function checkMarkNoteMissing(input: IntegrityCheckInput, io: Integ
   return findings;
 }
 
+/**
+ * A Project's or Area's folder renamed outside gtdpara while this year's home
+ * notebook kept the old name (docs/dev/history/technical-design-home-notebooks.md
+ * §3.7): the stored `name:` differs from the folder name, the notebook under
+ * the stored name exists and the one under the folder name doesn't (or both
+ * exist). Report-only; the Project/Area page offers the rename.
+ */
+export async function checkHomeNotebookRenamed(input: IntegrityCheckInput, io: IntegrityCheckIO): Promise<IntegrityFinding[]> {
+  if (!input.homeNotebook || input.itemKind === 'inbox') return [];
+  const fm = parseFrontMatter(input.rawContent);
+  const move = renamedNotebookMove({itemPath: input.itemPath, stored: readStoredName(fm.extraLines), abbrev: fm.abbrev ?? '', spec: input.homeNotebook});
+  if (!move || move.fromFile === move.toFile) return [];
+  const found = renameCase({
+    stored: move.from,
+    folderName: move.to,
+    fromFile: move.fromFile,
+    toFile: move.toFile,
+    fromExists: await io.fileExists(move.oldAbsolute),
+    toExists: await io.fileExists(move.newAbsolute),
+  });
+  if (found?.kind !== 'rename' && found?.kind !== 'conflict') return [];
+  return [
+    {
+      checkId: 'homeNotebookRenamed',
+      itemKind: input.itemKind,
+      itemPath: input.itemPath,
+      entityKind: 'item',
+      entityLabel: move.to,
+      notePath: '',
+      message: renameFindingText({kind: found.kind, to: move.to, fromFile: move.fromFile, toFile: move.toFile}),
+    },
+  ];
+}
+
 export const INTEGRITY_CHECKS: Record<string, IntegrityCheck> = {
   hashNotePath: checkHashNotePath,
   duplicateHeadings: checkDuplicateHeadingsAsync,
@@ -375,6 +412,7 @@ export const INTEGRITY_CHECKS: Record<string, IntegrityCheck> = {
   defaultResourceFolderMissing: checkDefaultResourceFolderMissing,
   closeOutInterrupted: checkCloseOutInterrupted,
   markNoteMissing: checkMarkNoteMissing,
+  homeNotebookRenamed: checkHomeNotebookRenamed,
 };
 
 /** Runs every registered per-item check against one item's already-parsed state. */

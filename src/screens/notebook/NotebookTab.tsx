@@ -97,7 +97,7 @@ export default function NotebookTab({nb, ownerKind, actions, viewportHeight, tex
           <Text style={[styles.name, {color: textColor}]} numberOfLines={1}>
             {baseName(shown.absolutePath)}
           </Text>
-          <PillButton label={NOTEBOOK_TAB_TEXT.open} primary onPress={() => actions.open(shown.absolutePath)} textColor={textColor} borderColor={borderColor} />
+          <PillButton label={NOTEBOOK_TAB_TEXT.open} primary onPress={() => actions.open(nb, shown.absolutePath)} textColor={textColor} borderColor={borderColor} />
         </View>
       ) : (
         <Text style={[styles.caption, {color: textColor}]}>{homeNotebookMissingYearText(nb.fileName)}</Text>
@@ -122,7 +122,7 @@ export default function NotebookTab({nb, ownerKind, actions, viewportHeight, tex
         <View style={styles.contents}>
           <ContentsSection
             entries={contents}
-            onOpenPage={page => actions.open(shown.absolutePath, page)}
+            onOpenPage={page => actions.open(nb, shown.absolutePath, page)}
             resetKey={shown.absolutePath}
             viewportHeight={viewportHeight === undefined ? undefined : Math.max(0, viewportHeight - CONTENTS_TOP_PX)}
             textColor={textColor}

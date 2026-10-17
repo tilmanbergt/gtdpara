@@ -95,11 +95,11 @@ describe('NotebookTab', () => {
     const r = await render(nb(true));
     expect(texts(r)).toEqual(expect.arrayContaining([`Lead ${YEAR}`, String(YEAR), String(YEAR - 2)]));
     await tapText(r, 'Open');
-    expect(actions.open).toHaveBeenLastCalledWith(`${FOLDER}/Lead ${YEAR}.note`);
+    expect(actions.open).toHaveBeenLastCalledWith(expect.anything(), `${FOLDER}/Lead ${YEAR}.note`);
     await tapText(r, String(YEAR - 2));
     expect(texts(r)).toContain(`Lead ${YEAR - 2}`);
     await tapText(r, 'Open');
-    expect(actions.open).toHaveBeenLastCalledWith(`${FOLDER}/Lead ${YEAR - 2}.note`);
+    expect(actions.open).toHaveBeenLastCalledWith(expect.anything(), `${FOLDER}/Lead ${YEAR - 2}.note`);
   });
 
   it('this year missing, last year there: "doesn\'t exist yet" and a "+ <year>" chip that creates it', async () => {
@@ -121,7 +121,7 @@ describe('NotebookTab Contents (§3.5)', () => {
     expect(mockLoadContents).toHaveBeenCalledWith(`${FOLDER}/Lead ${YEAR}.note`, expect.objectContaining({name: 'Lead'}));
     expect(texts(r)).toEqual(expect.arrayContaining(['Contents', 'p.1', 'Lead', 'p.4', 'Handwritten heading']));
     await tapText(r, 'p.4');
-    expect(actions.open).toHaveBeenLastCalledWith(`${FOLDER}/Lead ${YEAR}.note`, 3);
+    expect(actions.open).toHaveBeenLastCalledWith(expect.anything(), `${FOLDER}/Lead ${YEAR}.note`, 3);
   });
 
   it('switched off: name, years and Open only', async () => {

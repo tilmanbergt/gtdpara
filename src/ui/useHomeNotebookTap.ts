@@ -31,7 +31,9 @@ import {
 import {findCachedItem} from '../storage/dataCache';
 import {loadSettings} from '../storage/settingsStorage';
 import {displayPath, fileExists} from '../supernote/fileSystem';
-import {log} from '../utils/log';
+import {errorMessage} from '../utils/errorMessage';
+import {log, logError} from '../utils/log';
+import {rememberItemName} from '../storage/homeNotebookRename';
 import {useActionError} from './useActionError';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
 import {useStatusChoice} from './useStatusChoice';
@@ -39,12 +41,21 @@ import {useStatusApi} from './status/StatusProvider';
 
 let nextInstance = 0;
 
+/** Opening a home notebook from gtdpara stores the item's name when it is missing (§3.7); a failure only logs. */
+async function remember(itemPath: string): Promise<void> {
+  try {
+    await rememberItemName(itemPath);
+  } catch (e) {
+    logError('HomeNotebookTap: name not stored', errorMessage(e));
+  }
+}
+
 export interface HomeNotebookActions {
   tap: (nb: HomeNotebook) => void;
   /** Creates this year's notebook after the confirm, and opens it on page 1. */
   create: (nb: HomeNotebook) => void;
-  /** Opens a notebook file on its last viewed page, or on `page` (0-based). */
-  open: (path: string, page?: number) => void;
+  /** Opens one of `nb`'s files on its last viewed page, or on `page` (0-based). */
+  open: (nb: HomeNotebook, path: string, page?: number) => void;
 }
 
 export function useHomeNotebookTap(name: string): (nb: HomeNotebook) => void {
@@ -87,6 +98,7 @@ export function useHomeNotebookActions(name: string): HomeNotebookActions {
         log('HomeNotebookTap:', plan.kind);
         if (plan.kind === 'open') {
           await openHomeNotebook(plan.path);
+          await remember(nb.itemPath);
         } else if (plan.kind === 'create') {
           if (await confirmNew(nb)) await created(nb, plan.path);
         } else {
@@ -120,8 +132,11 @@ export function useHomeNotebookActions(name: string): HomeNotebookActions {
   );
 
   const open = useCallback(
-    (path: string, page?: number) => {
-      run(() => openHomeNotebook(path, page));
+    (nb: HomeNotebook, path: string, page?: number) => {
+      run(async () => {
+        await openHomeNotebook(path, page);
+        await remember(nb.itemPath);
+      });
     },
     [run],
   );

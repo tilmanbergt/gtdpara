@@ -27,7 +27,8 @@ export interface FileNameFixResult {
   failed: Array<{file: string; error: string}>;
 }
 
-interface ItemRewrite {
+/** One data file's note links to rewrite (also used by storage/homeNotebookRename.ts). */
+export interface ItemRewrite {
   kind: GtdParaKind;
   path: string;
   /** old notePath -> new notePath, per span. */
@@ -35,7 +36,8 @@ interface ItemRewrite {
   meetings: Map<string, string>;
 }
 
-async function rewriteItem(item: ItemRewrite): Promise<number> {
+/** Rewrites `item`'s note links from its file on disk through the usual write-through; resolves how many changed. */
+export async function rewriteItem(item: ItemRewrite): Promise<number> {
   const file = await loadProjectFile(item.kind, item.path);
   let updated = 0;
   const rewrite = <T extends Task | Meeting>(entries: T[], map: Map<string, string>): T[] =>

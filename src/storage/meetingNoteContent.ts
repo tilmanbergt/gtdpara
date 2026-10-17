@@ -104,6 +104,7 @@ import {applyPieceHeadings, syncPageKeywords} from './noteFindability';
 import {measureNoteLinkRect, measureNotePieceRect} from './notePieceMetrics';
 import {errorMessage} from '../utils/errorMessage';
 import {ItemNoteAnchorResolution, resolveItemNote} from './itemNotePlan';
+import {rememberItemName} from './homeNotebookRename';
 import {ensureLoopNoteFile, loopNoteOf} from './loopNotes';
 import {layoutForLink} from './noteTargets';
 
@@ -525,7 +526,9 @@ export async function populateHomePage(notePath: string, item: CachedItem, setti
 /** Fills the Home page of the home notebook `anchor`'s plan just created (a todo's or meeting's first page in the Default notebook). */
 async function fillHomePage(anchor: ItemNoteAnchorResolution, itemPath: string, settings: GtdParaSettings): Promise<void> {
   const item = anchor.homePage ? findCachedItem(itemPath) : undefined;
-  if (item) await populateHomePage(anchor.absolutePath, item, settings);
+  if (!item) return;
+  await populateHomePage(anchor.absolutePath, item, settings);
+  await rememberItemName(itemPath);
 }
 
 // ---- Open-or-create entry point (docs/dev/history/technical-design-shared-note-pages.md §6-§8;

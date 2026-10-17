@@ -116,6 +116,29 @@ export function removeMarkLine(ref: MarkFileRef, id: string): Promise<boolean> {
 }
 
 /**
+ * Re-points the open marks in `ref`'s file whose note `relink` maps to a new
+ * path (a renamed home notebook, docs/dev/history/technical-design-home-notebooks.md
+ * §3.7); resolves how many changed. Throws when the file can't be written.
+ */
+export function repointMarkLines(ref: MarkFileRef, relink: (notePath: string) => string | null): Promise<number> {
+  return enqueue(async () => {
+    const raw = await readFresh(ref);
+    const {marks, extraLines} = parseMarksSpan(raw);
+    let changed = 0;
+    const next = marks.map(mark => {
+      const notePath = relink(mark.notePath);
+      if (notePath === null) return mark;
+      changed += 1;
+      return {...mark, notePath};
+    });
+    if (changed === 0) return 0;
+    await writeAndApply(ref, writeMarksIntoContent(raw, next, extraLines));
+    log('markStore: marks re-pointed', ref.kind, changed);
+    return changed;
+  });
+}
+
+/**
  * Pure: marks of an item whose folder moves from `fromFolder` to
  * `targetFolder` (archive), re-pointed to absolute paths at the new place -
  * so they still find their note from the Inbox.

@@ -117,6 +117,7 @@ import EngageButton from '../ui/EngageButton';
 import HomeNotebookButton from '../ui/HomeNotebookButton';
 import {useHomeNotebooks} from '../ui/useHomeNotebooks';
 import {useHomeNotebookActions} from '../ui/useHomeNotebookTap';
+import {useHomeNotebookRenameOffer} from '../ui/useHomeNotebookRenameOffer';
 import NotebookTab from './notebook/NotebookTab';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {ensureItemCached, findCachedItem, frontMatterOf, getCachedData, updateItemFrontMatter} from '../storage/dataCache';
@@ -251,6 +252,7 @@ export default function ItemDetail({
   const homes = useHomeNotebooks(homeItems);
   const homeActions = useHomeNotebookActions('ItemDetail');
   const homeNotebook = resourceFolderState ? homes.of(homeItems[0]) : null;
+  useHomeNotebookRenameOffer('ItemDetail', path, !!resourceFolderState && homes.enabled);
 
   // Kept tab shown again (docs/dev/history/technical-design-keep-tabs-alive.md §5.3):
   // re-derive quietly if this item's file changed while hidden.
