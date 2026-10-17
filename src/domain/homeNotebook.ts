@@ -7,7 +7,10 @@
  * with the same function. Pure: no React Native, no SDK, no I/O.
  */
 import {sanitizeFileNameComponent} from './fileName';
+import {PieceRenderContext} from './pageLayout';
+import {periodLabel} from './period';
 import {renderSharedFileName} from './sharedNotePages';
+import {MonthlyGoal, WeeklyGoal} from './types';
 
 /** The Default notebook's file name when its name template renders empty. */
 export const HOME_NOTEBOOK_FALLBACK = 'Notes';
@@ -116,4 +119,38 @@ export function planHomeNotebookTap(nb: HomeNotebookTapInput): HomeNotebookTapPl
     return {kind: 'choose-year', createYear: current.year, createPath: nb.absolutePath, openYear: earlier.year, openPath: earlier.absolutePath};
   }
   return {kind: 'create', path: nb.absolutePath};
+}
+
+// ---- Home page (§3.2) ----
+
+/** The latest entry by key (both "2026-W41" and "2026-10" sort as strings), or null. */
+function latestBy<T>(goals: readonly T[], key: (goal: T) => string): T | null {
+  return goals.reduce<T | null>((latest, goal) => (latest === null || key(goal) > key(latest) ? goal : latest), null);
+}
+
+/**
+ * The `goals` piece: the latest monthly goal and the latest weekly goal,
+ * whatever period they belong to, one line each with their period -
+ * "October 2026: …", "Week 43: …" (the labels of the "Last goal" display,
+ * domain/period.ts). Empty goals are left out; '' when there is none.
+ */
+export function homeGoalsText(item: {monthlyGoals: readonly MonthlyGoal[]; weeklyGoals: readonly WeeklyGoal[]}): string {
+  const monthly = latestBy(item.monthlyGoals.filter(g => g.text.trim()), g => g.monthKey);
+  const weekly = latestBy(item.weeklyGoals.filter(g => g.text.trim()), g => g.weekKey);
+  return [
+    monthly ? `${periodLabel('monthly', monthly.monthKey)} ${monthly.monthKey.slice(0, 4)}: ${monthly.text.trim()}` : '',
+    weekly ? `${periodLabel('weekly', weekly.weekKey)}: ${weekly.text.trim()}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/** What the Home page's pieces show: the item's name, its Scope and its latest goals. */
+export function homePageContext(item: {
+  name: string;
+  scope: string;
+  monthlyGoals: readonly MonthlyGoal[];
+  weeklyGoals: readonly WeeklyGoal[];
+}): PieceRenderContext {
+  return {title: item.name, scope: item.scope.trim(), goals: homeGoalsText(item)};
 }

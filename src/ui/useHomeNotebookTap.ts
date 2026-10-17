@@ -16,8 +16,8 @@
 import {useCallback, useRef} from 'react';
 import {homeNotebookCreatedText, homeNotebookYearChoiceText} from '../domain/fileChangeText';
 import {planHomeNotebookTap} from '../domain/homeNotebook';
+import {createHomeNotebook} from '../storage/homeNotebookCreate';
 import {
-  createHomeNotebook,
   HomeNotebook,
   homeNotebookOf,
   loadHomeNotebookYears,
@@ -74,7 +74,7 @@ export function useHomeNotebookTap(name: string): (nb: HomeNotebook) => void {
           if (choice === 1) await openHomeNotebook(plan.openPath);
         }
         if (createPath) {
-          await createHomeNotebook(nb, createPath);
+          await createHomeNotebook(nb, createPath, settings);
           statusApi.show(doneId, {
             kind: 'success',
             text: homeNotebookCreatedText(nb.fileName, displayPath(nb.folder)),

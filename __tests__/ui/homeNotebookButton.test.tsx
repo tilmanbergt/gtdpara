@@ -27,18 +27,25 @@ const mockEnsureShared = jest.fn(async (folder: string, fileName: string) => {
   mockFiles.add(`${folder}/${fileName}.note`);
   return `${folder}/${fileName}.note`;
 });
+const mockInsertKeyWord = jest.fn(async (_p: string, _page: number, _keyword: string) => undefined);
+const mockPopulateHome = jest.fn(async (_p: string, _item: unknown) => undefined);
 const mockStatFiles = jest.fn(async (paths: string[]) => paths.map(path => ({path, exists: mockFiles.has(path), lastModified: 0, size: 0})));
 jest.mock('../../src/supernote/fileSystem', () => ({
   displayPath: (p: string) => p.replace(/^\/storage\/emulated\/0\//, ''),
   statFiles: (paths: string[]) => mockStatFiles(paths),
   fileExists: async (p: string) => mockFiles.has(p),
   openPath: (p: string, page?: number) => mockOpenPath(p, page),
+  insertKeyWord: (p: string, page: number, keyword: string) => mockInsertKeyWord(p, page, keyword),
   subscribeFolderChanges: () => () => undefined,
   listFolderEntries: async (folder: string) =>
     [...mockFiles].filter(f => f.startsWith(`${folder}/`) && !f.slice(folder.length + 1).includes('/')).map(f => ({name: f.slice(folder.length + 1), path: f, isFolder: false})),
 }));
 jest.mock('../../src/storage/sharedNotePages', () => ({ensureSharedNoteFile: (folder: string, fileName: string) => mockEnsureShared(folder, fileName)}));
-jest.mock('../../src/storage/dataCache', () => ({findCachedItem: () => undefined, subscribeCache: () => () => undefined}));
+jest.mock('../../src/storage/meetingNoteContent', () => ({populateHomePage: (p: string, item: unknown) => mockPopulateHome(p, item)}));
+jest.mock('../../src/storage/dataCache', () => ({
+  findCachedItem: (path: string) => ({path, name: path.split('/').pop(), abbrev: null, scope: '', weeklyGoals: [], monthlyGoals: []}),
+  subscribeCache: () => () => undefined,
+}));
 
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
@@ -96,6 +103,8 @@ beforeEach(() => {
   mockOpenPath.mockClear();
   mockEnsureShared.mockClear();
   mockStatFiles.mockClear();
+  mockInsertKeyWord.mockClear();
+  mockPopulateHome.mockClear();
 });
 
 describe('home notebook icons', () => {
@@ -117,7 +126,7 @@ describe('home notebook icons', () => {
     expect(mockOpenPath).toHaveBeenCalledWith(garden, -1);
   });
 
-  it('creates a missing one after the confirm, opens it on page 1 and names it', async () => {
+  it('creates a missing one with its Home page after the confirm, opens it on page 1 and names it', async () => {
     await mount();
     await act(async () => tap(notebooks[1]!));
     await flush();
@@ -125,6 +134,8 @@ describe('home notebook icons', () => {
     await act(async () => list[0].msg.actions![0].onPress());
     await flush();
     expect(mockEnsureShared).toHaveBeenCalledWith(`${P}/Boat`, `Boat ${YEAR}`);
+    expect(mockInsertKeyWord).toHaveBeenCalledWith(boat, 0, 'home');
+    expect(mockPopulateHome).toHaveBeenCalledWith(boat, expect.objectContaining({path: `${P}/Boat`}));
     expect(mockOpenPath).toHaveBeenCalledWith(boat, 0);
     expect(list.map(e => e.msg.text)).toContain(`Created Boat ${YEAR}.note in Note/1 Projects/Boat.`);
   });

@@ -60,6 +60,12 @@ describe('timelineInsertIndex', () => {
     expect(insertAt([['loop workshop/offsite'], handAdded, meeting('2026-10-15', 'Offsite')], '2026-10-08')).toBe(2);
   });
 
+  it('never goes before a home notebook’s Home page', () => {
+    expect(insertAt([['home']], '2026-10-08')).toBe(1);
+    expect(insertAt([['home', '2026-12-01'], meeting('2026-12-02', 'Retro')], '2026-10-08')).toBe(1);
+    expect(insertAt([['home'], handAdded, meeting('2026-10-15', 'Retro')], '2026-10-08')).toBe(2);
+  });
+
   it('treats a page with only the user’s own keywords as a continuation page', () => {
     expect(insertAt([meeting('2026-10-15', 'Retro'), ['ideas', 'team/a']], '2026-10-20')).toBe(2);
     expect(insertAt([['ideas'], meeting('2026-10-15', 'Retro')], '2026-10-08')).toBe(1);

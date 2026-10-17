@@ -50,6 +50,8 @@ export const PIECE_TYPE_LABELS: Record<PieceType, string> = {
   link: 'Linked file',
   sinceLast: 'Since last time',
   dateTitle: 'Date & title',
+  scope: 'Scope',
+  goals: 'Latest goals',
 };
 
 /** What a piece's label reads INSIDE the page preview - same as pieceSummaryLabel, except a `link` piece shows a link-looking sample (drawn underlined, see linkLabelText) so it reads as the tappable link it becomes on the page. */

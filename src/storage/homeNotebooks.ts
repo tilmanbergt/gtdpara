@@ -11,10 +11,11 @@
  * refreshes it on cache and folder changes, and gtdpara's own create refreshes
  * it too.
  */
-import {HomeNotebookYear, homeNotebookName, homeNotebookYears} from '../domain/homeNotebook';
+import {HOME_PAGE_KEYWORD, HomeNotebookYear, homeNotebookName, homeNotebookYears} from '../domain/homeNotebook';
+import {layoutFor, NoteSetupDefaults} from '../domain/noteSetups';
 import {todayIso} from '../domain/meetingTime';
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
-import {fileExists, listFolderEntries, openPath, statFiles} from '../supernote/fileSystem';
+import {fileExists, insertKeyWord, listFolderEntries, openPath, statFiles} from '../supernote/fileSystem';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logWarn} from '../utils/log';
 import {CachedItem} from './dataCache';
@@ -140,14 +141,16 @@ export async function openHomeNotebook(path: string, page?: number): Promise<voi
 }
 
 /**
- * Creates the home notebook at `absolutePath` in `nb`'s folder and opens it
- * on its first page. The caller has confirmed. Creating notes only works when
- * the plugin was opened from a note; createNote's error says so.
+ * Creates the home notebook `fileName` in `folder` with its Home page's
+ * background and the `home` keyword on page 1; returns its path. The caller
+ * fills the page (storage/meetingNoteContent.ts's `populateHomePage`). The
+ * caller has confirmed; creating notes only works when the plugin was opened
+ * from a note, and createNote's error says so.
  */
-export async function createHomeNotebook(nb: HomeNotebook, absolutePath: string): Promise<void> {
-  const fileName = absolutePath.slice(absolutePath.lastIndexOf('/') + 1).replace(/\.note$/, '');
-  await ensureSharedNoteFile(nb.folder, fileName, backgroundOf(null));
+export async function ensureHomeNotebookFile(folder: string, fileName: string, defaults: NoteSetupDefaults): Promise<string> {
+  const absolutePath = await ensureSharedNoteFile(folder, fileName, backgroundOf(layoutFor(null, 'home', defaults)));
+  await insertKeyWord(absolutePath, 0, HOME_PAGE_KEYWORD);
   log('HomeNotebooks: created');
   await refreshHomeNotebookStates([absolutePath]);
-  await openHomeNotebook(absolutePath, 0);
+  return absolutePath;
 }

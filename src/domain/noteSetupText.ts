@@ -13,7 +13,15 @@ import {NoteOwnerNames, renderSharedFileName} from './sharedNotePages';
 
 export const SETUP_KIND_LABELS: Record<SetupKind, string> = {thread: 'Thread', loop: 'Loop'};
 
-export const PAGE_KIND_LABELS: Record<PageKind, string> = {meeting: 'Meeting page', todo: 'Todo page', first: 'First page'};
+export const PAGE_KIND_LABELS: Record<PageKind, string> = {meeting: 'Meeting page', todo: 'Todo page', first: 'First page', home: 'Home page'};
+
+/** Under the Default's Notes when it uses one notebook (docs/dev/history/technical-design-home-notebooks.md §3.8). */
+export const DEFAULT_NOTEBOOK_HOME_HINT = "This is each Project's and Area's home notebook.";
+
+/** The Default's page rows: the Home page only while it has a notebook (§3.2). */
+export function defaultPageKinds(defaults: Pick<NoteSetupDefaults, 'notebook'>): PageKind[] {
+  return defaults.notebook ? ['meeting', 'todo', 'first', 'home'] : ['meeting', 'todo', 'first'];
+}
 
 /** Where the notes go, in a few words: "notebook Sparring/{tag} {subtag} {year}", "own note per item", "loop note {year}-{month} {tag} {subtag}". */
 export function notesSummary(kind: SetupKind | null, notebook: Notebook | null | undefined): string {
@@ -32,7 +40,7 @@ export function setupRowSummary(setup: NoteSetup): string {
 /** The Default row's second line: its pages, where notes go, what it tracks. */
 export function defaultRowSummary(defaults: NoteSetupDefaults): string {
   const tracks = trackingSummary(defaults.tracking);
-  return ['Meeting page · Todo page · First page', notesSummary(null, defaults.notebook), tracks ? `tracks ${tracks}` : '']
+  return [defaultPageKinds(defaults).map(k => PAGE_KIND_LABELS[k]).join(' · '), notesSummary(null, defaults.notebook), tracks ? `tracks ${tracks}` : '']
     .filter(Boolean)
     .join(' · ');
 }

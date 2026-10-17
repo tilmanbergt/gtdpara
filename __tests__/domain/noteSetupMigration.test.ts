@@ -4,7 +4,7 @@ import {
   migrateTagRules,
   migrationCounts,
 } from '../../src/domain/noteSetupMigration';
-import {createDefaultMeetingPage, seedNoteSetupDefaults} from '../../src/domain/noteSetups';
+import {createDefaultHomePage, createDefaultMeetingPage, seedNoteSetupDefaults} from '../../src/domain/noteSetups';
 import {addPiece, NotePiece} from '../../src/domain/pageLayout';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
 import {sanitizeProfileSettings, buildActiveSettings, PROFILE_KEYS} from '../../src/domain/profiles';
@@ -314,6 +314,19 @@ describe('migrateNoteSetupSettings', () => {
     expect(completed.noteSetupDefaults.notebook).toEqual({name: 'Daily', folder: 'Meetings'});
     expect(completed.noteSetups.map(x => x.name)).toEqual(['#tango']);
     expect(migrateNoteSetupSettings(completed)).toBe(completed);
+  });
+
+  it('completes a Default without a Home page with the standard one, once (docs/dev/history/technical-design-home-notebooks.md §3.2)', () => {
+    const migrated = migrateNoteSetupSettings(DEFAULT_SETTINGS);
+    const pages = {...migrated.noteSetupDefaults.pages};
+    delete pages.home;
+    const earlier = {...migrated, noteSetupDefaults: {...migrated.noteSetupDefaults, pages}};
+    const completed = migrateNoteSetupSettings(earlier);
+    expect(completed.noteSetupDefaults.pages.home).toEqual(createDefaultHomePage());
+    expect(completed.noteSetupDefaults.pages.meeting).toBe(pages.meeting);
+    expect(migrateNoteSetupSettings(completed)).toBe(completed);
+    const emptied = {...completed, noteSetupDefaults: {...completed.noteSetupDefaults, pages: {...completed.noteSetupDefaults.pages, home: {template: '', pieces: []}}}};
+    expect(migrateNoteSetupSettings(emptied)).toBe(emptied);
   });
 
   it('a profile saved by 0.14 migrates after a switch (the switch fills the new keys from the defaults)', () => {

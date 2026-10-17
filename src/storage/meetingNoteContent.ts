@@ -69,6 +69,7 @@ import {
   PieceRenderContext,
   renderPieceText,
 } from '../domain/pageLayout';
+import {homePageContext} from '../domain/homeNotebook';
 import {layoutFor} from '../domain/noteSetups';
 import {NoteCreateConfirm, NoteCreationPlan} from '../domain/noteCreationPlan';
 import {joinNotePath, meetingPageKeyword, parseSharedNoteAnchor, todoPageKeyword} from '../domain/sharedNotePages';
@@ -87,7 +88,7 @@ import {
 import {buildTextboxElement} from '../supernote/noteElements';
 import {log} from '../utils/log';
 import {contextTagsOf} from '../domain/flowState';
-import {getCachedData, getCachedInbox} from './dataCache';
+import {CachedItem, findCachedItem, getCachedData, getCachedInbox} from './dataCache';
 import {ThreadInboxInput} from './threadAggregate';
 import {linkedFileStatus, resolveLinkedFilePath} from './linkedFiles';
 import {MeetingNoteInboxInput, relatedItemsFor} from './meetingNoteAggregate';
@@ -491,8 +492,40 @@ export async function populateLoopNotePage(
   const linked = layout.pieces.some(p => p.type === 'link') ? await existingLinkedFile(resolvePaths(settings), linkedFile ?? undefined) : null;
   const title = `${loop.kind} ${loop.name.replace(/\//g, ' ')}`;
   const ctx: PieceRenderContext = {title, dateTitle: dateTitleText(mainDate ?? '', title), linkedFileName: linked?.fileName};
+  await populateFirstPage(notePath, layout, ctx, linked?.absolutePath ?? null, settings);
+}
+
+/**
+ * Writes page 1 of a note from `layout` once, at creation: a loop's own page
+ * or a home notebook's Home page. It is the user's page afterwards; nothing
+ * refreshes it. Same population path as every other note.
+ */
+async function populateFirstPage(
+  notePath: string,
+  layout: PageLayout,
+  ctx: PieceRenderContext,
+  linkedAbsolutePath: string | null,
+  settings: GtdParaSettings,
+): Promise<void> {
   const pieceContent = layout.pieces.map(piece => renderPieceText(piece, ctx));
-  await populatePage(notePath, layout, pieceContent, linked?.absolutePath ?? null, 0, settings.noteHeadingStyle);
+  await populatePage(notePath, layout, pieceContent, linkedAbsolutePath, 0, settings.noteHeadingStyle);
+}
+
+/**
+ * Fills page 1 of a new home notebook from the Default's Home page
+ * (docs/dev/history/technical-design-home-notebooks.md §3.2): the item's
+ * name, its Scope and its latest monthly and weekly goal.
+ */
+export async function populateHomePage(notePath: string, item: CachedItem, settings: GtdParaSettings): Promise<void> {
+  const layout = layoutFor(null, 'home', settings.noteSetupDefaults);
+  if (!layout) return;
+  await populateFirstPage(notePath, layout, homePageContext(item), null, settings);
+}
+
+/** Fills the Home page of the home notebook `anchor`'s plan just created (a todo's or meeting's first page in the Default notebook). */
+async function fillHomePage(anchor: ItemNoteAnchorResolution, itemPath: string, settings: GtdParaSettings): Promise<void> {
+  const item = anchor.homePage ? findCachedItem(itemPath) : undefined;
+  if (item) await populateHomePage(anchor.absolutePath, item, settings);
 }
 
 // ---- Open-or-create entry point (docs/dev/history/technical-design-shared-note-pages.md §6-§8;
@@ -606,6 +639,7 @@ export async function openOrCreateMeetingNote(
 
   const updatedMeeting = anchor.changed ? {...meeting, notePath: anchor.notePath} : meeting;
   await fillLoopPage(anchor, settings);
+  await fillHomePage(anchor, itemPath, settings);
   if (!anchor.foreign) {
     await refreshMeetingNoteBlock(updatedMeeting, itemPath, settings, inbox, {
       isInitialPopulation: anchor.isInitialPopulation,
@@ -658,6 +692,7 @@ export async function openOrCreateTodoNote(
 
   const updatedTask = anchor.changed ? {...task, notePath: anchor.notePath} : task;
   await fillLoopPage(anchor, settings);
+  await fillHomePage(anchor, itemPath, settings);
   if (!anchor.foreign) {
     await refreshTodoNoteBlock(updatedTask, itemPath, settings, inbox, {
       isInitialPopulation: anchor.isInitialPopulation,

@@ -1,5 +1,8 @@
 // docs/dev/history/technical-design-home-notebooks.md §3.1, §6: the home notebook's name, its years and the tap plan.
-import {hasYear, homeNotebookName, homeNotebookYears, planHomeNotebookTap} from '../../src/domain/homeNotebook';
+import {hasYear, homeGoalsText, homeNotebookName, homeNotebookYears, homePageContext, planHomeNotebookTap} from '../../src/domain/homeNotebook';
+import {createDefaultHomePage, pageKindsOf, seedNoteSetupDefaults} from '../../src/domain/noteSetups';
+import {defaultPageKinds} from '../../src/domain/noteSetupText';
+import {pieceIsHeading, PIECE_PAGES, renderPieceText} from '../../src/domain/pageLayout';
 
 const base = {itemName: 'Leadership', itemAbbrev: 'LEAD', date: '2026-10-17'};
 
@@ -95,5 +98,50 @@ describe('planHomeNotebookTap', () => {
       openYear: 2025,
       openPath: path(2025),
     });
+  });
+});
+
+describe('Home page (§3.2)', () => {
+  const item = {
+    name: 'Leadership',
+    scope: '  Grow the team leads.  ',
+    monthlyGoals: [
+      {monthKey: '2026-08', text: 'Old month'},
+      {monthKey: '2026-09', text: 'Hire two leads'},
+    ],
+    weeklyGoals: [
+      {weekKey: '2026-W38', text: 'Interviews'},
+      {weekKey: '2026-W40', text: 'Offer letters'},
+      {weekKey: '2026-W41', text: '  '},
+    ],
+  };
+
+  it('goals: the latest monthly and weekly goal, whatever period, one line each', () => {
+    expect(homeGoalsText(item)).toBe('September 2026: Hire two leads\nWeek 40: Offer letters');
+  });
+
+  it('goals: only one kind, or none', () => {
+    expect(homeGoalsText({...item, monthlyGoals: []})).toBe('Week 40: Offer letters');
+    expect(homeGoalsText({monthlyGoals: [], weeklyGoals: []})).toBe('');
+  });
+
+  it('renders title, scope and goals; empty ones render empty (and are skipped)', () => {
+    const ctx = homePageContext(item);
+    const page = createDefaultHomePage();
+    expect(page.pieces.map(p => p.type)).toEqual(['title', 'scope', 'goals']);
+    expect(page.pieces.map(p => pieceIsHeading(p))).toEqual([true, false, false]);
+    expect(page.pieces.map(p => renderPieceText(p, ctx))).toEqual(['Leadership', 'Grow the team leads.', 'September 2026: Hire two leads\nWeek 40: Offer letters']);
+    const bare = homePageContext({name: 'X', scope: '', monthlyGoals: [], weeklyGoals: []});
+    expect(page.pieces.map(p => renderPieceText(p, bare))).toEqual(['X', '', '']);
+  });
+
+  it('scope and goals are offered on the Home page only; the Home page is the Default’s only', () => {
+    expect(PIECE_PAGES.scope).toEqual(['home']);
+    expect(PIECE_PAGES.goals).toEqual(['home']);
+    expect(pageKindsOf('thread')).not.toContain('home');
+    expect(pageKindsOf('loop')).not.toContain('home');
+    expect(defaultPageKinds({notebook: null})).toEqual(['meeting', 'todo', 'first']);
+    expect(defaultPageKinds({notebook: {name: '{name}', folder: ''}})).toEqual(['meeting', 'todo', 'first', 'home']);
+    expect(seedNoteSetupDefaults().pages.home).toEqual(createDefaultHomePage());
   });
 });
