@@ -5,7 +5,10 @@
  * creates it after a confirm). Nothing when the item has no home notebook.
  * The tap itself is ui/useHomeNotebookTap.ts's; this is only the control.
  *
- * - `icon`: a 44 × 36 touch target for rows (`HOME_NOTEBOOK_ICON_WIDTH`).
+ * - `icon`: a 44 × 36 touch target for rows (`HOME_NOTEBOOK_ICON_WIDTH`);
+ *   `compact` lets it reach 7 dp into the row's padding above and below, so a
+ *   one-line row with 7 dp padding (Daily's focus rows, Week's card header)
+ *   keeps its height.
  * - `labeled`: icon + "Notebook" as a pill, for the Project/Area page header.
  *
  * Until the state cache knows whether the file exists, the space is kept
@@ -28,17 +31,20 @@ interface Props {
   nb: HomeNotebook | null;
   onPress: (nb: HomeNotebook) => void;
   variant: 'icon' | 'labeled';
+  /** `icon` only: overlap the row's 7 dp vertical padding instead of growing the row. */
+  compact?: boolean;
   textColor: string;
   borderColor: string;
 }
 
-export default function HomeNotebookButton({nb, onPress, variant, textColor, borderColor}: Props): React.JSX.Element | null {
+export default function HomeNotebookButton({nb, onPress, variant, compact, textColor, borderColor}: Props): React.JSX.Element | null {
   if (!nb) return null;
   const label = `${nb.exists ? 'Open' : 'Create'} ${nb.fileName}`;
   if (variant === 'icon') {
-    if (!nb.known) return <View style={styles.icon} />;
+    const iconStyle = [styles.icon, compact && styles.compact];
+    if (!nb.known) return <View style={iconStyle} />;
     return (
-      <Pressable onPress={() => onPress(nb)} accessibilityLabel={label} style={styles.icon}>
+      <Pressable onPress={() => onPress(nb)} accessibilityLabel={label} style={iconStyle}>
         <NotebookIcon color={textColor} plus={!nb.exists} />
       </Pressable>
     );
@@ -58,6 +64,9 @@ const styles = StyleSheet.create({
     height: HOME_NOTEBOOK_ICON_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  compact: {
+    marginVertical: -7,
   },
   // Same outline, radius and margins as ui/PillButton.tsx, so it sits level with "Engage ›" next to it.
   pill: {

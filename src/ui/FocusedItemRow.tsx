@@ -14,6 +14,10 @@
  * a component whose whole point is being a small, fixed shape - the kind of
  * trade-off `ui/ItemContextBlock.tsx`'s own module doc comment (§6.2)
  * argues against.
+ *
+ * `accessory` sits between the name and ✕: Daily's focus rows put the home
+ * notebook icon there (docs/dev/history/technical-design-home-notebooks.md
+ * §3.3); Review passes none.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -25,6 +29,8 @@ interface Props {
   onPress?: () => void;
   onRemove: () => void;
   disabled?: boolean;
+  /** Shown between the name and ✕. */
+  accessory?: React.ReactNode;
   textColor: string;
   borderColor: string;
 }
@@ -34,6 +40,7 @@ export default function FocusedItemRow({
   onPress,
   onRemove,
   disabled,
+  accessory,
   textColor,
   borderColor,
 }: Props): React.JSX.Element {
@@ -44,6 +51,7 @@ export default function FocusedItemRow({
           {label}
         </Text>
       </Pressable>
+      {accessory}
       <Pressable onPress={onRemove} disabled={disabled} hitSlop={8}>
         <Text style={[styles.cancelText, {color: textColor}]}>✕</Text>
       </Pressable>

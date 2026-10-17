@@ -268,6 +268,7 @@ export default function WeekPlanner({
                 onSaveGoal={stableSaveGoal}
                 textColor={textColor}
                 borderColor={borderColor}
+                showHomeNotebooks
                 placeholderColor={placeholderColor}
               />
             )
