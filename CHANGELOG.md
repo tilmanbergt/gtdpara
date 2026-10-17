@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-10-17
+
 ### New
 - **Engage**: a second sidebar button, **Engage**, opens a small panel over the note you work in.
   It shows the todo you are working on - with its due date or Waiting For, a large **✓** to tick it off, **Remove
