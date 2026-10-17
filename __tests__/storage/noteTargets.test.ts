@@ -12,6 +12,7 @@ jest.mock('../../src/storage/dataCache', () => ({
 }));
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 
+import {homeNotebookName} from '../../src/domain/homeNotebook';
 import {newLoopLine} from '../../src/domain/loopsSection';
 import {createNoteSetup, NoteSetup, seedNoteSetupDefaults} from '../../src/domain/noteSetups';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
@@ -70,6 +71,13 @@ describe('placeNoteCandidates', () => {
     expect(placed.candidate).toEqual({setup: null, target: 'notebook'});
     expect(placed.shared?.relativeFile).toBe('Meetings/Daily 2026.note');
     expect(layoutForLink({...input(['other'], {settings: withNotebook, pageKind: 'meeting'}), linkedFile: 'Meetings/Daily 2026.note'})).toBe(settings.noteSetupDefaults.pages.meeting);
+  });
+
+  it('the Default notebook is the home notebook: the same name homeNotebookName renders', () => {
+    const withNotebook = {...settings, noteSetupDefaults: {...settings.noteSetupDefaults, notebook: {name: '{name} {tag} {year}', folder: ''}}};
+    const [placed] = placeNoteCandidates(input(['other'], {settings: withNotebook}));
+    expect(placed.shared?.fileName).toBe(homeNotebookName({template: '{name} {tag} {year}', itemName: 'Coaching', itemAbbrev: '', date: '2026-10-12'}));
+    expect(placed.shared?.relativeFile).toBe('Coaching 2026.note');
   });
 
   it('fills {abbr} and {name} from the item’s Project or Area, in notebooks and loop notes', () => {

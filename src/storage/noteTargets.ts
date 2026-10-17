@@ -6,6 +6,7 @@
  * item's own note - and the layout an existing note link uses. Reads only
  * the cache (synchronous); nothing here touches the file system.
  */
+import {homeNotebookName} from '../domain/homeNotebook';
 import {loopKindsOf} from '../domain/loops';
 import {
   candidateForLink,
@@ -48,9 +49,6 @@ export interface NoteTargetInput {
   forceOwn: boolean;
 }
 
-/** The Default notebook's file name when its name renders empty. */
-const DEFAULT_NOTEBOOK_FALLBACK = 'Notes';
-
 /** The key two candidates share when they lead to the same note: the relative file, or one key for "the item's own note". */
 const OWN_NOTE_KEY = '\u0000own';
 
@@ -69,20 +67,24 @@ function place(candidate: NoteCandidate, input: NoteTargetInput, loops: ReturnTy
   }
   const notebook = setup ? setup.notebook : input.settings.noteSetupDefaults.notebook;
   if (candidate.target === 'notebook' && notebook) {
-    const name = setup ? setup.name : DEFAULT_NOTEBOOK_FALLBACK;
-    // sanitizeFileNameComponent: the rendered name comes from user text (the
-    // notebook name, the subtag) - strip illegal characters and '#' (the
-    // anchor separator), and turn a deeper subtag's '/' into a space.
-    const fileName = sanitizeFileNameComponent(
-      renderSharedFileName({
-        template: notebook.name.trim() ? notebook.name : name,
-        fallbackName: name,
-        tag: setupTypeTag(input.tags, setup?.tags ?? []),
-        subtag: setupSubtag(input.tags, setup?.tags ?? []),
-        date: input.fileDate,
-        ...noteOwnerNames(input.itemPath),
-      }),
-    );
+    // The Default's notebook is the item's home notebook: one rendering of its
+    // name (domain/homeNotebook.ts). sanitizeFileNameComponent: the rendered
+    // name comes from user text (the notebook name, the subtag) - strip
+    // illegal characters and '#' (the anchor separator), and turn a deeper
+    // subtag's '/' into a space.
+    const owner = noteOwnerNames(input.itemPath);
+    const fileName = setup
+      ? sanitizeFileNameComponent(
+        renderSharedFileName({
+          template: notebook.name.trim() ? notebook.name : setup.name,
+          fallbackName: setup.name,
+          tag: setupTypeTag(input.tags, setup.tags),
+          subtag: setupSubtag(input.tags, setup.tags),
+          date: input.fileDate,
+          ...owner,
+        }),
+      )
+      : homeNotebookName({template: notebook.name, date: input.fileDate, ...owner});
     const relativeFolder = notebook.folder;
     return {
       candidate,
