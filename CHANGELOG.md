@@ -34,6 +34,11 @@ or your project/area files are stored.
   year, its home notebook (Default note setup: One notebook, `{name} {year}`). Existing settings
   are not changed.
 
+### Fixed
+- **Engage: "Continue with …"** is offered once and sits at the bottom, above Open gtdpara and
+  Close. If you close the panel without it, the next action Engage showed becomes the todo you
+  are working on, so the old todo no longer comes back on every Engage.
+
 ### Experimental
 - **Notebook contents**: the Notebook tab lists the notebook's headings in page order - pages
   gtdpara made by their todo or meeting, typed headings by their text, handwritten ones as

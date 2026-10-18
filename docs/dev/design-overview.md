@@ -700,7 +700,7 @@ One reducer (`domain/engageFlow.ts`) decides every screen: options, owner empty,
 through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the current todo is
 per-profile app state in `settings.engageCurrent` (`storage/engageCurrent.ts`), found again by
 index and text. Opening follows the note (`decideOpening`): "Engage ›" > the note page's todo > the
-note's owner > the stored todo's owner, with "Continue with <todo>" back to the stored todo of another owner. The panel sits on a transparent root, so the note stays visible; it keeps its
+note's owner > the stored todo's owner, with "Continue with <todo>" above the footer back to the stored todo of another owner - offered once: that opening stores what the panel shows for the note's owner (its next action, or nothing) in its place. The panel sits on a transparent root, so the note stays visible; it keeps its
 largest height while open, because the A5 X does not reliably redraw the note where a panel
 shrank. After a Done on Daily, the Current tab or an overview, `ui/useEngagePrompt.ts` offers
 the owner's plan in the status slot when its last `#next` was done. Detail:

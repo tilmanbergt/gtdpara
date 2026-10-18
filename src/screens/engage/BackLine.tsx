@@ -1,7 +1,8 @@
 /**
- * "Continue with <todo>" under the header (Addendum "Engage follows the note" of
- * docs/dev/history/technical-design-engage.md): the way back to the todo you
- * worked on in another owner, cut to one line; a tap switches back.
+ * "Continue with <todo>" above the footer (Addendum "Engage follows the note"
+ * of docs/dev/history/technical-design-engage.md, and its "way back once"
+ * addendum): the way back to the todo you worked on in another owner, cut to
+ * one line; a tap switches back. Offered on one opening only.
  */
 import React from 'react';
 import {Text} from 'react-native';

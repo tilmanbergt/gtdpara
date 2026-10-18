@@ -75,10 +75,11 @@ export const engageStyles = StyleSheet.create({
     fontSize: FONT.medium,
     fontWeight: '700',
   },
+  /** "Continue with …" and "Go to … ›" near the bottom: quiet links, regular weight. */
   backLine: {
     fontSize: FONT.medium,
-    fontWeight: '600',
     textDecorationLine: 'underline',
+    marginTop: SPACING.xs,
     marginBottom: SPACING.sm,
   },
   caption: {

@@ -264,10 +264,10 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
             onBack={onFocusScreen && owner ? () => dispatch({type: 'back'}) : undefined}
             textColor={textColor}
           />
+          {body()}
           {view.back && (screen.kind === 'options' || screen.kind === 'ownerEmpty') ? (
             <BackLine todo={view.back.todo} onPress={goBack} textColor={textColor} />
           ) : null}
-          {body()}
           <EngageFooter
             select={select}
             closeIsMain={screen.kind === 'ownerEmpty' || screen.kind === 'focusDone'}

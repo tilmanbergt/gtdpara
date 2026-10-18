@@ -280,6 +280,34 @@ describe('EngageOverlay screens', () => {
     act(() => r.unmount());
   });
 
+  it('the way back is offered once: closing without it, the next action shown replaces the stored todo', async () => {
+    area('Coaching', ['## Tasks', '- [ ] Draft agenda #next', '- [ ] Book room #next']);
+    area('Writing', ['## Tasks', '- [ ] Outline #next']);
+    mockSettings.current = {
+      ...mockSettings.current,
+      engageCurrent: {itemPath: COACHING, taskText: 'Book room #next', taskIndex: 1, owner: {kind: 'item', itemPath: COACHING}},
+    };
+    mockNote.path = `${AREAS}/Writing/Meetings/Ideas.note`;
+    const first = await open({via: 'button'});
+    expect(texts(first.r)).toContain('Continue with Book room');
+    // The line sits at the bottom, after the lists and Quick Add, right above the footer.
+    const all = texts(first.r);
+    expect(all.indexOf('Continue with Book room')).toBeGreaterThan(all.indexOf('+ Quick Add'));
+    expect(all.indexOf('Continue with Book room')).toBeLessThan(all.indexOf('Open gtdpara'));
+    expect(mockSettings.current.engageCurrent).toMatchObject({taskText: 'Outline #next', owner: {kind: 'item', itemPath: `${AREAS}/Writing`}});
+    act(() => first.r.unmount());
+
+    const second = await open({via: 'button'});
+    expect(texts(second.r)).toContain('Working on');
+    expect(texts(second.r).some(t => t.startsWith('Continue with'))).toBe(false);
+    act(() => second.r.unmount());
+
+    mockNote.path = `${COACHING}/Meetings/Retro.note`;
+    const third = await open({via: 'button'});
+    expect(texts(third.r)).toContain('Continue with Outline');
+    act(() => third.r.unmount());
+  });
+
   it('S8: an empty owner → "Nothing left", Select next focus and Close as main action', async () => {
     area('Coaching', ['## Tasks', '- [x] Old one']);
     const {r} = await open({via: 'ownerPage', owner: {kind: 'item', itemPath: COACHING}});
