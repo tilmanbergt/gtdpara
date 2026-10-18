@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-10-18
+
 ### New
 - **Home notebooks**: every project and area has one notebook to go to - the Default note
   setup's notebook made for it, for example "Garden renovation 2026.note" in its folder. A
