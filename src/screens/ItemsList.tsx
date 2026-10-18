@@ -71,6 +71,9 @@ import {common} from '../ui/commonStyles';
 import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {useErrorStatus} from '../ui/status/StatusProvider';
 import {errorMessage} from '../utils/errorMessage';
+import HomeNotebookButton, {HOME_NOTEBOOK_ICON_HEIGHT, HOME_NOTEBOOK_ICON_WIDTH} from '../ui/HomeNotebookButton';
+import {useHomeNotebooks} from '../ui/useHomeNotebooks';
+import {useHomeNotebookTap} from '../ui/useHomeNotebookTap';
 
 const CREATE_LABEL: Record<'project' | 'area', string> = {
   project: '+ Create Project',
@@ -94,7 +97,12 @@ const CREATE_PLACEHOLDER: Record<'project' | 'area', string> = {
 // against wrong taps). ENTRY_PADDING_PX and styles.entryRow must match.
 const ENTRY_PADDING_PX = 8;
 const ENTRY_OPTS: ItemEntryOptions = {showAbbrev: true, paddingPx: ENTRY_PADDING_PX};
-const entryHeight = (item: CachedItem) => itemEntryHeight(item, COLUMN_WIDTH_PX, ENTRY_OPTS);
+// With home notebooks on, the notebook icon takes its width from the text
+// and the row is at least as tall as its touch target
+// (docs/dev/history/technical-design-home-notebooks.md §3.3).
+const textWidth = (withIcon: boolean) => COLUMN_WIDTH_PX - (withIcon ? HOME_NOTEBOOK_ICON_WIDTH : 0);
+const entryHeight = (item: CachedItem, withIcon: boolean) =>
+  Math.max(itemEntryHeight(item, textWidth(withIcon), ENTRY_OPTS), withIcon ? HOME_NOTEBOOK_ICON_HEIGHT : 0);
 
 // --- Fresh screen budget for this screen's two-column area (docs/dev/design-
 // device-rendering.md §6) ---
@@ -256,30 +264,36 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
   const pathKey = PATH_KEYS[kind];
   const entries = cache ? cache.items.filter(item => item.kind === kind) : [];
   const groups = groupByStatus(kind, entries);
+  const homes = useHomeNotebooks(entries);
+  const tapHome = useHomeNotebookTap('ItemsList');
+  const withIcon = homes.enabled;
+  const rowHeight = (item: CachedItem) => entryHeight(item, withIcon);
 
   const renderEntry = (item: CachedItem): React.ReactNode => {
-    const heightPx = entryHeight(item);
+    const heightPx = rowHeight(item);
     const abbrev = itemEntryAbbrevLabel(item, ENTRY_OPTS);
     return (
-      <Pressable
-        key={item.path}
-        onPress={() => onOpenItem(kind, {name: item.name, path: item.path, isFolder: true})}
-        // {height, minHeight: height} together, not height alone - an
-        // explicit height doesn't override a stylesheet minHeight floor on
-        // its own (see ui/TaskRow.tsx's doc comment) - this row has no
-        // such floor, but pairing
-        // them defensively keeps this row consistent with every other
-        // computed-height row in the app.
-        style={[styles.entryRow, {height: heightPx, minHeight: heightPx}]}>
-        <Text
-          style={[styles.entry, styles.entryLink, {color: textColor}]}
-          numberOfLines={itemEntryLines(item, COLUMN_WIDTH_PX, ENTRY_OPTS)}>
-          {isFocused(item) ? '★ ' : ''}
-          {item.name}
-          {abbrev ? ABBREV_GAP : ''}
-          {abbrev ? <Text style={styles.entryAbbrev}>{abbrev}</Text> : null} ›
-        </Text>
-      </Pressable>
+      // {height, minHeight: height} together, not height alone - an
+      // explicit height doesn't override a stylesheet minHeight floor on
+      // its own (see ui/TaskRow.tsx's doc comment) - this row has no
+      // such floor, but pairing
+      // them defensively keeps this row consistent with every other
+      // computed-height row in the app.
+      <View key={item.path} style={[styles.entryLine, {height: heightPx, minHeight: heightPx}]}>
+        <Pressable
+          onPress={() => onOpenItem(kind, {name: item.name, path: item.path, isFolder: true})}
+          style={styles.entryRow}>
+          <Text
+            style={[styles.entry, styles.entryLink, {color: textColor}]}
+            numberOfLines={itemEntryLines(item, textWidth(withIcon), ENTRY_OPTS)}>
+            {isFocused(item) ? '★ ' : ''}
+            {item.name}
+            {abbrev ? ABBREV_GAP : ''}
+            {abbrev ? <Text style={styles.entryAbbrev}>{abbrev}</Text> : null} ›
+          </Text>
+        </Pressable>
+        <HomeNotebookButton nb={homes.of(item)} onPress={tapHome} variant="icon" textColor={textColor} borderColor={borderColor} />
+      </View>
     );
   };
 
@@ -334,7 +348,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
             <PagedSection
               header="Active"
               rows={groups.active}
-              rowHeight={entryHeight}
+              rowHeight={rowHeight}
               renderRow={renderEntry}
               emptyHint="Nothing active."
               textColor={textColor}
@@ -353,7 +367,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
                   <PagedSection
                     header="On Hold"
                     rows={groups.onHold}
-                    rowHeight={entryHeight}
+                    rowHeight={rowHeight}
                     renderRow={renderEntry}
                     emptyHint="Nothing on hold."
                     textColor={textColor}
@@ -364,7 +378,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
                   <PagedSection
                     header="Done — awaiting review"
                     rows={groups.done}
-                    rowHeight={entryHeight}
+                    rowHeight={rowHeight}
                     renderRow={renderEntry}
                     emptyHint="Nothing done yet."
                     textColor={textColor}
@@ -380,7 +394,7 @@ export default function ItemsList({kind, onOpenItem}: Props): React.JSX.Element 
               <PagedSection
                 header="On Hold"
                 rows={groups.onHold}
-                rowHeight={entryHeight}
+                rowHeight={rowHeight}
                 viewportHeight={FULL_VIEWPORT_PX}
                 renderRow={renderEntry}
                 emptyHint="Nothing on hold."
@@ -426,7 +440,13 @@ const styles = StyleSheet.create({
   halfBoxBottom: {
     flex: 1,
   },
+  // The row: the name (tap opens the item) and the notebook icon at its end.
+  entryLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   entryRow: {
+    flex: 1,
     // No alignItems/justifyContent override - default column-flex top-
     // alignment is exactly what's wanted here (as in ui/TaskRow.tsx/ui/
     // MeetingRow.tsx: centering a

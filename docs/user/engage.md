@@ -16,7 +16,7 @@ The panel is about one **owner** at a time: a Project, an Area, a loop or a thre
 - On a note that belongs to none of them: the owner of the todo you were last working on.
 - Nothing fits: Engage shows today's focus to choose from (or this week's, when nothing is in today's focus).
 
-When Engage shows another owner than the one of the todo you were working on, a line under the header offers the way back, for example **Continue with Measure the beds**. Tap it to return to that todo. Once you choose a todo in the new place, it is the one you are working on and the line goes. After **Engage ›** there is no such line: you chose the owner yourself.
+When Engage shows another owner than the one of the todo you were working on, a line at the bottom, above **Open gtdpara** and **Close**, offers the way back, for example **Continue with Measure the beds**. Tap it to return to that todo. It is offered once: if you close the panel without it, what the panel showed - the new place's next action - is the one you are working on from then on (with no next action there, nothing is). Choosing a todo in the new place does the same at once. After **Engage ›** there is no such line: you chose the owner yourself.
 
 ## Working on
 
@@ -56,6 +56,7 @@ Engage never moves on to another owner by itself. **Select next focus ›** list
 
 ## Quick Add, marks and leaving
 
+- **Go to** with the notebook's name, for example "Go to Garden renovation 2026 ›": when the owner is a project or area with a home notebook ([Projects and Areas](projects-and-areas.md)) and you are in another of its notes, this line opens the notebook and closes the panel.
 - **+ Quick Add** at the bottom opens Quick Add for the owner. For a loop or a thread, its tag is added to what you enter. **Cancel** folds it again.
 - When the owner's Project or Area has marks to process, a line says so; it opens Process marks, and Close there brings you back to Engage.
 - **Open gtdpara** opens the plugin as usual, **Close** (or ✕) closes the panel.

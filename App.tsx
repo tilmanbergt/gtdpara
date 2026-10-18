@@ -62,6 +62,7 @@ import {log, logError} from './src/utils/log';
 import {BUILD_INFO} from './src/generated/buildInfo';
 import {perfBegin, perfConfigure, perfEnable, perfMark, usePerfRender} from './src/utils/perf';
 import {collectPerfStats} from './src/storage/perfStats';
+import {logNoteTitlesDiagnostic} from './src/storage/noteTitlesDiagnostic';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from './src/utils/screenRefresh';
 import {FONT, useThemeColors} from './src/ui/theme';
 import {errorMessage} from './src/utils/errorMessage';
@@ -319,6 +320,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         // i.e. every time the plugin is (re)opened - see
         // rememberLaunchNotePath's own doc comment in fileSystem.ts.
         rememberLaunchNotePath(currentPath);
+        if (loadedSettings.debugLogging === true && currentPath) void logNoteTitlesDiagnostic(currentPath);
         if (cancelled || routedByLassoButtonRef.current || routedByEngageButtonRef.current) return;
 
         setSettings(loadedSettings);

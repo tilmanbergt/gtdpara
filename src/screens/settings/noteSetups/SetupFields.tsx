@@ -8,7 +8,7 @@ import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {todayIso} from '../../../domain/meetingTime';
 import {LOOP_NOTE_NAME_DEFAULT, Notebook} from '../../../domain/noteSetups';
-import {loopNotePreviews, notebookPreviews} from '../../../domain/noteSetupText';
+import {DEFAULT_NOTEBOOK_HOME_HINT, loopNotePreviews, notebookPreviews} from '../../../domain/noteSetupText';
 import ClipboardTextInput from '../../../ui/ClipboardTextInput';
 import MiniTabs, {MiniTabDef} from '../../../ui/MiniTabs';
 import CheckToggle from '../CheckToggle';
@@ -105,6 +105,7 @@ export default function SetupFields(props: {draft: NoteSetupDraft} & Colors): Re
       <View>
         <Text style={[setupStyles.fieldHint, {color: textColor}]}>For every todo and meeting no setup matches.</Text>
         <NotebookFields draft={draft} notebook={defaults.notebook ?? null} fallbackName="Notes" tags={[]} {...colors} />
+        {defaults.notebook && <Text style={[setupStyles.fieldHint, {color: textColor}]}>{DEFAULT_NOTEBOOK_HOME_HINT}</Text>}
         <TrackingFields draft={draft} trackPrep={defaults.tracking.trackPrep} trackReview={defaults.tracking.trackReview} textColor={textColor} />
       </View>
     );

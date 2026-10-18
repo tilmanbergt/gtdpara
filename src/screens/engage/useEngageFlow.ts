@@ -33,7 +33,15 @@ async function resolveOpening(request: EngageRequest, source: EngageSource, sett
   if (request.via === 'ownerPage') return decideOpening({pageOwner: request.owner, noteOwner: null, noteTodo: null, stored: found});
   const [path, page] = await Promise.all([getCurrentNotePath(), getCurrentPageNum()]);
   const context = await noteContextOf(path, page, source, resolvePaths(settings));
-  const opening = decideOpening({pageOwner: null, noteOwner: context.owner, noteTodo: context.todo, stored: found});
+  // The todo the panel shows for the note's owner without a current one: its only #next.
+  const shown = context.owner ? engageListsOf(optionsOf(context.owner, source, Date.now(), null), null).nowTodo : null;
+  const opening = decideOpening({
+    pageOwner: null,
+    noteOwner: context.owner,
+    noteTodo: context.todo,
+    noteOwnerNext: shown ? todoKeyOf(shown) : null,
+    stored: found,
+  });
   if (opening.store) await setEngageCurrent(opening.store.owner, opening.store.key);
   return opening;
 }

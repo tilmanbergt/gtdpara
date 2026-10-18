@@ -183,6 +183,12 @@ export interface GtdParaSettings {
   /** Debug logging: also append every log line to a rotating file in the debug folder (utils/logSink.ts). */
   debugLogging: boolean;
   /**
+   * "Notebook contents" (docs/dev/history/technical-design-home-notebooks.md
+   * §3.5): the Notebook tab lists the home notebook's headings. Experimental,
+   * default on; off shows name, years and Open only.
+   */
+  notebookContentsEnabled: boolean;
+  /**
    * The last release version whose "Updated to x.y.z" notice the user
    * acknowledged (tapped What's new or ✕). '' = none yet.
    */
@@ -234,6 +240,7 @@ export const DEFAULT_SETTINGS: GtdParaSettings = {
   experimentalGoogleCalendar: false,
   experimentalGmail: false,
   debugLogging: false,
+  notebookContentsEnabled: true,
   lastSeenVersion: '',
   activeProfileId: 'production',
 };

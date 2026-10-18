@@ -22,7 +22,7 @@ const settings: GtdParaSettings = {
 
 describe('noteSetupsLine', () => {
   it('counts kinds, switched-off setups, notebooks, Default pages and the migration', () => {
-    expect(noteSetupsLine(settings, false)).toBe('note setups: thread 1 · loop 1 · off 1 · notebook 1 · default pages 2 · default notebook no · migrated no');
+    expect(noteSetupsLine(settings, false)).toBe('note setups: thread 1 · loop 1 · off 1 · notebook 1 · default pages 3 · default notebook yes · migrated no');
     expect(noteSetupsLine({...settings, tagRules: [{} as never]}, false)).toContain('migrated yes');
     expect(noteSetupsLine(settings, true)).toContain('migrated failed');
   });

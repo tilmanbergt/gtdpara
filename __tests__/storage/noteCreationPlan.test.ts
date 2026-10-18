@@ -23,6 +23,7 @@ jest.mock('../../src/supernote/fileSystem', () => {
     }),
     ensureFolderExists: jest.fn(async () => undefined),
     insertKeyWord: jest.fn(async () => undefined),
+    statFiles: jest.fn(async () => null),
     openPath: jest.fn(async () => undefined),
     displayPath: (p: string) => p.replace(/^\/storage\/emulated\/0\//, ''),
     getElements: jest.fn(async () => []),
@@ -170,6 +171,35 @@ describe('first-time note on a split-by-tag rule', () => {
       forceOwnTarget: true,
     });
     expect(r.plans[0]).toMatchObject({kind: 'new-own-file', setupName: 'Coaching'});
+  });
+});
+
+describe('first-time note in the Default notebook (docs/dev/history/technical-design-home-notebooks.md §3.2)', () => {
+  const withDefaultNotebook = (): GtdParaSettings => ({
+    ...settingsWith([coachingRule()]),
+    noteSetupDefaults: {...DEFAULT_SETTINGS.noteSetupDefaults, notebook: {name: '{name} {year}', folder: ''}},
+  });
+
+  it('a new home notebook starts with its Home page keyword; the item page comes after it', async () => {
+    const r = recorder(true);
+    const result = await openOrCreateTodoNote(task('Plan the year'), AREA, withDefaultNotebook(), null, {confirmCreate: r.confirm});
+    const file = `${AREA}/Coaching ${new Date().getFullYear()}.note`;
+    expect(r.plans[0]).toMatchObject({kind: 'new-shared-file', setupName: null});
+    expect(result.outcome?.absolutePath).toBe(file);
+    expect(fs.insertKeyWord).toHaveBeenCalledWith(file, 0, 'home');
+    expect(sharedPages.insertItemPage).toHaveBeenCalledWith(file, expect.any(String), expect.any(String), expect.any(String));
+  });
+
+  it('a setup whose notebook is the home notebook shares the file, Home page included', async () => {
+    const settings = {...withDefaultNotebook(), noteSetups: [coachingRule({notebook: {name: '{name} {year}', folder: ''}})]};
+    await openOrCreateMeetingNote(meeting('Session #coaching/sabina'), AREA, settings, null, {confirmCreate: recorder(true).confirm});
+    // The meeting's own date decides the year.
+    expect(fs.insertKeyWord).toHaveBeenCalledWith(`${AREA}/Coaching 2026.note`, 0, 'home');
+  });
+
+  it('a setup’s own notebook gets no Home page', async () => {
+    await openOrCreateMeetingNote(meeting('Session #coaching/sabina'), AREA, withDefaultNotebook(), null, {confirmCreate: recorder(true).confirm});
+    expect(fs.insertKeyWord).not.toHaveBeenCalledWith(expect.any(String), 0, 'home');
   });
 });
 

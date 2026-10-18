@@ -444,6 +444,15 @@ Built on `feature/engage` in steps S0-S8 as planned, with a step S5b after the C
 
 **Sizes.** `App.tsx` 991 → 997 (one mode branch, the listener branch, the engage store subscription, the flash fix; the `captureNonce` comment was shortened to make room); `DailyView.tsx` 1537 → 1536.
 
+## Addendum: the way back once
+
+**Decided (Tilman, device test of 0.16.0).** "Continue with <todo>" was offered on every opening outside the stored todo's owner, until a todo was picked there: opening Engage on a general note, a meeting page or a loop note stored nothing, so the same line came back each time.
+
+1. **Once:** the opening that offers the way back also stores what the panel shows for the note's owner - its next action as the current todo, or nothing when it has none. Closing the panel without tapping the line therefore moves on; tapping it goes back as before. `decideOpening` takes `noteOwnerNext` (the todo the panel shows without a current one) and returns it as `store` in the way-back case (`key` null forgets the stored todo).
+2. **At the bottom:** the line sits above the footer (Open gtdpara · Close), after the lists, Quick Add and "Go to <notebook> ›", in regular weight, underlined - the same quiet style as "Go to".
+
+Tests: `decideOpening` table (way back with and without a next action), the overlay (offered once, replaced, offered again from the new todo's side, position above the footer).
+
 ## Appendix A. Screens S1-S11 (approved UI draft)
 1. **Owner page, "Engage ›"** (Project, Area, loop, thread page): opens Engage with that owner as current owner.
 2. **Engage next**: header (kind, name, area, ✕), the owner's `#next` todos only, collapsed Quick Add, footer (Open gtdpara · Close).

@@ -11,6 +11,7 @@
  * between an item's pages. Only one order exists (Timeline); another one
  * would be a second function over the same `PageMark`s.
  */
+import {HOME_PAGE_KEYWORD} from './homeNotebook';
 import {LOOP_PAGE_KEYWORD_PREFIX} from './loops';
 import {isBareDateKeyword} from './noteFindability';
 import {PageKeyword, parseKeywordLeadingDate} from './sharedNotePages';
@@ -19,7 +20,7 @@ import {PageKeyword, parseKeywordLeadingDate} from './sharedNotePages';
 export interface PageMark {
   /** YYYY-MM-DD when the page starts an item; null for a continuation page. */
   startDate: string | null;
-  /** A loop note's first page (keyword `loop <kind>/<name>`): always stays first. */
+  /** A loop note's first page (keyword `loop <kind>/<name>`) or a home notebook's Home page (keyword `home`): always stays first. */
   pinned: boolean;
 }
 
@@ -35,7 +36,7 @@ export function pageMarks(keywords: readonly PageKeyword[], totalPages: number):
   for (const {page, keyword} of keywords) {
     const mark = marks[page];
     if (!mark) continue;
-    if (keyword.startsWith(LOOP_PAGE_KEYWORD_PREFIX)) mark.pinned = true;
+    if (keyword.startsWith(LOOP_PAGE_KEYWORD_PREFIX) || keyword === HOME_PAGE_KEYWORD) mark.pinned = true;
     if (isBareDateKeyword(keyword)) mark.startDate ??= keyword;
     else anchorDates[page] ??= parseKeywordLeadingDate(keyword);
   }

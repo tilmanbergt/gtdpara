@@ -16,8 +16,12 @@ import {formatDayHeader, formatHeadingDate, formatTime} from './dateFormat';
 import type {Task} from './types';
 import {renderSinceLast, SinceLast} from './sinceLastText';
 
-/** The kinds of page a note setup can describe (§1.4 keeps more kinds open). */
-export type PageKind = 'meeting' | 'todo' | 'first';
+/**
+ * The kinds of page a note setup can describe (§1.4 keeps more kinds open).
+ * `home` is the Default's only: page 1 of a home notebook
+ * (docs/dev/history/technical-design-home-notebooks.md §3.2).
+ */
+export type PageKind = 'meeting' | 'todo' | 'first' | 'home';
 
 /**
  * `link` (docs/dev/history/technical-design-linked-file-piece.md): a tappable
@@ -35,8 +39,12 @@ export type PageKind = 'meeting' | 'todo' | 'first';
  * and the display title with its tags as words (no `#`). A heading unless
  * switched off. Meeting pages, and a loop note's first page (main date + loop
  * name; the name alone without a main date).
+ *
+ * `scope` and `goals` (docs/dev/history/technical-design-home-notebooks.md
+ * §3.2): Home page only - the Project's or Area's Scope, and its latest
+ * monthly and weekly goal.
  */
-export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link' | 'sinceLast' | 'dateTitle';
+export type PieceType = 'title' | 'date' | 'time' | 'text' | 'related' | 'link' | 'sinceLast' | 'dateTitle' | 'scope' | 'goals';
 
 export interface NotePiece {
   type: PieceType;
@@ -105,30 +113,34 @@ export interface PageLayout {
  * out of sync with the note's own tags.
  */
 export const PIECE_PAGES: Record<PieceType, PageKind[]> = {
-  title: ['todo', 'meeting', 'first'],
+  title: ['todo', 'meeting', 'first', 'home'],
   date: ['meeting'],
   time: ['meeting'],
-  text: ['todo', 'meeting', 'first'],
+  text: ['todo', 'meeting', 'first', 'home'],
   related: ['todo', 'meeting'],
   link: ['todo', 'meeting', 'first'],
   sinceLast: ['meeting'],
   dateTitle: ['meeting', 'first'],
+  scope: ['home'],
+  goals: ['home'],
 };
 
 /**
  * The pieces a fresh page starts with, in top-to-bottom order
  * (docs/dev/history/technical-design-projects-findable-notes.md §2.1 R3):
  * a meeting page Date & title, Time, Linked file; a todo page Title and
- * Linked file; a loop's first page Date & title and Linked file.
+ * Linked file; a loop's first page Date & title and Linked file; a Home page
+ * Title, Scope and Goals.
  */
 export const DEFAULT_PIECE_TYPES: Record<PageKind, PieceType[]> = {
   meeting: ['dateTitle', 'time', 'link'],
   todo: ['title', 'link'],
   first: ['dateTitle', 'link'],
+  home: ['title', 'scope', 'goals'],
 };
 
-/** Default pieces seeded with the Heading switch set on explicitly (a todo's heading is its Title, §2.1 R3). */
-const DEFAULT_HEADING_PIECES: Partial<Record<PageKind, PieceType[]>> = {todo: ['title']};
+/** Default pieces seeded with the Heading switch set on explicitly (a todo's and a Home page's heading is its Title, §2.1 R3). */
+const DEFAULT_HEADING_PIECES: Partial<Record<PageKind, PieceType[]>> = {todo: ['title'], home: ['title']};
 
 /** Adds `DEFAULT_PIECE_TYPES[kind]` to `layout`, stacked below its existing pieces. */
 export function withDefaultPieces<T extends PageLayout>(layout: T, kind: PageKind): T {
@@ -364,6 +376,10 @@ export interface PieceRenderContext {
   sinceLast?: SinceLast | null;
   /** The `dateTitle` piece's text, `30.9.2026 · Retro demand`, built by the caller with `dateTitleText` from the date and the display title with tags as words (domain/markdown.ts's `tagsAsWords`). */
   dateTitle?: string;
+  /** Home page only - the item's Scope text; empty or unset skips the piece. */
+  scope?: string;
+  /** Home page only - the latest monthly and weekly goal, one line each (domain/homeNotebook.ts's `homeGoalsText`); empty or unset skips the piece. */
+  goals?: string;
   /** Bare file name of the item's `linkedFile`, set by the caller ONLY when that file actually exists (missing file -> unset -> the `link` piece is skipped, docs/dev/history/technical-design-linked-file-piece.md §1.4). */
   linkedFileName?: string;
 }
@@ -403,6 +419,10 @@ export function renderPieceText(piece: NotePiece, ctx: PieceRenderContext): stri
       return renderSinceLast(ctx.sinceLast);
     case 'dateTitle':
       return ctx.dateTitle ?? '';
+    case 'scope':
+      return ctx.scope?.trim() ?? '';
+    case 'goals':
+      return ctx.goals ?? '';
     default:
       return '';
   }

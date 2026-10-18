@@ -3,12 +3,13 @@
  * §6.2), one per page kind: a thumbnail of the pieces (no MyStyle image -
  * full-page pictures in list rows cost too much; the text names the
  * background), Default or Own layout, and Customize › / Edit › / Use default.
- * The Default's own pages each get Edit ›.
+ * The Default's own pages each get Edit ›; its Home page shows only while
+ * it has a notebook (docs/dev/history/technical-design-home-notebooks.md §3.2).
  */
 import React from 'react';
 import {Pressable, Text, View} from 'react-native';
 import {layoutFor, pageKindsOf} from '../../../domain/noteSetups';
-import {PAGE_KIND_LABELS, pageRowSummary} from '../../../domain/noteSetupText';
+import {defaultPageKinds, PAGE_KIND_LABELS, pageRowSummary} from '../../../domain/noteSetupText';
 import {PageKind} from '../../../domain/pageLayout';
 import {GtdParaSettings} from '../../../domain/settings';
 import NoteTemplatePreview from '../../../ui/NoteTemplatePreview';
@@ -16,14 +17,13 @@ import PagedSection from '../../../ui/PagedSection';
 import {PAGE_ROW_HEIGHT, setupStyles} from './noteSetupsStyles';
 import {NoteSetupDraft} from './useNoteSetupDraft';
 
-const DEFAULT_PAGE_KINDS: PageKind[] = ['meeting', 'todo', 'first'];
 const noSelection = () => undefined;
 
 export default function PageRows(props: {draft: NoteSetupDraft; values: GtdParaSettings; textColor: string; borderColor: string}): React.JSX.Element | null {
   const {draft, values, textColor, borderColor} = props;
   const target = draft.target;
   if (!target) return null;
-  const kinds = target.kind === 'setup' ? pageKindsOf(target.setup.kind) : DEFAULT_PAGE_KINDS;
+  const kinds = target.kind === 'setup' ? pageKindsOf(target.setup.kind) : defaultPageKinds(target.defaults);
 
   const button = (label: string, onPress: () => void) => (
     <Pressable onPress={onPress} hitSlop={6} style={[setupStyles.pageRowButton, {borderColor}]}>

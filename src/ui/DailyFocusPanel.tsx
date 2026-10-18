@@ -73,13 +73,14 @@
  * bounding `flex:1`, and the Focus tab's fixed-slot content doesn't
  * self-measure at all.
  */
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {CachedItem, findCachedItem} from '../storage/dataCache';
 import {FolderEntry} from '../supernote/fileSystem';
 import {logError} from '../utils/log';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget, fileBrowserViewportHeightPx} from './FileBrowserPane';
 import FocusedItemRow from './FocusedItemRow';
+import {useFocusHomeNotebooks} from './useFocusHomeNotebooks';
 import MiniTabs, {MiniTabDef} from './MiniTabs';
 import {PAGE_SIZE} from './pagination';
 import {FONT} from './theme';
@@ -119,6 +120,9 @@ function DailyFocusPanel({
   borderColor,
 }: Props): React.JSX.Element {
   usePerfRender('DailyFocusPanel');
+  // Home notebook icon on each focus row (docs/dev/history/technical-design-home-notebooks.md §3.3).
+  const dailyFocused = useMemo(() => items.filter(item => item.dailyFocus), [items]);
+  const homeIconFor = useFocusHomeNotebooks('DailyFocusPanel', dailyFocused, true, textColor, borderColor);
   const [activeTab, setActiveTab] = useState<FocusPanelTab>('focus');
   // Which kind is currently armed for picking, or null - see the module doc
   // comment's "Arm-and-pick" note. Local state, deliberately never lifted -
@@ -224,6 +228,7 @@ function DailyFocusPanel({
             onOpenItem={onOpenItem}
             onToggle={onToggle}
             onAddEmpty={() => armFromEmptySlot('project')}
+            homeIconFor={homeIconFor}
             textColor={textColor}
             borderColor={borderColor}
           />
@@ -235,6 +240,7 @@ function DailyFocusPanel({
             onOpenItem={onOpenItem}
             onToggle={onToggle}
             onAddEmpty={() => armFromEmptySlot('area')}
+            homeIconFor={homeIconFor}
             textColor={textColor}
             borderColor={borderColor}
           />
@@ -279,6 +285,7 @@ function FixedSlotSection({
   onOpenItem,
   onToggle,
   onAddEmpty,
+  homeIconFor,
   textColor,
   borderColor,
 }: {
@@ -289,6 +296,7 @@ function FixedSlotSection({
   onOpenItem: (kind: FocusKind, entry: FolderEntry) => void;
   onToggle: (item: CachedItem, value: boolean) => Promise<void>;
   onAddEmpty: () => void;
+  homeIconFor: (item: CachedItem) => React.ReactNode;
   textColor: string;
   borderColor: string;
 }): React.JSX.Element {
@@ -321,6 +329,7 @@ function FixedSlotSection({
           onPress={() => onOpenItem(item.kind, {name: item.name, path: item.path, isFolder: true})}
           onRemove={() => handleRemove(item)}
           disabled={pending}
+          accessory={homeIconFor(item)}
           textColor={textColor}
           borderColor={borderColor}
         />

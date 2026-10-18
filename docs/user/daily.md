@@ -21,7 +21,7 @@ The left column shows meetings with the tabs **Today** and **Tomorrow** (and **G
 
 ## Daily focus
 
-Pick which projects and areas you are working on today in the focus panel. The number of focus slots is set in **Settings → Focus** (default: 3 projects and 2 areas). A full list stays full until you remove one - there is no automatic swapping. Focus stays until you remove it.
+Pick which projects and areas you are working on today in the focus panel. The number of focus slots is set in **Settings → Focus** (default: 3 projects and 2 areas). A full list stays full until you remove one - there is no automatic swapping. Focus stays until you remove it. The notebook icon on a focus row opens that project's or area's home notebook ([Projects and Areas](projects-and-areas.md)).
 
 ## Filtering by a tag
 

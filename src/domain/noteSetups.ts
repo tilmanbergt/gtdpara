@@ -73,6 +73,7 @@ export function noteSetupConfig(settings: {noteSetups: readonly NoteSetup[]; not
 export const EMPTY_NOTE_SETUP_CONFIG: NoteSetupConfig = {setups: [], defaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}, notebook: null}};
 
 /** The page rows a setup of `kind` has, in the order the setup page lists them. */
+// The Home page is the Default's only (docs/dev/history/technical-design-home-notebooks.md §3.2).
 export function pageKindsOf(kind: SetupKind): PageKind[] {
   return kind === 'loop' ? ['meeting', 'todo', 'first'] : ['meeting', 'todo'];
 }
@@ -319,14 +320,27 @@ export function createDefaultMeetingPage(): PageLayout {
   return addPiece(withDefaultPieces(emptyPageLayout(), 'meeting'), 'related');
 }
 
-/** The Default a fresh install starts with: the standard Meeting page and First page; no Todo page (blank); no tracking; own notes. */
+/** The standard Home page (docs/dev/history/technical-design-home-notebooks.md §3.2): Title (a heading), Scope, Goals. */
+export function createDefaultHomePage(): PageLayout {
+  return withDefaultPieces(emptyPageLayout(), 'home');
+}
+
+/**
+ * The Default's notebook on a fresh install: one notebook per Project or Area
+ * and year, in its folder - its home notebook
+ * (docs/dev/history/technical-design-home-notebooks.md §1).
+ */
+export const DEFAULT_HOME_NOTEBOOK: Notebook = {name: '{name} {year}', folder: ''};
+
+/** The Default a fresh install starts with: the standard Meeting, First and Home pages; no Todo page (blank); no tracking; every note in the home notebook. */
 export function seedNoteSetupDefaults(): NoteSetupDefaults {
   return {
     pages: {
       meeting: createDefaultMeetingPage(),
       first: withDefaultPieces(emptyPageLayout(), 'first'),
+      home: createDefaultHomePage(),
     },
     tracking: {...NO_TRACKING},
-    notebook: null,
+    notebook: {...DEFAULT_HOME_NOTEBOOK},
   };
 }

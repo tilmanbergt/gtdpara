@@ -95,7 +95,9 @@ the thread overview otherwise.
   (`storage/loopGlance.ts`: active by main date, New with Track, folded ideas and closed); a
   Project page has this tab as **Loops**, with its own loops only. A loop row opens the loop
   overview, 📓 the loop note, the clip its linked file. `TodosSection` groups the page's todos
-  by loop (`domain/loops.ts`'s `groupTodosByLoop`), the loops first.
+  by loop (`domain/loops.ts`'s `groupTodosByLoop`), the loops first. While the Default has a
+  notebook, a **Notebook** tab follows (`screens/notebook/NotebookTab.tsx`, §2.6 "Home
+  notebooks") and the header has **Notebook** before **Engage ›**.
 - **Review** — `screens/review/ReviewScreen.tsx` (§2.8). While a close-out is open, the Review
   tab shows `screens/CloseOutWizard.tsx` instead (§2.9).
 - **Settings** — `screens/settings/Settings.tsx` (§2.12).
@@ -525,7 +527,7 @@ edited in Settings → Note setups, `screens/settings/noteSetups/`): one per thi
 name, one or more tags (each tag in one setup only, `validateSetupTags`), a kind (**Thread** or
 **Loop**), where notes go (`notebook`: own note per item when null; a Loop setup's is the loop
 note), meeting tracking, and `pages`: an own `PageLayout` per `PageKind` (`meeting`, `todo`,
-`first` for loops) where the page doesn't use the Default's. The Default
+`first` for loops, `home` for the Default only) where the page doesn't use the Default's. The Default
 (`settings.noteSetupDefaults`) has a page per kind, tracking and an optional notebook for items
 no setup matches. A page's content is a `PageLayout` (`domain/pageLayout.ts`): a MyStyle
 background and positioned pieces (`title`, `dateTitle`, `date`, `time`, `text` from the layout's
@@ -604,6 +606,29 @@ Default with the standard Meeting and First pages; 0.14's Tag Rules are migrated
   once; `domain/sinceLastText.ts` prints at most 6 lines per block, then "… +N more". It follows
   the freeze rule above like every piece.
 
+**Home notebooks.** A Project's or Area's home notebook is the Default's notebook rendered for it
+(`domain/homeNotebook.ts`'s `homeNotebookName`, the one rendering `storage/noteTargets.ts`'s
+placement uses too); without a Default notebook the feature is hidden, the Inbox never has one.
+`storage/homeNotebooks.ts`'s `homeNotebookOf(item, settings)` is the building block: folder,
+file, and whether it exists from an in-memory state cache filled by one `statFiles` per item set
+(`ui/useHomeNotebooks.ts`; refreshed on cache, folder and files-checked events). The notebook
+icon (`ui/HomeNotebookButton.tsx`) sits on the Projects/Areas rows, Daily's focus rows, the
+Week/Month focus cards and the page header; a tap (`ui/useHomeNotebookTap.ts`, decided by
+`planHomeNotebookTap`) opens on the last viewed page (`openPath(path, -1)`), creates after the
+note confirm, or offers Create <year> · Open <last year>. A new home notebook gets the `home`
+keyword on page 1 and the Default's **Home page** (PageKind `home`: Title, `scope`, `goals` -
+latest monthly and weekly goal), written once, from the icon (`storage/homeNotebookCreate.ts`)
+or from a todo's or meeting's first note into that file (`itemNotePlan` → `fillHomePage`); the
+page order pins it first. The Notebook tab lists the years and the experimental **Contents**
+(`domain/notebookContents.ts` / `storage/notebookContents.ts`: gtdpara's pages titled from their
+item, other headings from the textbox they cover - by trail, title element or position - cached
+per file and modification time; switch `notebookContentsEnabled`). Engage shows "Go to <notebook>
+›" in another note of the owner (`screens/engage/useEngageGoTo.ts`). The item's name is kept as
+`name:` in its front matter (`readStoredName`); a folder renamed elsewhere is offered as a rename
+on the page (`ui/useHomeNotebookRenameOffer.ts`) and reported by the Integrity Check; the rename
+(`storage/homeNotebookRename.ts`) moves this year's file and re-points links and marks through
+the file-name fix's write-through. Detail: `docs/dev/history/technical-design-home-notebooks.md`.
+
 **Counterparts and tending.** A counterpart (the second segment of a nested tag) belongs to a
 **scope**: an Area with its assigned Projects, or a Project without an Area
 (`domain/counterparts.ts`: `counterpartScopes`, `scopeOwnerOf`, `scopeMembers`; a Project whose
@@ -675,7 +700,7 @@ One reducer (`domain/engageFlow.ts`) decides every screen: options, owner empty,
 through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the current todo is
 per-profile app state in `settings.engageCurrent` (`storage/engageCurrent.ts`), found again by
 index and text. Opening follows the note (`decideOpening`): "Engage ›" > the note page's todo > the
-note's owner > the stored todo's owner, with "Continue with <todo>" back to the stored todo of another owner. The panel sits on a transparent root, so the note stays visible; it keeps its
+note's owner > the stored todo's owner, with "Continue with <todo>" above the footer back to the stored todo of another owner - offered once: that opening stores what the panel shows for the note's owner (its next action, or nothing) in its place. The panel sits on a transparent root, so the note stays visible; it keeps its
 largest height while open, because the A5 X does not reliably redraw the note where a panel
 shrank. After a Done on Daily, the Current tab or an overview, `ui/useEngagePrompt.ts` offers
 the owner's plan in the status slot when its last `#next` was done. Detail:
@@ -909,7 +934,8 @@ when asked for:
   Projects, Areas, Archive and the Inbox and writes one report. Checks include load errors, `#`
   in note paths, missing linked files and default Resources folders, duplicate headings and
   abbreviations, orphaned Area assignments, interrupted close-outs, missing mark notes, Inbox
-  leftovers at the base root and unsafe file names. For unsafe note names it plans fixes
+  leftovers at the base root, renamed folders whose home notebook kept the old name and unsafe
+  file names. For unsafe note names it plans fixes
   (`domain/fileNameFix.ts`); "Fix file names (n)" renames after one confirm and rewrites the
   links (`storage/fileNameFix.ts`). Everything else is report-only.
 - **Performance tracing** (`utils/perf.ts`, switch `perfTracing`): one trace per tab tap,
@@ -1121,6 +1147,9 @@ place it happens.
   `archiveOps.ts`/`execute.ts` pattern): shown before running, idempotent, resumable.
 - Lists use `PagedSection`, messages the status slot, rows `TaskRow`/`MeetingRow`, adding and
   editing `QuickAddWidget`, picking a file or item the Files pane's arming.
+- A Project's or Area's home notebook comes from `storage/homeNotebooks.ts`'s `homeNotebookOf`
+  (screens through `ui/useHomeNotebooks.ts`); its name only from `domain/homeNotebook.ts`'s
+  `homeNotebookName`.
 
 **Code and verification**
 

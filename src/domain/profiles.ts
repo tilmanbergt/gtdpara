@@ -18,6 +18,7 @@ export const DEVICE_WIDE_KEYS: readonly SettingsKey[] = [
   'perfTracing',
   'keepTabsAlive',
   'debugLogging',
+  'notebookContentsEnabled',
   'lastSeenVersion',
   'activeProfileId',
 ];

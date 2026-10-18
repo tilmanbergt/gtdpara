@@ -66,6 +66,9 @@ describe('demo space', () => {
     expect(s.baseRoot).toBe(DEMO_BASE_ROOT);
     expect(s.noteSetups.map(x => x.tags)).toEqual([['1on1']]);
     expect(s.noteSetupsMigrated).toBe(true);
+    // One file per Project/Area and year: the Default and the setup share the home notebook.
+    expect(s.noteSetupDefaults.notebook).toEqual({name: '{name} {year}', folder: ''});
+    expect(s.noteSetups.map(x => x.notebook)).toEqual([{name: '{name} {year}', folder: ''}]);
     expect(sanitizeProfileSettings(profileSettingsOf(s))).toEqual(profileSettingsOf(s));
   });
 });

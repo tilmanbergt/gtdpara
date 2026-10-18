@@ -8,11 +8,16 @@
  * element itself.
  *
  * `fileSystem.ts`'s `Element` stays as it is; the title part is typed here.
+ * `getTitles` lives here too, because fileSystem.ts may not grow
+ * (scripts/code-health-baseline.json).
  */
 import {NOTE_HEADING_USERDATA} from '../domain/meetingNoteBlock';
 import {TITLE_ELEMENT_TYPE} from '../domain/noteFindability';
 import {NoteHeadingStyle} from '../domain/settings';
+import {PluginFileAPI} from 'sn-plugin-lib';
+import {log, logError} from '../utils/log';
 import {createElement, Element, Rect} from './fileSystem';
+import {ensureFileReadPermission} from './pluginPermissions';
 
 export const ELEMENT_TYPE_TITLE = TITLE_ELEMENT_TYPE;
 
@@ -61,4 +66,32 @@ export async function buildTitleElement(spec: TitleElementSpec): Promise<Element
     controlTrailNums: [spec.textBoxNum],
   };
   return element;
+}
+
+/** A heading as `PluginFileAPI.getTitles` returns it: the same shape as a title element's `title`. */
+export type NoteTitle = ElementTitle;
+
+/**
+ * Every heading on `pages` (0-based) of the note at `path`, in one call
+ * (docs/dev/history/technical-design-home-notebooks.md §3.5). Logs counts
+ * only; the caller decides what a failure means.
+ */
+export async function getTitles(path: string, pages: number[]): Promise<NoteTitle[]> {
+  if (!(await ensureFileReadPermission())) {
+    logError('getTitles: file read permission not granted');
+    throw new Error('File read permission was not granted.');
+  }
+  if (pages.length === 0) return [];
+  const response = (await PluginFileAPI.getTitles(path, pages)) as
+    | {success: boolean; result?: NoteTitle[] | null; error?: {code: number; message: string} | null}
+    | null
+    | undefined;
+  if (!response || !response.success) {
+    const message = response?.error?.message || 'Could not read this note\'s headings.';
+    logError('getTitles: failed', `${pages.length} pages`, message);
+    throw new Error(message);
+  }
+  const result = response.result ?? [];
+  log('getTitles: done', `${pages.length} pages`, `${result.length} titles`);
+  return result;
 }

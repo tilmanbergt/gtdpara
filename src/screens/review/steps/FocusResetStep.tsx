@@ -48,6 +48,7 @@ export default function FocusResetStep({data, onOpenItem, textColor, borderColor
       {paths && (
         <PeriodFocusPanel
           key={scope}
+          showHomeNotebooks={false}
           scope={scope}
           items={items}
           projectsPath={paths.projects}

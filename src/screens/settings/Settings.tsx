@@ -178,7 +178,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   };
 
   /** A switch that takes effect at once: applied, stored, and mirrored into the draft. */
-  const toggleNow = async (key: keyof GtdParaSettings & ('perfTracing' | 'keepTabsAlive' | 'debugLogging' | 'experimentalGoogleCalendar' | 'experimentalGmail')) => {
+  const toggleNow = async (key: keyof GtdParaSettings & ('perfTracing' | 'keepTabsAlive' | 'debugLogging' | 'experimentalGoogleCalendar' | 'experimentalGmail' | 'notebookContentsEnabled')) => {
     const next = !values[key];
     const nextValues = {...values, [key]: next};
     setValues(v => ({...v, [key]: next}));
@@ -230,6 +230,8 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
               onToggleGmail={() => toggleNow('experimentalGmail')}
               onTogglePerfTracing={() => toggleNow('perfTracing')}
               onToggleKeepTabsAlive={() => toggleNow('keepTabsAlive')}
+              notebookContentsEnabled={values.notebookContentsEnabled}
+              onToggleNotebookContents={() => toggleNow('notebookContentsEnabled')}
               onRunIntegrityCheck={handleRunIntegrityCheck}
               textColor={textColor}
               borderColor={borderColor}

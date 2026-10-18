@@ -246,13 +246,13 @@ describe('pages and defaults', () => {
     expect(createNoteSetup('2', 'loop').notebook).toEqual({name: '{year}-{month} {tag} {subtag}', folder: ''});
   });
 
-  it('the seeded Default: Meeting page with related items, First page, no Todo page', () => {
+  it('the seeded Default: Meeting page with related items, First and Home page, no Todo page, the home notebook', () => {
     const defaults = seedNoteSetupDefaults();
     expect(defaults.pages.meeting?.pieces.map(p => p.type)).toEqual(['dateTitle', 'time', 'link', 'related']);
     expect(defaults.pages.first?.pieces.map(p => p.type)).toEqual(['dateTitle', 'link']);
     expect(defaults.pages.todo).toBeUndefined();
     expect(defaults.tracking).toEqual({trackPrep: false, trackReview: false});
-    expect(defaults.notebook).toBeNull();
+    expect(defaults.notebook).toEqual({name: '{name} {year}', folder: ''});
   });
 
   it('a todo page starts with its Title as a heading', () => {

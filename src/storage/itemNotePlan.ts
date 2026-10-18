@@ -21,9 +21,10 @@ import {createNote, displayPath, ensureFolderExists, fileExists} from '../supern
 import {log} from '../utils/log';
 import {contextTagsOf} from '../domain/flowState';
 import {collisionFreeName} from './fileNaming';
+import {ensureHomeNotebookFile} from './homeNotebooks';
 import {ensureLoopNoteFile, LoopNoteTarget} from './loopNotes';
 import {backgroundOf, classifyNotePath, createLinkedNote, insertNoteKeywords, MEETINGS_SUBFOLDER, TODOS_SUBFOLDER} from './noteLinks';
-import {layoutForLink, NoteTargetInput, PlacedCandidate, placeNoteCandidates} from './noteTargets';
+import {defaultNotebookFile, layoutForLink, NoteTargetInput, PlacedCandidate, placeNoteCandidates} from './noteTargets';
 import {ensureSharedNoteFile, findKeywordPage, insertItemPage, renameKeywordAt, writeRecreatedNotice} from './sharedNotePages';
 
 /**
@@ -45,6 +46,8 @@ export interface ItemNoteAnchorResolution {
   page: number;
   /** The loop note this created, whose first page (the loop's own) still needs filling. */
   loopPage?: LoopNoteTarget;
+  /** The home notebook this created (the Default's notebook), whose Home page still needs filling. */
+  homePage?: boolean;
   /**
    * A note gtdpara didn't create (lasso capture's link to its source note):
    * opened as it is, never filled from a page layout - that would put
@@ -286,9 +289,14 @@ async function planNewNote(params: ItemNoteParams, placed: PlacedCandidate): Pro
       execute: async () => {
         // A new loop note starts with the loop's own page (filled by the caller).
         const loopPage = loopNote && (await ensureLoopNoteFile(itemPath, loopNote, settings.noteSetupDefaults)) ? loopNote : undefined;
-        if (!loopNote) await ensureSharedNoteFile(folderPath, fileName, background);
+        // The Default's notebook is the item's home notebook: it starts with its Home page
+        // (docs/dev/history/technical-design-home-notebooks.md §3.2, filled by the caller),
+        // also when a setup's notebook is that same file.
+        const homePage = !loopNote && relativeFilePath === defaultNotebookFile(targetInput(params));
+        if (homePage) await ensureHomeNotebookFile(folderPath, fileName, settings.noteSetupDefaults);
+        else if (!loopNote) await ensureSharedNoteFile(folderPath, fileName, background);
         const page = await insertItemPage(absoluteFile, currentKeyword, background, pageDate);
-        return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page, loopPage};
+        return {notePath, changed: true, isInitialPopulation: true, absolutePath: absoluteFile, page, loopPage, homePage};
       },
     };
   }

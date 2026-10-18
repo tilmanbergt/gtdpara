@@ -137,3 +137,26 @@ export function ExitFocusModeIcon({size = 17, color = '#1a1a1a'}: IconProps): Re
     </Svg>
   );
 }
+
+/**
+ * A home notebook (docs/dev/history/technical-design-home-notebooks.md §3.3):
+ * an outlined notebook with its spine and a label line; with `plus`, a
+ * circled + in the corner instead of the label - the notebook doesn't exist
+ * yet and a tap creates it.
+ */
+export function NotebookIcon({size = 22, color = '#000000', plus = false}: IconProps & {plus?: boolean}): React.JSX.Element {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={5} y={3} width={14} height={18} rx={1.5} fill="none" stroke={color} strokeWidth={1.8} />
+      <Path d="M8.5 3v18" fill="none" stroke={color} strokeWidth={1.8} />
+      {plus ? (
+        <>
+          <Circle cx={18} cy={18} r={5} fill="#ffffff" stroke={color} strokeWidth={1.8} />
+          <Path d="M18 15.3v5.4M15.3 18h5.4" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+        </>
+      ) : (
+        <Path d="M11.5 8H16" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      )}
+    </Svg>
+  );
+}

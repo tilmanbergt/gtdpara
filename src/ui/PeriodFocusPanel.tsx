@@ -22,7 +22,7 @@
  * Self-measuring: with `viewportHeight` omitted, this panel's root is
  * `flex:1` and both FileBrowserPanes measure the bounded box they're given.
  */
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {PeriodScope} from '../domain/period';
 import {CachedItem, findCachedItem} from '../storage/dataCache';
@@ -32,6 +32,7 @@ import {FolderEntry} from '../supernote/fileSystem';
 import {logError} from '../utils/log';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from './FileBrowserPane';
 import FocusBadges from './FocusBadges';
+import {useFocusHomeNotebooks} from './useFocusHomeNotebooks';
 import InlineTextEditor from './InlineTextEditor';
 import MiniTabs, {MiniTabDef} from './MiniTabs';
 import {FONT} from './theme';
@@ -73,6 +74,8 @@ interface Props {
    * self-measuring entirely (the escape hatch).
    */
   viewportHeight?: number;
+  /** The home notebook icon on each card (docs/dev/history/technical-design-home-notebooks.md §3.3): Week and Month; Review's focus step passes false. */
+  showHomeNotebooks?: boolean;
   textColor: string;
   borderColor: string;
   placeholderColor: string;
@@ -91,11 +94,14 @@ function PeriodFocusPanel({
   onToggle,
   onSaveGoal,
   viewportHeight,
+  showHomeNotebooks = true,
   textColor,
   borderColor,
   placeholderColor,
 }: Props): React.JSX.Element {
   usePerfRender('PeriodFocusPanel');
+  const focusedItems = useMemo(() => items.filter(item => item[FOCUS_SCOPES[scope].field]), [items, scope]);
+  const homeIconFor = useFocusHomeNotebooks('PeriodFocusPanel', focusedItems, showHomeNotebooks, textColor, borderColor);
   // See `viewportHeight`'s own doc comment above.
   const selfMeasuring = viewportHeight == null;
   const [activeTab, setActiveTab] = useState<FocusPanelTab>('focus');
@@ -204,6 +210,7 @@ function PeriodFocusPanel({
               onToggle={onToggle}
               onSaveGoal={onSaveGoal}
               onAddEmpty={() => armFromEmptySlot(kind)}
+              homeIconFor={homeIconFor}
               textColor={textColor}
               borderColor={borderColor}
               placeholderColor={placeholderColor}
@@ -255,6 +262,7 @@ function FixedSlotSection({
   onToggle,
   onSaveGoal,
   onAddEmpty,
+  homeIconFor,
   textColor,
   borderColor,
   placeholderColor,
@@ -270,6 +278,7 @@ function FixedSlotSection({
   onToggle: (item: CachedItem, value: boolean) => Promise<void>;
   onSaveGoal: (item: CachedItem, periodKey: string, text: string) => Promise<void>;
   onAddEmpty: () => void;
+  homeIconFor: (item: CachedItem) => React.ReactNode;
   textColor: string;
   borderColor: string;
   placeholderColor: string;
@@ -314,6 +323,7 @@ function FixedSlotSection({
                 </Text>
               </Pressable>
               <FocusBadges item={item} active={scope} textColor={textColor} />
+              {homeIconFor(item)}
               <Pressable onPress={() => handleRemove(item)} disabled={pending} hitSlop={8}>
                 <Text style={[styles.cancelText, {color: textColor}]}>✕</Text>
               </Pressable>

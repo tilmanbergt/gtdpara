@@ -16,6 +16,7 @@ interface Props {
   experimentalGmail: boolean;
   perfTracing: boolean;
   keepTabsAlive: boolean;
+  notebookContentsEnabled: boolean;
   integrityCheckRunning: boolean;
   reloading: boolean;
   onReloadAllFiles: () => void;
@@ -23,6 +24,7 @@ interface Props {
   onToggleGmail: () => void;
   onTogglePerfTracing: () => void;
   onToggleKeepTabsAlive: () => void;
+  onToggleNotebookContents: () => void;
   onRunIntegrityCheck: () => void;
   textColor: string;
   borderColor: string;
@@ -81,6 +83,13 @@ export default function AdvancedTab(p: Props): React.JSX.Element {
           on={p.experimentalGmail}
           onPress={p.onToggleGmail}
           hint="Adds the Gmail inbox step to the Weekly Review (IMAP with an app password) and the Gmail tab here in Settings."
+          textColor={textColor}
+        />
+        <Switch
+          label="Notebook contents"
+          on={p.notebookContentsEnabled}
+          onPress={p.onToggleNotebookContents}
+          hint="Lists the headings of a Project's or Area's home notebook on its Notebook tab. Turn off if they don't show right or reading them is slow."
           textColor={textColor}
         />
       </View>
