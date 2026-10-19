@@ -38,7 +38,7 @@ const baseline = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8'
 const findings = [];
 for (const f of files.filter(isSourceFile)) findings.push(...checkSourceFile(f, read(f), baseline[f]));
 // The code-health rules and their tests name example documents on purpose.
-const EXAMPLE_FILES = ['scripts/lib/codeHealth.mjs', 'scripts/test-code-health.mjs'];
+const EXAMPLE_FILES = ['scripts/lib/codeHealth.mjs', 'scripts/test-code-health.mjs', 'scripts/test-scenario-catalog.mjs'];
 const referencing = files.filter(f => /\.(ts|tsx|js|mjs|md|ps1)$/.test(f) && !EXAMPLE_FILES.includes(f));
 for (const f of referencing) findings.push(...brokenDocReferences(f, read(f), docFiles));
 
