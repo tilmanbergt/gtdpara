@@ -6,10 +6,9 @@
  * project-file save here keeps: a stale copy would otherwise drop the
  * section on the next task/meeting save, or drop that save here.
  */
-import {ensureSkeleton} from '../../domain/markdown';
-import {CloseOutPlan, parsePlan, writePlanIntoContent} from '../../domain/closeOut/plan';
-import {writeTextFile} from '../../supernote/fileSystem';
+import {CLOSE_OUT_HEADING, CloseOutPlan, parsePlan, writePlanIntoContent} from '../../domain/closeOut/plan';
 import {findCachedItem, updateItemRawContent} from '../dataCache';
+import {writeDataFile} from '../dataFileWrite';
 import {dataFilePath} from '../projectFile';
 
 /** The plan of the cached project at `path`; `found` is false when the project has no close-out section yet. */
@@ -22,8 +21,10 @@ export function loadPlan(path: string): {plan: CloseOutPlan; found: boolean} {
 async function writeContent(path: string, transform: (content: string) => string): Promise<void> {
   const item = findCachedItem(path);
   if (!item) throw new Error('This project is no longer in the cache - Settings → Advanced → Reload all files.');
-  const next = transform(ensureSkeleton(item.rawContent, item.kind));
-  await writeTextFile(dataFilePath(item.kind, item.path), next);
+  const next = await writeDataFile(item.kind, item.path, dataFilePath(item.kind, item.path), item.rawContent, {
+    parts: [CLOSE_OUT_HEADING],
+    apply: transform,
+  });
   updateItemRawContent(item.path, next);
 }
 

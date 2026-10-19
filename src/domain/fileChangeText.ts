@@ -241,3 +241,18 @@ export function migrationOffCollisionText(): string {
 export function migrationLoopKindTagText(tags: readonly string[]): string {
   return `${tags.map(t => `#${t}`).join(' ')} left out: a loop kind belongs to its Loop setup.`;
 }
+
+/** How a data-file part (domain/writeGuard.ts) is named in messages: its heading's words, "Todos" for Tasks. */
+export function dataFilePartLabel(part: string): string {
+  if (part === 'frontmatter') return 'status and focus';
+  const words = part.replace(/^##\s+/, '');
+  return words === 'Tasks' ? 'Todos' : words;
+}
+
+/**
+ * A save found the same part of a data file changed outside gtdpara and wrote
+ * nothing (docs/dev/history/technical-design-quality-hardening.md §3.2).
+ */
+export function fileChangedOutsideText(fileName: string, parts: readonly string[]): string {
+  return `"${fileName}" was also changed outside gtdpara (${parts.map(dataFilePartLabel).join(', ')}). It was reloaded and nothing was saved - make the change again if you still want it.`;
+}
