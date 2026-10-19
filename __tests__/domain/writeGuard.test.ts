@@ -52,10 +52,10 @@ describe('decideWrite', () => {
     });
   });
 
-  it('reports a conflict when the file was deleted outside, even for a part it never had', () => {
-    expect(decideWrite('project', BASE, '', tasksChange(['- [ ] One'])).kind).toBe('conflict');
+  it('reports a file deleted outside as gone, whatever part the save writes', () => {
+    expect(decideWrite('project', BASE, '', tasksChange(['- [ ] One']))).toEqual({kind: 'gone'});
     const goals: DataFileChange = {parts: [DATA_FILE_HEADINGS.weeklyGoals], apply: c => c};
-    expect(decideWrite('project', BASE, '', goals)).toEqual({kind: 'conflict', parts: [DATA_FILE_HEADINGS.weeklyGoals]});
+    expect(decideWrite('project', BASE, '', goals)).toEqual({kind: 'gone'});
   });
 
   it('names only the touched parts of a multi-part save', () => {

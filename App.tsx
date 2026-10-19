@@ -34,9 +34,10 @@ import {StatusProvider} from './src/ui/status/StatusProvider';
 import StatusFrame from './src/ui/status/StatusFrame';
 import {ENGAGE_BUTTON_ID, LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/domain/buttonIds';
 import {activeReviewSteps, isReviewOverdue} from './src/domain/reviewSteps';
-import {featuresOf, shouldShowWhatsNew} from './src/domain/features';
+import {featuresOf} from './src/domain/features';
 import {setFeatures, useFeatures} from './src/ui/featureStore';
-import {useStatus} from './src/ui/status/StatusProvider';
+import {useWriteConflicts} from './src/ui/useWriteConflicts';
+import {useWhatsNewNotice} from './src/ui/useWhatsNewNotice';
 import {useNoteSetupsNotice} from './src/ui/useNoteSetupsNotice';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
@@ -47,7 +48,7 @@ import {setActiveProfileId} from './src/storage/profileKeys';
 import {switchProfile} from './src/storage/profiles';
 import {DEFAULT_PROFILE_ID} from './src/domain/profiles';
 import {clearReturnRecord, getReturnRecord, recordPluginOpen} from './src/storage/returnRecord';
-import {loadSettings, patchSettings, saveSettings} from './src/storage/settingsStorage';
+import {loadSettings, saveSettings} from './src/storage/settingsStorage';
 import {
   FolderEntry,
   getCurrentNotePath,
@@ -203,6 +204,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // Loops: a todo that is only a loop tag becomes its loop after the save (storage/loops.ts).
   useLoopEvents();
   useLoopLinkNavigation(stableOpenItem);
+  useWriteConflicts();
   // Once per start, by the first reorient() that lands on the tabs (never
   // while "Mark for later" or Capture still has its lasso picture in the
   // temp folder): clear leftovers of an interrupted PDF export from the
@@ -586,18 +588,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     [currentItem, stableOpenItem, stableNav, textColor],
   );
 
-  // "Updated to x.y.z" notice (docs/dev/history/technical-design-about-debug-experimental.md
-  // §3.6, P3). Only a tap on "What's new" or ✕ stores lastSeenVersion - not
-  // merely showing it - a first start after an update can be short (the
-  // user only marks something, or a warning outranks info in the status
-  // slot), so the notice must survive to the next start.
-  const [whatsNewAcknowledged, setWhatsNewAcknowledged] = useState(false);
-  const acknowledgeWhatsNew = () => {
-    setWhatsNewAcknowledged(true);
-    patchSettings({lastSeenVersion: BUILD_INFO.version})
-      .then(setSettings)
-      .catch(e => logError('App: storing lastSeenVersion failed', errorMessage(e)));
-  };
   const openSettingsAbout = () => {
     setSettingsTab('about');
     setActiveTab('settings');
@@ -628,29 +618,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setActiveTab('settings');
     setMode('tabs');
   });
-  const showWhatsNew =
-    settings !== null && !whatsNewAcknowledged && shouldShowWhatsNew(settings.lastSeenVersion, BUILD_INFO);
-  useStatus(
-    'app.whatsNew',
-    showWhatsNew
-      ? {
-          kind: 'info',
-          scope: 'global',
-          text: `Updated to gtdpara ${BUILD_INFO.version}.`,
-          actions: [
-            {
-              label: "What's new",
-              primary: true,
-              onPress: () => {
-                acknowledgeWhatsNew();
-                openSettingsAbout();
-              },
-            },
-          ],
-          onDismiss: acknowledgeWhatsNew,
-        }
-      : null,
-  );
+  useWhatsNewNotice(settings, setSettings, openSettingsAbout);
 
   if (mode === 'loading') {
     return (

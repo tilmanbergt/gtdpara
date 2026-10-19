@@ -7,8 +7,9 @@
  * - The file is still what the save started from: write as always.
  * - An outside edit changed other parts only: write the save's parts into
  *   the file as it is now, so both changes are kept.
- * - An outside edit changed a part the save writes too, or the file is
- *   gone: write nothing; the user decides which version wins.
+ * - An outside edit changed a part the save writes too: the user decides
+ *   which version wins.
+ * - The file is gone (deleted or moved outside): write nothing.
  */
 import {GtdParaKind} from './types';
 import {dataFilePartText, ensureSkeleton} from './markdown';
@@ -22,13 +23,14 @@ export interface DataFileChange {
 
 export type WriteDecision =
   | {kind: 'write'; content: string; merged: boolean}
-  | {kind: 'conflict'; parts: string[]};
+  | {kind: 'conflict'; parts: string[]}
+  | {kind: 'gone'};
 
 /** `base` is the content the save started from, `current` the file as it is now ('' when missing). */
 export function decideWrite(fileKind: GtdParaKind, base: string, current: string, change: DataFileChange): WriteDecision {
   if (current === base) return {kind: 'write', content: change.apply(ensureSkeleton(base, fileKind)), merged: false};
-  // Gone (deleted or moved outside): never rebuild it from a skeleton plus this save's parts.
-  if (current === '') return {kind: 'conflict', parts: [...change.parts]};
+  // Deleted or moved outside: never rebuild it from a skeleton plus this save's parts.
+  if (current === '') return {kind: 'gone'};
   const touched = change.parts.filter(part => dataFilePartText(base, part) !== dataFilePartText(current, part));
   if (touched.length > 0) return {kind: 'conflict', parts: touched};
   return {kind: 'write', content: change.apply(ensureSkeleton(current, fileKind)), merged: true};

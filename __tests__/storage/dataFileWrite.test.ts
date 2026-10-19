@@ -12,6 +12,7 @@ jest.mock('../../src/supernote/fileSystem', () => ({
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 
 import {FileConflictError, setDataFileReloadListener, takeMergedWrite, writeDataFile} from '../../src/storage/dataFileWrite';
+import {answerWriteConflict, getWriteConflict, installWriteConflictUi, subscribeWriteConflicts} from '../../src/storage/writeConflicts';
 import {DATA_FILE_HEADINGS, writeScopeIntoContent, writeTasksIntoContent} from '../../src/domain/markdown';
 import {DataFileChange} from '../../src/domain/writeGuard';
 import {Task} from '../../src/domain/types';
@@ -50,17 +51,76 @@ it('keeps an outside edit to another part and marks the result as merged', async
   expect(takeMergedWrite(next)).toBe(false);
 });
 
-it('writes nothing on an outside edit to the same part, reloads it and throws', async () => {
+it('without a UI to ask, keeps the outside version, reloads it and throws', async () => {
   const outside = BASE.replace('- [ ] One', '- [x] One');
   mockFiles.set(FILE, outside);
   const reloaded: string[] = [];
   setDataFileReloadListener((_kind, path, content) => reloaded.push(`${path}|${content}`));
   const error = await writeDataFile('project', DIR, FILE, BASE, addTask('Two')).catch(e => e);
   expect(error).toBeInstanceOf(FileConflictError);
-  expect(error.message).toContain('"Website" was also changed outside gtdpara (Todos)');
+  expect(error.message).toBe('Not saved: "Website" keeps the version changed outside gtdpara.');
   expect(mockWrites).toEqual([]);
   expect(mockFiles.get(FILE)).toBe(outside);
   expect(reloaded).toEqual([`${DIR}|${outside}`]);
+});
+
+describe('with the question shown', () => {
+  let uninstall: () => void = () => undefined;
+  beforeEach(() => {
+    uninstall = installWriteConflictUi();
+  });
+  afterEach(() => uninstall());
+
+  /** Resolves the question once it is shown. */
+  function nextQuestion(): Promise<{id: number; fileName: string; parts: string[]}> {
+    return new Promise(resolve => {
+      const shown = getWriteConflict();
+      if (shown) return resolve(shown);
+      const off = subscribeWriteConflicts(() => {
+        const c = getWriteConflict();
+        if (c) {
+          off();
+          resolve(c);
+        }
+      });
+    });
+  }
+
+  it('"Use mine" writes the save into the file as it is then', async () => {
+    const outside = writeScopeIntoContent(BASE.replace('- [ ] One', '- [x] One'), 'Outside scope');
+    mockFiles.set(FILE, outside);
+    const save = writeDataFile('project', DIR, FILE, BASE, {
+      parts: [DATA_FILE_HEADINGS.tasks],
+      apply: content => writeTasksIntoContent(content, [], ['- [ ] Mine']),
+    });
+    const question = await nextQuestion();
+    expect(question).toMatchObject({fileName: 'Website', parts: [DATA_FILE_HEADINGS.tasks]});
+    answerWriteConflict(question.id, 'mine');
+    const next = await save;
+    expect(mockFiles.get(FILE)).toBe(next);
+    expect(next).toContain('- [ ] Mine');
+    expect(next).not.toContain('- [x] One');
+    expect(next).toContain('Outside scope');
+    expect(takeMergedWrite(next)).toBe(true);
+    expect(getWriteConflict()).toBeNull();
+  });
+
+  it('"Use the file" writes nothing and fails the save', async () => {
+    const outside = BASE.replace('- [ ] One', '- [x] One');
+    mockFiles.set(FILE, outside);
+    const save = writeDataFile('project', DIR, FILE, BASE, addTask('Two')).catch(e => e);
+    answerWriteConflict((await nextQuestion()).id, 'file');
+    expect(await save).toBeInstanceOf(FileConflictError);
+    expect(mockWrites).toEqual([]);
+    expect(mockFiles.get(FILE)).toBe(outside);
+  });
+});
+
+it('a file deleted outside is not recreated', async () => {
+  const error = await writeDataFile('project', DIR, FILE, BASE, addTask('Two')).catch(e => e);
+  expect(error).toBeInstanceOf(FileConflictError);
+  expect(error.message).toContain('was deleted or moved outside gtdpara');
+  expect(mockWrites).toEqual([]);
 });
 
 it('runs two saves of the same file one after the other, so neither overwrites the other', async () => {

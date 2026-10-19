@@ -13,16 +13,22 @@
  *   its content; the cache's write-through parses such content in full
  *   instead of trusting the caller's parsed fields (takeMergedWrite).
  * - On a conflict the file as it is now goes to the reload listener, so every
- *   screen shows the outside version, then FileConflictError is thrown.
+ *   screen shows the outside version while the user is asked which version
+ *   wins (storage/writeConflicts.ts). "Use mine" writes the save's parts into
+ *   the file as it is then and resolves like any save; "Use the file" throws
+ *   FileConflictError, and the save fails with nothing written.
  */
 import {DataFileChange, decideWrite} from '../domain/writeGuard';
-import {fileChangedOutsideText} from '../domain/fileChangeText';
+import {ensureSkeleton} from '../domain/markdown';
+import {dataFileGoneText, writeConflictKeptFileText} from '../domain/fileChangeText';
 import {GtdParaKind, INBOX_FILE_NAME} from '../domain/types';
 import {readTextFile, writeTextFile} from '../supernote/fileSystem';
 import {log, logWarn} from '../utils/log';
+import {askWriteConflict} from './writeConflicts';
 
+/** A save that wrote nothing because of an outside edit: the user kept the file's version, or the file is gone. */
 export class FileConflictError extends Error {
-  constructor(readonly filePath: string, readonly parts: string[], message: string) {
+  constructor(readonly filePath: string, message: string) {
     super(message);
     this.name = 'FileConflictError';
   }
@@ -68,11 +74,16 @@ function displayName(fileKind: GtdParaKind, itemPath: string): string {
   return trimmed.slice(trimmed.lastIndexOf('/') + 1);
 }
 
+function rememberMerged(content: string): void {
+  mergedContents.push(content);
+  if (mergedContents.length > MERGED_KEEP) mergedContents.shift();
+}
+
 /**
  * Writes `change` into the data file at `filePath`. `base` is the content the
  * caller's change was made against (the cache's or screen's rawContent).
  * Resolves the content now in the file; rejects with FileConflictError when
- * an outside edit touched the same part.
+ * nothing was written because of an outside edit.
  */
 export function writeDataFile(
   fileKind: GtdParaKind,
@@ -82,18 +93,31 @@ export function writeDataFile(
   change: DataFileChange,
 ): Promise<string> {
   return serialized(filePath, async () => {
+    const name = displayName(fileKind, itemPath);
     const current = (await readTextFile(filePath)) ?? '';
     const decision = decideWrite(fileKind, base, current, change);
+    if (decision.kind === 'gone') {
+      logWarn('dataFileWrite: file gone, not written', filePath);
+      throw new FileConflictError(filePath, dataFileGoneText(name));
+    }
     if (decision.kind === 'conflict') {
-      logWarn('dataFileWrite: changed outside gtdpara in the same part, not written', filePath, decision.parts.join(', '));
+      logWarn('dataFileWrite: changed outside gtdpara in the same part, asking', filePath, decision.parts.join(', '));
       reloadListener?.(fileKind, itemPath, current);
-      throw new FileConflictError(filePath, decision.parts, fileChangedOutsideText(displayName(fileKind, itemPath), decision.parts));
+      const choice = await askWriteConflict(name, decision.parts);
+      log('dataFileWrite: conflict answered', filePath, choice);
+      if (choice === 'file') throw new FileConflictError(filePath, writeConflictKeptFileText(name));
+      // The file may have changed again while the question was open.
+      const now = (await readTextFile(filePath)) ?? '';
+      if (now === '') throw new FileConflictError(filePath, dataFileGoneText(name));
+      const content = change.apply(ensureSkeleton(now, fileKind));
+      await writeTextFile(filePath, content);
+      rememberMerged(content);
+      return content;
     }
     await writeTextFile(filePath, decision.content);
     if (decision.merged) {
       log('dataFileWrite: changed outside gtdpara in other parts, both kept', filePath);
-      mergedContents.push(decision.content);
-      if (mergedContents.length > MERGED_KEEP) mergedContents.shift();
+      rememberMerged(decision.content);
     }
     return decision.content;
   });
