@@ -13,6 +13,7 @@
  */
 import {stripAllTags} from './markdown';
 import {meetingEndMs} from './meetingTime';
+import {resolveProvenance} from './provenance';
 import {NoteOwnerNames, renderSharedFileName} from './sharedNotePages';
 import {LOOP_NOTE_NAME_DEFAULT} from './noteSetups';
 import {newTask, parseTaskInput} from './taskEdit';
@@ -107,6 +108,28 @@ export function belongsToLoop(tags: readonly string[], loopTag: string): boolean
     const tag = raw.toLowerCase();
     return tag === key || tag.startsWith(`${key}/`);
   });
+}
+
+/**
+ * How a todo of `item` belongs to the loop `loopTag`
+ * (docs/dev/history/technical-design-engage-in-context.md §2.2, E2): agreed
+ * in one of its meetings (past, running or ahead; not cancelled), else tagged
+ * with it, else not at all. A loop lives in one file, so provenance is
+ * resolved in `item` only. The one rule the loop overview and Engage share.
+ */
+export function loopRelation(
+  item: {path: string; meetings: readonly Meeting[]},
+  loopTag: string,
+  task: Pick<Task, 'tags' | 'fields'>,
+): 'agreed' | 'tagged' | null {
+  const match = task.fields.meeting ? resolveProvenance(task, [{path: item.path, meetings: item.meetings}], [item.path]) : null;
+  if (match && !match.meeting.cancelled && belongsToLoop(match.meeting.tags, loopTag)) return 'agreed';
+  return belongsToLoop(task.tags, loopTag) ? 'tagged' : null;
+}
+
+/** Whether a todo of `item` is one of the loop's: `loopRelation` is not null. */
+export function isLoopMember(item: {path: string; meetings: readonly Meeting[]}, loopTag: string, task: Pick<Task, 'tags' | 'fields'>): boolean {
+  return loopRelation(item, loopTag, task) !== null;
 }
 
 /** The todos and meetings of `item` that belong to the loop `loopTag` (cancelled meetings left out). */
