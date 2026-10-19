@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-10-19
+
 ### New
 - **Engage: Agreed tab**: on a meeting's note, Engage opens on **Agreed** with the todos agreed
   in that meeting - "Agreed in Sparring Mieke · Tue 14.10." - to make one #next, work on it, or
