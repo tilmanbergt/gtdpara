@@ -28,7 +28,7 @@ export function useEditFlush() {
       .then(ok => {
         if (ok) apply();
       })
-      .catch(() => undefined);
+      .catch(() => undefined); // silent: the flush shows its own errors and resolves false
   }, []);
   return {flushEditRef, afterSave};
 }

@@ -263,8 +263,9 @@ export async function retryBookmark(id: string): Promise<boolean> {
   if (icon.placed) {
     try {
       await writeMarkData({...data, icon: {box: icon.box, placed: true}});
-    } catch {
+    } catch (e) {
       // the icon is in the note; the flag is informational
+      logWarn('marks: storing the placed icon flag failed', errorMessage(e));
     }
   }
   return icon.placed;

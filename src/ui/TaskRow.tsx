@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     // a shorter real content block inside a taller reserved box (an
     // over-predicted 2-line reservation whose real content is 1 line)
     // reads as content floating in the middle of the row; top-aligning
-    // puts any leftover space at the bottom, which ui/textLineEstimator.ts's
+    // puts any leftover space at the bottom, which domain/textLineEstimator.ts's
     // own doc comment calls the harmless direction for a misprediction.
     alignItems: 'flex-start',
     borderBottomWidth: 1,

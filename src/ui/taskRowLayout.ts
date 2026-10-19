@@ -15,7 +15,7 @@
 import {TaskLabel, TaskLabelContext, displayTaskText, taskLabels} from '../domain/taskLabels';
 import {todayIso} from '../domain/meetingTime';
 import {Task} from '../domain/types';
-import {activeLineEstimator} from './textLineEstimator';
+import {activeLineEstimator} from '../domain/textLineEstimator';
 import {FONT} from './theme';
 
 /** A todo row never shows more than two lines of text. */

@@ -142,7 +142,7 @@ export function updateReviewSteps(mutate: (steps: ReviewStepsMap) => ReviewSteps
     return updated;
   };
   const result = reviewStepsWriteChain.then(run, run);
-  reviewStepsWriteChain = result.catch(() => undefined);
+  reviewStepsWriteChain = result.catch(() => undefined); // silent: the caller gets the error from `result`
   return result;
 }
 
@@ -160,6 +160,6 @@ export function patchSettings(patch: Partial<GtdParaSettings>): Promise<GtdParaS
     return updated;
   };
   const result = reviewStepsWriteChain.then(run, run);
-  reviewStepsWriteChain = result.catch(() => undefined);
+  reviewStepsWriteChain = result.catch(() => undefined); // silent: the caller gets the error from `result`
   return result;
 }

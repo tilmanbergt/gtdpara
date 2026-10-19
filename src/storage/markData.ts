@@ -70,7 +70,7 @@ export async function listMarkDataIds(): Promise<string[]> {
     const entries = await listFolderEntries(await marksRoot());
     return entries.filter(e => e.isFolder && isMarkId(e.name)).map(e => e.name);
   } catch {
-    return []; // folder not there yet
+    return []; // silent: the folder is not there yet
   }
 }
 
@@ -121,6 +121,7 @@ export async function readPendingIconChanges(): Promise<PendingIconChange[]> {
     const parsed = raw ? (JSON.parse(raw) as PendingIconChange[]) : [];
     return Array.isArray(parsed) ? parsed.filter(p => p && typeof p.id === 'string') : [];
   } catch {
+    // silent: an unreadable list starts empty
     return [];
   }
 }

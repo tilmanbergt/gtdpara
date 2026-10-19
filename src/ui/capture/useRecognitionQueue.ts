@@ -80,6 +80,7 @@ export function useRecognitionQueue(marks: OpenMark[], selectedId: string | null
     inFlightRef.current += 1;
     setPreloading(n => n + 1);
     Promise.all(
+      // silent: a mark without a stored recognition is simply recognized again
       fresh.map(m => storedMarkRecognition(m).then(r => [m.mark.id, r] as const).catch(() => [m.mark.id, null] as const)),
     ).then(found => {
       inFlightRef.current -= 1;

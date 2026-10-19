@@ -12,7 +12,7 @@ import React, {useMemo, useState} from 'react';
 import {LayoutChangeEvent, StyleSheet, Text, View} from 'react-native';
 import {blockText, InlineSpan, MarkdownBlock, parseMarkdownBlocks} from '../domain/markdownBlocks';
 import PagedSection from './PagedSection';
-import {activeLineEstimator} from './textLineEstimator';
+import {activeLineEstimator} from '../domain/textLineEstimator';
 import {FONT} from './theme';
 
 const BODY_LINE = 21;

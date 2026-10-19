@@ -4,7 +4,7 @@
  * - Pages are filled by *width*, not by chip count: the caller measures Row 3's
  *   real width (onLayout), subtracts whatever shares the row (flow chips /
  *   meeting time field on page 0, the attachment cluster in edit mode), and
- *   every chip's width is estimated from its label via ui/textLineEstimator.ts's
+ *   every chip's width is estimated from its label via domain/textLineEstimator.ts's
  *   char-class estimator. Pinned tags (already in the text) consume width like
  *   any other chip and may spill onto page 1+.
  * - Labels longer than 8 characters are shortened to 8 + "…".
@@ -15,7 +15,7 @@
 import {useRef, useState} from 'react';
 import {LayoutChangeEvent} from 'react-native';
 import {requestEinkRefresh} from '../utils/screenRefresh';
-import {estimateTextWidthPx} from './textLineEstimator';
+import {estimateTextWidthPx} from '../domain/textLineEstimator';
 import {FONT} from './theme';
 
 /** Tag names longer than this are shown shortened with "…" (display only). */

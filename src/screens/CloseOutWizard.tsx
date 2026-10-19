@@ -317,6 +317,7 @@ export default function CloseOutWizard({projectPath, mode: requestedMode, onExit
     try {
       return archiveOpsFor(projectPath, settingsRef.current);
     } catch {
+      // silent: no preview of the moves; running them reports the error
       return [];
     }
   }, [ctx, projectPath, archiveRun.ok, archiveRun.steps]);

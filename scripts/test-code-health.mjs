@@ -53,6 +53,23 @@ t('deriveTaskFields only in domain', () => {
   assert.deepEqual(rules(checkSourceFile('src/domain/taskEdit.ts', src)), []);
 });
 
+t('silent catches', () => {
+  const src = [
+    'try { a(); } catch { return []; }',
+    'try { a(); } catch (e) { logError(\'X: failed\', errorMessage(e)); }',
+    'try { a(); } catch (e) { setError(errorMessage(e)); }',
+    'try { a(); } catch (e) { throw e; }',
+    'p.catch(() => undefined);',
+    'p.catch(() => undefined); // silent: the chain only orders writes',
+    '// silent: a missing file is an empty list',
+    'try { a(); } catch { return []; }',
+    'p.catch(e => {',
+    '  logWarn(\'X\', e);',
+    '});',
+  ].join('\n');
+  assert.deepEqual(rules(checkSourceFile('src/storage/x.ts', src)), ['silent-catch:1', 'silent-catch:5']);
+});
+
 t('history in comments', () => {
   const src = [
     '// Fixed 2026-09-17 after Tilman reported it',

@@ -20,7 +20,7 @@ import {GtdParaSettings} from '../domain/settings';
 import {buildVersionText} from '../domain/buildVersionText';
 import {BUILD_INFO} from '../generated/buildInfo';
 import {ensureFolderExists, listFolderEntries, PROFILES_FOLDER_PATH, readTextFile, writeTextFile} from '../supernote/fileSystem';
-import {log} from '../utils/log';
+import {log, logWarn} from '../utils/log';
 import {loadSettings, saveSettings} from './settingsStorage';
 import {errorMessage} from '../utils/errorMessage';
 
@@ -43,7 +43,8 @@ async function readSecretsMap(): Promise<Record<string, ProfileSecrets>> {
     const raw = await AsyncStorage.getItem(SECRETS_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
+  } catch (e) {
+    logWarn('profiles: stored secrets unreadable, none used', errorMessage(e));
     return {};
   }
 }
@@ -89,6 +90,7 @@ async function readProfileName(id: string): Promise<string | null> {
   try {
     return parseProfile(text, id).name;
   } catch {
+    // silent: the list shows the file without a name
     return null;
   }
 }

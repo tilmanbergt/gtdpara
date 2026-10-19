@@ -180,6 +180,6 @@ export function archiveGmailMessage(settings: GtdParaSettings, uid: string): Pro
       pendingArchiveUids.delete(uid);
     }
   });
-  archiveQueue = run.catch(() => undefined);
+  archiveQueue = run.catch(() => undefined); // silent: the caller gets the error from `run`; this tail only keeps the queue going
   return run;
 }

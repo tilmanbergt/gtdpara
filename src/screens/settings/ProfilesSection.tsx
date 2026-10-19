@@ -27,10 +27,6 @@ interface Props {
 
 type Message = {kind: 'success' | 'error'; text: string} | null;
 
-function errorText(e: unknown): string {
-  return errorMessage(e);
-}
-
 export default function ProfilesSection({activeProfileId, onSwitchProfile, textColor, borderColor}: Props): React.JSX.Element {
   const [profiles, setProfiles] = useState<ProfileInfo[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,9 +39,9 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
       await ensureDefaultProfileFile();
       setProfiles(await listProfiles());
     } catch (e) {
-      logError('ProfilesSection: listing profiles failed', errorText(e));
+      logError('ProfilesSection: listing profiles failed', errorMessage(e));
       setProfiles([]);
-      setMessage({kind: 'error', text: `Profiles: ${errorText(e)}`});
+      setMessage({kind: 'error', text: `Profiles: ${errorMessage(e)}`});
     }
   }, []);
 
@@ -61,7 +57,7 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
       setMessage({kind: 'success', text});
       await reload();
     } catch (e) {
-      setMessage({kind: 'error', text: errorText(e)});
+      setMessage({kind: 'error', text: errorMessage(e)});
     } finally {
       setBusy(false);
     }
@@ -97,7 +93,7 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
                 setBusy(true);
                 onSwitchProfile(id).catch(e => {
                   setBusy(false);
-                  setMessage({kind: 'error', text: `Switching failed: ${errorText(e)}`});
+                  setMessage({kind: 'error', text: `Switching failed: ${errorMessage(e)}`});
                 });
               },
             },

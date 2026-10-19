@@ -114,7 +114,7 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
   try {
     data = JSON.stringify(collectPerfStats());
   } catch {
-    // keep 'not available'
+    // silent: the bundle says 'not available'
   }
   lines.push(`data: ${data}`);
   lines.push(await marksLine());

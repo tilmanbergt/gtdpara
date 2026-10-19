@@ -6,6 +6,8 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {onActiveProfileChange, profileScopedKey} from './profileKeys';
+import {errorMessage} from '../utils/errorMessage';
+import {logWarn} from '../utils/log';
 
 const KEY = 'gtdpara:captureDestinations:v1';
 const MAX = 12;
@@ -18,6 +20,7 @@ async function load(): Promise<string[]> {
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === 'string') : [];
   } catch {
+    // silent: an unreadable list starts empty
     return [];
   }
 }
@@ -29,8 +32,9 @@ export async function recordDestinationUsed(path: string): Promise<void> {
     const next = [path, ...(await load()).filter(p => p !== path)].slice(0, MAX);
     lastKnown = next;
     await AsyncStorage.setItem(profileScopedKey(KEY), JSON.stringify(next));
-  } catch {
+  } catch (e) {
     // Only a convenience - the list just stays as it was.
+    logWarn('destinationUsage: storing failed', errorMessage(e));
   }
 }
 

@@ -2,7 +2,7 @@
  * The plugin's single text-measurement API: real Android StaticLayout numbers
  * from the native `TextboxMetrics` module (TextboxMetricsModule.kt, registered
  * in GtdParaFilePackage) instead of the char-width guess in
- * ui/textLineEstimator.ts.
+ * domain/textLineEstimator.ts.
  *
  * Shared contract (docs/dev/history/technical-design-gmail-email-note.md 3.3/3.9, aligned
  * with docs/dev/history/technical-design-textbox-metrics.md):
@@ -137,7 +137,7 @@ export async function measureTextHeight(
       source: 'native',
     };
   } catch (error) {
-    logFallbackOnce(error);
+    logFallbackOnce(error); // silent: logged once per session
     return fallbackMeasurement(text, widthPx, fontSizePx);
   }
 }

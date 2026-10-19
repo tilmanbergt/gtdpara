@@ -1,15 +1,13 @@
 /**
  * Pure text/marker/measurement logic for note-creation content (docs/
  * technical-design-meeting-notes.md §3, docs/dev/history/technical-design-note-templates.md
- * §4). Zero RN/SDK imports (domain/ convention, see markdown.ts) - reusing
- * ui/textLineEstimator.ts here is safe since that module is plain TS with
- * no RN import of its own.
+ * §4). Zero RN/SDK imports (domain/ convention, see markdown.ts).
  *
  * The file name is narrower than its content: it serves every
  * note-creation context, not just meetings. technical-design-note-templates.md
  * §4/§8 names `domain/notePieceBlock.ts` as the intended name.
  */
-import {activeLineEstimator} from '../ui/textLineEstimator';
+import {activeLineEstimator} from './textLineEstimator';
 
 /**
  * LEGACY userData marker of the fixed-shape meeting-note block written by
@@ -71,13 +69,13 @@ export function isNoteTemplateManagedElement(userData: string | null | undefined
 /** Default font size for estimatePieceTextHeight/noteLinkLineHeight when a caller passes none. */
 export const MEETING_NOTE_FONT_SIZE = 24;
 // design-device-rendering.md §5's standing approximation for on-device line
-// height vs. font size - the same ~1.2x estimate ui/textLineEstimator.ts's
+// height vs. font size - the same ~1.2x estimate domain/textLineEstimator.ts's
 // own callers already lean on elsewhere in this codebase, not a new guess.
 const NOTE_LINE_HEIGHT_MULTIPLIER = 1.2;
 
 /**
  * Predicts a text block's rendered height in px for `text` at
- * `availableWidthPx` - summing ui/textLineEstimator.ts's
+ * `availableWidthPx` - summing domain/textLineEstimator.ts's
  * activeLineEstimator.estimateLines over every logical (`\n`-split) line (a
  * blank line calls estimateLines('', ...), which already returns 1 - no
  * separate "blank lines count as 1" case needed), then converting wrapped-

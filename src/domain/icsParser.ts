@@ -140,6 +140,7 @@ function zonedDate(
     }
     return new Date(guess);
   } catch (_error) {
+    // silent: an unknown time zone falls back to device-local time
     return new Date(year, month, day, hour, minute, second);
   }
 }

@@ -47,6 +47,7 @@ export function formatLogArg(arg: unknown): string {
     if (json === undefined) {return String(arg);}
     return json.length > MAX_ARG_CHARS ? `${json.slice(0, MAX_ARG_CHARS)}…` : json;
   } catch {
+    // silent: the log itself cannot log
     return '[unserializable]';
   }
 }
@@ -150,7 +151,7 @@ export function flushLogFile(): Promise<void> {
   flushing = w(LOG_FILE_NAME, batch.join('\n') + '\n', LOG_FILE_MAX_BYTES)
     .then(() => undefined)
     .catch((e: unknown) => {
-      // Give up for this session rather than retry in a loop; the ring
+      // silent: the log itself cannot log. Give up for this session rather than retry in a loop; the ring
       // buffer still has everything for an exported bundle.
       fileLoggingOn = false;
       pushToRing(formatLogLine('W', ['logSink: writing the log file failed, file logging stopped for this session', e]));

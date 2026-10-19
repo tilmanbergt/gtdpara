@@ -9,7 +9,7 @@
  * shaded; the selected day is inverted. Tapping a row selects that day (the
  * screen then shows its day panel).
  *
- * How many labels fit is predicted with ui/textLineEstimator.ts against the
+ * How many labels fit is predicted with domain/textLineEstimator.ts against the
  * row's measured width (same estimator every multi-line row in the app
  * uses), so a crowded day degrades to "+N" instead of being clipped
  * mid-word.
@@ -18,7 +18,7 @@ import React, {useState} from 'react';
 import {LayoutChangeEvent, Pressable, StyleSheet, Text, View} from 'react-native';
 import {withSpanArrows} from '../domain/meetingSpan';
 import {MonthDay, MonthDayEntry} from '../storage/monthlyAggregate';
-import {activeLineEstimator} from './textLineEstimator';
+import {activeLineEstimator} from '../domain/textLineEstimator';
 import {FONT} from './theme';
 
 const WEEKDAY_SHORT = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];

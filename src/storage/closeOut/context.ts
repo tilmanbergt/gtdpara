@@ -25,6 +25,8 @@ import {CachedItem, findCachedItem, getCachedData} from '../dataCache';
 import {toLinkedFile} from '../linkedFiles';
 import {loadProjectFile} from '../projectFile';
 import {scanProject} from './scan';
+import {errorMessage} from '../../utils/errorMessage';
+import {logWarn} from '../../utils/log';
 
 export interface CloseOutContext {
   item: CachedItem;
@@ -106,8 +108,8 @@ export async function refreshCloseOutContext(args: {
   try {
     const inbox = await loadProjectFile('inbox', paths.inboxFolder);
     others.push({name: 'Inbox', kind: 'inbox', tasks: inbox.tasks, meetings: inbox.meetings});
-  } catch {
-    // Inbox unreadable: its links just aren't checked.
+  } catch (e) {
+    logWarn('closeOut: Inbox unreadable, its links are not checked', errorMessage(e));
   }
 
   const findings = evaluateReadiness({

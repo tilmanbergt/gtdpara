@@ -60,7 +60,7 @@ const chains = new Map<string, Promise<unknown>>();
 /** Runs `task` after every earlier write to `filePath` has settled. */
 function serialized<T>(filePath: string, task: () => Promise<T>): Promise<T> {
   const result = (chains.get(filePath) ?? Promise.resolve()).then(task, task);
-  const tail = result.catch(() => undefined);
+  const tail = result.catch(() => undefined); // silent: the caller gets the error from `result`; the tail only orders writes
   chains.set(filePath, tail);
   void tail.then(() => {
     if (chains.get(filePath) === tail) chains.delete(filePath);

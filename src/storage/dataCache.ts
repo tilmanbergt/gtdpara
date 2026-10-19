@@ -403,7 +403,7 @@ export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   }
   const perfToken = perfStart();
   // A refresh still running finishes first, so the two never write the cache at the same time.
-  const pending = refreshInFlight ? refreshInFlight.catch(() => undefined) : Promise.resolve();
+  const pending = refreshInFlight ? refreshInFlight.catch(() => undefined) : Promise.resolve(); // silent: the refresh logs its own failure
   rebuildInFlight = pending.then(() => doRebuildCache(settings)).finally(() => {
     rebuildInFlight = null;
     perfEnd('cache:rebuild', perfToken);

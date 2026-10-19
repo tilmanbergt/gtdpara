@@ -892,7 +892,7 @@ function QuickAddWidget({
   useEffect(
     () => () => {
       // Unmount while editing (tab/screen left): save what changed.
-      latestFlushRef.current().catch(() => undefined);
+      latestFlushRef.current().catch(() => undefined); // silent: the flush shows its own errors
       if (flushEditRef) flushEditRef.current = null;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -910,7 +910,7 @@ function QuickAddWidget({
       .then(ok => {
         if (ok) onCancelEdit?.();
       })
-      .catch(() => undefined);
+      .catch(() => undefined); // silent: the flush shows its own errors
   });
 
   // ---- Note create (no edit mode) ----

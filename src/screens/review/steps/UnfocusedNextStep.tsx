@@ -24,7 +24,7 @@ import DateInput from '../../../ui/DateInput';
 import FocusedItemRow from '../../../ui/FocusedItemRow';
 import {COLUMN_WIDTH_PX} from '../../../ui/itemEntryRow';
 import ReviewMasterDetail from '../../../ui/ReviewMasterDetail';
-import {activeLineEstimator} from '../../../ui/textLineEstimator';
+import {activeLineEstimator} from '../../../domain/textLineEstimator';
 import {common} from '../../../ui/commonStyles';
 import {FONT} from '../../../ui/theme';
 import {useErrorStatus} from '../../../ui/status/StatusProvider';

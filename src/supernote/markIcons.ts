@@ -128,6 +128,7 @@ async function pageCount(path: string): Promise<number | null> {
     const r = (await PluginFileAPI.getNoteTotalPageNum(path)) as SdkResponse<number>;
     return r?.success && typeof r.result === 'number' ? r.result : null;
   } catch {
+    // silent: an unknown page count; the caller places nothing
     return null;
   }
 }
