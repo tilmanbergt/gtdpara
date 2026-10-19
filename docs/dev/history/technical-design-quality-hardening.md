@@ -5,7 +5,7 @@
 > plan and open points; each slice gets its own "As built" section when it is done.
 
 Status: **Q1 built** on `feature/safe-writes` (§3.7) for 0.18.1, waiting for its device test;
-Q2-Q4 designed.
+**Q2 built** on `feature/scenario-tests` (§4.9), taken from `feature/safe-writes`; Q3-Q4 designed.
 Decisions D1-D4 in §7.
 
 ## 1. Goal and decisions
@@ -318,6 +318,32 @@ shrinks to them. Target: about ten minutes per release.
 4. Scenarios 2-12.
 5. Policy, README, design-doc template section; move two of the existing hand-mocked UI tests to
    the harness as examples.
+
+### 4.9 As built (Q2)
+
+Built on `feature/scenario-tests`, branched from `feature/safe-writes` because scenarios 11 and 12
+test Q1; it merges after Q1.
+
+- **Fake device** as in §4.2, plus `FakePdf` for `GtdParaPdf` (the "PDF" is the spec as JSON) and a
+  fixed `GtdParaRuntime` answer. `device()` and `resetDevice()` (`test-helpers/fakeDevice/device.ts`)
+  hold the current one; `forwarding()` proxies let modules that captured a native module at import
+  time follow a reset. The fake's own rules are tested in `__tests__/fakeDevice/fakeFs.test.ts`.
+- **Jest projects**: `jest.config.js` has `unit` (as before) and `scenarios`
+  (`__tests__/scenarios/`, setup file `test-helpers/fakeDevice/setup.ts`). Both run in
+  `npm run check`; the 13 scenarios take about 5 s.
+- **Driver** (`test-helpers/scenario/app.tsx`) on `@testing-library/react-native` 13.3.3 (D2):
+  queries skip hidden elements, so kept tabs don't leak into a scenario; every view that asks
+  for its size gets one tall page (nothing measures in Jest), so paged lists show their rows - row
+  heights stay a device check.
+- **Catalog**: the step texts are read from the source (`scripts/lib/scenarioCatalog.mjs`), not
+  collected at run time, so `npm run check` can compare `docs/dev/test-scenarios.md` without
+  running anything twice. Pass/fail is not in it: the check only passes when all scenarios pass.
+- **Scenarios** (§4.7): all twelve, plus "an outside edit to another part is kept" as its own
+  scenario. Scenario 11 found a bug: Quick Add on a project's page took a failed add for a
+  success (the screen's `runWidgetAction` swallowed the error), cleared the text and said "Added
+  todo". Fixed on `feature/safe-writes` for 0.18.1.
+- **Not done** from §4.8 step 5: moving two of the hand-mocked UI tests to the harness. The new
+  scenarios serve as the examples; the old tests stay as they are.
 
 ## 5. Q3 "Interruptions and messy files"
 
