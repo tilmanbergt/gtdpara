@@ -4,7 +4,8 @@
 > releases, with the design of each. Requirements as decided, current state, design, steps, test
 > plan and open points; each slice gets its own "As built" section when it is done.
 
-Status: **design, waiting for approval** (decisions D1-D4 in §7 are open).
+Status: **design; D1-D3 decided (§7), D4 answered and waiting for confirmation.** Q1 is built on
+its own branch so it can join 0.18.0 or be left out of it (§3.6).
 
 ## 1. Goal and decisions
 
@@ -19,7 +20,7 @@ to sit between feature releases:
 
 | Slice | Name | User-visible | Ships as |
 |---|---|---|---|
-| Q1 | Safe writes | yes ("Fixed") | a patch (0.18.1), or inside 0.18.0 if time allows |
+| Q1 | Safe writes | yes ("Fixed") | inside 0.18.0 (still in beta); left out and shipped as 0.18.1 if not stable in time |
 | Q2 | Scenario tests | no | merges to `main` when done, rides along with the next release |
 | Q3 | Interruptions and messy files | only fixes it finds | the release after Q2; fixes as "Fixed" lines |
 | Q4 | Quick Add split | no | merges to `main` when done, rides along |
@@ -75,21 +76,51 @@ This is a deliberate exception to "temporary files live only in the private temp
 between write and rename) is overwritten by the next write of that file, and the Integrity Check
 lists any it finds. `appendTextFile` (logs) stays as it is.
 
+Why not the private folder: it is the app's own storage (`/data/user/0/<host>/…`), a different
+file system from the user's folders (`/storage/emulated/0/…`). `renameTo` cannot cross file
+systems; it returns `false`, and the only way left is copy-then-delete. Copying onto the target
+truncates and rewrites it, which is exactly the unsafe write this replaces. Only a temp file on
+the same file system as the target gives an atomic replace.
+
+If `renameTo` over the existing file fails on a device (to be checked on each firmware in the
+device test), the write falls back to the direct write it replaces and logs a warning, so it
+is never worse than today.
+
 ### 3.2 Write conflict guard
 
-One helper in `storage/projectFile.ts`, `writeDataFile(kind, itemPath, next)`, replaces the
-direct `writeTextFile` in every `save…`:
+Decision D3: when both sides changed the same thing, the user decides what wins. When they
+changed different parts of the file, nothing is lost by keeping both, so nobody is asked.
+
+One helper in `storage/projectFile.ts`, `writeDataFile(kind, itemPath, change)`, replaces the
+direct `writeTextFile` in every `save…`. `change` is `{section, apply}`: the span the save
+writes (`## Tasks`, `## Meetings`, …, or the frontmatter) and a pure `apply(raw) => next` that
+writes it into any version of the file (the `write…IntoContent` functions already are this).
 
 1. `statFiles([path])` and compare with the stamp the cache recorded when it read the file
    (`dataCache.ts`, exposed as `recordedStamp(path)`; the Inbox has its own).
-2. Same stamp, or no stamp recorded (file not yet cached): write, then record the new stamp.
-3. Different stamp: **do not write**. Re-read the file into the cache (`applyItemRawContent` /
-   `applyInboxRawContent`, which notify the screens), and throw `FileChangedError`. The screen's
-   existing error path shows it in the status slot: `"Website" was changed outside gtdpara and
-   has been reloaded. Please make the change again.` (text in `domain/fileChangeText.ts`).
+2. Same stamp, or no stamp recorded (file not yet cached): write `apply(cachedRaw)`, record the
+   new stamp. This is today's path.
+3. Different stamp: read the file as it is now (`freshRaw`) and compare the save's section in
+   `cachedRaw` and `freshRaw`.
+   - **Section unchanged outside** (the outside edit was elsewhere): write `apply(freshRaw)`.
+     Both changes are kept, nothing to ask. Logged as a count, not content.
+   - **Section changed on both sides**: write nothing yet. Load `freshRaw` into the cache
+     (`applyItemRawContent` / `applyInboxRawContent`, which notify the screens), keep the
+     pending change in a small store (`storage/writeConflicts.ts`, one entry per file) and throw
+     `FileConflictError`. An App-level publisher shows it in the status slot (texts in
+     `domain/fileChangeText.ts`):
+     `"Website" was also changed outside gtdpara (Todos).` with two actions, neither preselected:
+     - **Use mine**: write `apply(freshRaw)` with the stamp check again. The outside change to
+       this section is replaced; outside changes elsewhere in the file stay.
+     - **Use the file**: drop the pending change. The file stays as the outside edit left it.
+     Dismissing the message, leaving the screen or a profile switch counts as "Use the file":
+     the safe choice that writes nothing.
+4. The screen treats `FileConflictError` like a failed save: an open edit stays open with the
+   typed text, so after "Use the file" the user can still save it again on purpose.
 
-Refusing is simpler and safer than merging: the user sees the new content and repeats one tap.
-External edits during a plugin session are rare, so the cost is low (decision D3).
+Multi-file operations (moves, filing, close-out) hit the guard per file. Because moves append
+first, a conflict on the second file leaves at worst a visible duplicate, never a lost entry;
+the message names the file, so the user sees where.
 
 ### 3.3 Settings load failure
 
@@ -108,14 +139,28 @@ settings stay untouched. See Troubleshooting.` A line in `docs/user/troubleshoot
 
 ### 3.5 Q1 steps
 
-1. Native atomic write + Integrity Check finding for leftovers.
-2. `writeDataFile` with the stamp guard; all `save…` in `projectFile.ts` use it; unit tests with
-   a stubbed `statFiles`.
-3. Verify the settings-fallback failure (§2), then the fix; tests.
-4. silent-catch and layer-imports rules with tests in `scripts/test-code-health.mjs`; fix the
+Each step is its own commit, so one that does not hold up on the device can be reverted alone.
+
+1. Native atomic write with fallback + Integrity Check finding for leftovers.
+2. `writeDataFile` with the stamp guard and the "section unchanged outside" case; all `save…` in
+   `projectFile.ts` use it; unit tests with a stubbed `statFiles`/`readTextFile`.
+3. The conflict case: `storage/writeConflicts.ts`, the App-level status with "Use mine" / "Use
+   the file", the screens' failed-save path; tests.
+4. Verify the settings-fallback failure (§2), then the fix; tests.
+5. silent-catch and layer-imports rules with tests in `scripts/test-code-health.mjs`; fix the
    findings.
-5. CHANGELOG ("Fixed": files are saved safely if the device switches off mid-save; changes made
-   outside gtdpara are no longer overwritten), troubleshooting page, policy §3/§5 lines.
+6. CHANGELOG ("Fixed": files are saved safely if the device switches off mid-save; a change
+   made outside gtdpara is kept, and when both changed the same list you choose which wins),
+   help pages (`files-and-folders.md`, `troubleshooting.md`), policy §3/§5 lines, CI workflow
+   (D1, `.github/workflows/check.yml` running `npm run check`).
+
+### 3.6 Branch and release
+
+Q1 is built on `feature/safe-writes`, taken from `main` (0.17.0), independent of
+`feature/engage-in-context`. It is device-tested with its own beta build. When it holds up, it
+merges into `main` before 0.18.0 is released and ships with it; when it does not, 0.18.0 is
+released without it and Q1 follows as 0.18.1. Either way nothing in 0.18.0's own work depends
+on it. The CI workflow does not depend on the rest and can be merged on its own at any time.
 
 ## 4. Q2 "Scenario tests"
 
@@ -245,25 +290,35 @@ FileBrowserPane and `supernote/fileSystem.ts`; a section registry for data-file 
 trimming comments that cite history documents; coverage floors; driving the real device over
 adb.
 
-## 7. Open points (decisions for Tilman)
+## 7. Decisions
 
-- **D1 CI.** The 0.9.0 decision was "no CI". A GitHub Actions job running `npm run check` on
-  every push would also check branches that cloud sessions push. Recommendation: add it in Q2
-  (free for a public repository, one small workflow file).
-- **D2** `@testing-library/react-native` as a dev dependency for the driver (not in the plugin
-  bundle). Recommendation: yes; the alternative is a home-made query layer over
-  `react-test-renderer`.
-- **D3** On a write conflict: refuse and reload (recommended, §3.2) or merge the span into the
-  new file content.
-- **D4** Temp file next to the target for atomic writes, as a written exception to the
-  private-folder rule (recommended, §3.1).
+Decided with Tilman (2026-10-19):
+
+- **D1 CI: yes.** A GitHub Actions job runs `npm run check` on every push and pull request,
+  which also checks branches that cloud sessions push. This replaces the 0.9.0 decision "no CI".
+  It comes with Q1 (§3.5 step 6).
+- **D2 `@testing-library/react-native`: yes**, as a dev dependency for the Q2 driver (not in
+  the plugin bundle).
+- **D3 Write conflict: the user decides what wins** (§3.2). Changes to different parts of the
+  file are both kept without asking.
+- **D4 Temp file next to the target** (§3.1), as a written exception to the private-folder
+  rule. Tilman asked why not the private folder; the answer is in §3.1 (a rename cannot cross
+  file systems, and copying is the unsafe write again). Waiting for his confirmation.
 
 ## 8. Test plan
 
-- Q1: unit tests for `writeDataFile` (same stamp, changed stamp, no stamp), settings fallback,
-  code-health rule tests. Device: save while the plugin is killed from the task switcher (file
-  intact); edit `project.txt` from a computer while the plugin is open, then save in the plugin
-  (message, nothing lost); one normal save on each main tab.
+- Q1: unit tests for `writeDataFile` (same stamp; no stamp; changed elsewhere, kept both;
+  changed in the same section, "Use mine" and "Use the file"), settings fallback, code-health
+  rule tests. Device, on the demo space:
+  - [ ] Normal saves on Daily, Inbox, a Project and in Review work as before; no
+        `.gtdpara-tmp` files are left in the folders.
+  - [ ] The log shows the atomic rename succeeding, not the fallback.
+  - [ ] With the plugin open, edit the Scope of a Project's `project.txt` in another app, then
+        add a todo in gtdpara: both changes are in the file, no question asked.
+  - [ ] With the plugin open, change a todo's line in another app, then edit a todo of the same
+        Project in gtdpara: the message appears; "Use the file" keeps the outside version,
+        "Use mine" (on a second try) keeps gtdpara's.
+  - [ ] Save while killing the plugin from the task switcher: the file is intact.
 - Q2: `npm run check` with the scenario step; the scenario list reviewed by Tilman.
 - Q3: the crash and corpus tests themselves; device: one close-out on the demo space.
 - Q4: scenarios 1-6 unchanged and green; device: Quick Add on Daily, Inbox, Project, capture.
