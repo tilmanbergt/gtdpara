@@ -3,7 +3,8 @@ import {DEFAULT_SETTINGS, GtdParaSettings, renameLegacyTagRuleKeys} from '../dom
 import {migrateNoteSetupSettings, migrationCounts} from '../domain/noteSetupMigration';
 import {seedNoteSetupDefaults} from '../domain/noteSetups';
 import {errorMessage} from '../utils/errorMessage';
-import {log, logError} from '../utils/log';
+import {log, logError, logWarn} from '../utils/log';
+import {getSettingsUnreadable, setSettingsUnreadable} from './settingsUnreadable';
 import {markNoteSetupMigrationFailed} from './noteSetupMigrationState';
 import {ReviewStepsMap} from '../domain/reviewSteps';
 import {perfEnd, perfStart} from '../utils/perf';
@@ -43,9 +44,10 @@ async function readSettings(): Promise<GtdParaSettings> {
   const migrated = migrateExperimentalFlags(noteMigrated, parsed, BUILD_INFO.version);
   if (migrated !== merged || parsed !== stored) {
     try {
-      await saveSettings(migrated);
-    } catch {
+      await writeSettings(migrated);
+    } catch (e) {
       // Best-effort: the migrated values still apply this session.
+      logError('settingsStorage: storing migrated settings failed', errorMessage(e));
     }
   }
   return migrated;
@@ -78,16 +80,42 @@ function migrateNoteSetups(settings: GtdParaSettings): GtdParaSettings {
 export async function loadSettings(): Promise<GtdParaSettings> {
   const perfToken = perfStart();
   try {
-    return await readSettings();
-  } catch {
+    const settings = await readSettings();
+    setSettingsUnreadable(null);
+    return settings;
+  } catch (e) {
+    const reason = errorMessage(e);
+    logError('settingsStorage: settings unreadable, running on defaults and saving none', reason);
+    setSettingsUnreadable(reason);
     return DEFAULT_SETTINGS;
   } finally {
     perfEnd('load:settings', perfToken);
   }
 }
 
-export async function saveSettings(settings: GtdParaSettings): Promise<void> {
+// After a failed load the app runs on DEFAULT_SETTINGS. Every full save then
+// starts from those defaults, so saveSettings refuses until a load succeeds
+// again or the user chooses to start over (storage/settingsUnreadable.ts).
+
+/** The user's choice after a failed load: store the defaults over the unreadable settings. */
+export async function resetSettingsToDefaults(): Promise<GtdParaSettings> {
+  await writeSettings(DEFAULT_SETTINGS);
+  log('settingsStorage: unreadable settings replaced with the defaults');
+  setSettingsUnreadable(null);
+  return DEFAULT_SETTINGS;
+}
+
+async function writeSettings(settings: GtdParaSettings): Promise<void> {
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+/** Stores `settings`. Throws while the stored settings are unreadable, so defaults never replace them unasked. */
+export async function saveSettings(settings: GtdParaSettings): Promise<void> {
+  if (getSettingsUnreadable() !== null) {
+    logWarn('settingsStorage: save refused, stored settings are unreadable');
+    throw new Error('Not saved: your stored settings could not be read, and saving now would replace them with defaults.');
+  }
+  await writeSettings(settings);
 }
 
 /** Serializes updateReviewSteps calls - see below. */

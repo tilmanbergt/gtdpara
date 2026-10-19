@@ -38,6 +38,7 @@ import {featuresOf} from './src/domain/features';
 import {setFeatures, useFeatures} from './src/ui/featureStore';
 import {useWriteConflicts} from './src/ui/useWriteConflicts';
 import {useWhatsNewNotice} from './src/ui/useWhatsNewNotice';
+import {useSettingsUnreadableNotice} from './src/ui/useSettingsUnreadableNotice';
 import {useNoteSetupsNotice} from './src/ui/useNoteSetupsNotice';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
@@ -619,6 +620,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     setMode('tabs');
   });
   useWhatsNewNotice(settings, setSettings, openSettingsAbout);
+  useSettingsUnreadableNotice(setSettings);
 
   if (mode === 'loading') {
     return (
