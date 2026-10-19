@@ -12,12 +12,13 @@ import {useState} from 'react';
 import {todayIso} from '../../domain/meetingTime';
 import {applyProvenance, meetingKey, provenanceLabel} from '../../domain/provenance';
 import {Meeting} from '../../domain/types';
-import {QuickAddProvenance} from './ProvenanceLine';
+import {QuickAddAdds} from './ProvenanceLine';
 
 type ProvenanceMeeting = Pick<Meeting, 'date' | 'title' | 'tags'>;
 
 export interface ProvenanceState {
-  provenance: QuickAddProvenance | null;
+  /** Quick Add's grey line: one part, or null. */
+  provenance: QuickAddAdds | null;
   /** True while the line is shown (not dropped, a meeting is known). */
   active: boolean;
   apply: (composedLine: string) => string;
@@ -30,7 +31,7 @@ export function useProvenance(meeting: ProvenanceMeeting | null): ProvenanceStat
   const key = meeting ? meetingKey(meeting) : null;
   const active = meeting !== null && key !== droppedKey;
   return {
-    provenance: active && meeting ? {label: provenanceLabel(meeting, todayIso()), onClear: () => setDroppedKey(key)} : null,
+    provenance: active && meeting ? [{key: 'provenance', label: provenanceLabel(meeting, todayIso()), onClear: () => setDroppedKey(key)}] : null,
     active,
     apply: line => (active && key ? applyProvenance(line, key) : line),
     added: () => setDroppedKey(null),

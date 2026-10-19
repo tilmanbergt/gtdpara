@@ -126,6 +126,9 @@ describe('App with the thread overview', () => {
     expect(rendered(r)).toContain('Draft agenda');
     expect(texts(r)).toEqual(expect.arrayContaining(['I owe', 'Relevant']));
     expect(texts(r)).not.toContain('Waiting for');
+    // Quick Add presets the thread tag (E13).
+    const quickAdd = r.root.findAll(n => n.props.layoutKey === 'thread' && Array.isArray(n.props.provenance))[0];
+    expect(quickAdd.props.provenance.map((part: {label: string}) => part.label)).toContain('#retro/alpha');
     // Someday/Maybe is only counted, in the last row of Ahead.
     expect(texts(r)).toContain('1 someday ›');
     expect(rendered(r)).not.toContain('Parked idea');
