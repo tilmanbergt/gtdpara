@@ -1,37 +1,48 @@
 /**
- * Quick Add's one grey line when a new todo is linked to a meeting in the
- * background (docs/dev/history/technical-design-tending-threads.md §1.5, §3.4):
- * `↳ from Retro alpha · Tue 30.9.`, with ✕ to drop the link for this one
- * todo. The screen builds the
- * label (domain/provenance.ts's `provenanceLabel`) and decides what to write;
- * this only shows it. 34 dp high.
+ * Quick Add's one grey line naming what a screen adds to a new todo in the
+ * background (docs/dev/history/technical-design-tending-threads.md §1.5,
+ * §3.4; docs/dev/history/technical-design-engage-in-context.md §2.11): the
+ * meeting it was agreed in (`↳ from Retro alpha · Tue 30.9.`) and, in the
+ * thread overview, the thread tag (`#retro/alpha`). Each part has its own ✕,
+ * which drops it for this one todo. The screen builds the labels and decides
+ * what to write; this only shows them. 34 dp high.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {FONT} from '../theme';
 
-export interface QuickAddProvenance {
+/** One part of the line. */
+export interface QuickAddPart {
+  key: string;
   label: string;
   onClear: () => void;
 }
 
+/** What a screen adds, at most two parts (provenance, preset tag). */
+export type QuickAddAdds = QuickAddPart[];
+
 export const PROVENANCE_LINE_HEIGHT = 34;
 
-export default function ProvenanceLine({provenance, textColor}: {provenance: QuickAddProvenance; textColor: string}): React.JSX.Element {
+export default function ProvenanceLine({parts, textColor}: {parts: QuickAddAdds; textColor: string}): React.JSX.Element {
   return (
     <View style={styles.line}>
-      <Text style={[styles.label, {color: textColor}]} numberOfLines={1}>
-        {provenance.label}
-      </Text>
-      <Pressable onPress={provenance.onClear} hitSlop={8} accessibilityRole="button" accessibilityLabel="Drop">
-        <Text style={[styles.clear, {color: textColor}]}>✕</Text>
-      </Pressable>
+      {parts.map(part => (
+        <View key={part.key} style={styles.part}>
+          <Text style={[styles.label, {color: textColor}]} numberOfLines={1}>
+            {part.label}
+          </Text>
+          <Pressable onPress={part.onClear} hitSlop={8} accessibilityRole="button" accessibilityLabel="Drop">
+            <Text style={[styles.clear, {color: textColor}]}>✕</Text>
+          </Pressable>
+        </View>
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   line: {flexDirection: 'row', alignItems: 'center', height: PROVENANCE_LINE_HEIGHT},
-  label: {flex: 1, fontSize: FONT.small, opacity: 0.6},
+  part: {flexDirection: 'row', alignItems: 'center', flexShrink: 1},
+  label: {flexShrink: 1, fontSize: FONT.small, opacity: 0.6},
   clear: {fontSize: FONT.small, fontWeight: '700', paddingHorizontal: 8, opacity: 0.6},
 });

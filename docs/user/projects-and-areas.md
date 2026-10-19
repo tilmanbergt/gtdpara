@@ -72,7 +72,7 @@ Tap a counterpart's name to open its overview (see [Threads](threads.md)).
 
 Tap **Filter** on its row to filter the Todos and Meetings on the right: only todos you owe it, wait for from it or that are relevant for it (the same three ways as in its overview), and only its meetings. A todo agreed in your 1:1 with Mieke but tagged `#101/sven` shows under both mieke and sven. The row's pill turns into **Filter ✕** and a pill `mieke ✕` above Quick Add shows the filter; tap either to show everything.
 
-While a counterpart is filtered, its row offers **Set inactive**. With open todos you first decide for each one under **I owe**, **Waiting for** and **Relevant**: **Done**, **Cancel** or **Keep** (Keep is preselected); **Set inactive** then applies them. With nothing open, one confirmation is enough. An inactive counterpart leaves the Weekly Review and the tag suggestions; its overview keeps working.
+While a counterpart is filtered, its row offers **Set inactive**. With open todos you first decide for each one under **I owe**, **Waiting for**, **Relevant** and **Someday / Maybe**: **Done**, **Cancel** or **Keep** (Keep is preselected); **Set inactive** then applies them. With nothing open, one confirmation is enough. An inactive counterpart leaves the Weekly Review and the tag suggestions; its overview keeps working.
 
 ## Home notebooks
 

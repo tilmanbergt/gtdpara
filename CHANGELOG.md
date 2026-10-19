@@ -23,6 +23,35 @@ or your project/area files are stored.
   "Troubleshooting".
 - Errors shown in the status line are now in the log, so a debug bundle shows them too.
 
+## [0.18.0] — 2026-10-19
+
+### New
+- **Engage: Agreed tab**: on a meeting's note, Engage opens on **Agreed** with the todos agreed
+  in that meeting - "Agreed in Sparring Mieke · Tue 14.10." - to make one #next, work on it, or
+  tick off one you are waiting for. For a thread or a loop elsewhere, it shows what was agreed in
+  its latest meeting.
+- **Engage: "Also here"**: one short line names what the panel leaves out - "2 waiting · 1
+  someday" - with **Overview ›** to the thread's or loop's overview or the project's page.
+- **Engage: Next here and Today next**: the owner's next meeting under the header (a tap opens
+  its note), and your next meeting today, quiet at the bottom, with "in 40 min" when it is less
+  than three hours away.
+- **Weekly Review: Someday / Maybe**: a new step after "Unfocused next items" with the Someday
+  and Maybe todos of your active and paused projects and areas: **#next**, **To plan**, **Done**,
+  **Cancel**. The "n someday ›" rows and Engage open it filtered to where you came from.
+- **Thread overview: Quick Add adds the thread's tag** to new todos (the plain `#name` in "All
+  name"), shown in the grey line with its own ✕.
+
+### Changed
+- **Engage holds what the overviews hold**: a thread's todos are the thread overview's - tagged,
+  the plain `#name`, agreed in its meetings and `#owe/name`; a loop's include the todos agreed in
+  its meetings. A todo's owner is its loop, else its thread (its tag, or the meeting it was agreed
+  in), else its project or area.
+- **Engage lists what you owe first** for threads and loops, in Next and Plan.
+- **Someday and Maybe are only counted** in the thread and loop overviews ("1 someday ›") and in
+  new "Since last time" pieces (I owe, Relevant); "Agreed last time" still lists them.
+- **Loops**: a todo agreed during a loop meeting that is still running now counts for the loop.
+- **Demo space**: a Coaching area with a sparring thread and a loop, to try Engage.
+
 ## [0.17.0] — 2026-10-18
 
 ### New

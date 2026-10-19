@@ -23,7 +23,7 @@ const coaching = item('area', 'Coaching', {
   ],
   meetings: [meeting('2026-10-01', 'Sparring #sparring/anna', {tags: ['sparring/anna'], notePath: 'Sparring.note#2026-10-01 Sparring #sparring/anna'})],
 });
-const source: EngageSource = {items: [coaching], inboxPath: '/Note/2 Areas/0 Inbox', loopKinds: ['proj'], threadTypes: ['sparring']};
+const source: EngageSource = {items: [coaching], inbox: {path: '/Note/2 Areas/0 Inbox', tasks: [], meetings: []}, loopKinds: ['proj'], threadTypes: ['sparring']};
 const paths: ResolvedParaPaths = {
   base: '/Note',
   projects: '/Note/1 Projects',
@@ -44,6 +44,7 @@ describe('noteContextOf', () => {
     expect(await noteContextOf(`${A}/Todos/Brief.note`, 0, source, paths)).toEqual({
       owner: {kind: 'loop', itemPath: A, tag: 'proj/launch'},
       todo: {itemPath: A, taskText: 'Brief #proj/launch #next', taskIndex: 0},
+      meeting: null,
       rule: 'todoNote',
     });
     expect(log).toHaveBeenCalledWith('noteOwnerOf: context', 'rule=todoNote', 'owner=loop', 'todo=yes');
@@ -53,8 +54,9 @@ describe('noteContextOf', () => {
   });
   it('a todo\'s page in a shared notebook (by keyword)', async () => {
     mockKeywords = [{page: 3, keyword: 'Ask Anna #sparring/anna'}];
+    // Its thread tag makes the thread its owner (docs/dev/history/technical-design-engage-in-context.md E4).
     expect(await noteContextOf(`${A}/Sparring.note`, 3, source, paths)).toMatchObject({
-      owner: {kind: 'item', itemPath: A},
+      owner: {kind: 'thread', scopeOwnerPath: A, tag: 'sparring/anna'},
       todo: {taskIndex: 1},
       rule: 'todoNote',
     });
@@ -64,6 +66,7 @@ describe('noteContextOf', () => {
     expect(await noteContextOf(`${A}/Sparring.note`, 1, source, paths)).toEqual({
       owner: {kind: 'thread', scopeOwnerPath: A, tag: 'sparring/anna'},
       todo: null,
+      meeting: {itemPath: A, meetingIndex: 0},
       rule: 'meetingNote',
     });
   });
@@ -72,7 +75,7 @@ describe('noteContextOf', () => {
   });
   it('any other note in the item\'s folder: the item; outside: none', async () => {
     expect(await noteContextOf(`${A}/Meetings/Other.note`, 0, source, paths)).toMatchObject({owner: {kind: 'item', itemPath: A}, rule: 'item'});
-    expect(await noteContextOf('/Note/Elsewhere.note', 0, source, paths)).toEqual({owner: null, todo: null, rule: 'none'});
-    expect(await noteContextOf(null, null, source, paths)).toEqual({owner: null, todo: null, rule: 'none'});
+    expect(await noteContextOf('/Note/Elsewhere.note', 0, source, paths)).toEqual({owner: null, todo: null, meeting: null, rule: 'none'});
+    expect(await noteContextOf(null, null, source, paths)).toEqual({owner: null, todo: null, meeting: null, rule: 'none'});
   });
 });

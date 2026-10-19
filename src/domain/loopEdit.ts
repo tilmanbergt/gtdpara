@@ -36,13 +36,16 @@ export function loopAsTodo(line: LoopLine): Task {
   return newTask({text: `#${line.tag}`, fields: {...emptyTaskFields(), due: line.mainDate}, linkedFile: line.linkedFile ?? ''});
 }
 
-/** A Quick Add line with the loop's tag added before its trailing fields, unless it carries it already. */
-export function withLoopTag(line: string, tag: string): string {
+/** A Quick Add line with an owner's tag (a loop's, a thread's, a leaf) added before its trailing fields, unless it carries it already. */
+export function withOwnerTag(line: string, tag: string): string {
   const trimmed = line.trim();
   const {text, fields} = parseTaskInput(trimmed);
   if (belongsToLoop(newTask({text, fields}).tags, tag)) return trimmed;
   return `${text} #${tag}${trimmed.slice(text.length)}`;
 }
+
+/** The loop callers' name for `withOwnerTag`. */
+export const withLoopTag = withOwnerTag;
 
 /** A meeting title with the loop's tag added, unless it carries it already. */
 export function titleWithLoopTag(title: string, tag: string): string {

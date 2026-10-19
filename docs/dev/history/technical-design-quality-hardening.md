@@ -4,7 +4,8 @@
 > releases, with the design of each. Requirements as decided, current state, design, steps, test
 > plan and open points; each slice gets its own "As built" section when it is done.
 
-Status: **Q1 built** on `feature/safe-writes` (§3.7), waiting for its device test; Q2-Q4 designed.
+Status: **Q1 built** on `feature/safe-writes` (§3.7) for 0.18.1, waiting for its device test;
+Q2-Q4 designed.
 Decisions D1-D4 in §7.
 
 ## 1. Goal and decisions
@@ -20,7 +21,7 @@ to sit between feature releases:
 
 | Slice | Name | User-visible | Ships as |
 |---|---|---|---|
-| Q1 | Safe writes | yes ("Fixed") | inside 0.18.0 (still in beta); left out and shipped as 0.18.1 if not stable in time |
+| Q1 | Safe writes | yes ("Fixed") | 0.18.1 (0.18.0 was released before Q1 was device-tested) |
 | Q2 | Scenario tests | no | merges to `main` when done, rides along with the next release |
 | Q3 | Interruptions and messy files | only fixes it finds | the release after Q2; fixes as "Fixed" lines |
 | Q4 | Quick Add split | no | merges to `main` when done, rides along |

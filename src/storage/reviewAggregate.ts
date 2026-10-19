@@ -64,8 +64,12 @@
  *   row's icon uses, so the two can't disagree. Needs the Note setups
  *   (`noteSetups`), which are settings, not item data, so the caller passes
  *   them in (none -> nothing tracked -> empty bucket).
+ * - somedayItems (docs/dev/history/technical-design-engage-in-context.md
+ *   §2.10): active and on-hold Projects/Areas with open Someday/Maybe todos,
+ *   for the "Someday / Maybe" step; archived items are never in the cache.
  */
 import {isFocused} from '../domain/destination';
+import {isSomedayMaybe} from '../domain/flowState';
 import {countMeetingsInRange} from '../domain/meetingSpan';
 import {meetingTimestampMs, splitAndSortMeetings} from '../domain/meetingTime';
 import {isReviewOutstanding} from '../domain/meetingTracking';
@@ -116,6 +120,12 @@ export interface ReviewUnfocusedNextEntry {
   nextTasks: ReviewNextTaskEntry[];
 }
 
+export interface ReviewSomedayEntry {
+  item: ReviewItemRef;
+  /** This item's own open Someday/Maybe todos - see somedayTasksFor. */
+  tasks: ReviewNextTaskEntry[];
+}
+
 export interface ReviewAggregate {
   weekMeetings: ReviewMeetingEntry[];
   stalledProjects: ReviewProjectEntry[];
@@ -124,6 +134,8 @@ export interface ReviewAggregate {
   neglectedAreas: ReviewProjectEntry[];
   /** Active Projects/Areas, not focused at all (not daily, weekly or monthly), with ≥1 open #next task that has no due date yet - see the module doc comment's "unfocusedNextItems" note. */
   unfocusedNextItems: ReviewUnfocusedNextEntry[];
+  /** Open Someday/Maybe todos of active and on-hold Projects/Areas, per item in file order (docs/dev/history/technical-design-engage-in-context.md §2.10). */
+  somedayItems: ReviewSomedayEntry[];
   /** Past meetings still owing their tracked review, most recent first - see the module doc comment's "meetingsToClose" note. */
   meetingsToClose: ReviewMeetingEntry[];
   /** Items whose data file failed to load on the last cache build - reported, not silently dropped, same as dailyAggregate.ts. */
@@ -188,6 +200,11 @@ export function nextTasksFor(item: ReviewItemRef, tasks: Task[]): ReviewNextTask
     .filter(({task}) => !task.done && !task.cancelled && task.flowState === 'next' && task.dueDate === null);
 }
 
+/** This item's own open Someday/Maybe todos, file order - the "Someday / Maybe" step's rows, recomputed live like nextTasksFor. */
+export function somedayTasksFor(item: ReviewItemRef, tasks: Task[]): ReviewNextTaskEntry[] {
+  return tasks.map((task, taskIndex) => ({item, taskIndex, task})).filter(({task}) => !task.done && !task.cancelled && isSomedayMaybe(task));
+}
+
 /** Pure in-memory aggregation over already-cached items - see the module doc comment. */
 export function buildReviewAggregate(
   items: CachedItem[],
@@ -203,6 +220,7 @@ export function buildReviewAggregate(
   const neglectedAreas: ReviewProjectEntry[] = [];
   const unfocusedNextItems: ReviewUnfocusedNextEntry[] = [];
   const meetingsToClose: ReviewMeetingEntry[] = [];
+  const somedayItems: ReviewSomedayEntry[] = [];
   const failedItems: ReviewAggregate['failedItems'] = [];
 
   for (const cachedItem of items) {
@@ -227,6 +245,10 @@ export function buildReviewAggregate(
     }
     if (cachedItem.status === 'on-hold') {
       onHoldItems.push(item);
+    }
+    if (cachedItem.status === 'active' || cachedItem.status === 'on-hold') {
+      const tasks = somedayTasksFor(item, cachedItem.tasks);
+      if (tasks.length > 0) somedayItems.push({item, tasks});
     }
 
     if (cachedItem.status === 'active') {
@@ -264,6 +286,7 @@ export function buildReviewAggregate(
     onHoldItems,
     neglectedAreas,
     unfocusedNextItems,
+    somedayItems,
     meetingsToClose,
     failedItems,
   };
@@ -326,6 +349,7 @@ export function buildReviewStepCounts(
     onHold: {n: aggregate.onHoldItems.length},
     neglected: {n: aggregate.neglectedAreas.length},
     unfocusedNext: {n: aggregate.unfocusedNextItems.reduce((sum, entry) => sum + entry.nextTasks.length, 0)},
+    somedayMaybe: {n: aggregate.somedayItems.reduce((sum, entry) => sum + entry.tasks.length, 0)},
     // "Focus reset" (id kept as 'weeklyFocus' - see domain/reviewSteps.ts)
     // sets weekly AND monthly focus, so its "N of M" counts both levels'
     // filled slots against both levels' limits.

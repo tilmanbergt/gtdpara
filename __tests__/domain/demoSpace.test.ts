@@ -18,7 +18,7 @@ describe('demo space', () => {
   it('has projects, areas, inbox and the folders', () => {
     const paths = files.map(f => f.path);
     expect(paths.filter(p => p.startsWith('1 Projects/')).length).toBe(5);
-    expect(paths.filter(p => p.startsWith('2 Areas/') && p.endsWith('/area.txt')).length).toBe(3);
+    expect(paths.filter(p => p.startsWith('2 Areas/') && p.endsWith('/area.txt')).length).toBe(4);
     expect(paths).toContain('2 Areas/0 Inbox/Inbox.txt');
     expect(paths).not.toContain('Inbox.txt');
     expect(paths).toContain('3 Resources/README.txt');
@@ -61,14 +61,28 @@ describe('demo space', () => {
     expect(garden.find(t => t.text.startsWith('Get a quote'))!.text).toBe('Get a quote from the landscaper #wf/marco');
   });
 
+  it('has a sparring thread with agreements and a loop with a meeting today (docs/dev/history/technical-design-engage-in-context.md §5)', () => {
+    const coaching = byPath('2 Areas/Coaching/area.txt');
+    const tasks = parseTasksSpan(coaching).tasks;
+    const meetings = parseMeetingsSpan(coaching).meetings;
+    expect(tasks.filter(t => t.fields.meeting === '2026-09-24 Sparring Mieke sparring/mieke').map(t => t.text)).toEqual([
+      'Send Mieke the role canvas #next',
+      'Draft feedback for the team lead',
+      'Org chart from Mieke #wf',
+    ]);
+    expect(meetings.find(m => m.title.startsWith('Offsite planning'))!.date).toBe('2026-10-01');
+    expect(coaching).toContain('- mieke: active');
+    expect(coaching).toContain('- workshop/offsite: active, 2026-10-15');
+  });
+
   it('profile settings point at the demo folders and survive the profile file filter', () => {
     const s = demoProfileSettings();
     expect(s.baseRoot).toBe(DEMO_BASE_ROOT);
-    expect(s.noteSetups.map(x => x.tags)).toEqual([['1on1']]);
+    expect(s.noteSetups.map(x => x.tags)).toEqual([['1on1'], ['sparring'], ['workshop']]);
     expect(s.noteSetupsMigrated).toBe(true);
-    // One file per Project/Area and year: the Default and the setup share the home notebook.
+    // One file per Project/Area and year: the Default and the thread setups share the home notebook; a loop has its loop note.
     expect(s.noteSetupDefaults.notebook).toEqual({name: '{name} {year}', folder: ''});
-    expect(s.noteSetups.map(x => x.notebook)).toEqual([{name: '{name} {year}', folder: ''}]);
+    expect(s.noteSetups.map(x => x.notebook)).toEqual([{name: '{name} {year}', folder: ''}, {name: '{name} {year}', folder: ''}, {name: '{year}-{month} {tag} {subtag}', folder: ''}]);
     expect(sanitizeProfileSettings(profileSettingsOf(s))).toEqual(profileSettingsOf(s));
   });
 });

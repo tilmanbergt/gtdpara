@@ -245,6 +245,14 @@ export function meetingAutoUpdateCutoffMs(meeting: MeetingEndInput): number {
   return meetingEndMs(meeting);
 }
 
+/** The instant a meeting starts (local time): its time, or the start of its day without one. */
+export function meetingStartMs(meeting: Pick<Meeting, 'date' | 'time'>): number {
+  const {year, month, day} = parseIsoDateLocal(meeting.date);
+  if (!meeting.time) return new Date(year, month - 1, day).getTime();
+  const [hourStr, minuteStr] = meeting.time.split(':');
+  return new Date(year, month - 1, day, Number(hourStr), Number(minuteStr)).getTime();
+}
+
 /** What `meetingEndMs` reads - `endTime`/`days` optional so callers' narrower Picks still fit (missing = no end / 1 day). */
 export type MeetingEndInput = Pick<Meeting, 'date' | 'time'> & Partial<Pick<Meeting, 'endTime' | 'days'>>;
 

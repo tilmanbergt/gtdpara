@@ -15,7 +15,8 @@
  * "Since" row too) new entries go to the owner (the Inbox when there is
  * none). "+ Next <type>" fills Quick
  * Add's meeting draft from the thread's latest meeting, to that meeting's
- * item.
+ * item. New todos get the thread tag (the counterpart's leaf in the
+ * counterpart lens), shown in Quick Add's grey line with its own ✕.
  */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -28,11 +29,13 @@ import {buildThreadOverview, nextMeetingOffers, PastMeeting, ThreadItemRef} from
 import MiniTabs from '../../ui/MiniTabs';
 import QuickAddWidget from '../../ui/QuickAddWidget';
 import {MeetingSeed} from '../../ui/quickAdd/useDraftRequests';
+import {usePresetTag} from '../../ui/quickAdd/usePresetTag';
 import {useProvenance} from '../../ui/quickAdd/useProvenance';
 import {OverviewRequest} from '../../ui/overviewStore';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useCachedItems} from '../../ui/useCachedItems';
 import EngageButton from '../../ui/EngageButton';
+import {requestReviewStep, somedayFilterOf} from '../review/reviewNav';
 import {getCachedData} from '../../storage/dataCache';
 import {useLinkedFileMissing} from '../usePlanningScreen';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
@@ -101,6 +104,9 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
         ? {kind: 'meeting', past: selected}
         : null;
   const origin = useProvenance(selected?.entry.meeting ?? null);
+  // New todos get the thread tag; in the counterpart lens (and for wf/owe) the counterpart's leaf (E13).
+  const presetTag = overview ? (lens === 'thread' && !isCounterpartType(overview.thread.type) ? overview.thread.tag : overview.thread.counterpart) : null;
+  const preset = usePresetTag(presetTag);
   const [seed, setSeed] = useState<MeetingSeed | null>(null);
   const [seedItem, setSeedItem] = useState<ThreadItemRef | null>(null);
 
@@ -187,6 +193,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             actions={actions}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
+            onOpenSomeday={entries => requestReviewStep('somedayMaybe', somedayFilterOf(lens === 'thread' && !counterpartOnly ? `#${overview.thread.tag}` : labels.counterpart, entries))}
             textColor={textColor}
             borderColor={borderColor}
           />
@@ -204,9 +211,14 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
           <QuickAddWidget
             layoutKey="thread"
             fixedDestination={fixedDestination}
-            provenance={origin.provenance}
+            provenance={[...(origin.provenance ?? []), ...(preset.part ? [preset.part] : [])]}
             meetingSeed={seed}
-            onAddTask={(line, dest) => actions.addTask(origin.apply(line), dest).then(origin.added)}
+            onAddTask={(line, dest) =>
+              actions.addTask(preset.apply(origin.apply(line)), dest).then(() => {
+                origin.added();
+                preset.added();
+              })
+            }
             onAddMeeting={(fields, dest) => actions.addMeeting(fields, dest).then(() => setSeedItem(null))}
             editingTask={editingTask?.task}
             editingMeeting={editingMeeting?.meeting}

@@ -1,5 +1,19 @@
 // docs/dev/history/technical-design-engage.md §3.12: the panel's texts.
-import {ackLabel, linkedFileButtonText, marksLineText, noNextPromptText, nothingLeftText, nowDetailsText, ownerLineText, promptTodoLabel, tabLabel} from '../../src/domain/engageText';
+import {
+  ackLabel,
+  agreedCaption,
+  alsoHereParts,
+  linkedFileButtonText,
+  marksLineText,
+  nextHereText,
+  noNextPromptText,
+  nothingLeftText,
+  nowDetailsText,
+  ownerLineText,
+  promptTodoLabel,
+  tabLabel,
+  todayNextText,
+} from '../../src/domain/engageText';
 import {task} from '../../test-helpers/fixtures';
 
 describe('engageText', () => {
@@ -37,5 +51,30 @@ describe('engageText', () => {
   it('prompt labels are shortened', () => {
     expect(promptTodoLabel('Plan dinner')).toBe('Plan dinner');
     expect(promptTodoLabel('Plan the whole offsite dinner with everyone')).toBe('Plan the whole offsit…');
+  });
+});
+
+describe('Engage in context labels (docs/dev/history/technical-design-engage-in-context.md)', () => {
+  const at = (h: number, m = 0) => new Date(2026, 9, 8, h, m).getTime();
+
+  it('tabs, the Agreed caption and Also here parts', () => {
+    expect(tabLabel('agreed', 3)).toBe('Agreed 3');
+    expect(agreedCaption({title: 'Sparring Mieke #sparring/mieke', date: '2026-10-14'}, '2026-10-08')).toBe('Agreed in Sparring Mieke · Wed 14.10.');
+    expect(alsoHereParts(2, 1)).toEqual({waiting: '2 waiting', someday: '1 someday'});
+    expect(alsoHereParts(0, 0)).toEqual({waiting: null, someday: null});
+  });
+
+  it('Next here: day, time, title; "· next today" when merged', () => {
+    const m = {title: 'Sparring Mieke #sparring/mieke', date: '2026-10-23', time: '10:00'};
+    expect(nextHereText(m, '2026-10-08', false)).toBe('Next here: Fri 23.10. 10:00 Sparring Mieke ›');
+    expect(nextHereText({...m, time: ''}, '2026-10-08', true)).toBe('Next here: Fri 23.10. Sparring Mieke · next today ›');
+  });
+
+  it('Today next: relative only under 3 hours', () => {
+    const m = {title: 'Retro demand', time: '14:00'};
+    expect(todayNextText(m, at(14), at(13, 20))).toBe('Today next: 14:00 Retro demand · in 40 min');
+    expect(todayNextText(m, at(14), at(11, 30))).toBe('Today next: 14:00 Retro demand · in 2 h 30 min');
+    expect(todayNextText(m, at(14), at(10, 0))).toBe('Today next: 14:00 Retro demand');
+    expect(todayNextText(m, at(14), at(14, 10))).toBe('Today next: 14:00 Retro demand · now');
   });
 });

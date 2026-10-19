@@ -9,7 +9,7 @@
 //   node scripts/gen-bundled-content.mjs --release-notes <x.y.z> <outfile>
 //   node scripts/gen-bundled-content.mjs --next-version <patch|minor|major>   prints the next version
 //   node scripts/gen-bundled-content.mjs --check-release <x.y.z>              exit 1 + message if not releasable
-//   node scripts/gen-bundled-content.mjs --set-version <x.y.z>                package.json + PluginConfig.json versionName
+//   node scripts/gen-bundled-content.mjs --set-version <x.y.z>                package.json, package-lock.json + PluginConfig.json versionName
 //   node scripts/gen-bundled-content.mjs --set-next <x.y.z>                   package.json nextVersion (the release being worked on)
 //   node scripts/gen-bundled-content.mjs --target-version                     prints nextVersion if it is above version, else nothing
 //   node scripts/gen-bundled-content.mjs --stamp-changelog <x.y.z> <YYYY-MM-DD>
@@ -32,6 +32,7 @@ import {
   renderChangelogTs,
   selectChangelogForApp,
   setJsonStringField,
+  setLockfileVersion,
   stampChangelog,
   targetVersion,
   unreleasedIsEmpty,
@@ -41,6 +42,7 @@ import {buildUserDocs, renderUserDocsTs} from './lib/userDocs.mjs';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const P = {
   pkg: join(ROOT, 'package.json'),
+  lock: join(ROOT, 'package-lock.json'),
   pluginConfig: join(ROOT, 'PluginConfig.json'),
   changelog: join(ROOT, 'CHANGELOG.md'),
   userDocsDir: join(ROOT, 'docs', 'user'),
@@ -193,7 +195,9 @@ function setVersion(version) {
   if (!isSemver(version)) throw new Error(`"${version}" is not x.y.z`);
   writeFileSync(P.pkg, setJsonStringField(read(P.pkg), 'version', version), 'utf8');
   writeFileSync(P.pluginConfig, setJsonStringField(read(P.pluginConfig), 'versionName', version), 'utf8');
-  console.log(`Version set to ${version} (package.json, PluginConfig.json)`);
+  // The lockfile carries the version too; left behind, the next npm install would change it.
+  if (existsSync(P.lock)) writeFileSync(P.lock, setLockfileVersion(read(P.lock), JSON.parse(read(P.pkg)).name, version), 'utf8');
+  console.log(`Version set to ${version} (package.json, package-lock.json, PluginConfig.json)`);
 }
 
 /** Sets package.json's nextVersion - the release the following builds are for. */

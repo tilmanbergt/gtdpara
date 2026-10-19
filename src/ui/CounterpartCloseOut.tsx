@@ -28,10 +28,12 @@ import {useStatusConfirm} from './useStatusConfirm';
 
 type Choice = 'done' | 'cancel' | 'keep';
 
-const GROUPS: Array<{key: 'owe' | 'waiting' | 'relevant'; label: string}> = [
+// Someday/Maybe is its own list in the overview, but a close-out still covers it.
+const GROUPS: Array<{key: 'owe' | 'waiting' | 'relevant' | 'someday'; label: string}> = [
   {key: 'owe', label: 'I owe'},
   {key: 'waiting', label: 'Waiting for'},
   {key: 'relevant', label: 'Relevant'},
+  {key: 'someday', label: 'Someday / Maybe'},
 ];
 
 const HEAD_HEIGHT = 30;
@@ -41,7 +43,7 @@ type CloseOutRow = {kind: 'head'; key: string; label: string} | {kind: 'todo'; k
 
 const keyOf = (e: ThreadTaskEntry) => `${e.item.path}#${e.taskIndex}`;
 
-/** The open todos a close-out offers (the overview's I owe, Waiting for and Relevant; never Inbox entries). */
+/** The open todos a close-out offers (the overview's I owe, Waiting for, Relevant and Someday/Maybe; never Inbox entries). */
 export function closeOutTodos(overview: ThreadOverview): ThreadTaskEntry[] {
   return GROUPS.flatMap(g => overview.ahead[g.key]).filter(e => e.item.kind !== 'inbox');
 }

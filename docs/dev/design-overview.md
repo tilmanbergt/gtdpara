@@ -109,14 +109,20 @@ the thread overview otherwise.
   the first of Waiting for, I owe, Relevant that applies: agreed in a meeting of the lens or
   `#owe/<counterpart>` is I owe, the lens's tags alone are Relevant) above `LookingBackSection`
   (a "Since <date> · n done" row for todos done since the latest past meeting, then one two-line
-  row per past meeting with agreed/done/open counts). Right: Quick Add, then `PastMeetingPanel`
+  row per past meeting with agreed/done/open counts). Someday/Maybe todos are not listed: Ahead
+  ends with a quiet "n someday ›" row that opens Review's "Someday / Maybe" filtered to them. Right: Quick Add, then `PastMeetingPanel`
   (the selected past meeting, the latest by default, and its agreed todos; or, for the "Since"
-  row, those done todos by done date, no note button and no provenance in Quick Add).
-  Data: `storage/threadAggregate.ts`'s `buildThreadOverview`; actions: `ui/useEntryActions.ts`
-  (the same write paths as Daily). Detail: `docs/dev/history/technical-design-tending-threads.md`.
+  row, those done todos by done date, no note button and no provenance in Quick Add). Quick Add
+  presets the thread tag (the counterpart's leaf in the counterpart lens) through
+  `ui/quickAdd/usePresetTag.ts`, a second part of the grey line with its own ✕.
+  Data: `storage/threadAggregate.ts`'s `buildThreadOverview`, a wrapper over the pure lens
+  `domain/threadLens.ts` (`threadLensContext`: scope, the lens's tags, how a todo relates); the
+  "Since last time" piece, the Threads tab's filter, the tending roster and Engage's thread owners
+  ask the same lens. Actions: `ui/useEntryActions.ts` (the same write paths as Daily). Detail: `docs/dev/history/technical-design-tending-threads.md`.
 - **Loop overview** (an overlay) — `screens/loop/LoopOverview.tsx`: one loop in its owner. The
   thread overview's sections over `storage/loopAggregate.ts` (the thread lists limited to the
-  owner and to the loop's full tag); header with main date, Note ›, File ›, Edit, Close loop /
+  owner and to the loop's members: `domain/loops.ts`'s `isLoopMember`, tagged or agreed in one
+  of its meetings, past, running or ahead - the rule Engage uses too); header with main date, Note ›, File ›, Edit, Close loop /
   Reopen. Quick Add adds the loop's tag to new entries; Edit loads the loop itself (Quick Add's
   `editingLoop`) and saves through `storage/loops.ts`'s `updateLoop`. Detail:
   `docs/dev/history/technical-design-loops.md`.
@@ -402,12 +408,13 @@ the `isMeetingDateVisible` prop).
 **Requests from the screen** (`ui/quickAdd/`). `prefill` appends text to a draft (Gmail);
 `meetingSeed` replaces the meeting draft ("+ Next <type>", `domain/nextMeeting.ts`'s
 `nextMeetingSeed`; it waits until an open edit has closed); both act once per nonce
-(`useDraftRequests.ts`). `provenance` shows one grey line above the actions in create mode on the
-Todo tab (`ProvenanceLine.tsx`, `↳ from <meeting> · <day>`, ✕ drops it for one todo). The
-widget only shows it; the screen writes it through `useProvenance.ts`, which applies
-`domain/provenance.ts`'s `applyProvenance` to the composed line (`[meeting:: <key>]` set, the
-text left as typed) before `buildTask`. Review's "Meetings to close out", the thread
-overview and capture from a meeting's note page use it.
+(`useDraftRequests.ts`). `provenance` (`QuickAddAdds`, at most two parts) shows one grey line
+above the actions in create mode on the Todo tab (`ProvenanceLine.tsx`, each part with its own ✕
+that drops it for one todo). The widget only shows it; the screen writes it: `useProvenance.ts`
+applies `domain/provenance.ts`'s `applyProvenance` to the composed line (`[meeting:: <key>]` set,
+the text left as typed) before `buildTask` - Review's "Meetings to close out", the thread
+overview and capture from a meeting's note page use it - and `usePresetTag.ts` adds a tag
+(`domain/loopEdit.ts`'s `withOwnerTag`, never twice), the thread overview's thread tag.
 
 **One edit and one arm per screen.** `ui/useEditTarget.ts` holds a screen's edit target (the
 row open in the widget) and, where the screen has a Files pane, its arm (a row waiting for a
@@ -618,9 +625,10 @@ Default with the standard Meeting and First pages; 0.14's Tag Rules are migrated
 - **Since last time.** A Meeting page can place the `sinceLast` piece (never in a page's
   defaults): `storage/sinceLast.ts`'s `buildSinceLast` takes the meeting's first thread tag, the
   thread lens with the meeting's item as owner, and the previous meeting of the thread, and lists
-  Agreed last time (open, then done), I owe, Waiting for, Relevant and Done since then, each todo
-  once; `domain/sinceLastText.ts` prints at most 6 lines per block, then "… +N more". It follows
-  the freeze rule above like every piece.
+  Agreed last time (open, then done, Someday/Maybe included), I owe, Waiting for, Relevant
+  (the overview's lists, without Someday/Maybe) and Done since then, each todo once;
+  `domain/sinceLastText.ts` prints at most 6 lines per block, then "… +N more". It follows the
+  freeze rule above like every piece.
 
 **Home notebooks.** A Project's or Area's home notebook is the Default's notebook rendered for it
 (`domain/homeNotebook.ts`'s `homeNotebookName`, the one rendering `storage/noteTargets.ts`'s
@@ -707,20 +715,33 @@ layout around the `#now` tasks; reopening the plugin lands back in it until it i
 
 **Engage** (`mode: 'engage'`, `screens/engage/`) is the doing step over the note, next to focus
 mode and independent of it (`#now` is untouched). One owner at a time - a Project/Area, a loop or
-a thread (`domain/engageOwner.ts`) - with the Now box (the current todo, else the owner's only
-`#next`: details, Done, Remove #next or Someday, Note ›/+ Note, File ›) and two tabs, Next (the
-other `#next` todos, chosen to work on) and Plan (todos without a flow state, file order, made
-`#next` from there), five rows per page (`domain/engageOptions.ts` `engageListsOf`).
-One reducer (`domain/engageFlow.ts`) decides every screen: options, owner empty, select focus
-(today's or this week's owners in ring order), all done in today's focus, Quick Add. Writes go
+a thread (`domain/engageOwner.ts`) - holding what its overview holds: a thread the thread lens
+(`domain/threadLens.ts`), a loop `isLoopMember`, a Project/Area everything but its active loops'
+members; each todo carries its relation (owe / waiting / relevant) and the meeting it was agreed
+in. A todo's owner is its active loop, else its thread (`threadOfTodo`: its own thread tag, else
+the thread of the meeting it was agreed in), else its item. The panel shows "Next here" (the
+owner's next meeting, a tap opens its note), the Now box (the current todo, else the owner's only
+`#next`: details, Done, Remove #next or Someday, Note ›/+ Note, File ›), up to three tabs - Agreed
+(the todos agreed in the note page's meeting, else in a thread's or loop's latest meeting that is
+over; only while it has rows), Next (the other `#next` todos) and Plan (no flow state), "I owe"
+first for threads and loops, five rows per page (`domain/engageOptions.ts`) - then "Also here"
+(the waiting and Someday/Maybe counts, links to Review's "Someday / Maybe" and to the overview)
+and, above the footer, "Today next" (the next timed meeting today anywhere, computed with the
+data, never by a timer; merged into Next here when it is the same meeting). One reducer
+(`domain/engageFlow.ts`) decides every screen and tab: options, owner empty, select focus
+(today's or this week's owners in ring order), all done in today's focus, Quick Add; the note
+page's meeting (`pageMeeting`) opens Agreed and belongs to the note's owner only. Writes go
 through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the current todo is
 per-profile app state in `settings.engageCurrent` (`storage/engageCurrent.ts`), found again by
 index and text. Opening follows the note (`decideOpening`): "Engage ›" > the note page's todo > the
-note's owner > the stored todo's owner, with "Continue with <todo>" above the footer back to the stored todo of another owner - offered once: that opening stores what the panel shows for the note's owner (its next action, or nothing) in its place. The panel sits on a transparent root, so the note stays visible; it keeps its
+note's owner > the stored todo's owner, with "Continue with <todo>" above the footer back to the stored todo of another owner - offered once: that opening stores what the panel shows for the note's owner (its next action, or nothing) in its place. The panel leaves to a place in
+gtdpara through an `EngageExit` (`domain/engageFlow.ts`): App's `screens/useEngageExit.ts` opens a
+thread's or loop's overview once the tab shell shows, an item's page, or the filtered Review step. The panel sits on a transparent root, so the note stays visible; it keeps its
 largest height while open, because the A5 X does not reliably redraw the note where a panel
 shrank. After a Done on Daily, the Current tab or an overview, `ui/useEngagePrompt.ts` offers
 the owner's plan in the status slot when its last `#next` was done. Detail:
-`docs/dev/history/technical-design-engage.md`.
+`docs/dev/history/technical-design-engage.md`,
+`docs/dev/history/technical-design-engage-in-context.md`.
 
 **Week and Month** share `screens/usePlanningScreen.ts` (loading and every meeting, focus and
 goal action). Both have Quick Add (to the Inbox) on the right, then either the shared day panel
@@ -758,6 +779,7 @@ with its count and last-reviewed date, and the steps themselves, one component e
 | Stalled projects, Done awaiting review, On Hold reconsideration, Neglected areas | backlog | `ItemListStep` + `ItemDetails` (master/detail, `ui/ReviewMasterDetail.tsx`) |
 | Open loops (after Stalled projects) | backlog | `OpenLoopsStep` (`storage/loopRoster.ts`; counts loops without a next action or past their main date; Close loop via `ui/useCloseLoop.ts`) |
 | Unfocused next items | backlog | `UnfocusedNextStep` |
+| Someday / Maybe | ritual | `SomedayStep` (open Someday/Maybe todos of active and on-hold items; #next / To plan / Done / Cancel) |
 | Focus reset | ritual | `FocusResetStep` (monthly and weekly slots) |
 
 `storage/reviewAggregate.ts` builds the lists from the cache: stalled projects and neglected
@@ -781,7 +803,10 @@ with an open `#next` task that has no due date; meetings to close out come from
   counts only while the Gmail integration is switched on (`activeReviewSteps`).
 
 Adding a step means one id, one `REVIEW_STEPS` entry, one count in `buildReviewStepCounts` and
-one step component. Detail: `docs/dev/history/technical-design-review-hub.md`,
+one step component. A step can be opened from outside the Review screen through
+`screens/review/reviewNav.ts` (`requestReviewStep(id, filter)`: App shows the Review tab via
+`screens/useReviewStepNav.ts`, ReviewScreen takes the request once and enters the step itself;
+the filter lists entry keys and is cleared when the step is left). Detail: `docs/dev/history/technical-design-review-hub.md`,
 `docs/dev/history/technical-design-review-master-detail.md`.
 
 ### 2.9 Status, close-out and archive
@@ -1160,6 +1185,9 @@ place it happens.
 
 **Reusable building blocks**
 
+- What belongs to a thread or counterpart is decided only by `domain/threadLens.ts`, what
+  belongs to a loop only by `domain/loops.ts`'s `loopRelation`/`isLoopMember`: the overviews,
+  the "Since last time" piece and Engage ask them, never a rule of their own.
 - Anything that produces a PDF builds a `domain/pdf` `PdfDocument` and goes through
   `storage/pdfExport.ts`. No second renderer, no direct call to the native writer.
 - Multi-step flows use `ui/wizard/WizardFrame` + `StepIndicator` and keep their state in a
