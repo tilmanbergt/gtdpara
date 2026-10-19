@@ -149,6 +149,19 @@ export function setJsonStringField(text, key, value) {
   return text.replace(re, `$1"${value}"`);
 }
 
+/**
+ * package-lock.json with the root package's version set: the top-level
+ * "version" and the one of `packages[""]`, both right after the root name.
+ * The release sets it with package.json's, so a later `npm install` leaves
+ * the tree clean. Dependency entries are never touched.
+ */
+export function setLockfileVersion(text, name, version) {
+  const re = new RegExp(`("name"\\s*:\\s*"${name}",\\s*"version"\\s*:\\s*)"[^"]*"`, 'g');
+  const matches = text.match(re) ?? [];
+  if (matches.length !== 2) throw new Error(`package-lock.json: expected the root version twice, found ${matches.length}`);
+  return text.replace(re, `$1"${version}"`);
+}
+
 /** TypeScript source for src/generated/buildInfo.ts. */
 export function renderBuildInfoTs(info) {
   return [

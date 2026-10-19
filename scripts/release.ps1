@@ -31,7 +31,7 @@ function Write-Info([string]$msg) { Write-Host $msg -ForegroundColor Gray }
 function Show-Undo {
     if ($tagged) { Write-Host "  git tag -d v$newVersion" -ForegroundColor Yellow }
     if ($committed) { Write-Host '  git reset --hard HEAD~1' -ForegroundColor Yellow }
-    elseif (-not $DryRun) { Write-Host '  git checkout -- package.json PluginConfig.json CHANGELOG.md' -ForegroundColor Yellow }
+    elseif (-not $DryRun) { Write-Host '  git checkout -- package.json package-lock.json PluginConfig.json CHANGELOG.md' -ForegroundColor Yellow }
 }
 
 function Stop-Release([string]$msg) {
@@ -106,7 +106,7 @@ if ($DryRun) { Write-Host 'DRY RUN - nothing will be changed.' -ForegroundColor 
 Write-Step '2. Version and changelog'
 $today = Get-Date -Format 'yyyy-MM-dd'
 if ($DryRun) {
-    Write-Info "[dry run] would set version $newVersion in package.json and PluginConfig.json"
+    Write-Info "[dry run] would set version $newVersion in package.json, package-lock.json and PluginConfig.json"
     Write-Info "[dry run] would rename CHANGELOG [Unreleased] -> [$newVersion] - $today"
 } else {
     $script:changedFiles = $true

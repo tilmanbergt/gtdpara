@@ -12,6 +12,7 @@ import {
   renderChangelogTs,
   selectChangelogForApp,
   setJsonStringField,
+  setLockfileVersion,
   stampChangelog,
   unreleasedIsEmpty,
   VERSION_CODE_EPOCH_MS,
@@ -151,6 +152,14 @@ t('render', () => {
   const cl = renderChangelogTs([{version: '0.1.0', date: null, markdown: 'line "1"\nline 2'}]);
   assert.ok(cl.includes('date: null'));
   assert.ok(cl.includes('"line \\"1\\"\\nline 2"'));
+});
+
+t('setLockfileVersion sets the root version twice, never a dependency', () => {
+  const lock = '{\n  "name": "gtdpara",\n  "version": "0.15.0",\n  "packages": {\n    "": {\n      "name": "gtdpara",\n      "version": "0.15.0"\n    },\n    "node_modules/x": {\n      "name": "x",\n      "version": "0.15.0"\n    }\n  }\n}';
+  const out = setLockfileVersion(lock, 'gtdpara', '0.18.0');
+  assert.equal((out.match(/"version": "0.18.0"/g) ?? []).length, 2);
+  assert.ok(out.includes('"name": "x",\n      "version": "0.15.0"'));
+  assert.throws(() => setLockfileVersion('{"name": "other", "version": "1.0.0"}', 'gtdpara', '0.18.0'));
 });
 
 console.log(`versioning: ${n} groups passed`);

@@ -131,7 +131,7 @@ npm run check -- --quick       # the same without Jest, for a fast loop
    ./scripts/release.ps1                         # or -Bump patch for a hotfix
    ```
    `-Bump` must agree with `nextVersion` when one is set; `-Version x.y.z` overrides both.
-   The script runs `npm run check`, sets the version in `package.json` and `PluginConfig.json`, turns `[Unreleased]`
+   The script runs `npm run check`, sets the version in `package.json`, `package-lock.json` and `PluginConfig.json`, turns `[Unreleased]`
    into `[x.y.z] - date` in the CHANGELOG, commits `Release x.y.z`, tags `vx.y.z` and builds
    `build\outputs\gtdpara-x.y.z.snplg`. Then it **pauses**.
 5. **Device check** while the script waits (§6 below), then answer `y` to publish. The script
