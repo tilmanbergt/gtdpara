@@ -33,7 +33,7 @@ const lone = item('project', 'Lone', {tasks: [task('Lone todo #sparring/anna')]}
 
 const source: EngageSource = {
   items: [coaching, website, lone],
-  inboxPath: '/Note/0 Inbox',
+  inbox: {path: '/Note/0 Inbox', tasks: [], meetings: []},
   loopKinds: ['proj'],
   threadTypes: ['sparring'],
 };

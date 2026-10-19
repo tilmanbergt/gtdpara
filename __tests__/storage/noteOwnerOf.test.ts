@@ -23,7 +23,7 @@ const coaching = item('area', 'Coaching', {
   ],
   meetings: [meeting('2026-10-01', 'Sparring #sparring/anna', {tags: ['sparring/anna'], notePath: 'Sparring.note#2026-10-01 Sparring #sparring/anna'})],
 });
-const source: EngageSource = {items: [coaching], inboxPath: '/Note/2 Areas/0 Inbox', loopKinds: ['proj'], threadTypes: ['sparring']};
+const source: EngageSource = {items: [coaching], inbox: {path: '/Note/2 Areas/0 Inbox', tasks: [], meetings: []}, loopKinds: ['proj'], threadTypes: ['sparring']};
 const paths: ResolvedParaPaths = {
   base: '/Note',
   projects: '/Note/1 Projects',
@@ -53,8 +53,9 @@ describe('noteContextOf', () => {
   });
   it('a todo\'s page in a shared notebook (by keyword)', async () => {
     mockKeywords = [{page: 3, keyword: 'Ask Anna #sparring/anna'}];
+    // Its thread tag makes the thread its owner (docs/dev/history/technical-design-engage-in-context.md E4).
     expect(await noteContextOf(`${A}/Sparring.note`, 3, source, paths)).toMatchObject({
-      owner: {kind: 'item', itemPath: A},
+      owner: {kind: 'thread', scopeOwnerPath: A, tag: 'sparring/anna'},
       todo: {taskIndex: 1},
       rule: 'todoNote',
     });

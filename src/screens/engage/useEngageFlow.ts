@@ -11,8 +11,8 @@ import {decideOpening, EngageOpening, EngageSource, resolveTodoKey, todoKeyOf} f
 import {effectiveFocus, engageListsOf, optionsOf, ownersLeft} from '../../domain/engageOptions';
 import {engageFlow, EngageRequest, EngageState, INITIAL_ENGAGE_STATE} from '../../domain/engageFlow';
 import {GtdParaSettings, resolvePaths} from '../../domain/settings';
-import {getCachedData, rebuildCache} from '../../storage/dataCache';
-import {engageSourceOf} from '../../storage/engageAggregate';
+import {getCachedData, getCachedInbox, rebuildCache} from '../../storage/dataCache';
+import {engageInboxOf, engageSourceOf} from '../../storage/engageAggregate';
 import {getEngageCurrent, setEngageCurrent} from '../../storage/engageCurrent';
 import {noteContextOf} from '../../storage/noteOwnerOf';
 import {loadSettings} from '../../storage/settingsStorage';
@@ -66,7 +66,7 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
       const loaded = await loadSettings();
       // A cold start through the Engage button skips reorient()'s refresh: build the cache when there is none.
       const cache = getCachedData() ?? (await rebuildCache(loaded));
-      const source = engageSourceOf(cache.items, cache.paths.inboxFolder, loaded.noteSetups);
+      const source = engageSourceOf(cache.items, engageInboxOf(cache.paths.inboxFolder, getCachedInbox()), loaded.noteSetups);
       const opening = await resolveOpening(request, source, loaded);
       if (cancelled) return;
       setSettings(loaded);
@@ -87,9 +87,7 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
   const source = useMemo(() => {
     const cache = getCachedData();
     if (!opened || !settings || !cache) return null;
-    return engageSourceOf(items, cache.paths.inboxFolder, settings.noteSetups);
-    // `inbox` is a dependency so a Quick Add to the Inbox refreshes too.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return engageSourceOf(items, engageInboxOf(cache.paths.inboxFolder, inbox), settings.noteSetups);
   }, [opened, settings, items, inbox]);
 
   const {owner, current} = state;

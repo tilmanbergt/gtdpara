@@ -13,7 +13,7 @@ const ack = (wasCurrent: boolean): EngageAck => ({
   wasCurrent,
   undo: {itemPath: '/a', taskIndex: 1, before: task('Brief #next'), afterText: 'Brief #next'},
 });
-const options = (ownerEmpty: boolean): EngageOptions => ({next: [], plan: [], ownerEmpty});
+const options = (ownerEmpty: boolean): EngageOptions => ({next: [], plan: [], agreed: null, alsoHere: {waiting: 0, someday: 0}, nextMeeting: null, ownerEmpty});
 const data = (ownerEmpty: boolean, dailyLeft = 2, ring: 'daily' | 'weekly' = 'daily'): EngageEvent => ({type: 'dataChanged', options: options(ownerEmpty), ring, dailyLeft, current: KEY, nextRows: 1});
 
 const S = {

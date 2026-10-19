@@ -15,8 +15,8 @@ import {EngageTodoRef, ownerTitle} from '../domain/engageOwner';
 import {ENGAGE_NOTICE, noNextPromptText, promptTodoLabel} from '../domain/engageText';
 import {withTaskText} from '../domain/taskEdit';
 import {Task} from '../domain/types';
-import {getCachedData} from '../storage/dataCache';
-import {engageSourceOf} from '../storage/engageAggregate';
+import {getCachedData, getCachedInbox} from '../storage/dataCache';
+import {engageInboxOf, engageSourceOf} from '../storage/engageAggregate';
 import {mutateEntryTasks} from '../storage/itemMutations';
 import {loadSettings} from '../storage/settingsStorage';
 import {errorMessage} from '../utils/errorMessage';
@@ -31,7 +31,7 @@ let nextInstance = 0;
 
 export interface EngagePrompt {
   /** Call after a todo of `itemPath` was ticked done (with the task as it was, for its tags). */
-  afterDone: (itemPath: string, doneTask: Pick<Task, 'tags'>) => void;
+  afterDone: (itemPath: string, doneTask: Pick<Task, 'tags' | 'fields'>) => void;
 }
 
 export function useEngagePrompt(name: string): EngagePrompt {
@@ -64,12 +64,12 @@ export function useEngagePrompt(name: string): EngagePrompt {
   );
 
   const afterDone = useCallback(
-    (itemPath: string, doneTask: Pick<Task, 'tags'>) => {
+    (itemPath: string, doneTask: Pick<Task, 'tags' | 'fields'>) => {
       (async () => {
         const cache = getCachedData();
         if (!cache) return;
         const settings = await loadSettings();
-        const source = engageSourceOf(cache.items, cache.paths.inboxFolder, settings.noteSetups);
+        const source = engageSourceOf(cache.items, engageInboxOf(cache.paths.inboxFolder, getCachedInbox()), settings.noteSetups);
         const prompt = nextPromptOf(itemPath, doneTask, source, Date.now());
         if (!prompt) return;
         log('EngagePrompt: shown', 'owner=' + prompt.owner.kind, 'candidates=' + prompt.candidates.length);

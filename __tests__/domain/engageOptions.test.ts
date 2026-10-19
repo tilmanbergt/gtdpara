@@ -7,7 +7,7 @@ import {item, meeting, task} from '../../test-helpers/fixtures';
 
 const NOW = new Date(2026, 9, 16, 12, 0).getTime();
 const loopLine = (tag: string): LoopLine => ({tag, status: 'active', mainDate: null, linkedFile: null, extraColumns: [], raw: null});
-const src = (items: EngageItem[]): EngageSource => ({items, inboxPath: '/Note/0 Inbox', loopKinds: ['proj'], threadTypes: ['sparring']});
+const src = (items: EngageItem[]): EngageSource => ({items, inbox: {path: '/Note/0 Inbox', tasks: [], meetings: []}, loopKinds: ['proj'], threadTypes: ['sparring']});
 const texts = (refs: Array<{task: {text: string}}>) => refs.map(r => r.task.text);
 
 describe('optionsOf', () => {
@@ -113,15 +113,15 @@ describe('nextPromptOf (R5)', () => {
     ],
   });
   it('the owner\'s last #next done and a plan left: up to three plan todos', () => {
-    const prompt = nextPromptOf(loopItem.path, {tags: ['proj/launch', 'next']}, src([loopItem]), NOW);
+    const prompt = nextPromptOf(loopItem.path, task('x', {tags: ['proj/launch', 'next']}), src([loopItem]), NOW);
     expect(prompt?.owner).toEqual({kind: 'loop', itemPath: loopItem.path, tag: 'proj/launch'});
     expect(texts(prompt!.candidates)).toEqual(['Plan #proj/launch', 'Book #proj/launch', 'Call #proj/launch']);
   });
   it('none while a #next is left, without a plan, or for an unknown item', () => {
-    expect(nextPromptOf(loopItem.path, {tags: []}, src([loopItem]), NOW)).toBeNull();
+    expect(nextPromptOf(loopItem.path, task('x', {tags: []}), src([loopItem]), NOW)).toBeNull();
     const noPlan = {...loopItem, tasks: [task('Brief #proj/launch #next', {done: true})]};
-    expect(nextPromptOf(loopItem.path, {tags: ['proj/launch']}, src([noPlan]), NOW)).toBeNull();
-    expect(nextPromptOf('/nowhere', {tags: []}, src([loopItem]), NOW)).toBeNull();
+    expect(nextPromptOf(loopItem.path, task('x', {tags: ['proj/launch']}), src([noPlan]), NOW)).toBeNull();
+    expect(nextPromptOf('/nowhere', task('x', {tags: []}), src([loopItem]), NOW)).toBeNull();
   });
 });
 
