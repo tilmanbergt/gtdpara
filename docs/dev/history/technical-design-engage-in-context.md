@@ -463,3 +463,19 @@ Analysis (2026-10-19, against the 0.17 code):
  └─────────────────────────────┘  └──────────────────────────────────────┘
                                          ‹ Back    Skip ›    Reviewed ›
 ```
+
+## As built
+
+Steps S1-S4 on `feature/engage-in-context`; every step ended with `npm run check` green.
+
+Choices where the design left a detail open, and deviations:
+
+- **S1.** `domain/threadLens.ts` also exports `meetingStartKey`, which the overview sorts by. `storage/threadAggregate.ts` keeps `ThreadItemRef`, `ThreadSource`, `ThreadLensContext`, `ThreadRelation` and `threadLensContext(items, inbox, …)` as aliases and a wrapper.
+- **S2.** `loopRelation(item, loopTag, task)` reads only `item.path` and `item.meetings`; a cancelled loop meeting never makes a todo "agreed", the rule the loop's Looking back already followed.
+- **S3.** `isSomedayMaybe(task)` lives in `domain/flowState.ts`. A counterpart's close-out (`ui/CounterpartCloseOut.tsx`) still offers its Someday/Maybe todos, as a fourth group "Someday / Maybe", so setting a counterpart inactive leaves nothing open behind; the roster's "owe" count no longer counts Someday/Maybe.
+- **S4.**
+  - The hub counts the step in tasks ("3 tasks"); the recap line is "n someday todos made #next".
+  - A request that arrives while another step is open leaves that step first, with Skip semantics, then enters the requested one.
+  - The filter's label is the overview's title: `#<thread>` in the thread lens, "All <counterpart>" in the counterpart lens, `#<kind>/<name>` for a loop.
+  - App's part is one hook, `screens/useReviewStepNav.ts`: it closes the overlays and shows the Review tab. Stray blank lines in `App.tsx`'s JSX were removed to keep the file under 1,000 lines.
+  - `somedayItems` covers Projects and Areas only, as specified; an overview whose owner is the Inbox opens an empty filtered list.
