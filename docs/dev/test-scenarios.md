@@ -5,7 +5,22 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-10 scenarios.
+13 scenarios.
+
+## Close-out
+
+### Close out a finished project: PDF, archive folder and Archived status
+
+- **Given** project "Website" has only done todos and a meeting note in its folder
+- **When** I open its page, tap "Close out…" and go through the checklist, contents and outcomes
+- **And** I create the PDF and confirm I checked it
+- **Then** the Archive step lists what will happen before it happens
+- **When** I tap "Archive now"
+- **Then** the project folder, with its note, is in the archive and gone from Projects
+- **And** the PDF sits next to it and holds the project record
+- **And** its project.txt says archived, and the screen says so
+
+Test: `__tests__/scenarios/closeOut.test.tsx` · design: `docs/dev/history/technical-design-project-close-out.md`
 
 ## Daily
 
@@ -29,6 +44,21 @@ Test: `__tests__/scenarios/daily.test.tsx` · design: `docs/dev/history/technica
 - **Then** the note moved into the project's folder, keywords and all
 
 Test: `__tests__/scenarios/inbox.test.tsx` · design: `docs/dev/history/technical-design-filing-unification.md`
+
+## Profiles and demo space
+
+### Try things in the demo space without touching the real files, then switch back
+
+- **Given** my real PARA folder has project "Website" and an empty Inbox
+- **When** I create the demo space in Settings → Advanced and switch to it
+- **Then** the tab bar says DEMO and Projects shows the demo projects, not "Website"
+- **When** I add the todo "Try the demo" in the Inbox
+- **Then** it is in the demo space's Inbox.txt, and my real Inbox.txt is untouched
+- **When** I tap DEMO in the tab bar and switch back to Production
+- **Then** "Website" is back, and the demo todo is not in my Inbox
+- **And** both profiles are saved as files in EXPORT/gtdpara/profiles
+
+Test: `__tests__/scenarios/profiles.test.tsx` · design: `docs/dev/history/technical-design-profiles-demo-space.md`
 
 ## Quick Add
 
@@ -79,6 +109,19 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 - **And** "Start over" stores the defaults and the message goes away
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+## Weekly Review
+
+### Weekly Review: get the Inbox to zero by filing one todo and finishing the other
+
+- **Given** the Inbox has "Ask about hosting" and "Buy milk", and project "Website" is #WEB
+- **When** I open Review, the step "Inbox to zero", file "Ask about hosting" with #WEB and tick "Buy milk" off
+- **Then** "Ask about hosting" is in Website's project.txt
+- **And** the Inbox has only "Buy milk", done
+- **When** I tap "Reviewed ›" and go back to the overview
+- **Then** the overview says "2 inbox items cleared" and the Inbox step has nothing left to review
+
+Test: `__tests__/scenarios/review.test.tsx` · design: `docs/dev/history/technical-design-review-hub.md`
 
 ## Your files
 

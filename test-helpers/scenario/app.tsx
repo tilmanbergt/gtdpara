@@ -102,9 +102,9 @@ export async function tap(label: string | RegExp, nth = 0): Promise<void> {
   await settle();
 }
 
-/** Taps a tab in the tab bar. */
+/** Taps a tab in the tab bar (drawn first on screen; a tab may carry a badge, like "Review ●"). */
 export async function tapTab(label: string): Promise<void> {
-  await tap(label);
+  await tap(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`));
 }
 
 /** Types into the field showing `placeholder` (replaces its text, like handwriting into it). */

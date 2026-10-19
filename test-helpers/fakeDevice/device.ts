@@ -1,11 +1,12 @@
 /**
- * The one fake Supernote a scenario test runs against: a FakeFs, a FakeSdk on
- * top of it, and the log lines the app wrote. test-helpers/fakeDevice/setup.ts
+ * The one fake Supernote a scenario test runs against: a FakeFs, a FakeSdk and
+ * a FakePdf on top of it, and the log lines the app wrote. test-helpers/fakeDevice/setup.ts
  * installs it as `NativeModules.GtdParaFile`, `sn-plugin-lib` and `utils/log`
  * before any app module loads; `resetDevice()` starts each scenario from an
  * empty device (docs/dev/history/technical-design-quality-hardening.md §4.2).
  */
 import {FakeFs} from './fakeFs';
+import {FakePdf} from './fakePdf';
 import {FakeSdk} from './fakeSdk';
 
 export interface LogLine {
@@ -16,12 +17,13 @@ export interface LogLine {
 export interface Device {
   fs: FakeFs;
   sdk: FakeSdk;
+  pdf: FakePdf;
   logs: LogLine[];
 }
 
 function fresh(): Device {
   const fs = new FakeFs();
-  return {fs, sdk: new FakeSdk(fs), logs: []};
+  return {fs, sdk: new FakeSdk(fs), pdf: new FakePdf(fs), logs: []};
 }
 
 let current: Device = fresh();

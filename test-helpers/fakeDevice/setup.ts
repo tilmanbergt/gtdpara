@@ -7,6 +7,7 @@ import {NativeModules} from 'react-native';
 import {forwarding} from './device';
 
 NativeModules.GtdParaFile = forwarding(d => d.fs.module);
+NativeModules.GtdParaPdf = forwarding(d => d.pdf.module);
 NativeModules.GtdParaRuntime = {
   getRuntimeDiagnostics: async () => ({
     buildId: 'scenario',
