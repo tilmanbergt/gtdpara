@@ -466,7 +466,7 @@ Analysis (2026-10-19, against the 0.17 code):
 
 ## As built
 
-Steps S1-S4 on `feature/engage-in-context`; every step ended with `npm run check` green.
+Steps S1-S8 on `feature/engage-in-context`; every step ended with `npm run check` green.
 
 Choices where the design left a detail open, and deviations:
 
@@ -479,3 +479,25 @@ Choices where the design left a detail open, and deviations:
   - The filter's label is the overview's title: `#<thread>` in the thread lens, "All <counterpart>" in the counterpart lens, `#<kind>/<name>` for a loop.
   - App's part is one hook, `screens/useReviewStepNav.ts`: it closes the overlays and shows the Review tab. Stray blank lines in `App.tsx`'s JSX were removed to keep the file under 1,000 lines.
   - `somedayItems` covers Projects and Areas only, as specified; an overview whose owner is the Inbox opens an empty filtered list.
+- **S5.**
+  - `useProvenance().provenance` is a one-element `QuickAddAdds` list, so the callers pass it unchanged; the thread overview appends the preset tag's part.
+  - `QuickAddWidget.tsx` keeps its line count (baseline).
+  - In the `wf`/`owe` overviews (always the counterpart lens) the preset is the leaf too.
+- **S6.**
+  - The relation and agreed-in meeting live on `OwnerTodoRef extends EngageTodoRef`, so `resolveTodoKey` and the other refs stay as they were. `ownerMeetings` returns `MeetingEntryRef`s.
+  - A loop todo agreed in one of its meetings is "owe" even with `#wf`, as §2.4 says; Waiting For never shows in Next or Plan anyway.
+  - `loopAgreedIn` (domain/loops.ts) gives the matched meeting, and `loopRelation` uses it.
+  - `ownerOfMeeting` checks the active loops itself instead of going through `ownerOfTodo`.
+  - `ownersOf` orders loops by main date (as before) through `isLoopMember`.
+  - **Profile:** `focusOwnerLines` plus `ownersLeft` on the demo space (8 items, 23 todos, all in focus) took 0.4 ms per data change in Node; ten times the data took 6 ms. No memoization.
+- **S7.** `EngageExit` lives in `domain/engageFlow.ts`. Its `someday` variant also carries `label` and `keys` (the filter), so App needs no Engage source of its own.
+- **S8.**
+  - `useEntryActions().meetingNote` resolves true when a note opened, like `taskNote`, so "Next here" closes the panel only then.
+  - The exits are wired in `screens/engage/useEngageExits.ts` (panel) and `screens/useEngageExit.ts` (App: the overview is opened in an effect once `mode === 'tabs'`; an item owner opens through `openItem`; Someday goes through `reviewNav`).
+  - The Agreed caption is the list's `subHeader`.
+  - A waiting row's mark is ○, because the Plan tab already uses ◌. The "· waiting" label tells it apart.
+  - "Today next" uses "in 40 min", "in 2 h 5 min", "now" for one that has begun, and is computed with the panel's data (`useEngageView`), never by a timer.
+  - The meeting lines show on the options and owner-empty screens.
+  - **Line budget:** Next here, Also here and Today next add about 26 dp each, about 80 dp in all (the Agreed caption about 22 dp more). The panel stays near 900 dp of the about 1,166 dp below its top, so Today next stays above the footer. Device check open.
+  - The demo space gains the Coaching area (sparring thread with two past meetings, agreed todos, `#mieke`, `#wf/mieke`, Someday; loop `workshop/offsite` with a meeting today 11:00-12:00), a 16:00 meeting in Home, and the Sparring and Workshops setups.
+
