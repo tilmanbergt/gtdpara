@@ -69,11 +69,11 @@ describe('buildThreadOverview - thread lens', () => {
   });
 
   it('lists as relevant the thread, deeper tags and the plain leaf, never the plain parent', () => {
-    expect(texts(o.ahead.relevant)).toEqual([
-      'Draft agenda #retro/alpha',
-      'Ask about budget #alpha #someday',
-      'Prepare slides #retro/alpha/2026',
-    ]);
+    expect(texts(o.ahead.relevant)).toEqual(['Draft agenda #retro/alpha', 'Prepare slides #retro/alpha/2026']);
+  });
+
+  it('keeps Someday/Maybe of the lens apart, out of I owe and Relevant (E10)', () => {
+    expect(texts(o.ahead.someday)).toEqual(['Ask about budget #alpha #someday']);
   });
 
   it('lists Waiting For of the counterpart or the thread', () => {
@@ -182,10 +182,10 @@ describe('buildThreadOverview - how a todo relates to a thread (§1.2.1)', () =>
     expect(texts(sept30.agreed)).toContain('Raise budget question #101/sven');
   });
 
-  it('#owe/<counterpart> only: I owe, with #next or #someday; a bare #owe means nothing', () => {
-    expect(texts(mieke.ahead.owe)).toEqual(
-      expect.arrayContaining(['Promised #owe/mieke #next', 'Promised someday #owe/mieke #someday']),
-    );
+  it('#owe/<counterpart> only: I owe, with #next; with #someday counted apart; a bare #owe means nothing', () => {
+    expect(texts(mieke.ahead.owe)).toContain('Promised #owe/mieke #next');
+    expect(texts(mieke.ahead.owe)).not.toContain('Promised someday #owe/mieke #someday');
+    expect(texts(mieke.ahead.someday)).toEqual(['Promised someday #owe/mieke #someday']);
     expect(texts(mieke.ahead.owe)).not.toContain('Cancelled #owe/mieke');
     const svens = overview('101/sven');
     expect(texts(svens.ahead.relevant)).toContain('Bare owe #owe #101/sven');

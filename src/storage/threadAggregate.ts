@@ -11,7 +11,9 @@
  *   a todo relates to it; this module only sorts into lists.
  * - **Ahead.** Meetings not cancelled and not over yet, soonest first. Open,
  *   not cancelled todos go to the list of their relation (Waiting for, I owe,
- *   Relevant); Someday/Maybe included.
+ *   Relevant); Someday/Maybe go to their own list instead, which the
+ *   overview only counts (docs/dev/history/technical-design-engage-in-context.md
+ *   E10). Waiting For is one flow state, so never Someday.
  * - **Since.** Done todos completed on or after the latest past meeting's
  *   date that relate to the lens in any of the three ways, latest first;
  *   none without a past meeting. Todos ticked before completion dates were
@@ -27,6 +29,7 @@
  * can be changed through storage/itemMutations.ts's mutateEntryTasks/
  * mutateEntryMeetings (the index-safety rule).
  */
+import {isSomedayMaybe} from '../domain/flowState';
 import {meetingEndMs, todayIso} from '../domain/meetingTime';
 import {daysBetween, MeetingSeedFields, nextMeetingSeed} from '../domain/nextMeeting';
 import {meetingKey} from '../domain/provenance';
@@ -75,7 +78,14 @@ export interface ThreadOverview {
   scope: string[];
   /** The types used with the counterpart inside the scope (the thread's own type first). */
   types: string[];
-  ahead: {meetings: ThreadMeetingEntry[]; owe: ThreadTaskEntry[]; waiting: ThreadTaskEntry[]; relevant: ThreadTaskEntry[]};
+  ahead: {
+    meetings: ThreadMeetingEntry[];
+    owe: ThreadTaskEntry[];
+    waiting: ThreadTaskEntry[];
+    relevant: ThreadTaskEntry[];
+    /** Open Someday/Maybe todos of the lens: counted only, never in owe/relevant (E10). */
+    someday: ThreadTaskEntry[];
+  };
   /** `from`: the latest past meeting's date (null without one); `done`: latest completion first. */
   since: {from: string | null; done: ThreadTaskEntry[]};
   /** Newest first. */
@@ -143,7 +153,7 @@ export function buildThreadOverview(
 
   const aheadMeetings: ThreadMeetingEntry[] = [];
   const pastEntries: ThreadMeetingEntry[] = [];
-  const lists = {waiting: [] as ThreadTaskEntry[], owe: [] as ThreadTaskEntry[], relevant: [] as ThreadTaskEntry[]};
+  const lists = {waiting: [] as ThreadTaskEntry[], owe: [] as ThreadTaskEntry[], relevant: [] as ThreadTaskEntry[], someday: [] as ThreadTaskEntry[]};
   const doneRelated: ThreadTaskEntry[] = [];
   const agreedByMeeting = new Map<string, ThreadTaskEntry[]>();
   for (const source of inScope) {
@@ -165,7 +175,7 @@ export function buildThreadOverview(
       const relation = relationOf(task, match);
       if (!relation) return;
       if (task.done) doneRelated.push(entry);
-      else lists[relation].push(entry);
+      else lists[isSomedayMaybe(task) ? 'someday' : relation].push(entry);
     });
   }
   aheadMeetings.sort((a, b) => startKey(a.meeting).localeCompare(startKey(b.meeting)));

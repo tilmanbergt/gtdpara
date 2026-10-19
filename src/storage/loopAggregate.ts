@@ -62,6 +62,7 @@ export function buildLoopOverview(
       owe: all.ahead.owe.filter(keep),
       waiting: all.ahead.waiting.filter(keep),
       relevant: all.ahead.relevant.filter(keep),
+      someday: all.ahead.someday.filter(keep),
     },
     since: {from, done: since},
     past,

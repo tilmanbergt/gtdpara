@@ -3,12 +3,15 @@
  * §3.5.2): one paged list with sub-head rows - next meetings, then what I
  * owe, what I'm waiting for and what is relevant (each todo in one of them,
  * §1.2.1) - so it never clips; when everything fits, no pager shows. An
- * empty sub-list shows no head. The header offers "+ Next <type>" for each type with a
+ * empty sub-list shows no head. Someday/Maybe is only counted, in a quiet
+ * last row "n someday ›" (docs/dev/history/technical-design-engage-in-context.md
+ * E10). The header offers "+ Next <type>" for each type with a
  * meeting to copy (one in the thread lens, one per type in the counterpart
  * lens).
  */
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {somedayLinkText} from '../../domain/threadText';
 import {ThreadMeetingEntry, ThreadOverview, ThreadTaskEntry} from '../../storage/threadAggregate';
 import MeetingRow, {MEETING_ROW_HEIGHT} from '../../ui/MeetingRow';
 import PagedSection from '../../ui/PagedSection';
@@ -22,7 +25,8 @@ export const SUB_HEAD_HEIGHT = 30;
 type AheadRow =
   | {kind: 'head'; key: string; label: string}
   | {kind: 'meeting'; key: string; entry: ThreadMeetingEntry}
-  | {kind: 'task'; key: string; entry: ThreadTaskEntry};
+  | {kind: 'task'; key: string; entry: ThreadTaskEntry}
+  | {kind: 'someday'; key: string; entries: ThreadTaskEntry[]};
 
 export interface NextOffer {
   type: string;
@@ -34,6 +38,8 @@ interface Props {
   actions: EntryActions;
   nextOffers: NextOffer[];
   viewportHeight: number;
+  /** The quiet "n someday ›" row: Review's Someday / Maybe step for these todos. */
+  onOpenSomeday?: (entries: ThreadTaskEntry[]) => void;
   /** Other sub-head labels (the loop overview's); the thread's by default. */
   sectionLabels?: Partial<Record<TaskSectionKey, string>>;
   textColor: string;
@@ -61,10 +67,13 @@ function rowsOf(overview: ThreadOverview, labels: Partial<Record<TaskSectionKey,
     rows.push({kind: 'head', key: `h-${section.key}`, label: labels[section.key] ?? section.label});
     entries.forEach(entry => rows.push({kind: 'task', key: `t-${taskEntryKey(entry)}`, entry}));
   }
+  // Someday/Maybe is counted, not listed (E10): one quiet row after the last section.
+  if (overview.ahead.someday.length > 0) rows.push({kind: 'someday', key: 'someday', entries: overview.ahead.someday});
   return rows;
 }
 
-export default function AheadSection({overview, actions, nextOffers, viewportHeight, sectionLabels = {}, textColor, borderColor}: Props): React.JSX.Element {
+export default function AheadSection(props: Props): React.JSX.Element {
+  const {overview, actions, nextOffers, viewportHeight, onOpenSomeday, sectionLabels = {}, textColor, borderColor} = props;
   const {edit} = actions;
   const rows = rowsOf(overview, sectionLabels);
   const header = (
@@ -85,7 +94,7 @@ export default function AheadSection({overview, actions, nextOffers, viewportHei
       resetKey={`${overview.thread.tag}|${overview.lens}`}
       isCountableRow={row => row.kind !== 'head'}
       rowHeight={row => {
-        if (row.kind === 'head') return SUB_HEAD_HEIGHT;
+        if (row.kind === 'head' || row.kind === 'someday') return SUB_HEAD_HEIGHT;
         if (row.kind === 'meeting') return MEETING_ROW_HEIGHT.oneLine;
         return taskRowHeight(row.entry.task, TASK_COLUMN_WIDTH_PX, 'flat');
       }}
@@ -95,6 +104,19 @@ export default function AheadSection({overview, actions, nextOffers, viewportHei
           return (
             <View key={row.key} style={styles.head}>
               <Text style={[styles.headText, {color: textColor}]}>{row.label}</Text>
+            </View>
+          );
+        }
+        if (row.kind === 'someday') {
+          const entries = row.entries;
+          return (
+            <View key={row.key} style={styles.head}>
+              <Text
+                onPress={onOpenSomeday ? () => onOpenSomeday(entries) : undefined}
+                style={[styles.headText, onOpenSomeday ? styles.link : null, {color: textColor}]}
+              >
+                {somedayLinkText(entries.length)}
+              </Text>
             </View>
           );
         }
@@ -149,4 +171,5 @@ const styles = StyleSheet.create({
   next: {fontSize: FONT.small, fontWeight: '700', textDecorationLine: 'underline'},
   head: {height: SUB_HEAD_HEIGHT, justifyContent: 'flex-end', paddingBottom: 2},
   headText: {fontSize: FONT.small, fontWeight: '700', opacity: 0.6},
+  link: {textDecorationLine: 'underline'},
 });

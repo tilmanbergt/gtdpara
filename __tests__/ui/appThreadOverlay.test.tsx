@@ -42,6 +42,7 @@ jest.mock('../../src/supernote/fileSystem', () => {
       `- [ ] Draft agenda #retro/alpha [due:: ${today}]`,
       '- [ ] Send minutes [meeting:: 2026-01-07 Retro retro/alpha]',
       `- [x] Book room #retro/alpha [completion:: ${today}]`,
+      '- [ ] Parked idea #retro/alpha #someday',
       '',
       '## Meetings',
       '- 2026-01-07 10:00-11:00 Retro #retro/alpha',
@@ -125,6 +126,9 @@ describe('App with the thread overview', () => {
     expect(rendered(r)).toContain('Draft agenda');
     expect(texts(r)).toEqual(expect.arrayContaining(['I owe', 'Relevant']));
     expect(texts(r)).not.toContain('Waiting for');
+    // Someday/Maybe is only counted, in the last row of Ahead.
+    expect(texts(r)).toContain('1 someday ›');
+    expect(rendered(r)).not.toContain('Parked idea');
     expect(texts(r)).toContain('Looking back');
     // The latest past meeting is selected: its agreed todo and its note button.
     expect(texts(r)).toContain('+ Note');
