@@ -40,6 +40,7 @@ async function resolveOpening(request: EngageRequest, source: EngageSource, sett
     noteOwner: context.owner,
     noteTodo: context.todo,
     noteOwnerNext: shown ? todoKeyOf(shown) : null,
+    noteMeeting: context.meeting,
     stored: found,
   });
   if (opening.store) await setEngageCurrent(opening.store.owner, opening.store.key);
@@ -70,9 +71,9 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
       const opening = await resolveOpening(request, source, loaded);
       if (cancelled) return;
       setSettings(loaded);
-      dispatch({type: 'open', owner: opening.owner, current: opening.current, ring: effectiveFocus(source), back: opening.back});
+      dispatch({type: 'open', owner: opening.owner, current: opening.current, ring: effectiveFocus(source), back: opening.back, pageMeeting: opening.pageMeeting});
       setOpened(true);
-      log('EngageOverlay: opened', 'owner=' + (opening.owner?.kind ?? 'none'), 'via=' + request.via, 'current=' + (opening.current ? 'yes' : 'no'), 'back=' + (opening.back ? 'yes' : 'no'));
+      log('EngageOverlay: opened', 'owner=' + (opening.owner?.kind ?? 'none'), 'via=' + request.via, 'current=' + (opening.current ? 'yes' : 'no'), 'back=' + (opening.back ? 'yes' : 'no'), 'pageMeeting=' + (opening.pageMeeting ? 'yes' : 'no'));
     })().catch(e => {
       logError('EngageOverlay: opening failed', errorMessage(e));
       if (!cancelled) setOpened(true);
@@ -90,14 +91,14 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
     return engageSourceOf(items, engageInboxOf(cache.paths.inboxFolder, inbox), settings.noteSetups);
   }, [opened, settings, items, inbox]);
 
-  const {owner, current} = state;
+  const {owner, current, pageMeeting} = state;
   useEffect(() => {
     if (!source) return;
     const nowMs = Date.now();
     const currentRef = current ? resolveTodoKey(current, source) : null;
     const currentKey = currentRef ? todoKeyOf(currentRef) : null;
     if (current && !currentRef) setEngageCurrent(null, null).catch(e => logError('EngageOverlay: forgetting the current todo failed', errorMessage(e)));
-    const options = owner ? optionsOf(owner, source, nowMs, currentKey) : null;
+    const options = owner ? optionsOf(owner, source, nowMs, currentKey, pageMeeting) : null;
     dispatch({
       type: 'dataChanged',
       options,
@@ -105,8 +106,9 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
       dailyLeft: ownersLeft('daily', source, nowMs),
       current: currentKey,
       nextRows: options ? engageListsOf(options, currentRef).next.length : 0,
+      agreedRows: options?.agreed?.rows.length ?? 0,
     });
-  }, [source, owner, current]);
+  }, [source, owner, current, pageMeeting]);
 
   return {state, dispatch, source};
 }

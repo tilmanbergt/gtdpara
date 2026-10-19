@@ -87,7 +87,7 @@ describe('App with the Engage button', () => {
     // A note outside every Project/Area and no focus: the week's (empty) focus list.
     expect(texts(r)).toContain("This week's focus");
     expect(texts(r)).not.toContain('Daily');
-    expect(log).toHaveBeenCalledWith('EngageOverlay: opened', 'owner=none', 'via=button', 'current=no', 'back=no');
+    expect(log).toHaveBeenCalledWith('EngageOverlay: opened', 'owner=none', 'via=button', 'current=no', 'back=no', 'pageMeeting=no');
 
     const close = r.root.findAll(n => n.props.label === 'Close' && typeof n.props.onPress === 'function')[0];
     await act(async () => close.props.onPress());
@@ -112,7 +112,7 @@ describe('App with the Engage button', () => {
     await settle();
     expect(texts(r)).toContain('Open gtdpara');
     expect(texts(r)).not.toContain('Daily');
-    expect(log).toHaveBeenCalledWith('EngageOverlay: opened', 'owner=item', 'via=ownerPage', 'current=no', 'back=no');
+    expect(log).toHaveBeenCalledWith('EngageOverlay: opened', 'owner=item', 'via=ownerPage', 'current=no', 'back=no', 'pageMeeting=no');
     const open = r.root.findAll(n => n.props.label === 'Open gtdpara' && typeof n.props.onPress === 'function')[0];
     await act(async () => open.props.onPress());
     await settle();

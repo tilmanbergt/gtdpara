@@ -115,15 +115,18 @@ describe('decideOpening (Engage follows the note)', () => {
   const keyB = {itemPath: '/B', taskText: 'Call #next', taskIndex: 0};
   const keyA2 = {itemPath: '/A', taskText: 'Plan #next', taskIndex: 2};
   const stored = {owner: loopA, key: keyA};
+  const meetingA = {itemPath: '/A', meetingIndex: 3};
   it.each([
-    ['"Engage ›" wins, no way back', {pageOwner: B, noteOwner: A, noteTodo: null, stored}, {owner: B, current: null, back: null, store: null}],
-    ['"Engage ›" on the stored owner keeps its todo', {pageOwner: loopA, noteOwner: null, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null}],
-    ['the note page\'s todo: current and stored, the replaced todo is the way back', {pageOwner: null, noteOwner: B, noteTodo: keyB, stored}, {owner: B, current: keyB, back: stored, store: {owner: B, key: keyB}}],
-    ['the note\'s owner wins over the stored todo, even nested in the same Area; the way back is offered once, its next action replaces the stored todo', {pageOwner: null, noteOwner: A, noteTodo: null, noteOwnerNext: keyA2, stored}, {owner: A, current: null, back: stored, store: {owner: A, key: keyA2}}],
-    ['the way back once: without a next action the stored todo is forgotten', {pageOwner: null, noteOwner: B, noteTodo: null, noteOwnerNext: null, stored}, {owner: B, current: null, back: stored, store: {owner: B, key: null}}],
-    ['the note\'s owner is the stored owner: its todo, no way back', {pageOwner: null, noteOwner: loopA, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null}],
-    ['a note that belongs to nothing: the stored todo', {pageOwner: null, noteOwner: null, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null}],
-    ['nothing at all', {pageOwner: null, noteOwner: null, noteTodo: null, stored: null}, {owner: null, current: null, back: null, store: null}],
+    ['"Engage ›" wins, no way back', {pageOwner: B, noteOwner: A, noteTodo: null, stored}, {owner: B, current: null, back: null, store: null, pageMeeting: null}],
+    ['"Engage ›" on the stored owner keeps its todo', {pageOwner: loopA, noteOwner: null, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null, pageMeeting: null}],
+    ['the note page\'s todo: current and stored, the replaced todo is the way back', {pageOwner: null, noteOwner: B, noteTodo: keyB, stored}, {owner: B, current: keyB, back: stored, store: {owner: B, key: keyB}, pageMeeting: null}],
+    ['the note\'s owner wins over the stored todo, even nested in the same Area; the way back is offered once, its next action replaces the stored todo', {pageOwner: null, noteOwner: A, noteTodo: null, noteOwnerNext: keyA2, stored}, {owner: A, current: null, back: stored, store: {owner: A, key: keyA2}, pageMeeting: null}],
+    ['the way back once: without a next action the stored todo is forgotten', {pageOwner: null, noteOwner: B, noteTodo: null, noteOwnerNext: null, stored}, {owner: B, current: null, back: stored, store: {owner: B, key: null}, pageMeeting: null}],
+    ['the note\'s owner is the stored owner: its todo, no way back', {pageOwner: null, noteOwner: loopA, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null, pageMeeting: null}],
+    ['a note that belongs to nothing: the stored todo', {pageOwner: null, noteOwner: null, noteTodo: null, stored}, {owner: loopA, current: keyA, back: null, store: null, pageMeeting: null}],
+    ['a meeting page: the note owner opens with the page meeting', {pageOwner: null, noteOwner: A, noteTodo: null, noteMeeting: meetingA, stored: null}, {owner: A, current: null, back: null, store: null, pageMeeting: meetingA}],
+    ['"Engage ›" has no page meeting', {pageOwner: B, noteOwner: A, noteTodo: null, noteMeeting: meetingA, stored: null}, {owner: B, current: null, back: null, store: null, pageMeeting: null}],
+    ['nothing at all', {pageOwner: null, noteOwner: null, noteTodo: null, stored: null}, {owner: null, current: null, back: null, store: null, pageMeeting: null}],
   ])('%s', (_name, input, expected) => {
     expect(decideOpening(input)).toEqual(expected);
   });

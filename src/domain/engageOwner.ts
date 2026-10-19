@@ -368,6 +368,8 @@ export interface EngageOpening {
    * offered on one opening only.
    */
   store: {owner: EngageOwner; key: EngageTodoKey | null} | null;
+  /** The note page's meeting, for the note's owner only (docs/dev/history/technical-design-engage-in-context.md §2.7). */
+  pageMeeting: MeetingRef | null;
 }
 
 /**
@@ -382,24 +384,27 @@ export function decideOpening(input: {
   noteOwner: EngageOwner | null;
   noteTodo: EngageTodoKey | null;
   noteOwnerNext?: EngageTodoKey | null;
+  /** The meeting whose page the note is. */
+  noteMeeting?: MeetingRef | null;
   stored: OwnedTodo | null;
 }): EngageOpening {
   const {pageOwner, noteOwner, noteTodo, stored} = input;
+  const pageMeeting = input.noteMeeting ?? null;
   const backFrom = (owner: EngageOwner) => (stored && !sameOwner(stored.owner, owner) ? stored : null);
   if (pageOwner) {
     const keep = stored && sameOwner(stored.owner, pageOwner) ? stored.key : null;
-    return {owner: pageOwner, current: keep, back: null, store: null};
+    return {owner: pageOwner, current: keep, back: null, store: null, pageMeeting: null};
   }
   if (noteOwner && noteTodo) {
     const same = stored && sameOwner(stored.owner, noteOwner) && sameTodo(stored.key, noteTodo);
-    return {owner: noteOwner, current: noteTodo, back: same ? null : backFrom(noteOwner), store: {owner: noteOwner, key: noteTodo}};
+    return {owner: noteOwner, current: noteTodo, back: same ? null : backFrom(noteOwner), store: {owner: noteOwner, key: noteTodo}, pageMeeting: null};
   }
   if (noteOwner) {
     const keep = stored && sameOwner(stored.owner, noteOwner) ? stored.key : null;
     const back = backFrom(noteOwner);
     // Offered once: what this panel shows replaces the stored todo; the line itself takes you back.
-    return {owner: noteOwner, current: keep, back, store: back ? {owner: noteOwner, key: input.noteOwnerNext ?? null} : null};
+    return {owner: noteOwner, current: keep, back, store: back ? {owner: noteOwner, key: input.noteOwnerNext ?? null} : null, pageMeeting};
   }
-  if (stored) return {owner: stored.owner, current: stored.key, back: null, store: null};
-  return {owner: null, current: null, back: null, store: null};
+  if (stored) return {owner: stored.owner, current: stored.key, back: null, store: null, pageMeeting: null};
+  return {owner: null, current: null, back: null, store: null, pageMeeting: null};
 }
