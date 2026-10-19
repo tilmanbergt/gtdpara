@@ -50,7 +50,8 @@ Releases: see `RELEASING.md`.
 - Everything at once: `npm run check` (add `-- --quick` to skip Jest). It runs, in order:
   `npx tsc --noEmit`, ESLint, `npm test` (Jest), `npm run test:scripts` and
   `npm run code-health` (the rules are in `scripts/lib/codeHealth.mjs`; long existing files are
-  listed in `scripts/code-health-baseline.json` and may only shrink).
+  listed in `scripts/code-health-baseline.json` and may only shrink). GitHub Actions runs the
+  same `npm run check` on every push and pull request (`.github/workflows/check.yml`).
 - A useful smoke test mounts `<App />` with `react-test-renderer`.
   `tsc` alone cannot catch a broken default export of `App.tsx`, because `index.js` isn't type
   checked. See `design-overview.md` for the mocks this needs (`sn-plugin-lib`, AsyncStorage,

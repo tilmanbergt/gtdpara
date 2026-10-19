@@ -97,11 +97,16 @@ export async function loadSettings(): Promise<GtdParaSettings> {
 // starts from those defaults, so saveSettings refuses until a load succeeds
 // again or the user chooses to start over (storage/settingsUnreadable.ts).
 
-/** The user's choice after a failed load: store the defaults over the unreadable settings. */
-export async function resetSettingsToDefaults(): Promise<GtdParaSettings> {
-  await writeSettings(DEFAULT_SETTINGS);
-  log('settingsStorage: unreadable settings replaced with the defaults');
+/** The user's choice after a failed load - "Start over" or a switch to a saved profile: store `settings` over the unreadable ones. */
+export async function replaceUnreadableSettings(settings: GtdParaSettings): Promise<void> {
+  await writeSettings(settings);
+  log('settingsStorage: unreadable settings replaced');
   setSettingsUnreadable(null);
+}
+
+/** "Start over": the defaults over the unreadable settings. */
+export async function resetSettingsToDefaults(): Promise<GtdParaSettings> {
+  await replaceUnreadableSettings(DEFAULT_SETTINGS);
   return DEFAULT_SETTINGS;
 }
 

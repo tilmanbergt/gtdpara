@@ -4,8 +4,8 @@
 > releases, with the design of each. Requirements as decided, current state, design, steps, test
 > plan and open points; each slice gets its own "As built" section when it is done.
 
-Status: **design; D1-D3 decided (§7), D4 answered and waiting for confirmation.** Q1 is built on
-its own branch so it can join 0.18.0 or be left out of it (§3.6).
+Status: **Q1 built** on `feature/safe-writes` (§3.7), waiting for its device test; Q2-Q4 designed.
+Decisions D1-D4 in §7.
 
 ## 1. Goal and decisions
 
@@ -162,6 +162,62 @@ merges into `main` before 0.18.0 is released and ships with it; when it does not
 released without it and Q1 follows as 0.18.1. Either way nothing in 0.18.0's own work depends
 on it. The CI workflow does not depend on the rest and can be merged on its own at any time.
 
+### 3.7 As built (Q1)
+
+Built in six commits on `feature/safe-writes` (from the 0.17.0 release commit), each revertable
+on its own: atomic write, conflict guard, the choice, settings, checks, docs and CI.
+
+Where it differs from §3.1-3.4:
+
+- **Content, not stamps.** `storage/dataFileWrite.ts`'s `writeDataFile` re-reads the file on
+  every save and compares it with `base`, the text the change was made on. The cache's stamps
+  stay what `refreshCache` uses; comparing them before a write could miss an outside edit with
+  the same size inside the file system's time granularity. The extra read is a few KB per save.
+- **The decision is pure**: `domain/writeGuard.ts`'s `decideWrite` with
+  `domain/markdown.ts`'s `dataFilePartText` (a part is `FRONT_MATTER_PART` or a `## ` heading,
+  `DATA_FILE_HEADINGS`). Callers pass `{parts, apply}`; the eight `save…` in
+  `storage/projectFile.ts`, the two multi-part writes in `storage/loops.ts` and the close-out plan
+  (`storage/closeOut/planStore.ts`) go through it. `storage/markStore.ts` and the close-out
+  journal already read the file fresh before writing and stay as they are.
+- **The save waits for the answer** instead of storing a pending change and throwing:
+  `storage/writeConflicts.ts` queues the question, `ui/useWriteConflicts.ts` shows it
+  (`confirm`, global, neither action primary, ✕ = "Use the file"). "Use mine" re-reads the file
+  and writes the save's parts into it, so the save completes like any other; "Use the file"
+  rejects with `FileConflictError` (`Not saved: "Website" keeps the version changed outside
+  gtdpara.`). Without the UI installed and on a profile switch the answer is "Use the file".
+- **A file that is gone** (deleted or moved outside) is never recreated: the save fails with
+  `dataFileGoneText`; found while fixing the existing tests, whose fake file systems returned
+  nothing and would otherwise have produced a skeleton with only the saved part.
+- **Saves of one file run one after another** (per-path promise chain), so two saves never
+  start from the same text.
+- **Merged writes and the cache.** A write that kept an outside edit remembers its content
+  (`takeMergedWrite`); the cache's write-through (`updateItem…`, `updateItemRawContent`,
+  `setCachedInbox`) parses such text in full, so fields of the other parts are not left stale.
+  On a conflict the outside version goes into the cache through a listener `dataCache.ts`
+  registers (`setDataFileReloadListener`), so `dataFileWrite.ts` does not import the cache.
+- **Settings** (§3.3): the root cause is confirmed - `loadSettings` fell back to the defaults
+  silently, and five paths then saved full settings built on them (Settings screen, the Inbox and
+  Project hide-done toggles, focus mode, profile switch; the switch also wrote them into the
+  profile file). Now `storage/settingsUnreadable.ts` holds why the load failed; `saveSettings` and
+  `writeProfile` refuse while it is set; `ui/useSettingsUnreadableNotice.ts` shows it with
+  **Start over**; Settings → Advanced → Profiles shows **Restore** on the active profile, which
+  switches to it and replaces the unreadable settings (`replaceUnreadableSettings`). The debug
+  bundle has a `settings readable` line.
+- **Checks** (§3.4): `silent-catch` in `scripts/lib/codeHealth.mjs` accepts a catch that logs,
+  rethrows, carries the text on with `errorMessage(e)`, or says `// silent: <reason>` (on the
+  catch, its line or the line before). 37 sites were fixed: 6 now log, the others give their
+  reason. Errors shown in the status slot are logged by `StatusProvider`. Layer rules are
+  ESLint `no-restricted-imports` overrides in `.eslintrc.js`; `textLineEstimator.ts` moved from
+  `ui/` to `domain/`.
+- **App.tsx** stood at the 1,000-line limit; the "What's new" notice moved to
+  `ui/useWhatsNewNotice.ts` to make room for the two new App-level hooks.
+- **CI**: `.github/workflows/check.yml` runs `npm ci` and `npm run check` on Node 22.
+
+Tests: `__tests__/domain/writeGuard.test.ts`, `writeLeftovers.test.ts`;
+`__tests__/storage/dataFileWrite.test.ts`, `writeConflicts.test.ts`, `outsideEdits.test.ts`,
+`settingsUnreadable.test.ts`, `profilesUnreadable.test.ts`; code-health rule tests. The Kotlin
+change is not compiled or tested off the device.
+
 ## 4. Q2 "Scenario tests"
 
 ### 4.1 Idea
@@ -303,7 +359,7 @@ Decided with Tilman (2026-10-19):
   file are both kept without asking.
 - **D4 Temp file next to the target** (§3.1), as a written exception to the private-folder
   rule. Tilman asked why not the private folder; the answer is in §3.1 (a rename cannot cross
-  file systems, and copying is the unsafe write again). Waiting for his confirmation.
+  file systems, and copying is the unsafe write again). Confirmed.
 
 ## 8. Test plan
 

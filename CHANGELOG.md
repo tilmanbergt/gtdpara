@@ -10,6 +10,19 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Fixed
+- **Saving is safe if the Supernote switches off or gtdpara is closed mid-save**: a project's,
+  area's or the Inbox's file is now either the old or the new version, never half written.
+- **Changes made outside gtdpara are kept**: if you edit a project's file on your computer or in
+  Obsidian while gtdpara is open, saving in gtdpara no longer overwrites that edit. When the edit
+  was in another part of the file (say the Scope, while you add a todo), both are kept. When it
+  was in the same list, gtdpara asks which version wins: **Use mine** or **Use the file**. See
+  "Editing by hand" on the help page "Your files and folders".
+- **Settings that can't be read are never overwritten with defaults**: gtdpara then runs on
+  default settings, says so, and saves no settings until you choose **Start over**. See
+  "Troubleshooting".
+- Errors shown in the status line are now in the log, so a debug bundle shows them too.
+
 ## [0.17.0] — 2026-10-18
 
 ### New

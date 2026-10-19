@@ -8,6 +8,8 @@
 - **A link to a gtdpara note doesn't work in Obsidian**: the note probably has an old name with `#`, `[`, `]` or `^`. Run **Run Integrity Check**; when it finds such names, the message offers **Fix file names (n)**. It asks once, then renames all of them and updates their links in your projects, areas and the Inbox. Notes linked from archived projects and your own notes linked by their full path are only listed in the report.
 - **Creating a note fails when gtdpara was opened from a PDF or document**: the Supernote only lets plugins create notes when they were opened from a note. Open gtdpara from any note and create the note there. This is a limit of the Supernote, not of gtdpara.
 - **The calendar or Gmail doesn't load**: check the network connection and the settings; the error message tells you whether it is the network, the login or something else.
+- **"Settings could not be read"**: gtdpara runs on default settings and saves no settings, so your stored ones stay as they are. Export a debug bundle (Settings → Advanced) and report the problem. If you saved a profile earlier, **Restore** next to it in Settings → Advanced → Profiles brings its settings back (see [Profiles](profiles-and-demo.md)). **Start over** in the message replaces the stored settings with the defaults for good.
+- **"Which version wins?"** after a save: the file was changed outside gtdpara while it was open, see "Editing by hand" on [Your files and folders](files-and-folders.md).
 - **"Permission was not granted"**: see the next section.
 
 ## Permission prompts

@@ -60,6 +60,9 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
   whole file. Lines the parser doesn't understand survive. A format change needs
   parser + serializer + round-trip test, must read files written by older versions, and needs
   an **Upgrade note** in the CHANGELOG.
+- **Data files are written only through `storage/dataFileWrite.ts`** (`writeDataFile`): it
+  re-reads the file, keeps outside edits to other parts and asks the user when both changed the
+  same part. Settings are saved only while they could be read (`storage/settingsUnreadable.ts`).
 - **Write-through.** Mutations write the file first, then the cache (`storage/itemMutations.ts`,
   `notifyCacheChanged()`). Screens never poll.
 - **Settings.** Every new setting gets a default in `DEFAULT_SETTINGS`, a migration if it
@@ -77,7 +80,9 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
 - **Deletes** in shared storage only after a confirmation that names what is deleted, then
   `ensureFileDeletePermission(<text naming it>)`, then `deleteEmptyFolder` (the native side only
   deletes empty folders). "No" leaves things as they are and says so. Temporary files live only
-  in the plugin's private folder (`getPrivateTempDir`, `deleteTempTree`). gtdpara's own data that
+  in the plugin's private folder (`getPrivateTempDir`, `deleteTempTree`); the one exception is
+  the hidden `.<name>.gtdpara-tmp` the atomic text write renames over its target, which must sit
+  on the same file system as the target. gtdpara's own data that
   must survive a restart (the pictures and strokes of open marks) lives in the private data folder
   (`getPrivateDataDir`, `deletePrivateDataTree`); both deletes are refused natively outside their
   folder. No other native delete.
@@ -123,7 +128,9 @@ Details: `docs/dev/design-overview.md` §3 "Styling" and `docs/dev/design-device
 - **Log through `utils/log.ts` only**: `log` (info), `logWarn`, `logError`. Never call
   `console.*` directly. Format: `'<Module>: <what happened>'` plus data, e.g.
   `logError('ProfilesSection: listing profiles failed', message)`.
-- **What must be logged**: every caught error (with enough context to find the cause), every
+- **What must be logged**: every caught error (with enough context to find the cause; a catch
+  that deliberately logs nothing says why with `// silent: <reason>`, checked by
+  `npm run code-health`; errors shown in the status slot are logged there), every
   file write that fails, every call to a device or network API that fails, and the key steps of
   any flow that can fail halfway (switch profile, archive, PDF, sync).
 - **What must never be logged**: secrets (see §3), and no more personal content than needed.
@@ -179,13 +186,15 @@ A change is not done while the docs describe the old behavior.
 
 ## 7. Testing
 
-- **Automated, every change: `npm run check`** - stops at the first failure:
-  - `tsc --noEmit` with zero errors; ESLint with zero errors;
+- **Automated, every change: `npm run check`** - stops at the first failure. GitHub Actions runs
+  it on every push and pull request (`.github/workflows/check.yml`):
+  - `tsc --noEmit` with zero errors; ESLint with zero errors, including the layer rules in
+    `.eslintrc.js` (which folder may import which);
   - all Jest tests pass. New pure logic in `domain/` (and testable parts of `storage/`) gets Jest
     tests in `__tests__/`, including edge cases and the bug that was fixed;
   - the script tests (`scripts/test-*.mjs`: versioning, help pages, code-health rules);
   - the code-health rules (`scripts/code-health.mjs`): file length, `errorMessage()` instead of
-    copied error text, no history in comments, no `console`/`Alert`, date text from
+    copied error text, no silent catches, no history in comments, no `console`/`Alert`, date text from
     `domain/dateFormat.ts` in `ui/` and `screens/`, design-doc references that exist.
   - A smoke render of the changed screen where possible (`react-test-renderer`, mocks as in
     `docs/dev/README.md`), at minimum for changes to `App.tsx` and navigation.

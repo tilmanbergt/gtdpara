@@ -2,14 +2,17 @@
  * Settings → Advanced → Profiles (docs/dev/history/technical-design-profiles-demo-space.md §3.6):
  * the profile files in EXPORT/gtdpara/profiles, Save for the active one,
  * Switch (after a confirm in the status slot) for the others, and
+ * Restore for the active one while the stored settings are unreadable
+ * (storage/settingsUnreadable.ts), and
  * "Create demo space". The actual switch - reset caches, remount the app -
  * is done by App.tsx via `onSwitchProfile`.
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState, useSyncExternalStore} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 import {DEFAULT_PROFILE_ID} from '../../domain/profiles';
 import {createDemoSpace} from '../../storage/demoSpace';
 import {ensureDefaultProfileFile, listProfiles, ProfileInfo, saveActiveProfile} from '../../storage/profiles';
+import {getSettingsUnreadable, subscribeSettingsUnreadable} from '../../storage/settingsUnreadable';
 import {displayPath, PROFILES_FOLDER_PATH} from '../../supernote/fileSystem';
 import PillButton from '../../ui/PillButton';
 import {useStatus} from '../../ui/status/StatusProvider';
@@ -76,16 +79,19 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
       return `${files}${r.skipped > 0 && r.written > 0 ? `, ${r.skipped} kept` : ''}${r.profileCreated ? ', profile "Demo" added' : ''}.`;
     });
 
+  const unreadable = useSyncExternalStore(subscribeSettingsUnreadable, getSettingsUnreadable) !== null;
   const confirmTarget = profiles?.find(p => p.id === confirmId) ?? null;
   useStatus(
     'Settings.profiles.confirm',
     confirmTarget && onSwitchProfile
       ? {
           kind: 'confirm',
-          text: `Switch to profile "${confirmTarget.name}"? The current profile is saved first.`,
+          text: unreadable
+            ? `Restore the settings from profile "${confirmTarget.name}"? They replace the settings that could not be read.`
+            : `Switch to profile "${confirmTarget.name}"? The current profile is saved first.`,
           actions: [
             {
-              label: 'Switch',
+              label: unreadable ? 'Restore' : 'Switch',
               primary: true,
               onPress: () => {
                 const id = confirmTarget.id;
@@ -129,7 +135,15 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
                 <Text style={[styles.rowMeta, {color: textColor}]} numberOfLines={1}>
                   {p.error ? `can't be used: ${p.error}` : p.savedAt ? `saved ${p.savedAt.slice(0, 10)}` : ''}
                 </Text>
-                {active ? (
+                {active && unreadable ? (
+                  <PillButton
+                    label="Restore"
+                    disabled={busy || !!p.error || !onSwitchProfile}
+                    onPress={() => setConfirmId(p.id)}
+                    textColor={textColor}
+                    borderColor={borderColor}
+                  />
+                ) : active ? (
                   <PillButton label="Save" disabled={busy} onPress={handleSave} textColor={textColor} borderColor={borderColor} />
                 ) : (
                   <PillButton

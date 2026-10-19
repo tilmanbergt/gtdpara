@@ -1,0 +1,23 @@
+# Runs the same checks as `npm run check` on every push and pull request
+# (DEVELOPMENT-POLICY §7, docs/dev/history/technical-design-quality-hardening.md §7 D1).
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
