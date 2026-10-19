@@ -4,6 +4,9 @@ import {
   nextReviewStepId,
   prevReviewStepId,
   REVIEW_STEPS,
+  sumReviewSummaries,
+  summaryLines,
+  ZERO_REVIEW_SUMMARY,
 } from '../../src/domain/reviewSteps';
 
 describe('activeReviewSteps', () => {
@@ -25,5 +28,22 @@ describe('activeReviewSteps', () => {
     const steps = Object.fromEntries(off.map(s => [s.id, recent]));
     expect(isReviewOverdue(steps, now, off)).toBe(false);
     expect(isReviewOverdue(steps, now)).toBe(true);
+  });
+});
+
+describe('Someday / Maybe step (docs/dev/history/technical-design-engage-in-context.md §2.10)', () => {
+
+  it('is a ritual step after "Unfocused next items" and before "Focus reset"', () => {
+    const ids = REVIEW_STEPS.map(s => s.id);
+    expect(ids.indexOf('somedayMaybe')).toBe(ids.indexOf('unfocusedNext') + 1);
+    expect(ids.indexOf('weeklyFocus')).toBe(ids.indexOf('somedayMaybe') + 1);
+    expect(REVIEW_STEPS.find(s => s.id === 'somedayMaybe')).toEqual({id: 'somedayMaybe', title: 'Someday / Maybe', kind: 'ritual'});
+  });
+
+  it('counts somedayActivated, read as 0 from older records', () => {
+    expect(ZERO_REVIEW_SUMMARY.somedayActivated).toBe(0);
+    const older = {inbox: {reviewedAt: null, counts: {tasksAdded: 1}}};
+    expect(sumReviewSummaries(older as never).somedayActivated).toBe(0);
+    expect(summaryLines({...ZERO_REVIEW_SUMMARY, somedayActivated: 2})).toEqual(['2 someday todos made #next']);
   });
 });

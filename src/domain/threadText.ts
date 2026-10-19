@@ -62,3 +62,8 @@ export function rosterCountsText(signals: RosterSignals): string {
   }
   return parts.join(' · ');
 }
+
+/** Ahead's last row: the Someday/Maybe todos the overview leaves out, opening Review's "Someday / Maybe" step (E10). */
+export function somedayLinkText(count: number): string {
+  return `${count} someday ›`;
+}

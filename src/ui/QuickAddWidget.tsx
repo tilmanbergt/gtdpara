@@ -151,7 +151,7 @@ import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRe
 import {CreateActionRow, EditActionRow, quickAddButtons} from './quickAdd/ActionRow';
 import {useLoopMode} from './quickAdd/useLoopMode';
 import {buildFileToChips} from './quickAdd/fileToChips';
-import ProvenanceLine, {QuickAddProvenance} from './quickAdd/ProvenanceLine';
+import ProvenanceLine, {QuickAddAdds} from './quickAdd/ProvenanceLine';
 import {EditFields, loadEditFields, MeetingEditFields, TaskEditFields} from './quickAdd/editFields';
 import {errorMessage} from '../utils/errorMessage';
 
@@ -410,8 +410,8 @@ interface Props {
   prefill?: DraftPrefill | null;
   /** "+ Next <type>": replaces the Meeting draft and shows the Meeting tab, once per nonce (ui/quickAdd/useDraftRequests.ts). */
   meetingSeed?: MeetingSeed | null;
-  /** Create mode, Todo tab: one grey line saying what the screen adds to the new todo, with ✕ (ui/quickAdd/ProvenanceLine.tsx). */
-  provenance?: QuickAddProvenance | null;
+  /** Create mode, Todo tab: one grey line saying what the screen adds to the new todo, a ✕ per part (ui/quickAdd/ProvenanceLine.tsx). */
+  provenance?: QuickAddAdds | null;
 
   /** Task input only; defaults to "New task" everywhere. */
   placeholder?: string;
@@ -1953,7 +1953,7 @@ function QuickAddWidget({
       {taskRow3}
       {meetingRow3}
       {noteRow3}
-      {provenance && displayType === 'task' && !isEditing ? <ProvenanceLine provenance={provenance} textColor={textColor} /> : null}
+      {provenance && provenance.length > 0 && displayType === 'task' && !isEditing ? <ProvenanceLine parts={provenance} textColor={textColor} /> : null}
       {row4}
       {captureBelow}
     </View>

@@ -23,11 +23,12 @@ import {Text, TextInput} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import QuickAddWidget from '../../src/ui/QuickAddWidget';
 import {MeetingSeed} from '../../src/ui/quickAdd/useDraftRequests';
-import {QuickAddProvenance} from '../../src/ui/quickAdd/ProvenanceLine';
+import {QuickAddAdds} from '../../src/ui/quickAdd/ProvenanceLine';
 import {ProvenanceState, useProvenance} from '../../src/ui/quickAdd/useProvenance';
+import {PresetTagState, usePresetTag} from '../../src/ui/quickAdd/usePresetTag';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
 
-function render(extra: {provenance?: QuickAddProvenance | null; meetingSeed?: MeetingSeed | null}) {
+function render(extra: {provenance?: QuickAddAdds | null; meetingSeed?: MeetingSeed | null}) {
   const element = (p: typeof extra) => (
     <StatusProvider>
       <QuickAddWidget
@@ -54,11 +55,26 @@ const texts = (r: TestRenderer.ReactTestRenderer) =>
 describe('Quick Add provenance line', () => {
   it('shows the label on the Todo tab and ✕ clears it', () => {
     const onClear = jest.fn();
-    const {r} = render({provenance: {label: '↳ from Retro alpha · Wed 30.9.', onClear}});
+    const {r} = render({provenance: [{key: 'provenance', label: '↳ from Retro alpha · Wed 30.9.', onClear}]});
     expect(texts(r)).toContain('↳ from Retro alpha · Wed 30.9.');
     const clear = r.root.findAll(n => n.props.accessibilityLabel === 'Drop' && typeof n.props.onPress === 'function')[0];
     act(() => clear.props.onPress());
     expect(onClear).toHaveBeenCalled();
+  });
+
+  it('shows two parts in one line, each with its own ✕', () => {
+    const clears = [jest.fn(), jest.fn()];
+    const {r} = render({
+      provenance: [
+        {key: 'provenance', label: '↳ from Retro alpha · Wed 30.9.', onClear: clears[0]},
+        {key: 'presetTag', label: '#retro/alpha', onClear: clears[1]},
+      ],
+    });
+    expect(texts(r)).toEqual(expect.arrayContaining(['↳ from Retro alpha · Wed 30.9.', '#retro/alpha']));
+    const drops = r.root.findAll(n => n.props.accessibilityLabel === 'Drop' && typeof n.props.onPress === 'function');
+    act(() => drops[drops.length - 1].props.onPress());
+    expect(clears[1]).toHaveBeenCalled();
+    expect(clears[0]).not.toHaveBeenCalled();
   });
 
   it('shows nothing without provenance', () => {
@@ -83,18 +99,49 @@ describe('useProvenance (close-out, overview and capture write through it)', () 
 
   it('writes only the meeting field and shows no "adds"', () => {
     const p = probe();
-    expect(p.current().provenance?.label.startsWith('↳ from 1:1 Mieke · ')).toBe(true);
-    expect(p.current().provenance?.label).not.toContain('adds');
+    expect(p.current().provenance?.[0].label.startsWith('↳ from 1:1 Mieke · ')).toBe(true);
+    expect(p.current().provenance?.[0].label).not.toContain('adds');
     expect(p.current().apply('Raise budget #101/sven')).toBe('Raise budget #101/sven [meeting:: 2026-09-30 1:1 Mieke 101/mieke]');
   });
 
   it('✕ drops the link for the next todo only', () => {
     const p = probe();
-    act(() => p.current().provenance!.onClear());
+    act(() => p.current().provenance![0].onClear());
     expect(p.current().provenance).toBeNull();
     expect(p.current().apply('Raise budget')).toBe('Raise budget');
     act(() => p.current().added());
     expect(p.current().apply('Next one')).toBe('Next one [meeting:: 2026-09-30 1:1 Mieke 101/mieke]');
+  });
+});
+
+describe('usePresetTag (docs/dev/history/technical-design-engage-in-context.md E13)', () => {
+  function probe(tag: string | null): {current: () => PresetTagState} {
+    let state!: PresetTagState;
+    function Probe() {
+      state = usePresetTag(tag);
+      return null;
+    }
+    act(() => {
+      TestRenderer.create(<Probe />);
+    });
+    return {current: () => state};
+  }
+
+  it('adds the tag before the trailing fields, never twice', () => {
+    const p = probe('retro/alpha');
+    expect(p.current().part?.label).toBe('#retro/alpha');
+    expect(p.current().apply('Send minutes [due:: 2026-10-20]')).toBe('Send minutes #retro/alpha [due:: 2026-10-20]');
+    expect(p.current().apply('Already #retro/alpha')).toBe('Already #retro/alpha');
+  });
+
+  it('✕ drops it for the next todo only; no tag, no part', () => {
+    const p = probe('mieke');
+    act(() => p.current().part!.onClear());
+    expect(p.current().part).toBeNull();
+    expect(p.current().apply('Call')).toBe('Call');
+    act(() => p.current().added());
+    expect(p.current().apply('Call')).toBe('Call #mieke');
+    expect(probe(null).current().part).toBeNull();
   });
 });
 

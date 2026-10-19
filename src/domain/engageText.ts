@@ -3,10 +3,12 @@
  * (docs/dev/history/technical-design-engage.md §3.12), so a wording change is
  * one file. Pure.
  */
-import {formatDate, formatDayHeader} from './dateFormat';
+import {formatDate, formatDayHeader, formatTime} from './dateFormat';
 import {OwnerLine} from './engageOptions';
 import {titleCaseSlug} from './flowState';
-import {Task} from './types';
+import {stripAllTags} from './markdown';
+import {meetingDisplayTitle} from './meetingTracking';
+import {Meeting, Task} from './types';
 
 export const ENGAGE_TEXT = {
   /** The owner pages' button (Project, Area, loop, thread). */
@@ -39,6 +41,9 @@ export const ENGAGE_TEXT = {
   openNote: 'Note ›',
   newNote: '+ Note',
   back: '‹ Back',
+  alsoHere: 'Also here:',
+  overview: 'Overview ›',
+  waitingRow: '· waiting',
 } as const;
 
 /** S8's signal. */
@@ -71,8 +76,48 @@ export function backLineText(todoTitle: string): string {
 }
 
 /** The options screen's tab labels, with the rows each lists. */
-export function tabLabel(tab: 'next' | 'plan', rows: number): string {
-  return `${tab === 'next' ? 'Next' : 'Plan'} ${rows}`;
+export function tabLabel(tab: 'agreed' | 'next' | 'plan', rows: number): string {
+  return `${tab === 'agreed' ? 'Agreed' : tab === 'next' ? 'Next' : 'Plan'} ${rows}`;
+}
+
+/** A meeting's title without tags ("Sparring Mieke"). */
+function plainMeetingTitle(meeting: Pick<Meeting, 'title'>): string {
+  const display = meetingDisplayTitle(meeting);
+  return stripAllTags(display) || display;
+}
+
+/** The Agreed tab's first line (docs/dev/history/technical-design-engage-in-context.md E6): "Agreed in Sparring Mieke · Tue 14.10.". */
+export function agreedCaption(meeting: Pick<Meeting, 'title' | 'date'>, today: string): string {
+  return `Agreed in ${plainMeetingTitle(meeting)} · ${formatDayHeader(meeting.date, today)}`;
+}
+
+/** The "Also here" counts (E7): each part only when it isn't zero; both null hides the line. */
+export function alsoHereParts(waiting: number, someday: number): {waiting: string | null; someday: string | null} {
+  return {waiting: waiting > 0 ? `${waiting} waiting` : null, someday: someday > 0 ? `${someday} someday` : null};
+}
+
+/** "Next here: Thu 23.10. 10:00 Sparring Mieke ›" (E8), with "· next today" when it is also today's next meeting. */
+export function nextHereText(meeting: Pick<Meeting, 'title' | 'date' | 'time'>, today: string, alsoToday: boolean): string {
+  const when = `${formatDayHeader(meeting.date, today)}${meeting.time ? ` ${formatTime(meeting.time)}` : ''}`;
+  return `Next here: ${when} ${plainMeetingTitle(meeting)}${alsoToday ? ' · next today' : ''} ›`;
+}
+
+/** At most this far ahead, Today next says how long until it starts (E9). */
+export const TODAY_NEXT_RELATIVE_MS = 3 * 60 * 60 * 1000;
+
+/** "in 40 min", "in 2 h 5 min", "now" for one that has begun. */
+function startsIn(ms: number): string {
+  if (ms <= 0) return 'now';
+  const minutes = Math.ceil(ms / 60000);
+  if (minutes < 60) return `in ${minutes} min`;
+  const rest = minutes % 60;
+  return `in ${Math.floor(minutes / 60)} h${rest > 0 ? ` ${rest} min` : ''}`;
+}
+
+/** "Today next: 14:00 Retro demand · in 40 min" (E9): the relative part only under 3 hours away. */
+export function todayNextText(meeting: Pick<Meeting, 'title' | 'time'>, startMs: number, nowMs: number): string {
+  const until = startMs - nowMs;
+  return `Today next: ${formatTime(meeting.time)} ${plainMeetingTitle(meeting)}${until < TODAY_NEXT_RELATIVE_MS ? ` · ${startsIn(until)}` : ''}`;
 }
 
 /** The marks line (S6/S8): marks belong to a Project or Area, so it names that item; empty for none. */

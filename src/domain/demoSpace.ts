@@ -6,6 +6,7 @@
  * the normal project-file format, so it is also a readable example of it.
  */
 import {createNoteSetup, DEFAULT_HOME_NOTEBOOK, seedNoteSetupDefaults} from './noteSetups';
+import {meetingKey} from './provenance';
 import {monthKeyOf} from './period';
 import {DEFAULT_SETTINGS, GtdParaSettings} from './settings';
 import {INBOX_FILE_NAME} from './types';
@@ -48,6 +49,8 @@ interface ItemSpec {
   meetings: string[];
   weeklyGoal?: string;
   monthlyGoal?: string;
+  /** Further sections as written, e.g. `## Threads` and `## Loops`. */
+  sections?: string[];
 }
 
 /** `name:` is the item's name as gtdpara knows it, so renaming a demo folder shows the rename offer (docs/dev/history/technical-design-home-notebooks.md §3.7). */
@@ -61,6 +64,7 @@ function itemFile(name: string, spec: ItemSpec, today: Date): string {
   const parts = ['---', ...fm, '---', '', '## Scope', '', spec.scope, '', '## Tasks', '', ...spec.tasks, '', '## Meetings', '', ...spec.meetings, ''];
   if (spec.weeklyGoal) {parts.push('## Weekly Goals', '', `- ${isoWeekKey(today)}: ${spec.weeklyGoal}`, '');}
   if (spec.monthlyGoal) {parts.push('## Monthly Goals', '', `- ${monthKeyOf(today)}: ${spec.monthlyGoal}`, '');}
+  if (spec.sections) {parts.push(...spec.sections);}
   return parts.join('\n');
 }
 
@@ -145,7 +149,35 @@ export function buildDemoFiles(today: Date): DemoFile[] {
     abbrev: 'HO',
     scope: 'A calm, working home.',
     tasks: ['- [ ] Fix the leaking tap #next', `- [ ] Replace the smoke detector batteries [due:: ${d(-2)}]`],
-    meetings: [],
+    meetings: [`- ${d(0)} 16:00-16:30 Call with the plumber`],
+  });
+  // A sparring thread with agreements, and a loop with a meeting today
+  // (docs/dev/history/technical-design-engage-in-context.md §5).
+  const sparring = 'Sparring Mieke #sparring/mieke';
+  const agreed = (offset: number) => `[meeting:: ${meetingKey({date: d(offset), title: sparring})}]`;
+  const planning = 'Offsite planning #workshop/offsite';
+  area('Coaching', {
+    abbrev: 'CO',
+    dailyFocus: true,
+    scope: 'Sparring and workshops: people grow, agreements are kept.',
+    tasks: [
+      `- [ ] Send Mieke the role canvas #next ${agreed(-7)}`,
+      `- [ ] Draft feedback for the team lead ${agreed(-7)}`,
+      `- [ ] Org chart from Mieke #wf ${agreed(-7)}`,
+      `- [ ] Old point from the first session ${agreed(-14)}`,
+      "- [ ] Read Mieke's article #mieke #next",
+      '- [ ] Contract draft #wf/mieke',
+      '- [ ] Invite Mieke to the forum #sparring/mieke #someday',
+      '- [ ] Book the workshop room #workshop/offsite #next',
+      `- [ ] Print the handouts [meeting:: ${meetingKey({date: d(0), title: planning})}]`,
+    ],
+    meetings: [
+      `- ${d(-14)} 10:00-11:00 ${sparring}`,
+      `- ${d(-7)} 10:00-11:00 ${sparring}`,
+      `- ${d(7)} 10:00-11:00 ${sparring}`,
+      `- ${d(0)} 11:00-12:00 ${planning}`,
+    ],
+    sections: ['## Threads', '', '- mieke: active', '', '## Loops', '', `- workshop/offsite: active, ${d(14)}`, ''],
   });
   area('Team', {
     abbrev: 'TM',
@@ -187,8 +219,8 @@ export function buildDemoFiles(today: Date): DemoFile[] {
 }
 
 /**
- * Per-profile settings of the demo profile: the demo folders, one Note setup
- * (1:1 meetings, tracked), integrations off. The Default and the setup put
+ * Per-profile settings of the demo profile: the demo folders, the Note setups
+ * (1:1 meetings, tracked; Sparring threads; Workshops loops), integrations off. The Default and the setup put
  * their notes into the same file, each Project's and Area's home notebook.
  */
 export function demoProfileSettings(): GtdParaSettings {
@@ -199,12 +231,14 @@ export function demoProfileSettings(): GtdParaSettings {
     tracking: {trackPrep: true, trackReview: true},
     notebook: {...DEFAULT_HOME_NOTEBOOK},
   };
+  const sparringSetup = {...createNoteSetup('2', 'thread'), name: 'Sparring', tags: ['sparring'], notebook: {...DEFAULT_HOME_NOTEBOOK}};
+  const workshops = {...createNoteSetup('3', 'loop'), name: 'Workshops', tags: ['workshop']};
   return {
     ...DEFAULT_SETTINGS,
     baseRoot: DEMO_BASE_ROOT,
-    noteSetups: [oneOnOne],
+    noteSetups: [oneOnOne, sparringSetup, workshops],
     noteSetupDefaults: seedNoteSetupDefaults(),
-    nextNoteSetupId: 2,
+    nextNoteSetupId: 4,
     noteSetupsMigrated: true,
     experimentalGoogleCalendar: false,
     experimentalGmail: false,

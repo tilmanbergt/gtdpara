@@ -82,6 +82,28 @@ export const engageStyles = StyleSheet.create({
     marginTop: SPACING.xs,
     marginBottom: SPACING.sm,
   },
+  /** "Next here: … ›" under the header: a link, one line. */
+  meetingNext: {
+    fontSize: FONT.small,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+    marginBottom: SPACING.sm,
+  },
+  /** "Today next: …" above the footer: quiet, not a link. */
+  meetingToday: {
+    fontSize: FONT.small,
+    opacity: 0.6,
+    marginTop: SPACING.sm,
+  },
+  /** "Also here: …" under the tabs. */
+  alsoHere: {
+    fontSize: FONT.small,
+    marginTop: SPACING.sm,
+  },
+  alsoHereLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
   caption: {
     fontSize: FONT.small,
     fontWeight: '600',

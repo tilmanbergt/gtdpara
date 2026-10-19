@@ -7,23 +7,13 @@
  * decision D9). The owner is the item of the row whose tag was tapped; only
  * when none is known, the item holding the thread's latest meeting.
  *
- * - **Lens.** Thread: the thread's tag (or deeper) or the counterpart's plain
- *   leaf. Counterpart: any `<type>/<counterpart>` for a type used with the
- *   counterpart inside the scope, or the plain leaf. `wf` and `owe` name a
- *   counterpart, not a thread, so their overview is always the counterpart
- *   lens (decision D13).
+ * - **Lens.** domain/threadLens.ts decides the scope, the lens's tags and how
+ *   a todo relates to it; this module only sorts into lists.
  * - **Ahead.** Meetings not cancelled and not over yet, soonest first. Open,
- *   not cancelled todos are classified once (§1.2.1, decision D12), the first
- *   that applies:
- *   1. Waiting for: `#wf/<counterpart>`; or bare `#wf` on a todo agreed in a
- *      meeting of the lens, or with the lens's tags;
- *   2. I owe: agreed in a meeting of the lens (its provenance resolves to
- *      one), or `#owe/<counterpart>`; Someday/Maybe included;
- *   3. Relevant: the lens's tags (thread tag or plain leaf; in the
- *      counterpart lens any thread of the counterpart).
- *   A meeting of the lens is one the overview lists (the lens's tags, past
- *   or ahead, inside the scope), so every todo counted under a meeting in
- *   Looking back is also under I owe or Waiting for while it is open.
+ *   not cancelled todos go to the list of their relation (Waiting for, I owe,
+ *   Relevant); Someday/Maybe go to their own list instead, which the
+ *   overview only counts (docs/dev/history/technical-design-engage-in-context.md
+ *   E10). Waiting For is one flow state, so never Someday.
  * - **Since.** Done todos completed on or after the latest past meeting's
  *   date that relate to the lens in any of the three ways, latest first;
  *   none without a past meeting. Todos ticked before completion dates were
@@ -39,30 +29,23 @@
  * can be changed through storage/itemMutations.ts's mutateEntryTasks/
  * mutateEntryMeetings (the index-safety rule).
  */
+import {isSomedayMaybe} from '../domain/flowState';
 import {meetingEndMs, todayIso} from '../domain/meetingTime';
 import {daysBetween, MeetingSeedFields, nextMeetingSeed} from '../domain/nextMeeting';
-import {meetingKey, ProvenanceMatch, ProvenanceSource, resolveProvenance} from '../domain/provenance';
+import {meetingKey} from '../domain/provenance';
 import {
-  belongsToCounterpart,
-  belongsToThread,
-  inThreadLens,
-  isCounterpartType,
-  owedTo,
-  scopeOf,
-  threadOf,
-  ThreadLens,
-  ThreadRef,
-  typesForCounterpart,
-} from '../domain/threads';
+  LensItemRef,
+  LensSource,
+  meetingStartKey,
+  threadLensContext as lensContextOf,
+  ThreadLensContext,
+  ThreadRelation,
+} from '../domain/threadLens';
+import {belongsToThread, isCounterpartType, ThreadLens, ThreadRef} from '../domain/threads';
 import {Meeting, Task} from '../domain/types';
 import {CachedItem} from './dataCache';
 
-export interface ThreadItemRef {
-  kind: 'project' | 'area' | 'inbox';
-  name: string;
-  path: string;
-  abbrev: string | null;
-}
+export type ThreadItemRef = LensItemRef;
 
 export interface ThreadTaskEntry {
   item: ThreadItemRef;
@@ -95,7 +78,14 @@ export interface ThreadOverview {
   scope: string[];
   /** The types used with the counterpart inside the scope (the thread's own type first). */
   types: string[];
-  ahead: {meetings: ThreadMeetingEntry[]; owe: ThreadTaskEntry[]; waiting: ThreadTaskEntry[]; relevant: ThreadTaskEntry[]};
+  ahead: {
+    meetings: ThreadMeetingEntry[];
+    owe: ThreadTaskEntry[];
+    waiting: ThreadTaskEntry[];
+    relevant: ThreadTaskEntry[];
+    /** Open Someday/Maybe todos of the lens: counted only, never in owe/relevant (E10). */
+    someday: ThreadTaskEntry[];
+  };
   /** `from`: the latest past meeting's date (null without one); `done`: latest completion first. */
   since: {from: string | null; done: ThreadTaskEntry[]};
   /** Newest first. */
@@ -110,11 +100,7 @@ export interface ThreadInboxInput {
 }
 
 /** One Project/Area or the Inbox with its lists. */
-export interface ThreadSource {
-  ref: ThreadItemRef;
-  tasks: Task[];
-  meetings: Meeting[];
-}
+export type ThreadSource = LensSource;
 
 /** Every Project/Area that loaded, then the Inbox. */
 export function threadSourcesOf(items: readonly CachedItem[], inbox: ThreadInboxInput | null): ThreadSource[] {
@@ -131,52 +117,11 @@ export function threadSourcesOf(items: readonly CachedItem[], inbox: ThreadInbox
   return sources;
 }
 
-function startKey(m: Meeting): string {
-  return `${m.date} ${m.time || '00:00'}`;
-}
+export type {ThreadLensContext, ThreadRelation};
 
-/** The item holding the thread's latest meeting - the owner when none was given. */
-function fallbackOwner(sources: readonly ThreadSource[], thread: ThreadRef): ThreadItemRef | null {
-  let best: {ref: ThreadItemRef; key: string} | null = null;
-  for (const source of sources) {
-    for (const m of source.meetings) {
-      if (m.cancelled || !belongsToThread(m.tags, thread)) continue;
-      if (!best || startKey(m) > best.key) best = {ref: source.ref, key: startKey(m)};
-    }
-  }
-  return best?.ref ?? null;
-}
+const startKey = meetingStartKey;
 
-/** How an open or done todo relates to a lens (§1.2.1); the first that applies. */
-export type ThreadRelation = 'waiting' | 'owe' | 'relevant';
-
-/**
- * A lens resolved against the cache: its scope and the §1.2.1 predicates.
- * Shared by the overview, the Threads tab's filter, the Review roster and the
- * "Since last time" piece, so they all agree on what belongs to a thread or
- * counterpart.
- */
-export interface ThreadLensContext {
-  lens: ThreadLens;
-  thread: ThreadRef;
-  owner: ThreadItemRef | null;
-  scope: string[];
-  /** The sources inside the scope (the Inbox only when it is the owner). */
-  inScope: ThreadSource[];
-  types: string[];
-  /** Whether tags carry the lens's tags (thread tag or plain leaf; counterpart lens: any thread of it). */
-  inLens: (tags: readonly string[]) => boolean;
-  /** The meeting a todo was agreed in, when its provenance resolves. */
-  provenanceOf: (task: Task) => ProvenanceMatch | null;
-  /** How a todo (filed inside the scope) relates to the lens, or null. */
-  relationOf: (task: Task, match?: ProvenanceMatch | null) => ThreadRelation | null;
-}
-
-/**
- * The lens of `tag` in `requestedLens` (the counterpart lens for `wf`/`owe`
- * tags), scoped to `ownerPath` - see the module doc comment. Null when `tag`
- * is not a nested tag.
- */
+/** The lens of `tag` over the cache plus the Inbox (domain/threadLens.ts). Null when `tag` is not a nested tag. */
 export function threadLensContext(
   items: readonly CachedItem[],
   inbox: ThreadInboxInput | null,
@@ -184,47 +129,7 @@ export function threadLensContext(
   requestedLens: ThreadLens,
   ownerPath: string | null,
 ): ThreadLensContext | null {
-  const thread = threadOf(tag);
-  if (!thread) return null;
-  const lens: ThreadLens = isCounterpartType(thread.type) ? 'counterpart' : requestedLens;
-  const all = threadSourcesOf(items, inbox);
-
-  const ownerRef = ownerPath
-    ? all.find(s => s.ref.path === ownerPath)?.ref ?? null
-    : fallbackOwner(all, thread);
-  const scopeOwnerPath = ownerPath ?? ownerRef?.path ?? null;
-  const scope = scopeOwnerPath
-    ? scopeOf(scopeOwnerPath, items, inbox?.path ?? null)
-    : all.map(s => s.ref.path);
-  const inScope = all.filter(s => scope.includes(s.ref.path));
-
-  const tagLists = inScope.flatMap(s => [...s.tasks.map(t => t.tags), ...s.meetings.map(m => m.tags)]);
-  const used = typesForCounterpart(tagLists, thread.counterpart);
-  const types = [thread.type, ...used.filter(t => t !== thread.type)];
-  const cp = thread.counterpart;
-  // `#wf/<cp>` and `#owe/<cp>` have their own meaning below; they are not the lens's tags.
-  const threadTypes = types.filter(t => !isCounterpartType(t));
-  const inLens = (tags: readonly string[]) =>
-    lens === 'thread' ? inThreadLens(tags, thread) : belongsToCounterpart(tags, cp, threadTypes);
-
-  const provenanceSources: ProvenanceSource[] = all.map(s => ({path: s.ref.path, meetings: s.meetings}));
-  const provenanceOf = (task: Task): ProvenanceMatch | null =>
-    task.fields.meeting ? resolveProvenance(task, provenanceSources, scope) : null;
-  const agreedInLens = (match: ProvenanceMatch | null) =>
-    match !== null && scope.includes(match.path) && inLens(match.meeting.tags);
-
-  const relationOf = (task: Task, known?: ProvenanceMatch | null): ThreadRelation | null => {
-    const agreed = agreedInLens(known === undefined ? provenanceOf(task) : known);
-    const tagged = inLens(task.tags);
-    if (task.flowState === 'waiting-for') {
-      if (task.waitingOn === cp) return 'waiting';
-      if (task.waitingOn === null && (agreed || tagged)) return 'waiting';
-    }
-    if (agreed || owedTo(task.tags).includes(cp)) return 'owe';
-    return tagged ? 'relevant' : null;
-  };
-
-  return {lens, thread, owner: ownerRef, scope, inScope, types, inLens, provenanceOf, relationOf};
+  return lensContextOf(items, threadSourcesOf(items, inbox), inbox?.path ?? null, tag, requestedLens, ownerPath);
 }
 
 /**
@@ -248,7 +153,7 @@ export function buildThreadOverview(
 
   const aheadMeetings: ThreadMeetingEntry[] = [];
   const pastEntries: ThreadMeetingEntry[] = [];
-  const lists = {waiting: [] as ThreadTaskEntry[], owe: [] as ThreadTaskEntry[], relevant: [] as ThreadTaskEntry[]};
+  const lists = {waiting: [] as ThreadTaskEntry[], owe: [] as ThreadTaskEntry[], relevant: [] as ThreadTaskEntry[], someday: [] as ThreadTaskEntry[]};
   const doneRelated: ThreadTaskEntry[] = [];
   const agreedByMeeting = new Map<string, ThreadTaskEntry[]>();
   for (const source of inScope) {
@@ -270,7 +175,7 @@ export function buildThreadOverview(
       const relation = relationOf(task, match);
       if (!relation) return;
       if (task.done) doneRelated.push(entry);
-      else lists[relation].push(entry);
+      else lists[isSomedayMaybe(task) ? 'someday' : relation].push(entry);
     });
   }
   aheadMeetings.sort((a, b) => startKey(a.meeting).localeCompare(startKey(b.meeting)));

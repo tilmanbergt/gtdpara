@@ -126,6 +126,11 @@ function bareTagRe(tag: string): RegExp {
   return new RegExp(`#${tag}(?![\\w-]|[/:][\\w-])`, 'gi');
 }
 
+/** Whether a todo is parked: Someday or Maybe (Review's "Someday / Maybe" step owns them). */
+export function isSomedayMaybe(task: Pick<Task, 'flowState'>): boolean {
+  return task.flowState === 'someday' || task.flowState === 'maybe';
+}
+
 /**
  * Bare reserved words that are NOT free/context tags - one list, consumed by
  * `isContextTag` below so a new bare tag can never be added to the derive/set

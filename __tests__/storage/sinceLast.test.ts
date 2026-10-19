@@ -60,6 +60,29 @@ describe('buildSinceLast', () => {
   });
 });
 
+describe('buildSinceLast - Someday/Maybe (E11)', () => {
+  const parked = item('area', 'Coaching', {
+    meetings: [previous, current],
+    tasks: [
+      withFields('Agreed but parked #someday', {meeting: meetingKey(previous)}),
+      withFields('Older promise #maybe', {meeting: meetingKey(first)}),
+      task('Parked idea #alpha #someday'),
+      task('Live idea #alpha'),
+    ],
+  });
+  const since = buildSinceLast(current, parked.path, [parked], null, NOW)!;
+  const block = (title: string) => since.blocks.find(b => b.title === title)!.lines.map(l => l.text);
+
+  it('leaves Someday/Maybe out of I owe and Relevant', () => {
+    expect(block('I owe')).toEqual([]);
+    expect(block('Relevant')).toEqual(['Live idea #alpha']);
+  });
+
+  it('keeps Agreed last time complete, Someday included', () => {
+    expect(block('Agreed last time')).toEqual(['Agreed but parked']);
+  });
+});
+
 describe('renderSinceLast', () => {
   it('formats blocks, leaves empty ones out, cuts at 6 lines with "… +N more"', () => {
     const lines = Array.from({length: SINCE_LAST_BLOCK_LINES + 2}, (_, i) => ({text: `t${i}`, done: false}));

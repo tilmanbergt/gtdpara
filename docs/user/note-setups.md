@@ -84,10 +84,10 @@ Like the other pieces, headings are written when the note is created and again w
 **Since last time** is a piece for the Meeting page you add yourself. It looks at the meeting's first thread tag (such as `#retro/alpha`, see [Threads](threads.md)) and the previous meeting of that thread, and prints:
 
 - **Agreed last time**: the todos agreed in the previous meeting, open ones first, then the done ones (✓)
-- **I owe**, **Waiting for**, **Relevant**: the other open todos of the thread, as in its overview
+- **I owe**, **Waiting for**, **Relevant**: the other open todos of the thread, as in its overview (Someday and Maybe left out)
 - **Done since then**: todos of the thread ticked since the day of the previous meeting
 
-Each todo appears once; a todo agreed last time stays under Agreed last time. A block shows at most 6 lines, then `… +2 more`; empty blocks are left out. Without a previous meeting the piece writes nothing.
+Each todo appears once; a todo agreed last time stays under Agreed last time, Someday and Maybe included. A block shows at most 6 lines, then `… +2 more`; empty blocks are left out. Without a previous meeting the piece writes nothing.
 
 ## Placeholders in a note name
 

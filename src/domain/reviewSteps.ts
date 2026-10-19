@@ -73,6 +73,8 @@ export interface ReviewSummaryCounts {
   nextMeetingsAdded: number;
   /** "Open loops" (docs/dev/history/technical-design-loops.md §4.8): loops closed (done or dropped). Absent in older saved stats - every reader uses `?? 0`. */
   loopsClosed: number;
+  /** "Someday / Maybe" (docs/dev/history/technical-design-engage-in-context.md §2.10): todos made #next. Absent in older saved stats - every reader uses `?? 0`. */
+  somedayActivated: number;
 }
 
 export const ZERO_REVIEW_SUMMARY: ReviewSummaryCounts = {
@@ -94,6 +96,7 @@ export const ZERO_REVIEW_SUMMARY: ReviewSummaryCounts = {
   counterpartsSetInactive: 0,
   nextMeetingsAdded: 0,
   loopsClosed: 0,
+  somedayActivated: 0,
 };
 
 /** Stable ids - the persisted key of a step. Adding a step: one id here, one REVIEW_STEPS entry, one entry in storage/reviewAggregate.ts's buildReviewStepCounts (the `Record<ReviewStepId, ...>` type makes the compiler insist), one renderer in screens/ReviewScreen.tsx. */
@@ -109,6 +112,7 @@ export type ReviewStepId =
   | 'onHold'
   | 'neglected'
   | 'unfocusedNext'
+  | 'somedayMaybe'
   | 'weeklyFocus';
 
 /**
@@ -151,6 +155,9 @@ export const REVIEW_STEPS: ReviewStepDef[] = [
   {id: 'onHold', title: 'On Hold reconsideration', kind: 'backlog'},
   {id: 'neglected', title: 'Neglected areas', kind: 'backlog'},
   {id: 'unfocusedNext', title: 'Unfocused next items', kind: 'backlog'},
+  // Parked todos come back to life only here, in the weekly look
+  // (docs/dev/history/technical-design-engage-in-context.md E12).
+  {id: 'somedayMaybe', title: 'Someday / Maybe', kind: 'ritual'},
   // The step sets weekly AND monthly focus (docs/technical-design-review-
   // monthly-focus.md §3). The id stays 'weeklyFocus' on purpose: it is the
   // persisted key of this step's last-reviewed date and stats.
@@ -394,5 +401,6 @@ export function summaryLines(counts: ReviewSummaryCounts): string[] {
   if (counts.weeklyFocusAdded > 0) lines.push(`${pluralize(counts.weeklyFocusAdded, 'item')} added to weekly focus`);
   if (counts.dailyFocusAdded > 0) lines.push(`${pluralize(counts.dailyFocusAdded, 'item')} added to daily focus`);
   if ((counts.monthlyFocusAdded ?? 0) > 0) lines.push(`${pluralize(counts.monthlyFocusAdded, 'item')} added to monthly focus`);
+  if ((counts.somedayActivated ?? 0) > 0) lines.push(`${pluralize(counts.somedayActivated, 'someday todo')} made #next`);
   return lines;
 }

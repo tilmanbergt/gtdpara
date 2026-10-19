@@ -28,6 +28,8 @@ import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {logStaleBuilds} from './src/supernote/pluginRuntime';
 import {getMarkOutcome, holdStartForMark, isMarkInFlight, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
+import {useReviewStepNav} from './src/screens/useReviewStepNav';
+import {useEngageExit} from './src/screens/useEngageExit';
 import {useLoopEvents} from './src/ui/useLoopEvents';
 import {useLoopLinkNavigation} from './src/screens/area/useLoopLinkArm';
 import {StatusProvider} from './src/ui/status/StatusProvider';
@@ -200,6 +202,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
 
   // Help and the other overlays over the tab body (screens/useAppOverlays.tsx).
   const overlays = useAppOverlays(mode === 'tabs', activeTab);
+  // A Review step asked for from an overview or Engage (screens/review/reviewNav.ts).
+  useReviewStepNav(() => {
+    overlays.closeOverlays();
+    setActiveTab('review');
+    setMode('tabs');
+  });
   // Loops: a todo that is only a loop tag becomes its loop after the save (storage/loops.ts).
   useLoopEvents();
   useLoopLinkNavigation(stableOpenItem);
@@ -248,6 +256,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // "Engage ›") opens a fresh panel (docs/dev/history/technical-design-engage.md §3.8).
   const routedByEngageButtonRef = useRef(false);
   const engage = useSyncExternalStore(subscribeEngage, getEngageRequest);
+  const openFromEngage = useEngageExit(mode === 'tabs', useCallback(() => setMode('tabs'), []), stableOpenItem);
   useEffect(() => {
     if (engage.nonce > 0) setMode('engage');
   }, [engage.nonce]);
@@ -541,7 +550,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         <DailyView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onEnterFocusMode={stableNav.onEnterFocusMode}
         />
@@ -550,14 +558,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
         <WeekView
           onOpenItem={stableOpenItem}
           onOpenInbox={stableNav.openInbox}
-
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
       month: (
         <MonthView
           onOpenItem={stableOpenItem}
-
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
         />
       ),
@@ -570,7 +576,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
           name={currentItem.name}
           path={currentItem.path}
           onArchived={stableNav.handleArchived}
-
           onOpenCalendarSettings={stableNav.openSettingsCalendar}
           onOpenItem={stableOpenItem}
           onStartCloseOut={stableNav.startCloseOutFull}
@@ -792,7 +797,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // The Engage panel over the note (docs/dev/history/technical-design-engage.md §3.8).
-  if (mode === 'engage') return <EngageOverlay key={engage.nonce} request={engage.request} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} />;
+  if (mode === 'engage') return <EngageOverlay key={engage.nonce} request={engage.request} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} onExit={openFromEngage} />;
 
   if (mode === 'capture') {
     // The lasso-capture overlay gets the status slot at its top too (D11).
@@ -842,7 +847,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     <>
       {activeTab === 'inbox' && (
         <InboxScreen
-
           onOpenCalendarSettings={openSettingsCalendar}
           onOpenItem={stableOpenItem}
         />
@@ -854,13 +858,11 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
             projectPath={closeOut.path}
             mode={closeOut.mode}
             onExit={handleCloseOutExit}
-
           />
         ) : (
           <ReviewScreen
             onOpenItem={stableOpenItem}
             onReviewRecorded={refreshSettings}
-
             onOpenCalendarSettings={openSettingsCalendar}
             onStartCloseOut={openCloseOut}
           />
@@ -908,21 +910,18 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                 <ItemsList
                   kind="project"
                   onOpenItem={stableOpenItem}
-
                 />
               )}
               {activeTab === 'areas' && (
                 <ItemsList
                   kind="area"
                   onOpenItem={stableOpenItem}
-
                 />
               )}
               {activeTab === 'daily' && (
                 <DailyView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-
                   onOpenCalendarSettings={openSettingsCalendar}
                   onEnterFocusMode={onEnterFocusMode}
                 />
@@ -931,14 +930,12 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                 <WeekView
                   onOpenItem={stableOpenItem}
                   onOpenInbox={openInbox}
-
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
               {activeTab === 'month' && (
                 <MonthView
                   onOpenItem={stableOpenItem}
-
                   onOpenCalendarSettings={openSettingsCalendar}
                 />
               )}
@@ -949,7 +946,6 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
                     name={currentItem.name}
                     path={currentItem.path}
                     onArchived={handleArchived}
-
                     onOpenCalendarSettings={openSettingsCalendar}
                     onOpenItem={stableOpenItem}
                     onStartCloseOut={path => openCloseOut(path, 'full')}
