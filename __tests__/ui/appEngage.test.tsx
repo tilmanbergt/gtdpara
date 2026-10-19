@@ -62,6 +62,7 @@ import App from '../../App';
 import {ENGAGE_BUTTON_ID, SIDEBAR_BUTTON_ID} from '../../src/domain/buttonIds';
 import {engageOwner} from '../../src/ui/engageStore';
 import {log} from '../../src/utils/log';
+import {closeOverview, getOverview} from '../../src/ui/overviewStore';
 
 const texts = (r: TestRenderer.ReactTestRenderer) => r.root.findAllByType(Text).map(t => [t.props.children].flat().join(''));
 
@@ -117,6 +118,24 @@ describe('App with the Engage button', () => {
     await act(async () => open.props.onPress());
     await settle();
     expect(texts(r)).toContain('Daily');
+    act(() => r.unmount());
+  });
+
+  it('leaving to an overview opens it once the tab shell shows (docs/dev/history/technical-design-engage-in-context.md §2.9)', async () => {
+    let r!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      r = TestRenderer.create(<App />);
+    });
+    await settle();
+    await act(async () => engageOwner({kind: 'item', itemPath: '/storage/emulated/0/Note/1 Projects/Website'}));
+    await settle();
+    const panel = r.root.findAll(n => typeof n.props.onExit === 'function' && n.props.request)[0];
+    const owner = {kind: 'thread' as const, scopeOwnerPath: '/storage/emulated/0/Note/2 Areas/Coaching', tag: 'retro/alpha'};
+    await act(async () => panel.props.onExit({kind: 'overview', owner}));
+    await settle();
+    expect(texts(r)).toContain('Daily');
+    expect(getOverview()).toEqual({tag: 'retro/alpha', ownerPath: owner.scopeOwnerPath, lens: 'thread'});
+    act(() => closeOverview());
     act(() => r.unmount());
   });
 });

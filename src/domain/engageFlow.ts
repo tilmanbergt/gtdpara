@@ -39,9 +39,12 @@ export type EngageTab = 'agreed' | 'next' | 'plan';
 /**
  * Leaving the panel to a place in gtdpara (docs/dev/history/technical-design-engage-in-context.md
  * §2.9): an owner's overview (a thread's or loop's; an item's Project/Area
- * page), or Review's "Someday / Maybe" filtered to the owner.
+ * page), or Review's "Someday / Maybe" filtered to the owner's Someday/Maybe
+ * todos (`label` names it, `keys` are their entry keys `<item path>#<index>`).
  */
-export type EngageExit = {kind: 'overview'; owner: EngageOwner} | {kind: 'someday'; owner: EngageOwner};
+export type EngageExit =
+  | {kind: 'overview'; owner: EngageOwner}
+  | {kind: 'someday'; owner: EngageOwner; label: string; keys: string[]};
 
 export interface EngageAck {
   /** Done, Someday, Remove #next, or #next from the Plan tab. */

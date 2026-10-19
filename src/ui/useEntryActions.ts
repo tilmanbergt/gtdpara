@@ -233,9 +233,11 @@ export function useEntryActions(name = 'ThreadOverview') {
       if (!paths) throw new Error('The files are not loaded yet.');
       await openLinkedFile(paths, linkedFile);
     });
-  const meetingNote = (entry: ThreadMeetingEntry) =>
-    rowAction.run(async () => {
-      const {meeting, changed} = await openOrCreateMeetingNote(
+  /** Opens (or creates, after the confirm) the meeting's note; resolves true only when a note was opened. */
+  const meetingNote = async (entry: ThreadMeetingEntry): Promise<boolean> => {
+    let opened = false;
+    const ok = await rowAction.runSave(async () => {
+      const {meeting, changed, cancelled} = await openOrCreateMeetingNote(
         entry.meeting,
         entry.item.path,
         await currentSettings(),
@@ -248,7 +250,10 @@ export function useEntryActions(name = 'ThreadOverview') {
           return meetings;
         });
       }
+      opened = !cancelled;
     });
+    return ok && opened;
+  };
 
   const tracking = (entry: ThreadMeetingEntry): MeetingTrackingConfig => ({
     setups: trackingSetups(settings),

@@ -29,6 +29,7 @@ import {logStaleBuilds} from './src/supernote/pluginRuntime';
 import {getMarkOutcome, holdStartForMark, isMarkInFlight, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
 import {useReviewStepNav} from './src/screens/useReviewStepNav';
+import {useEngageExit} from './src/screens/useEngageExit';
 import {useLoopEvents} from './src/ui/useLoopEvents';
 import {useLoopLinkNavigation} from './src/screens/area/useLoopLinkArm';
 import {StatusProvider} from './src/ui/status/StatusProvider';
@@ -255,6 +256,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   // "Engage ›") opens a fresh panel (docs/dev/history/technical-design-engage.md §3.8).
   const routedByEngageButtonRef = useRef(false);
   const engage = useSyncExternalStore(subscribeEngage, getEngageRequest);
+  const openFromEngage = useEngageExit(mode === 'tabs', useCallback(() => setMode('tabs'), []), stableOpenItem);
   useEffect(() => {
     if (engage.nonce > 0) setMode('engage');
   }, [engage.nonce]);
@@ -795,7 +797,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   };
 
   // The Engage panel over the note (docs/dev/history/technical-design-engage.md §3.8).
-  if (mode === 'engage') return <EngageOverlay key={engage.nonce} request={engage.request} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} />;
+  if (mode === 'engage') return <EngageOverlay key={engage.nonce} request={engage.request} onClose={() => PluginManager.closePluginView()} onOpenGtdpara={() => setMode('tabs')} onExit={openFromEngage} />;
 
   if (mode === 'capture') {
     // The lasso-capture overlay gets the status slot at its top too (D11).

@@ -1,17 +1,20 @@
 /**
  * The Engage panel over the note (docs/dev/history/technical-design-engage.md
  * §3.7): the frame - backdrop, panel, the body for `state.screen.kind` - and
- * the wiring of the hooks to the parts. Which screen follows which action is
+ * the wiring of the hooks to the parts: "Next here" under the header, "Also
+ * here" under the tabs and "Today next" above the footer
+ * (docs/dev/history/technical-design-engage-in-context.md §2.8). Which screen follows which action is
  * the reducer's (domain/engageFlow.ts); every write goes through
  * ui/useEntryActions.ts, Close loop… through ui/useCloseLoop.ts.
  */
 import React, {useEffect, useState} from 'react';
 import {LayoutChangeEvent, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
-import {EngageAck, EngageRequest} from '../../domain/engageFlow';
+import {EngageAck, EngageExit, EngageRequest} from '../../domain/engageFlow';
 import {EngageFlowChoice} from '../../domain/engageOptions';
 import {EngageOwner, EngageSource, EngageTodoRef, ownerHomePath, todoKeyOf} from '../../domain/engageOwner';
-import {ENGAGE_TEXT} from '../../domain/engageText';
+import {ENGAGE_TEXT, nextHereText, todayNextText} from '../../domain/engageText';
+import {meetingStartMs, todayIso} from '../../domain/meetingTime';
 import {setEngageCurrent} from '../../storage/engageCurrent';
 import {openHomeNotebook} from '../../storage/homeNotebooks';
 import CollapsedQuickAdd from '../../ui/CollapsedQuickAdd';
@@ -25,6 +28,7 @@ import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';
 import {requestEinkRefresh, useEinkRefreshOnLoad} from '../../utils/screenRefresh';
 import AckLine from './AckLine';
+import AlsoHereLine from './AlsoHereLine';
 import BackLine from './BackLine';
 import Celebration from './Celebration';
 import EngageFooter from './EngageFooter';
@@ -32,12 +36,14 @@ import EngageHeader from './EngageHeader';
 import GoToLine from './GoToLine';
 import {ENGAGE_BACKDROP_TRANSPARENT, ENGAGE_TEXT_WIDTH, engageStyles as styles} from './engageStyles';
 import MarksLine from './MarksLine';
+import MeetingLine from './MeetingLine';
 import NowBox from './NowBox';
 import OptionTabs from './OptionTabs';
 import OwnerEmpty from './OwnerEmpty';
 import OwnerList from './OwnerList';
 import {useEngageFlow} from './useEngageFlow';
 import {useEngageGoTo} from './useEngageGoTo';
+import {useEngageExits} from './useEngageExits';
 import {useEngageView} from './useEngageView';
 
 const NAME = 'EngageOverlay';
@@ -46,6 +52,8 @@ interface Props {
   request: EngageRequest;
   onClose: () => void;
   onOpenGtdpara: () => void;
+  /** Leaves the panel to a place in gtdpara (an overview, Review's Someday / Maybe). */
+  onExit: (exit: EngageExit) => void;
 }
 
 function destinationOf(owner: EngageOwner, source: EngageSource): Destination | null {
@@ -56,7 +64,7 @@ function destinationOf(owner: EngageOwner, source: EngageSource): Destination | 
 const forget = (owner: EngageOwner | null) =>
   setEngageCurrent(owner, null).catch(e => logError(`${NAME}: forgetting the current todo failed`, errorMessage(e)));
 
-export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props): React.JSX.Element {
+export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}: Props): React.JSX.Element {
   const {textColor, borderColor, placeholderColor, isDarkMode} = useThemeColors();
   const background = isDarkMode ? '#000000' : '#ffffff';
   const rootBackground = ENGAGE_BACKDROP_TRANSPARENT ? 'transparent' : background;
@@ -66,6 +74,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
   const closeLoop = useCloseLoop(NAME);
   const goTo = useEngageGoTo(state.owner);
   const goToAction = useActionError(`${NAME}.goToError`, `${NAME}: opening the home notebook failed`);
+  const exits = useEngageExits(state.owner, source, actions, onExit, onClose);
   useEinkRefreshOnLoad(source === null);
   const {owner, screen, ack} = state;
 
@@ -214,8 +223,19 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
                 onRemoveNext={todo => act(todo, 'unnext', false)}
                 onMakeNext={todo => act(todo, 'next', false)}
                 onSomeday={todo => act(todo, 'someday', false)}
+                agreed={view.options?.agreed ?? null}
+                onDone={todo => act(todo, 'done', false)}
                 textColor={textColor}
                 borderColor={borderColor}
+              />
+            ) : null}
+            {screen.kind === 'options' && view.options ? (
+              <AlsoHereLine
+                waiting={view.options.alsoHere.waiting}
+                someday={view.options.alsoHere.someday}
+                onSomeday={exits.openSomeday}
+                onOverview={exits.openOverview}
+                textColor={textColor}
               />
             ) : null}
             {screen.kind === 'options' && tab === 'plan' ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
@@ -252,6 +272,11 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
         ? {kind: 'next' as const, onPress: () => press('selectFocus', () => dispatch({type: 'selectFocus'}))}
         : undefined;
   const onFocusScreen = screen.kind === 'selectFocus';
+  // The meeting lines (E8, E9) on the owner's screens; the two merge when they name the same meeting.
+  const ownerScreen = screen.kind === 'options' || screen.kind === 'ownerEmpty';
+  const nextMeeting = ownerScreen ? view.options?.nextMeeting ?? null : null;
+  const todayNext = ownerScreen ? view.todayNext : null;
+  const merged = !!nextMeeting && !!todayNext && nextMeeting.item.path === todayNext.item.path && nextMeeting.meetingIndex === todayNext.meetingIndex;
 
   return (
     <View style={[styles.root, {backgroundColor: rootBackground}]}>
@@ -264,9 +289,20 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara}: Props):
             onBack={onFocusScreen && owner ? () => dispatch({type: 'back'}) : undefined}
             textColor={textColor}
           />
+          {nextMeeting ? (
+            <MeetingLine
+              variant="next"
+              text={nextHereText(nextMeeting.meeting, todayIso(), merged)}
+              onPress={() => exits.openNextMeeting(nextMeeting)}
+              textColor={textColor}
+            />
+          ) : null}
           {body()}
           {view.back && (screen.kind === 'options' || screen.kind === 'ownerEmpty') ? (
             <BackLine todo={view.back.todo} onPress={goBack} textColor={textColor} />
+          ) : null}
+          {todayNext && !merged ? (
+            <MeetingLine variant="today" text={todayNextText(todayNext.meeting, meetingStartMs(todayNext.meeting), view.nowMs)} textColor={textColor} />
           ) : null}
           <EngageFooter
             select={select}

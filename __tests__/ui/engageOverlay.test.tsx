@@ -32,6 +32,10 @@ jest.mock('../../src/storage/settingsStorage', () => ({
 const mockNoteOpen: {cancelled: boolean; calls: number} = {cancelled: false, calls: 0};
 jest.mock('../../src/storage/meetingNoteContent', () => ({
   ...jest.requireActual('../../src/storage/meetingNoteContent'),
+  openOrCreateMeetingNote: async (meeting: unknown) => {
+    mockNoteOpen.calls++;
+    return {meeting, changed: false, cancelled: mockNoteOpen.cancelled, outcome: null};
+  },
   openOrCreateTodoNote: async (task: unknown) => {
     mockNoteOpen.calls++;
     return {task, changed: false, cancelled: mockNoteOpen.cancelled, outcome: null};
@@ -84,6 +88,7 @@ import {createNoteSetup} from '../../src/domain/noteSetups';
 import EngageOverlay from '../../src/screens/engage/EngageOverlay';
 import {EngageRequest} from '../../src/domain/engageFlow';
 import {clearCachedData} from '../../src/storage/dataCache';
+import {meetingKey} from '../../src/domain/provenance';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
 
 function area(name: string, lines: string[], extra: string[] = []): void {
@@ -116,15 +121,16 @@ async function press(r: TestRenderer.ReactTestRenderer, label: string) {
 async function open(request: EngageRequest) {
   let r!: TestRenderer.ReactTestRenderer;
   const onClose = jest.fn();
+  const onExit = jest.fn();
   await act(async () => {
     r = TestRenderer.create(
       <StatusProvider>
-        <EngageOverlay request={request} onClose={onClose} onOpenGtdpara={jest.fn()} />
+        <EngageOverlay request={request} onClose={onClose} onOpenGtdpara={jest.fn()} onExit={onExit} />
       </StatusProvider>,
     );
   });
   await settle();
-  return {r, onClose};
+  return {r, onClose, onExit};
 }
 
 beforeEach(() => {
@@ -394,6 +400,97 @@ describe('EngageOverlay: Go to the home notebook (docs/dev/history/technical-des
     mockNote.path = `${COACHING}/Todos/Call Anna.note`;
     const {r} = await open({via: 'button'});
     expect(texts(r).some(t => t.startsWith('Go to '))).toBe(false);
+    act(() => r.unmount());
+  });
+});
+
+describe('EngageOverlay in context (docs/dev/history/technical-design-engage-in-context.md)', () => {
+  const now = new Date();
+  const iso = (offset: number) => {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  // 9:00 today: the sparring in three days is "Next here", the retro at 10:00 today is "Today next".
+  const nineToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).getTime();
+  const past = `${iso(-1)} 10:00-11:00 Sparring Mieke #sparring/mieke`;
+  const key = meetingKey({date: iso(-1), title: 'Sparring Mieke #sparring/mieke'});
+  let spy: jest.SpyInstance;
+
+  beforeEach(() => {
+    spy = jest.spyOn(Date, 'now').mockReturnValue(nineToday);
+    mockSettings.current = {
+      ...mockSettings.current,
+      noteSetups: [{...createNoteSetup('t1', 'thread'), name: 'Sparring', tags: ['sparring']}],
+    };
+    area('Coaching', [
+      '## Tasks',
+      `- [ ] Draft feedback [meeting:: ${key}]`,
+      `- [ ] Book follow-up #next [meeting:: ${key}]`,
+      `- [ ] Org chart #wf [meeting:: ${key}]`,
+      `- [ ] Parked #someday [meeting:: ${key}]`,
+      '- [ ] Read article #mieke #next',
+      '',
+      '## Meetings',
+      `- ${past} → [[Meetings/Sparring.note]]`,
+      `- ${iso(3)} 10:00-11:00 Sparring Mieke #sparring/mieke`,
+      `- ${iso(0)} 10:00-11:00 Retro demand`,
+    ]);
+    mockNote.path = `${COACHING}/Meetings/Sparring.note`;
+  });
+  afterEach(() => spy.mockRestore());
+
+  it('opens on Agreed from the meeting page, with Next here, Also here and Today next', async () => {
+    const {r} = await open({via: 'button'});
+    expect(texts(r)).toContain('Thread');
+    // An agreed plan todo is also in Plan (D6: the overlap is accepted).
+    expect(texts(r)).toEqual(expect.arrayContaining(['Agreed 3', 'Next 2', 'Plan 1']));
+    expect(texts(r).some(t => t.startsWith('Agreed in Sparring Mieke · '))).toBe(true);
+    expect(rendered(r)).toContain('Draft feedback');
+    expect(rendered(r)).toContain('· waiting');
+    expect(rendered(r)).not.toContain('Parked');
+    expect(texts(r).some(t => t.startsWith('Next here: ') && t.endsWith('Sparring Mieke ›'))).toBe(true);
+    expect(texts(r).filter(t => t.startsWith('Today next'))).toEqual(['Today next: 10:00 Retro demand · in 1 h']);
+    expect(rendered(r)).toContain('Also here: ');
+    expect(rendered(r)).toContain('1 waiting');
+    expect(rendered(r)).toContain('1 someday');
+    act(() => r.unmount());
+  });
+
+  it('Next lists "I owe" first; #next on an Agreed plan row moves it to Next as well', async () => {
+    const {r} = await open({via: 'button'});
+    await press(r, '#next');
+    expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [ ] Draft feedback #next');
+    expect(texts(r)).toEqual(expect.arrayContaining(['Agreed 3', 'Next 3']));
+    await press(r, 'Next 3');
+    const rows = r.root.findAll(n => n.props.header === '' && Array.isArray(n.props.rows))[0].props.rows.map((t: {task: {text: string}}) => t.task.text);
+    expect(rows).toEqual(['Draft feedback #next', 'Book follow-up #next', 'Read article #mieke #next']);
+    act(() => r.unmount());
+  });
+
+  it('the lines lead out: someday and Overview › name the place, Next here opens the note and closes', async () => {
+    const {r, onClose, onExit} = await open({via: 'button'});
+    const link = async (label: string) => {
+      const text = r.root.findAllByType(Text).find(t => t.props.children === label && typeof t.props.onPress === 'function')!;
+      await act(async () => text.props.onPress());
+      await settle();
+    };
+    await link('1 someday');
+    expect(onExit).toHaveBeenCalledWith({kind: 'someday', owner: {kind: 'thread', scopeOwnerPath: COACHING, tag: 'sparring/mieke'}, label: '#sparring/mieke', keys: [`${COACHING}#3`]});
+    await link('Overview ›');
+    expect(onExit).toHaveBeenLastCalledWith({kind: 'overview', owner: {kind: 'thread', scopeOwnerPath: COACHING, tag: 'sparring/mieke'}});
+    await press(r, 'Next here: ');
+    expect(mockNoteOpen.calls).toBe(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    act(() => r.unmount());
+  });
+
+  it('Today next merges into Next here when it is the same meeting', async () => {
+    area('Coaching', ['## Meetings', `- ${iso(0)} 10:00-11:00 Sparring Mieke #sparring/mieke`, '', '## Tasks', '- [ ] Read article #mieke #next']);
+    mockNote.path = null;
+    const {r} = await open({via: 'ownerPage', owner: {kind: 'thread', scopeOwnerPath: COACHING, tag: 'sparring/mieke'}});
+    expect(texts(r).some(t => t.startsWith('Next here: ') && t.endsWith('· next today ›'))).toBe(true);
+    expect(texts(r).some(t => t.startsWith('Today next:'))).toBe(false);
+    expect(texts(r).some(t => t.startsWith('Agreed '))).toBe(false);
     act(() => r.unmount());
   });
 });
