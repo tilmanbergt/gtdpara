@@ -25,6 +25,7 @@ Tap a step to open it. Inside a step:
 - **On Hold reconsideration**: paused projects and areas - keep them paused or reactivate them
 - **Neglected areas**: the same for areas - no next action and nothing you wait for
 - **Unfocused next items**: projects and areas with a `#next` todo (without due date) but no daily, weekly or monthly focus. Add them to focus, or park the todo: **Remove #next** puts it back into the plan, **Someday** and **Maybe** shelve it.
+- **Someday / Maybe**: the open Someday and Maybe todos of your active and paused projects and areas, see below
 - **Focus reset**: choose weekly and monthly focus and goals. Switch between **Week** and **Month** at the top; each shows the same focus panel as the Week and Month tabs (tap an empty slot, then pick a project or area)
 
 Steps that list several projects show them on the left; tap one to work on it on the right.
@@ -43,6 +44,12 @@ Each row has two lines: the counterpart, then `last 30.9. · next 14.10.` and wh
 Tap a counterpart to see it on the right: Quick Add, then **Tend** and **Not** for a new one, **Open overview ›** and **Set inactive** for an active one, its next meetings (or **+ Next retro**, which puts the next meeting into Quick Add), what you owe, wait for and should raise, and its last three meetings. **Open overview ›** opens its thread overview over the Review; **‹ Review** brings you back to the step as you left it. **Set inactive** first goes through its open todos (Done, Cancel or Keep each one), see [Projects and Areas](projects-and-areas.md).
 
 The recap counts counterparts confirmed, set inactive and next meetings added.
+
+## Someday / Maybe
+
+Someday and Maybe todos stay out of the way during the week: the thread and loop overviews and [Engage](engage.md) only count them. This step is where you look at them again. On the left they are grouped by project or area; tap one to see it on the right with **#next** (work on it soon), **To plan** (back into the plan, without Someday or Maybe), **Done** and **Cancel**.
+
+Opened from an overview's **n someday ›** or from Engage's **Also here**, the step shows "Only #sparring/mieke · Show all" (the name of where you came from) and lists just those todos; **Show all** lists every one. Leaving the step ends the filter. The recap counts the todos made `#next`.
 
 ## The recap
 

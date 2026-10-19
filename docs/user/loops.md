@@ -37,9 +37,11 @@ On an Area's page, the **Projects** tab lists the loops after the projects; a Pr
 Tap a loop row, or a loop tag in any todo or meeting of its Area or Project, to see everything of the loop:
 
 - The header: the loop's name and kind, where it lives, and its main date with the days to go. **File ›** opens the linked file (**Link file** while it has none), **Edit** loads the loop into Quick Add, **Engage ›** opens [Engage](engage.md) for the loop.
-- **Ahead**: the loop's next meetings, then its open todos - first the ones agreed in its meetings, then the ones waiting for someone, then the rest. **+ Next workshop** (the loop's kind) fills Quick Add with the next meeting, copied from the last one.
+- **Ahead**: the loop's next meetings, then its open todos - first the ones agreed in its meetings (also one that is still running), then the ones waiting for someone, then the rest. Someday and Maybe todos are only counted, in a last row such as **1 someday ›**, which opens the Weekly Review's step **Someday / Maybe** with just these todos. **+ Next workshop** (the loop's kind) fills Quick Add with the next meeting, copied from the last one.
 - **Looking back**: its past meetings, each with what was agreed in it, and what was done since the last one.
 - Quick Add on the right adds to the loop: a new todo or meeting gets the loop's tag on its own and goes to the loop's Area or Project.
+
+A todo is one of the loop's when it has the loop's tag, or was agreed in one of the loop's meetings - past, running or ahead. [Engage](engage.md) for the loop holds the same todos, and its Area or Project leaves them out.
 
 ## The loop note
 

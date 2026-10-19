@@ -16,7 +16,7 @@ Nothing is written into your lines for this: gtdpara reads the tags you typed.
 
 A todo can relate to a thread in three ways, and each has its own source:
 
-- **I owe**: you agreed to it in a meeting of the thread (the todo carries that meeting, see "Where a todo was agreed" below), or you tagged it `#owe/alpha` for a promise made outside a meeting. `#owe/alpha` works together with `#next`, a due date or `#someday`; a plain `#owe` means nothing special.
+- **I owe**: you agreed to it in a meeting of the thread (the todo carries that meeting, see "Where a todo was agreed" below), or you tagged it `#owe/alpha` for a promise made outside a meeting. `#owe/alpha` works together with `#next` or a due date; a plain `#owe` means nothing special.
 - **Waiting for**: `#wf/alpha`; or a plain `#wf` on a todo agreed in the thread or tagged with it.
 - **Relevant**: the todo has the thread's tag or the plain `#alpha`, and none of the above applies: something to raise or act on there.
 
@@ -50,11 +50,12 @@ The switch at the top right chooses what you look at:
 The upper list on the left:
 
 - **Next meetings**: meetings of the thread that aren't over yet, soonest first
-- **I owe**: open todos agreed in the thread's meetings or tagged `#owe/alpha`, Someday and Maybe included
+- **I owe**: open todos agreed in the thread's meetings or tagged `#owe/alpha`
 - **Waiting for**: open todos you are waiting for alpha on
 - **Relevant**: open todos with the thread's tag or `#alpha` that are neither of the above
+- a last, quiet row such as **1 someday ›**: the thread's Someday and Maybe todos are not listed, only counted. Tap it to open the Weekly Review's step **Someday / Maybe** with just these todos, see [Weekly Review](review.md).
 
-A list with nothing in it is left out.
+A list with nothing in it is left out. [Engage](engage.md) for the thread holds the same todos.
 
 Tap a row to edit it in Quick Add; tick, note and file icons work as on every list.
 
@@ -72,7 +73,11 @@ Quick Add on the right adds to the selected past meeting (with the **Since** row
 
 `↳ from Retro alpha · Wed 30.9.`
 
-The new todo goes into the meeting's project or area and records the meeting at the end of the line. Its tags stay as you type them: add `#retro/alpha` only if you also want it under **Relevant** there, or another thread's tag for where you will raise it. Tap ✕ on the grey line to add this one todo without it; it then goes into the project or area you opened the overview from (or the Inbox).
+The new todo goes into the meeting's project or area and records the meeting at the end of the line.
+
+New todos also get the thread's tag, shown in the same grey line, for example `↳ from Retro alpha · Wed 30.9. ✕   #retro/alpha ✕`. In **All alpha** (and in a `#wf/…` or `#owe/…` overview) it is the plain `#alpha`. A tag you typed yourself is not added twice.
+
+Each part has its own ✕: tap it to add this one todo without it. Without the meeting, the todo goes into the project or area you opened the overview from (or the Inbox). This applies to todos only, not to meetings.
 
 ## + Next retro
 
@@ -100,7 +105,7 @@ A counterpart you use for the first time is **new**: gtdpara asks you, in the We
 
 You can edit these lines by hand. A counterpart used only with `#wf/name` or `#owe/name` (no meetings) is tended like the others but marked `w/f only`, `owe only` or `w/f · owe only`, so a one-off promise or waiting-for stands out from an ongoing relationship. The Inbox has no counterparts of its own: it is meant to be emptied soon.
 
-**Set inactive** (on the Threads tab or in the Review) first goes through the counterpart's open todos under I owe, Waiting for and Relevant: Done, Cancel or Keep each one. An inactive counterpart leaves the Review and the tag suggestions; its overview and history keep working. When it gets a new meeting, it comes back as `back in use: name` with Tend / Not.
+**Set inactive** (on the Threads tab or in the Review) first goes through the counterpart's open todos under I owe, Waiting for, Relevant and Someday / Maybe: Done, Cancel or Keep each one. An inactive counterpart leaves the Review and the tag suggestions; its overview and history keep working. When it gets a new meeting, it comes back as `back in use: name` with Tend / Not.
 
 See [Projects and Areas](projects-and-areas.md) for the Threads tab and [Weekly Review](review.md) for the step.
 

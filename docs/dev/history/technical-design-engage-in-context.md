@@ -466,7 +466,7 @@ Analysis (2026-10-19, against the 0.17 code):
 
 ## As built
 
-Steps S1-S8 on `feature/engage-in-context`; every step ended with `npm run check` green.
+Steps S1-S9 on `feature/engage-in-context`; every step ended with `npm run check` green. The device checklist §5 items 1-9 passed on the A5 X in the demo space (Tilman, 2026-10-19).
 
 Choices where the design left a detail open, and deviations:
 
@@ -500,4 +500,8 @@ Choices where the design left a detail open, and deviations:
   - The meeting lines show on the options and owner-empty screens.
   - **Line budget:** Next here, Also here and Today next add about 26 dp each, about 80 dp in all (the Agreed caption about 22 dp more). The panel stays near 900 dp of the about 1,166 dp below its top, so Today next stays above the footer. Device check open.
   - The demo space gains the Coaching area (sparring thread with two past meetings, agreed todos, `#mieke`, `#wf/mieke`, Someday; loop `workshop/offsite` with a meeting today 11:00-12:00), a 16:00 meeting in Home, and the Sparring and Workshops setups.
+- **S9.**
+  - Help pages: Engage, Threads, Loops, Weekly Review, Note setups ("Since last time"), Quick Add, Projects and Areas (close-out), Profiles and the demo space. Plus the README feature line and CHANGELOG `[Unreleased]`.
+  - `design-overview.md`: one membership definition (`domain/threadLens.ts`, `isLoopMember`) as a building block, Engage's membership, tabs, lines and `EngageExit`, the Someday / Maybe step and `reviewNav`, and Quick Add's multi-part grey line.
+  - No setting and no file format changed, so no Upgrade note.
 
