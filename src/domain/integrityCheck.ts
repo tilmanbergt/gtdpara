@@ -569,6 +569,29 @@ export function checkLegacyInboxLeftovers(rootEntries: ListedEntry[], base: stri
   ];
 }
 
+/**
+ * Findings for hidden `.gtdpara-tmp` files next to a data file: the plugin was
+ * stopped between writing the new content and renaming it over the file
+ * (docs/dev/history/technical-design-quality-hardening.md §3.1). The data file
+ * itself still holds the last complete save; the next save overwrites the
+ * leftover.
+ */
+export function checkWriteLeftovers(
+  leftovers: Array<{itemKind: GtdParaKind; itemPath: string; tempPath: string}>,
+): IntegrityFinding[] {
+  return leftovers.map(l => ({
+    checkId: 'writeLeftover',
+    itemKind: l.itemKind,
+    itemPath: l.itemPath,
+    entityKind: 'item' as const,
+    entityLabel: l.tempPath.slice(l.tempPath.lastIndexOf('/') + 1),
+    notePath: '',
+    message:
+      `An unfinished save left the hidden file "${l.tempPath}". The data file next to it holds the last ` +
+      'complete save, and the next save in gtdpara replaces the leftover; you can also delete it in a file manager.',
+  }));
+}
+
 /** Formats a full run's findings into the single report file storage/integrityCheck.ts writes - kept pure/testable, separate from the actual file write. */
 export function formatIntegrityReport(findings: IntegrityFinding[], itemsScanned: number, scannedAt: Date): string {
   const lines: string[] = [

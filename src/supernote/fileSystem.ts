@@ -173,7 +173,7 @@ export interface ElementLink {
 interface GtdParaFileNativeModule {
   listFolderEntries(folderPath: string): Promise<FolderEntry[]>;
   readTextFile(path: string): Promise<string | null>;
-  writeTextFile(path: string, content: string): Promise<boolean>;
+  writeTextFile(path: string, content: string): Promise<'atomic' | 'direct'>;
   ensureFolder(path: string): Promise<boolean>;
   moveFolder(fromPath: string, toPath: string): Promise<boolean>;
   moveFile(fromPath: string, toPath: string): Promise<boolean>;
@@ -441,9 +441,8 @@ export async function readTextFile(path: string): Promise<string | null> {
 
 /**
  * Overwrites a whole text file (creating it, and any missing parent
- * folders, if needed). Callers pass the *entire* new file content -
- * domain/markdown.ts computes that from the current content plus one
- * span-scoped change, this function has no notion of partial writes.
+ * folders, if needed) with the *entire* new content. The native side replaces it atomically
+ * (domain/fileName.ts's writeTempPathFor) or, when that fails, writes directly ('direct', warned).
  */
 export async function writeTextFile(path: string, content: string): Promise<void> {
   if (!GtdParaFile) {
@@ -457,8 +456,8 @@ export async function writeTextFile(path: string, content: string): Promise<void
   }
   log('writeTextFile: start', path, `${content.length} chars`);
   try {
-    await GtdParaFile.writeTextFile(path, content);
-    log('writeTextFile: done', path);
+    const how = await GtdParaFile.writeTextFile(path, content);
+    (how === 'direct' ? logWarn : log)('writeTextFile: done', how, path);
   } catch (e) {
     logError('writeTextFile: failed', path, errorMessage(e));
     throw e;
