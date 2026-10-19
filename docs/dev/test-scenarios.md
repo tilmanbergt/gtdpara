@@ -5,7 +5,30 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-1 scenario.
+10 scenarios.
+
+## Daily
+
+### Add a meeting for next week from Daily
+
+- **Given** an empty PARA folder
+- **When** I open Daily, switch Quick Add to Meeting, enter "Team sync" a week from today and tap + Add
+- **Then** Inbox.txt has the meeting on that date
+- **Then** the status line says where it went, since Daily doesn't show next week
+
+Test: `__tests__/scenarios/daily.test.tsx` · design: `docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md`
+
+## Inbox
+
+### Refile a todo with its note from the Inbox to a project
+
+- **Given** Inbox.txt has the todo "Call Anna" with its note "Call Anna.note", and project "Website" exists
+- **When** I open the Inbox, tap "Call Anna", tap Refile, open Projects, tap "Website" and confirm Move
+- **Then** Website's project.txt has the todo with its note link, after "Write copy"
+- **Then** Inbox.txt no longer has it
+- **Then** the note moved into the project's folder, keywords and all
+
+Test: `__tests__/scenarios/inbox.test.tsx` · design: `docs/dev/history/technical-design-filing-unification.md`
 
 ## Quick Add
 
@@ -18,3 +41,70 @@
 - **Then** the status line confirms it and nothing was logged as an error
 
 Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-filing-unification.md`
+
+### Edit a todo, then tap another one: the first edit is saved
+
+- **Given** project "Website" has the todos "Write copy" and "Fix footer"
+- **When** I open "Website", tap "Write copy", change it to "Write landing page copy" and tap "Fix footer"
+- **Then** project.txt has the changed todo, still #next, and "Fix footer" unchanged
+- **Then** "Fix footer" is now the one being edited
+
+Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-meeting-lists.md`
+
+### An abbreviation tag files a todo into its project while editing
+
+- **Given** project "Website" (#WEB) and the Inbox todo "Ask about hosting"
+- **When** I edit the Inbox todo, add "#WEB" and tap "File: Website"
+- **Then** the todo is in Website's project.txt, without the #WEB tag
+- **Then** Inbox.txt no longer has it
+
+Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-abbrev-quick-file.md`
+
+### Ticking a todo off writes its completion date
+
+- **Given** project "Website" has the todo "Write copy"
+- **When** I open "Website" and tick "Write copy" off
+- **Then** project.txt has it done, with today's date as completion field
+
+Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-tags.md`
+
+## Settings
+
+### Unreadable settings are never replaced by the defaults unasked
+
+- **Given** the stored settings are broken and the Inbox has a done todo
+- **When** I open gtdpara
+- **Then** the status line says the settings could not be read
+- **And** a setting changed on the way (Inbox: Hide done tasks) leaves the stored settings as they were
+- **And** "Start over" stores the defaults and the message goes away
+
+Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+## Your files
+
+### A hand-edited project file keeps everything gtdpara does not own when a todo is added
+
+- **Given** project "Website" has a frontmatter line, a paragraph, a stray line, an old-style due date and a section of its own, all by hand
+- **When** I add the todo "Call the designer" on its page
+- **Then** the new todo is in the Tasks section
+- **And** the frontmatter line, the paragraph, the stray line, the old due date and the own section are all still there
+
+Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-tags.md`
+
+### An outside edit to another part of the file is kept when gtdpara saves
+
+- **Given** project "Website" is open in gtdpara
+- **When** its Scope is changed in Obsidian, and I then add a todo in gtdpara
+- **Then** project.txt has both: the new Scope and the new todo, and nobody was asked
+
+Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+### When gtdpara and another app changed the same list, the user decides which wins
+
+- **Given** project "Website" is open in gtdpara
+- **When** its todo is changed in Obsidian, and I then add a todo in gtdpara
+- **Then** gtdpara asks which version wins and has written nothing yet
+- **And** "Use the file" keeps the Obsidian version, says nothing was saved and keeps what I typed
+- **And** after another change in Obsidian, + Add asks again, and "Use mine" saves the list as gtdpara shows it, with the new todo
+
+Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`

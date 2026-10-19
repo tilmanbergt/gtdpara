@@ -6,8 +6,7 @@
  */
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {act, fireEvent, render, screen} from '@testing-library/react-native';
-import {Text} from 'react-native';
+import {act, configure, fireEvent, render, screen} from '@testing-library/react-native';
 import App from '../../App';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
 import {BUILD_INFO} from '../../src/generated/buildInfo';
@@ -15,14 +14,38 @@ import {device} from '../fakeDevice/device';
 
 const SETTINGS_KEY = 'gtdpara:settings:v1';
 
+// Kept tabs stay mounted with display: none; queries see only what the user sees.
+configure({defaultIncludeHiddenElements: false});
+
 let mounted: ReturnType<typeof render> | null = null;
 
-/** Lets every pending promise and timer chain run (loading, cache refresh, writes). */
+/**
+ * Nothing measures in a test, so every view that asks for its size gets one the
+ * size of the A5 X screen's content area once: paged lists then show what fits
+ * a tall page. Whether rows really fit is checked on the device.
+ */
+const LAYOUT = {x: 0, y: 0, width: 1340, height: 1500};
+const laidOut = new WeakSet<object>();
+
+function layoutPass(): boolean {
+  if (!mounted) return false;
+  let fired = false;
+  for (const node of screen.UNSAFE_root.findAll(n => typeof n.props.onLayout === 'function', {deep: true})) {
+    if (laidOut.has(node.props.onLayout)) continue;
+    laidOut.add(node.props.onLayout);
+    fireEvent(node, 'layout', {nativeEvent: {layout: LAYOUT}});
+    fired = true;
+  }
+  return fired;
+}
+
+/** Lets every pending promise and timer chain run (loading, cache refresh, writes) and lays out new views. */
 export async function settle(rounds = 8): Promise<void> {
   for (let i = 0; i < rounds; i++) {
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
+    if (layoutPass()) i = Math.max(0, i - 1);
   }
 }
 
@@ -58,10 +81,13 @@ export async function reopenApp(options: {fromNote?: string} = {}): Promise<void
 
 /** Every text on screen, in order. */
 export function texts(): string[] {
-  return screen.UNSAFE_getAllByType(Text).map(t => [t.props.children].flat(Infinity).filter(c => typeof c === 'string' || typeof c === 'number').join(''));
+  return screen
+    .queryAllByText(/./)
+    .map(t => [t.props.children].flat(Infinity).filter(c => typeof c === 'string' || typeof c === 'number').join(''));
 }
 
-function describeScreen(): string {
+/** The visible texts joined, for failure messages and while writing a scenario. */
+export function describeScreen(): string {
   return texts()
     .filter(t => t.trim())
     .slice(0, 80)
@@ -100,4 +126,20 @@ export function expectShows(text: string | RegExp): void {
 
 export function expectNotShows(text: string | RegExp): void {
   if (shows(text)) throw new Error(`expected the screen not to show ${String(text)}`);
+}
+
+/** The text in the visible field showing `placeholder`. */
+export function fieldValue(placeholder: string): string | undefined {
+  return screen.queryAllByPlaceholderText(placeholder)[0]?.props.value;
+}
+
+/**
+ * Which "☐" belongs to the row showing `rowText`: rows draw their checkbox
+ * before their text, so it is the last "☐" before that text on screen.
+ */
+export function firstCheckboxOf(rowText: string): number {
+  const all = texts();
+  const at = all.indexOf(rowText);
+  if (at < 0) throw new Error(`no row "${rowText}"; the screen shows: ${describeScreen()}`);
+  return all.slice(0, at).filter(t => t === '☐').length - 1;
 }
