@@ -22,6 +22,8 @@ or your project/area files are stored.
   default settings, says so, and saves no settings until you choose **Start over**. See
   "Troubleshooting".
 - Errors shown in the status line are now in the log, so a debug bundle shows them too.
+- **Quick Add on a project's or area's page keeps what you typed when adding fails**, and no longer
+  also says "Added todo" in that case.
 
 ## [0.18.0] — 2026-10-19
 
