@@ -33,6 +33,7 @@ import {OverviewRequest} from '../../ui/overviewStore';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {useCachedItems} from '../../ui/useCachedItems';
 import EngageButton from '../../ui/EngageButton';
+import {requestReviewStep, somedayFilterOf} from '../review/reviewNav';
 import {getCachedData} from '../../storage/dataCache';
 import {useLinkedFileMissing} from '../usePlanningScreen';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
@@ -187,6 +188,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             actions={actions}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
+            onOpenSomeday={entries => requestReviewStep('somedayMaybe', somedayFilterOf(lens === 'thread' && !counterpartOnly ? `#${overview.thread.tag}` : labels.counterpart, entries))}
             textColor={textColor}
             borderColor={borderColor}
           />

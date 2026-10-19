@@ -83,3 +83,26 @@ describe('buildReviewStepCounts', () => {
     expect(counts.gmailInbox.n).toBe(7);
   });
 });
+
+describe('buildReviewAggregate - Someday / Maybe (docs/dev/history/technical-design-engage-in-context.md §2.10)', () => {
+  const items = [
+    item('project', 'Active', {tasks: [task('One day #someday'), task('Now #next'), task('Perhaps #maybe'), task('Gone #someday', {done: true})]}),
+    item('area', 'Paused', {status: 'on-hold', tasks: [task('Later #someday')]}),
+    item('project', 'Finished', {status: 'done', tasks: [task('Never #someday')]}),
+    item('project', 'Broken', {loadError: 'read failed'}),
+  ];
+  const agg = buildReviewAggregate(items, NOW);
+
+  it('covers active and on-hold Projects/Areas, open Someday/Maybe todos in file order', () => {
+    expect(agg.somedayItems.map(e => [e.item.name, e.tasks.map(t => t.task.text)])).toEqual([
+      ['Active', ['One day #someday', 'Perhaps #maybe']],
+      ['Paused', ['Later #someday']],
+    ]);
+    expect(agg.somedayItems[0].tasks.map(t => t.taskIndex)).toEqual([0, 2]);
+  });
+
+  it('counts the todos on the hub', () => {
+    const settings = {weeklyFocusProjectCount: 0, weeklyFocusAreaCount: 0, monthlyFocusProjectCount: 0, monthlyFocusAreaCount: 0};
+    expect(buildReviewStepCounts(agg, 0, items, settings, 0).somedayMaybe).toEqual({n: 3});
+  });
+});

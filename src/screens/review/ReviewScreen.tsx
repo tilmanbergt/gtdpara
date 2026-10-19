@@ -53,6 +53,7 @@ import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {styles} from './reviewStyles';
+import {clearReviewStepFilter, takeReviewStepRequest, useReviewStepRequestNonce} from './reviewNav';
 import {bump, endVisit, getSavedView, rememberView, ReviewView, startVisit} from './reviewVisit';
 import {ReviewStepProps} from './shared';
 import FocusResetStep from './steps/FocusResetStep';
@@ -62,6 +63,7 @@ import ItemListStep from './steps/ItemListStep';
 import MeetingsCloseOutStep from './steps/MeetingsCloseOutStep';
 import OpenLoopsStep, {openLoopsCount, useLoopRoster} from './steps/OpenLoopsStep';
 import TendingThreadsStep, {tendingCount, useTendingRoster} from './steps/TendingThreadsStep';
+import SomedayStep from './steps/SomedayStep';
 import UnfocusedNextStep from './steps/UnfocusedNextStep';
 import WeekAheadStep from './steps/WeekAheadStep';
 import {useReviewData} from './useReviewData';
@@ -144,6 +146,7 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
     // A double tap finds the visit already closed by the first tap: ignore it.
     const ended = endVisit(id);
     if (!ended) return;
+    clearReviewStepFilter();
     const counts: ReviewSummaryCounts = {...ended.counts};
     if (id === 'stalled' || id === 'neglected') {
       const activated = ended.activationCandidates.filter(hasActionableOpenTask).length;
@@ -177,6 +180,19 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
     if (targetId) enterStep(targetId);
     else showView(target === 'next' ? {kind: 'end'} : {kind: 'hub'});
   };
+
+  // A step asked for from outside (screens/review/reviewNav.ts): taken once, entered like a hub tap.
+  const requestNonce = useReviewStepRequestNonce();
+  useEffect(() => {
+    if (requestNonce === 0) return;
+    if (view.kind === 'step') leaveStep(false, 'hub');
+    const request = takeReviewStepRequest();
+    if (!request) return;
+    log('ReviewScreen: step requested', request.id, request.filter ? 'filtered' : 'all');
+    enterStep(request.id);
+    // Runs once per request; the view at that moment is what it leaves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestNonce]);
 
   const openReviewItem = (item: ReviewItemRef) => onOpenItem(item.kind, {name: item.name, path: item.path, isFolder: true});
 
@@ -290,6 +306,8 @@ export default function ReviewScreen({onOpenItem, onReviewRecorded, onOpenCalend
         return <OpenLoopsStep {...stepProps} />;
       case 'unfocusedNext':
         return <UnfocusedNextStep {...stepProps} />;
+      case 'somedayMaybe':
+        return <SomedayStep {...stepProps} />;
       case 'weeklyFocus':
         return <FocusResetStep {...stepProps} />;
     }
