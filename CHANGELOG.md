@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.18.1] — 2026-10-20
+
 ### Fixed
 - **Todos and meetings with long titles get their note page again**: a Supernote keyword can
   have at most 43 characters, and a longer title made creating the page fail - leaving an
