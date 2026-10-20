@@ -4,7 +4,7 @@
 > releases, with the design of each. Requirements as decided, current state, design, steps, test
 > plan and open points; each slice gets its own "As built" section when it is done.
 
-Status: **Q1 built** on `feature/safe-writes` (§3.7) for 0.18.1, waiting for its device test;
+Status: **Q1 built** on `feature/safe-writes` (§3.7) for 0.18.2, waiting for its device test;
 **Q2 built** on `feature/scenario-tests` (§4.9), taken from `feature/safe-writes`; Q3-Q4 designed.
 Decisions D1-D4 in §7.
 
@@ -21,7 +21,7 @@ to sit between feature releases:
 
 | Slice | Name | User-visible | Ships as |
 |---|---|---|---|
-| Q1 | Safe writes | yes ("Fixed") | 0.18.1 (0.18.0 was released before Q1 was device-tested) |
+| Q1 | Safe writes | yes ("Fixed") | 0.18.2 (0.18.0 and the 0.18.1 hotfix were released before Q1 was device-tested) |
 | Q2 | Scenario tests | no | merges to `main` when done, rides along with the next release |
 | Q3 | Interruptions and messy files | only fixes it finds | the release after Q2; fixes as "Fixed" lines |
 | Q4 | Quick Add split | no | merges to `main` when done, rides along |
@@ -341,7 +341,7 @@ test Q1; it merges after Q1.
 - **Scenarios** (§4.7): all twelve, plus "an outside edit to another part is kept" as its own
   scenario. Scenario 11 found a bug: Quick Add on a project's page took a failed add for a
   success (the screen's `runWidgetAction` swallowed the error), cleared the text and said "Added
-  todo". Fixed on `feature/safe-writes` for 0.18.1.
+  todo". Fixed on `feature/safe-writes` for 0.18.2.
 - **Not done** from §4.8 step 5: moving two of the hand-mocked UI tests to the harness. The new
   scenarios serve as the examples; the old tests stay as they are.
 

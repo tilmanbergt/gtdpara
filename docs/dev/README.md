@@ -132,6 +132,8 @@ no history and no open work:
   the binding rules (§3).
 - `design-philosophy.md`: the values behind the design and how they show up in it.
 - `design-device-rendering.md`: screen facts, row heights and space budgets for the A5 X.
+- `supernote-host-facts.md`: how the Supernote and its plugin host behave where the SDK
+  documentation is silent or unclear (limits, quirks), as found on the device.
 - `RELEASING.md`: git, build and release workflow.
 - `inkhub-listing.md`: the field values for the InkHub store listing.
 - this `README.md`.

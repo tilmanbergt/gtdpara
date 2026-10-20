@@ -14,6 +14,7 @@
  * typed title and hands them here as a plain string array; `title` is
  * already the clean, tag-stripped text.
  */
+import {fitKeyword} from '../domain/keywordLength';
 import {GtdParaSettings} from '../domain/settings';
 import {createNote, insertKeyWord, listFolderEntries} from '../supernote/fileSystem';
 import {getNoteTemplate, sanitizeFileNameComponent} from './noteLinks';
@@ -54,7 +55,7 @@ export async function createStandaloneNote(
   await createNote(absolutePath, getNoteTemplate(), true);
 
   for (const tag of tags) {
-    await insertKeyWord(absolutePath, 0, tag);
+    await insertKeyWord(absolutePath, 0, fitKeyword(tag)); // the Supernote's keyword limit, domain/keywordLength.ts
   }
 
   log('createStandaloneNote: done', absolutePath, tags);
