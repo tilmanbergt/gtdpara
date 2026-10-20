@@ -332,7 +332,16 @@ interface Span {
   found: boolean;
 }
 
-/** Splits on '\n' only - files are written with '\n', never '\r\n'. */
+/**
+ * A data file's text with Windows line endings (`\r\n`, from Notepad or a sync tool) turned
+ * into `\n`, which is what every parser here expects and every save writes. Applied to every
+ * data file as it is read (storage/projectFile.ts, storage/dataFileWrite.ts, storage/markStore.ts).
+ */
+export function normalizeLineEndings(text: string): string {
+  return text.includes('\r') ? text.replace(/\r\n?/g, '\n') : text;
+}
+
+/** Splits on '\n' only - files are written with '\n', and read through normalizeLineEndings. */
 function splitLines(content: string): string[] {
   return content.length === 0 ? [] : content.split('\n');
 }

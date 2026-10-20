@@ -5,8 +5,8 @@
 > plan and open points; each slice gets its own "As built" section when it is done.
 
 Status: **Q1 built** on `feature/safe-writes` (§3.7) for 0.18.2, waiting for its device test;
-**Q2 built** on `feature/scenario-tests` (§4.9), taken from `feature/safe-writes`; **Q3** findings and
-fixes in §5, waiting for approval; Q4 designed.
+**Q2 built** on `feature/scenario-tests` (§4.9), taken from `feature/safe-writes`; **Q3 built** on
+`feature/interruptions` (§5.6) for 0.18.3; Q4 designed.
 Decisions D1-D4 in §7.
 
 ## 1. Goal and decisions
@@ -406,6 +406,29 @@ reopened; every data-file save run on unusual files; the calendar parser fed odd
 
 All "Fixed" lines (F2, F3, F4; F1 is an Integrity Check improvement): a patch, 0.18.3, or with
 the next feature release, whichever comes first.
+
+### 5.6 As built (Q3)
+
+Approved by Tilman ("go"), built on `feature/interruptions` from `main` with the scenario tests.
+
+- **F1**: there was no general missing-note finding at all - the Integrity Check only reported
+  links containing `#`. The new check `noteMissing` (`domain/integrityCheck.ts`) reports an own
+  note (a link without `#`) that is not there; `storage/integrityCheck.ts` lists the `Todos/` and
+  `Meetings/` folders of every scanned item once and passes `notesByName`, so the message names
+  where a note of that name is.
+- **F2**: `storage/closeOut/context.ts` does not count the target PDF as a collision when the
+  plan's journal has `move-pdf` and the project folder no longer holds the PDF. The archive
+  steps themselves were already safe to repeat.
+- **F3**: `IntegrityCheckInput.inArchive` picks the message.
+- **F4**: `domain/markdown.ts`'s `normalizeLineEndings`, applied where data files are read:
+  `loadProjectFile`, the re-reads in `storage/dataFileWrite.ts` and `storage/markStore.ts`.
+- **Tests**: `__tests__/scenarios/interruptions.test.tsx` - refile with a note and close-out,
+  each stopped after every write (`freshDevice()` per round, `crashAfter(n)`), then reopened and
+  finished or checked with the Integrity Check; both fail without the fixes. The Windows-line-
+  endings scenario. `__tests__/storage/oddFiles.test.ts` (nine odd files × six kinds of save),
+  `__tests__/domain/noteMissing.test.ts`, `icsParser.test.ts`, close-out message tests.
+- The driver gained `runIntegrityCheck()`; scenarios run with a 120 s timeout because a crash
+  scenario opens the app once per stopping point (about 10 s each).
 
 ## 6. Q4 "Quick Add split" and what waits
 

@@ -9,6 +9,8 @@ When a project is finished, gtdpara helps you end it cleanly: nothing left open,
 
 You can leave the close-out at any time. Every decision is saved in the project's file (in a `## Close-out` section), so next time it continues where you stopped.
 
+If gtdpara is stopped while **Archive now** runs (the Supernote switches off, for example), nothing is lost. If the project is still in Projects, open **Close out…** again and tap **Archive now**: it finishes the steps that are left. If the folder had already moved, the project is fully archived; only `status:` in its `project.txt` may still say `active`, which you can change by hand or leave. **Run Integrity Check** in Settings → Advanced tells you which of the two it is.
+
 ## The five steps
 
 1. **Checklist**: shows the project's area, when it was done and where it will go in the Archive. It lists what still needs attention. Open todos and future meetings block archiving; handle them right there: a todo with Done, Cancel, → Area or → Inbox, a meeting with Cancel, → Area or → Inbox. A moved item takes its own note along (gtdpara asks first); a page in a shared note stays where it is and stays linked. A folder of the same name already in the Archive also blocks; rename one of them by hand. Meetings that were not closed out, goals that still point to the project, links from other folders into it, and open lasso marks are shown as warnings. **Process ›** next to a mark opens it for processing; marks left at archiving move to the Inbox (see [Lasso](lasso.md)). **Change…** next to the area assigns another area, or none. **Edit** next to "Done on" changes the done date, which decides the archive year.

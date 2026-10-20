@@ -143,3 +143,17 @@ export function firstCheckboxOf(rowText: string): number {
   if (at < 0) throw new Error(`no row "${rowText}"; the screen shows: ${describeScreen()}`);
   return all.slice(0, at).filter(t => t === '☐').length - 1;
 }
+
+/** Runs Settings → Advanced → Run Integrity Check and returns its report (EXPORT/gtdpara/debug). */
+export async function runIntegrityCheck(): Promise<string> {
+  await tapTab('Settings');
+  await tap('Advanced');
+  await tap('Run Integrity Check');
+  const reports = device()
+    .fs.paths('/storage/emulated/0/EXPORT/gtdpara/debug')
+    .filter(p => /integrity-check-.*\.txt$/.test(p))
+    .sort();
+  const last = reports.at(-1);
+  if (!last) throw new Error(`no Integrity Check report was written; the screen shows: ${describeScreen()}`);
+  return device().fs.get(last) ?? '';
+}

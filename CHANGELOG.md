@@ -10,6 +10,17 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Fixed
+- **Project files saved on Windows show their todos again**: a file saved with Windows line
+  endings (Notepad, some sync tools) looked empty in gtdpara. It is read as usual now; the next
+  save writes it with plain line endings.
+- **An interrupted close-out can be finished**: if gtdpara was stopped during **Archive now**
+  after the PDF was moved, the checklist said the name was taken at the target and archiving
+  stayed blocked. **Archive now** now finishes the remaining steps.
+- **Integrity Check**: it now lists todos and meetings whose note is missing, and names where a
+  note with that name is - for example after a move that was stopped halfway. Its message about
+  an interrupted close-out says exactly what is left to do.
+
 ## [0.18.2] — 2026-10-20
 
 ### Fixed

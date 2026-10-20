@@ -12,7 +12,7 @@
  *   into the same file, which builds on the cached text, keeps the line.
  */
 import {Destination} from '../domain/destination';
-import {ensureSkeleton, parseMarksSpan, writeMarksIntoContent} from '../domain/markdown';
+import {ensureSkeleton, normalizeLineEndings, parseMarksSpan, writeMarksIntoContent} from '../domain/markdown';
 import {markLinkPath, resolveMarkPath} from '../domain/marks';
 import {ResolvedParaPaths} from '../domain/settings';
 import {GtdParaKind, Mark} from '../domain/types';
@@ -47,7 +47,7 @@ function enqueue<T>(job: () => Promise<T>): Promise<T> {
 }
 
 async function readFresh(ref: MarkFileRef): Promise<string> {
-  return (await readTextFile(dataFilePath(ref.kind, ref.folder))) ?? '';
+  return normalizeLineEndings((await readTextFile(dataFilePath(ref.kind, ref.folder))) ?? '');
 }
 
 async function writeAndApply(ref: MarkFileRef, next: string): Promise<void> {
@@ -168,8 +168,9 @@ export function moveMarksToInbox(
   inboxFolder: string,
 ): Promise<{moved: number; itemContent: string | null}> {
   return enqueue(async () => {
-    const raw = await readTextFile(dataFilePath(itemRef.kind, itemRef.folder));
-    if (raw === null) {return {moved: 0, itemContent: null};}
+    const read = await readTextFile(dataFilePath(itemRef.kind, itemRef.folder));
+    if (read === null) {return {moved: 0, itemContent: null};}
+    const raw = normalizeLineEndings(read);
     const {marks, extraLines} = parseMarksSpan(raw);
     if (marks.length === 0) {return {moved: 0, itemContent: raw};}
     const inboxRef: MarkFileRef = {kind: 'inbox', folder: inboxFolder};

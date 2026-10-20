@@ -61,6 +61,10 @@ export interface IntegrityCheckInput {
   defaultResourceFolder: string | null;
   /** The Default's notebook, for the renamed-folder check (docs/dev/history/technical-design-home-notebooks.md §3.7); null without one, for the Inbox and for archived items. */
   homeNotebook?: HomeNotebookSpec | null;
+  /** Found under Archive rather than live under Projects/Areas. */
+  inArchive?: boolean;
+  /** Note files in the Todos/ and Meetings/ folders of every scanned item, by file name - where a missing note may have gone. */
+  notesByName?: ReadonlyMap<string, readonly string[]>;
 }
 
 /** The device capabilities a check may need - kept to exactly what's used so a check can't reach further into the filesystem than "does this exact file/folder exist". */
@@ -322,6 +326,41 @@ export async function checkDefaultResourceFolderMissing(input: IntegrityCheckInp
 }
 
 /**
+ * A todo's or meeting's own note (a link without '#', relative to its item
+ * or absolute) that is not there. When a note with the same file name sits in
+ * another item's Todos/ or Meetings/ folder - where a move that was stopped
+ * halfway leaves it (docs/dev/history/technical-design-quality-hardening.md
+ * §5.3 F1) - the message names it, so the user can link it again. Report only.
+ */
+export async function checkNoteMissing(input: IntegrityCheckInput, io: IntegrityCheckIO): Promise<IntegrityFinding[]> {
+  const findings: IntegrityFinding[] = [];
+  const inspect = async (entityKind: 'task' | 'meeting', notePath: string, entityLabel: string) => {
+    if (!notePath || notePath.includes('#')) return;
+    const target = joinNotePath(input.itemPath, notePath);
+    if (await io.fileExists(target)) return;
+    const name = target.slice(target.lastIndexOf('/') + 1);
+    const elsewhere = (input.notesByName?.get(name) ?? []).filter(p => p !== target);
+    const shown = (p: string) => (p.startsWith(`${input.basePath.replace(/\/+$/, '')}/`) ? p.slice(input.basePath.replace(/\/+$/, '').length + 1) : p);
+    findings.push({
+      checkId: 'noteMissing',
+      itemKind: input.itemKind,
+      itemPath: input.itemPath,
+      entityKind,
+      entityLabel,
+      notePath,
+      message:
+        elsewhere.length > 0
+          ? `The note "${shown(target)}" was not found, but a note with this name is in ${elsewhere.map(p => `"${shown(p)}"`).join(', ')} ` +
+            '- a move may have stopped halfway. Link that note to this entry again, or remove the entry if it is a duplicate.'
+          : `The note "${shown(target)}" was not found - it may have been deleted or moved outside gtdpara. Link the note again, or clear the link by hand.`,
+    });
+  };
+  for (const t of input.tasks) await inspect('task', t.notePath, t.text);
+  for (const m of input.meetings) await inspect('meeting', m.notePath, `${m.date} ${m.title}`);
+  return findings;
+}
+
+/**
  * A project whose close-out archive run started but didn't finish
  * (domain/closeOut/plan.ts's closeOutInterrupted) - found in Projects (folder
  * not moved yet) or in Archive (moved, but not stamped). No disk I/O needed:
@@ -340,7 +379,10 @@ export async function checkCloseOutInterrupted(input: IntegrityCheckInput): Prom
       entityKind: 'item',
       entityLabel: name,
       notePath: '',
-      message: `The close-out of "${name}" was interrupted - open its close-out (Review → Done projects) to finish it.`,
+      message: input.inArchive
+        ? `The close-out of "${name}" was interrupted after its folder moved: it is fully archived, only "status:" in its ` +
+          'project.txt still says active. Change it to "status: archived" by hand, or leave it - gtdpara does not read the archive.'
+        : `The close-out of "${name}" was interrupted - open the project, tap "Close out…" and then "Archive now" to finish it.`,
     },
   ];
 }
@@ -407,6 +449,7 @@ export async function checkHomeNotebookRenamed(input: IntegrityCheckInput, io: I
 
 export const INTEGRITY_CHECKS: Record<string, IntegrityCheck> = {
   hashNotePath: checkHashNotePath,
+  noteMissing: checkNoteMissing,
   duplicateHeadings: checkDuplicateHeadingsAsync,
   linkedFileMissing: checkLinkedFileMissing,
   defaultResourceFolderMissing: checkDefaultResourceFolderMissing,

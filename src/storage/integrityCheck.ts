@@ -155,6 +155,19 @@ interface ScanTarget {
   inArchive: boolean;
 }
 
+/** Note files in every target's Todos/ and Meetings/ folder, by file name (checkNoteMissing's hint). */
+async function collectNotesByName(targets: ScanTarget[]): Promise<Map<string, string[]>> {
+  const byName = new Map<string, string[]>();
+  const folders = targets.flatMap(t => [`${t.path}/Todos`, `${t.path}/Meetings`]);
+  // silent: a folder that cannot be listed only means no hint for its notes
+  const listings = await Promise.all(folders.map(f => listFolderEntries(f).catch(() => [])));
+  for (const entry of listings.flat()) {
+    if (entry.isFolder || !entry.name.toLowerCase().endsWith('.note')) continue;
+    byName.set(entry.name, [...(byName.get(entry.name) ?? []), entry.path]);
+  }
+  return byName;
+}
+
 /** Hidden temp files of unfinished saves next to each target's data file (one native stat call; listings hide dot files). */
 async function findWriteLeftovers(targets: ScanTarget[]): Promise<Array<{itemKind: GtdParaKind; itemPath: string; tempPath: string}>> {
   const candidates = targets.map(t => ({itemKind: t.kind, itemPath: t.path, tempPath: writeTempPathFor(dataFilePath(t.kind, t.path))}));
@@ -200,6 +213,7 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
 
   targets.push({kind: 'inbox', path: paths.inboxFolder, name: 'Inbox', inArchive: false});
 
+  const notesByName = await collectNotesByName(targets);
   const perTargetResults = await Promise.all(
     targets.map(async (target): Promise<{findings: IntegrityFinding[]; summary: ScannedItemSummary | null; loaded: LoadedEntries | null}> => {
       try {
@@ -215,6 +229,8 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
             resourcesPath: paths.resources,
             defaultResourceFolder: file.defaultResourceFolder,
             homeNotebook: homeNotebookSpec && !target.inArchive ? homeNotebookSpec : null,
+            inArchive: target.inArchive,
+            notesByName,
           },
           io,
         );
