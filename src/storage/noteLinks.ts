@@ -6,6 +6,7 @@
  * under wherever the user happens to be browsing in the left-pane file tree.
  */
 import {RESERVED_BARE_TAGS, setFlowStateTag, stripBareTags} from '../domain/flowState';
+import {fitKeyword} from '../domain/keywordLength';
 import {setDueInLine} from '../domain/markdown';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {PageLayout} from '../domain/pageLayout';
@@ -123,10 +124,11 @@ export async function createLinkedNote(
  * Adds `keywords` to page 1 of a just-created note, so the Supernote's
  * keyword search finds it (docs/dev/history/technical-design-cleanup-0.5.md S7). A
  * keyword that can't be added is logged and skipped - the note itself
- * exists and works without it, so this never fails the note creation.
+ * exists and works without it, so this never fails the note creation. Each
+ * keyword is fitted to the Supernote's keyword limit (domain/keywordLength.ts).
  */
 export async function insertNoteKeywords(absolutePath: string, keywords: readonly string[]): Promise<void> {
-  for (const keyword of keywords) {
+  for (const keyword of keywords.map(fitKeyword)) {
     try {
       await insertKeyWord(absolutePath, 0, keyword);
     } catch (e) {

@@ -82,6 +82,11 @@ export function stripSpaceAfterHash(text: string): string {
   return text.replace(/#\s+/g, '#');
 }
 
+/** `text` without its #tags (TAG_RE), spacing left as it is - for a keyword that must get shorter (domain/keywordLength.ts). */
+export function stripTagsFromText(text: string): string {
+  return text.replace(TAG_RE, '');
+}
+
 /** Every #tag in `text`, lowercased, in the order they appear (duplicates kept - harmless, nothing dedupes on this). */
 function extractTags(text: string): string[] {
   const tags: string[] = [];

@@ -25,6 +25,17 @@ or your project/area files are stored.
 - **Quick Add on a project's or area's page keeps what you typed when adding fails**, and no longer
   also says "Added todo" in that case.
 
+## [0.18.1] — 2026-10-20
+
+### Fixed
+- **Todos and meetings with long titles get their note page again**: a Supernote keyword can
+  have at most 43 characters, and a longer title made creating the page fail - leaving an
+  empty page without a keyword in the notebook. Now the page's keyword is shortened: tags are
+  left out (they are keywords of their own), and if needed the title is cut with "…". The page
+  is found again every time. If you hit the error before, delete that empty page by hand. See
+  "Finding notes again" on the help page "Note setups".
+- Editing a todo's or meeting's title can no longer leave its notebook page without a keyword.
+
 ## [0.18.0] — 2026-10-19
 
 ### New
