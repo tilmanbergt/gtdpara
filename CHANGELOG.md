@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.18.2] — 2026-10-20
+
 ### Fixed
 - **Saving is safe if the Supernote switches off or gtdpara is closed mid-save**: a project's,
   area's or the Inbox's file is now either the old or the new version, never half written.
