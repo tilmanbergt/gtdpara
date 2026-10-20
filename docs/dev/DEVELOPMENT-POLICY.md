@@ -17,11 +17,13 @@ in the same change that shows a rule is wrong or missing (§11).
 1. **Features: requirements, then design, then implementation.**
    - Requirements are clarified in conversation first: questions, edge cases, decisions.
    - Then a technical design in `docs/dev/history/technical-design-<topic>.md`: requirements as decided,
-     current state, design, files, test plan, open points.
+     current state, design, files, **test scenarios** (Given/When/Then in plain language, see §7),
+     test plan, open points. The test scenarios are reviewed with the design.
    - Implementation starts only after the design is approved. The design doc gets an
      **"As built"** section when it's done.
 2. **Bugs: exact failure, then root cause, then fix.** Pin down the exact failure (steps, device,
-   version, log), find the root cause in the code, then fix it. No fixes based on guesses. If
+   version, log), find the root cause in the code, write a scenario or unit test that fails for
+   it, then fix it. No fixes based on guesses. If
    diagnosis needs more data, add logging first.
 3. **Small, verified steps.** Every step ends with the checks in §8 passing.
 4. **Ideas that come up on the way** go to the internal backlog (the claude.ai project document
@@ -196,9 +198,15 @@ A change is not done while the docs describe the old behavior.
   - the code-health rules (`scripts/code-health.mjs`): file length, `errorMessage()` instead of
     copied error text, no silent catches, no history in comments, no `console`/`Alert`, date text from
     `domain/dateFormat.ts` in `ui/` and `screens/`, design-doc references that exist.
-  - A smoke render of the changed screen where possible (`react-test-renderer`, mocks as in
-    `docs/dev/README.md`), at minimum for changes to `App.tsx` and navigation.
-- **On the device**, for every change that touches UI, files or device APIs:
+  - **Scenario tests** (`__tests__/scenarios/`): the whole app on the fake device
+    (`test-helpers/fakeDevice/`), tapped through like a user, with the files checked afterwards.
+    Every feature's design scenarios become scenario tests; every flow that changes files has at
+    least one. `npm run scenarios` regenerates `docs/dev/test-scenarios.md`, and `npm run check`
+    fails when it is out of date - its diff in a change is what Tilman reviews. How to write one:
+    `docs/dev/README.md` "Writing scenarios".
+- **On the device**, for every change that touches UI, files or device APIs, test what the fake
+  device cannot show: how it looks on e-ink (layout, the A5 X budget, refreshes), lasso and
+  handwriting, real notes and the real SDK, speed, firmware differences:
   - build with `buildPlugin.ps1`, install over the previous build, test the changed flow;
   - for features, a short checklist in the design doc's test plan, ticked off on the device;
   - use the demo space (Settings → Advanced → Profiles) for tests that change data.
@@ -213,7 +221,8 @@ A change is not done while the docs describe the old behavior.
 - [ ] UI rules kept; checked against the A5 X budget - §4
 - [ ] Errors and key steps logged; debug bundle extended if needed - §5
 - [ ] Help pages, CHANGELOG `[Unreleased]`, README, PRIVACY, dev docs updated as needed - §6
-- [ ] `npm run check` passes; new logic has tests - §7
+- [ ] `npm run check` passes; new logic has tests; changed flows have scenario tests and
+      `docs/dev/test-scenarios.md` is regenerated - §7
 - [ ] Device test done, or explicitly listed as still open - §7
 - [ ] Ideas found on the way are on the backlog, not half-built - §1
 - [ ] Step-by-step guide for Tilman given (commit, build, test, push/merge, release?) - §10
@@ -236,6 +245,8 @@ Before running `scripts/release.ps1`:
       Experimental.
 - [ ] **Logging**: no debug-only noise left in hot paths; no secrets or excessive content logged.
 - [ ] `npm run check` passes on a clean tree (`release.ps1` runs it too).
+- [ ] **Tested scenarios**: the diff of `docs/dev/test-scenarios.md` since the last release read
+      once - is anything missing for what this release changes?
 - [ ] Device checklist in RELEASING.md: install **over the previous release**, settings kept,
       main tabs work, Quick Add, Review, Help opens, Settings → About shows the new version.
 - [ ] After publishing: release page has text and `.snplg`; InkHub/Reddit updated if it matters
