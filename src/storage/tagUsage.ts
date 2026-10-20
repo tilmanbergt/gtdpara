@@ -28,6 +28,7 @@ async function loadEntries(): Promise<TagUsageEntry[]> {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
+    // silent: an unreadable list starts empty
     return [];
   }
 }

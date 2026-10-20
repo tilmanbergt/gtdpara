@@ -394,6 +394,29 @@ export function writeSectionLines(content: string, heading: string, lines: strin
   return setSpan(content, heading, lines);
 }
 
+/** The frontmatter block as a part a save can own - see dataFilePartText. */
+export const FRONT_MATTER_PART = 'frontmatter';
+
+/** The `## ` headings this module reads and writes, as parts a save can own. */
+export const DATA_FILE_HEADINGS = {
+  scope: SCOPE_HEADING,
+  tasks: TASKS_HEADING,
+  meetings: MEETINGS_HEADING,
+  weeklyGoals: WEEKLY_GOALS_HEADING,
+  monthlyGoals: MONTHLY_GOALS_HEADING,
+} as const;
+
+/**
+ * One part of a data file - FRONT_MATTER_PART or a `## ` heading - as text,
+ * or null when the file has no such part. A save compares it in the content
+ * it started from and the file as it is now, to tell whether an outside edit
+ * touched what it writes (docs/dev/history/technical-design-quality-hardening.md §3.2).
+ */
+export function dataFilePartText(content: string, part: string): string | null {
+  const span = part === FRONT_MATTER_PART ? getFrontMatterSpan(content) : getSpan(content, part);
+  return span.found ? span.lines.join('\n') : null;
+}
+
 const FRONTMATTER_DELIM = '---';
 
 /**

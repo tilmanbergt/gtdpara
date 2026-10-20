@@ -38,3 +38,14 @@ export function invalidFileNameChars(input: string): string[] {
   }
   return found;
 }
+
+/**
+ * The hidden temp file the native write replaces `path` from - left behind
+ * only when the plugin is killed between writing and renaming it
+ * (docs/dev/history/technical-design-quality-hardening.md §3.1). Same name
+ * rule as GtdParaFileModule.kt's `tempFileFor`.
+ */
+export function writeTempPathFor(path: string): string {
+  const slash = path.lastIndexOf('/');
+  return `${path.slice(0, slash + 1)}.${path.slice(slash + 1)}.gtdpara-tmp`;
+}

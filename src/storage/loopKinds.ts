@@ -48,13 +48,15 @@ export function reloadLoopKinds(): Promise<void> {
 
 /** The kinds as known now; starts loading them on first use. */
 export function getLoopKinds(): LoopKindsState {
-  if (!loaded) reloadLoopKinds().catch(() => undefined);
+  if (!loaded) reloadLoopKinds().catch(() => undefined); // silent: loadSettings logs its own failure
   return current;
 }
 
 /** Resolves once the kinds were read at least once. */
 export async function loopKindsReady(): Promise<LoopKindsState> {
+  // silent: loadSettings logs its own failure; the kinds stay as they are
   if (!loaded) reloadLoopKinds().catch(() => undefined);
+  // silent: as above
   await loaded?.catch(() => undefined);
   return current;
 }

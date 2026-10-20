@@ -15,6 +15,7 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import {STATUS_PRIORITY, StatusMessage} from './types';
 import {useScreenActivity} from '../screenActivity';
+import {logWarn} from '../../utils/log';
 
 export interface StatusEntry {
   id: string;
@@ -36,6 +37,8 @@ export function StatusProvider({children}: {children: React.ReactNode}): React.J
   const seqRef = useRef(0);
 
   const show = useCallback((id: string, msg: StatusMessage) => {
+    // Every error the user sees is in the log, so a debug bundle shows it too (DEVELOPMENT-POLICY §5).
+    if (msg.kind === 'error') logWarn('Status: error shown', id, msg.text);
     seqRef.current += 1;
     const seq = seqRef.current;
     setEntries(prev => {

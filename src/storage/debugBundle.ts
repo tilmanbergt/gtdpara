@@ -22,6 +22,7 @@ import {counterpartScopes} from '../domain/counterparts';
 import {getCachedData} from './dataCache';
 import {errorMessage} from '../utils/errorMessage';
 import {didNoteSetupMigrationFail} from './noteSetupMigrationState';
+import {getSettingsUnreadable} from './settingsUnreadable';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -108,11 +109,12 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
   );
   lines.push(`time ${now.toISOString()} (${utcOffset(now)}) · launched from ${extensionOf(launch?.path)}`);
   lines.push(...summarizeSettings(settings));
+  lines.push(`settings readable: ${getSettingsUnreadable() === null ? 'yes' : 'no - running on defaults, saving none'}`);
   let data = 'not available';
   try {
     data = JSON.stringify(collectPerfStats());
   } catch {
-    // keep 'not available'
+    // silent: the bundle says 'not available'
   }
   lines.push(`data: ${data}`);
   lines.push(await marksLine());

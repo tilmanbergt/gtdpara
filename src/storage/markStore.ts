@@ -42,7 +42,7 @@ let queue: Promise<unknown> = Promise.resolve();
 /** Runs `job` after every job queued before it, whether those failed or not. */
 function enqueue<T>(job: () => Promise<T>): Promise<T> {
   const run = queue.then(job, job);
-  queue = run.catch(() => undefined);
+  queue = run.catch(() => undefined); // silent: the caller gets the error from `run`; this tail only keeps the queue going
   return run;
 }
 

@@ -444,42 +444,38 @@ export default function ProjectDataPanel({
    * unified-quickadd.md §10 step 2) - here rather than in TodosSection/
    * MeetingsSection since one widget serves both sections, operating on `state.tasks`/
    * `state.meetings` and `withTasks`/`withMeetings` directly rather than
-   * through a section's own `tasks`/`onSave` props. `runWidgetAction`
-   * mirrors TodosSection's/MeetingsSection's own `runAction` exactly
-   * (catches and surfaces the error rather than rethrowing, so a save
-   * failure is reported via `widgetError` below rather than through
-   * QuickAddWidget's own local error line - same split those sections'
-   * `actionError` uses for edit-save failures).
+   * through a section's own `tasks`/`onSave` props. Edits and deletes go
+   * through `runWidgetSave`/`runWidgetAction`, which show a failure under
+   * `widgetError`. Adds reject instead, like on every other screen: Quick Add
+   * then shows the error and keeps what was typed.
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
   const runWidgetAction = widgetAction.run;
 
-  const handleAddTask = (text: string, destination: Destination): Promise<void> =>
-    runWidgetAction(async () => {
-      const newTask: Task = buildTask(text);
-      // A "+ next" seed's item is where its meeting goes; todos stay here.
-      if (destination.type === 'item' && destination.path !== path && destination !== seedDestination) {
-        // Abbreviation quick-file recognized a different Project/Area's
-        // #tag while composing here - create it straight there.
-        await addTaskToDestination(newTask, destination, {inbox: null, inboxPath: null});
-        return;
-      }
-      if (!state) return;
-      await withTasks([...state.tasks, newTask]);
-    });
+  const handleAddTask = async (text: string, destination: Destination): Promise<void> => {
+    const newTask: Task = buildTask(text);
+    // A "+ next" seed's item is where its meeting goes; todos stay here.
+    if (destination.type === 'item' && destination.path !== path && destination !== seedDestination) {
+      // Abbreviation quick-file recognized a different Project/Area's
+      // #tag while composing here - create it straight there.
+      await addTaskToDestination(newTask, destination, {inbox: null, inboxPath: null});
+      return;
+    }
+    if (!state) return;
+    await withTasks([...state.tasks, newTask]);
+  };
 
-  const handleAddMeeting = (fields: MeetingQuickAddFields, destination: Destination): Promise<void> =>
-    runWidgetAction(async () => {
-      const newMeeting: Meeting = buildMeeting(fields);
-      if (destination.type === 'item' && destination.path !== path) {
-        await addMeetingToDestination(newMeeting, destination, {inbox: null, inboxPath: null});
-      } else {
-        if (!state) return;
-        await withMeetings([...state.meetings, newMeeting]);
-      }
-      onSeedUsed?.();
-    });
+  const handleAddMeeting = async (fields: MeetingQuickAddFields, destination: Destination): Promise<void> => {
+    const newMeeting: Meeting = buildMeeting(fields);
+    if (destination.type === 'item' && destination.path !== path) {
+      await addMeetingToDestination(newMeeting, destination, {inbox: null, inboxPath: null});
+    } else {
+      if (!state) return;
+      await withMeetings([...state.meetings, newMeeting]);
+    }
+    onSeedUsed?.();
+  };
 
   /**
    * QuickAddWidget's "Note" tab. Deliberately NOT run through runWidgetAction above - a

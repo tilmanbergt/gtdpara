@@ -20,8 +20,9 @@ import {GtdParaSettings} from '../domain/settings';
 import {buildVersionText} from '../domain/buildVersionText';
 import {BUILD_INFO} from '../generated/buildInfo';
 import {ensureFolderExists, listFolderEntries, PROFILES_FOLDER_PATH, readTextFile, writeTextFile} from '../supernote/fileSystem';
-import {log} from '../utils/log';
-import {loadSettings, saveSettings} from './settingsStorage';
+import {log, logWarn} from '../utils/log';
+import {loadSettings, replaceUnreadableSettings, saveSettings} from './settingsStorage';
+import {getSettingsUnreadable} from './settingsUnreadable';
 import {errorMessage} from '../utils/errorMessage';
 
 const SECRETS_KEY = 'gtdpara:profileSecrets:v1';
@@ -43,7 +44,8 @@ async function readSecretsMap(): Promise<Record<string, ProfileSecrets>> {
     const raw = await AsyncStorage.getItem(SECRETS_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
+  } catch (e) {
+    logWarn('profiles: stored secrets unreadable, none used', errorMessage(e));
     return {};
   }
 }
@@ -89,6 +91,7 @@ async function readProfileName(id: string): Promise<string | null> {
   try {
     return parseProfile(text, id).name;
   } catch {
+    // silent: the list shows the file without a name
     return null;
   }
 }
@@ -97,6 +100,9 @@ async function readProfileName(id: string): Promise<string | null> {
 export async function writeProfile(id: string, settings: GtdParaSettings, name?: string): Promise<void> {
   if (!isValidProfileId(id)) {
     throw new Error(`invalid profile id "${id}"`);
+  }
+  if (getSettingsUnreadable() !== null) {
+    throw new Error('Not saved: your stored settings could not be read, so gtdpara runs on defaults and saves no profile from them.');
   }
   await ensureFolderExists(PROFILES_FOLDER_PATH);
   const finalName = name ?? (await readProfileName(id)) ?? (id === DEFAULT_PROFILE_ID ? DEFAULT_PROFILE_NAME : id);
@@ -119,7 +125,7 @@ export async function saveActiveProfile(): Promise<string> {
  */
 export async function ensureDefaultProfileFile(): Promise<void> {
   const settings = await loadSettings();
-  if (settings.activeProfileId !== DEFAULT_PROFILE_ID) {
+  if (settings.activeProfileId !== DEFAULT_PROFILE_ID || getSettingsUnreadable() !== null) {
     return;
   }
   const existing = await readTextFile(profilePath(DEFAULT_PROFILE_ID));
@@ -141,13 +147,17 @@ export async function switchProfile(targetId: string): Promise<GtdParaSettings> 
   }
   const target = parseProfile(text, targetId);
   const current = await loadSettings();
-  if (current.activeProfileId === targetId) {
+  // Unreadable settings (storage/settingsUnreadable.ts): `current` is the defaults, so it is not
+  // saved as a profile, and the switch - also to the active profile - is how to get them back.
+  const unreadable = getSettingsUnreadable() !== null;
+  if (current.activeProfileId === targetId && !unreadable) {
     return current;
   }
-  await writeProfile(current.activeProfileId, current);
+  if (!unreadable) await writeProfile(current.activeProfileId, current);
   const secrets = (await readSecretsMap())[targetId] ?? {};
   const next = buildActiveSettings(targetId, target.settings, secrets, current);
-  await saveSettings(next);
+  if (unreadable) await replaceUnreadableSettings(next);
+  else await saveSettings(next);
   log('profiles: switched', current.activeProfileId, '->', targetId);
   // Re-read so the normal load migrations run on the new settings.
   return loadSettings();

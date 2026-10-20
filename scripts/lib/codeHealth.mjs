@@ -91,7 +91,42 @@ export function checkSourceFile(path, text, baselineLines) {
     if (DATE_RE.test(comment)) add('history-comment', n, 'a date in a comment - say what and why now; history lives in git and the design docs');
     else if (HISTORY_RE.test(comment)) add('history-comment', n, 'history wording in a comment - describe the code as it is');
   });
+  for (const line of silentCatchLines(text)) {
+    add('silent-catch', line, 'log the caught error (log/logWarn/logError), rethrow, carry it on with errorMessage(e), or say why not: // silent: <reason>');
+  }
   return findings;
+}
+
+/** A catch that handles the error: logs it, rethrows, carries its text on (shown or stored), or says why not. */
+const CATCH_HANDLED_RE = /\b(log|logWarn|logError)\(|\bthrow\b|\berrorMessage\(|silent:/;
+
+/**
+ * Lines of `catch (…) {…}` blocks and `.catch(…)` handlers that swallow the error
+ * (DEVELOPMENT-POLICY §5: every caught error is logged). `silent:` may also stand on the
+ * line before the catch or after its end. Braces and parentheses are counted without regard
+ * to strings, which is good enough for this code base.
+ */
+export function silentCatchLines(text) {
+  const re = /\bcatch\s*(\([^)]*\))?\s*\{|\.catch\(/g;
+  const lines = [];
+  let m;
+  while ((m = re.exec(text))) {
+    const open = m[0].endsWith('{') ? '{' : '(';
+    const close = open === '{' ? '}' : ')';
+    let i = m.index + m[0].length;
+    let depth = 1;
+    while (i < text.length && depth > 0) {
+      if (text[i] === open) depth += 1;
+      else if (text[i] === close) depth -= 1;
+      i += 1;
+    }
+    const lineStart = text.lastIndexOf('\n', m.index) + 1;
+    const lineBefore = text.slice(text.lastIndexOf('\n', lineStart - 2) + 1, lineStart);
+    const lineEnd = text.indexOf('\n', i);
+    const handler = text.slice(lineStart, lineEnd < 0 ? text.length : lineEnd);
+    if (!CATCH_HANDLED_RE.test(handler) && !/silent:/.test(lineBefore)) lines.push(text.slice(0, m.index).split('\n').length);
+  }
+  return lines;
 }
 
 /** Design-doc file names referenced in a text: "docs/dev/x.md" or a bare "technical-design-x.md". */

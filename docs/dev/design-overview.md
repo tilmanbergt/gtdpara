@@ -353,6 +353,8 @@ Screens read it through `ui/useCachedInbox.ts`; a write anywhere is seen everywh
 3. **Write-through** (`updateItemTasks`, `updateItemMeetings`, `updateItemFrontMatter`,
    `updateItemScope`, `updateItemThreads`, `updateItemWeeklyGoals`, `updateItemMonthlyGoals`, `updateItemRawContent`,
    `removeCachedItem`): every plugin save writes the file first, then updates the cache entry.
+   A write-through whose text came from a write that kept an outside edit (below) parses the
+   whole text instead of trusting the caller's fields.
 4. **Change notification**: write-through mutates items in place, so every mutation calls
    `notifyCacheChanged()`, which bumps a version and notifies `subscribeCache` listeners.
    `ui/useCachedItems.ts` turns that into a re-render and a new array identity per change (plain
@@ -363,6 +365,20 @@ Screens read it through `ui/useCachedInbox.ts`; a write anywhere is seen everywh
 warm cache (`storage/dailyAggregate.ts`, `weeklyAggregate.ts`, `monthlyAggregate.ts`,
 `reviewAggregate.ts`, `periodFocusCards.ts`, `threadAggregate.ts`, `tendingRoster.ts`,
 `sinceLast.ts`, `projectGlance.ts`), never their own filesystem scans.
+
+**Writing a data file.** Every save of `project.txt`, `area.txt` or `Inbox.txt` goes through
+`storage/dataFileWrite.ts`'s `writeDataFile(kind, itemPath, filePath, base, {parts, apply})`:
+the parts it owns (frontmatter, `## ` sections) and a pure `apply` that writes them into any
+version of the file. It re-reads the file and lets `domain/writeGuard.ts` decide against `base`,
+the text the change was made on: unchanged, write as always; an outside edit to other parts,
+write into the file as it is now and keep both; an outside edit to the same part, load the
+outside version into the cache and ask in the status slot which version wins
+(`storage/writeConflicts.ts`, `ui/useWriteConflicts.ts`) - "Use mine" writes and the save
+completes, "Use the file" fails it with `FileConflictError`; a file that is gone is never
+recreated. Saves of one file run one after another. Natively, `writeTextFile` writes a hidden
+`.<name>.gtdpara-tmp` next to the file and renames it over the file (atomic), falling back to a
+direct write with a warning when the rename fails; the Integrity Check lists leftovers. Detail:
+`docs/dev/history/technical-design-quality-hardening.md` §3.
 
 What gtdpara does not cache: the Files pane lists folders live on every visit, and Google
 Calendar and Gmail have their own caches (§2.11). Detail:
@@ -1053,7 +1069,9 @@ place it happens.
 
 - `src/domain/` stays free of React Native, `sn-plugin-lib` and I/O — no exceptions. I/O and all
   writes live in `src/storage/`, device and native calls in `src/supernote/`, UI in `src/ui/` and
-  `src/screens/`. `storage/` never imports from `ui/`.
+  `src/screens/`. `storage/` never imports from `ui/`. ESLint enforces the import direction
+  (`.eslintrc.js`): `domain/` only `domain/`; `utils/` nothing above it; `supernote/` no
+  `storage/` or UI; `storage/` no UI; `ui/` no `screens/`.
 - A screen holds layout and handlers; logic that more than one screen needs goes into a hook
   (`ui/`) or a module (`storage/`, `domain/`), never into a second copy.
 
@@ -1091,6 +1109,8 @@ place it happens.
 
 - The cache must be reproducible from a rebuild: a new `CachedItem` field is derived from the file
   alone.
+- **Data files are written only through `writeDataFile`** (storage/dataFileWrite.ts), never with
+  `writeTextFile` directly, so an edit made outside gtdpara is never overwritten unasked.
 - **Write-through is not optional.** Write the file first, then the cache, in the same operation,
   so a failed write never leaves the cache claiming a change. Every cache mutation calls
   `notifyCacheChanged()`.
@@ -1151,7 +1171,9 @@ place it happens.
   needs a per-instance suffix (`useErrorStatus` adds one).
 - Dates and times shown to the user come only from `domain/dateFormat.ts`; files keep ISO.
 - The text of a caught error comes only from `utils/errorMessage.ts`'s `errorMessage(e)`.
-- Log only through `utils/log.ts`; never `console.*`.
+- Log only through `utils/log.ts`; never `console.*`. Every caught error is logged, rethrown or
+  carried on as text (`errorMessage(e)`), or its catch says why not: `// silent: <reason>`
+  (`npm run code-health`). Errors shown in the status slot are logged there.
 
 **Navigation and lifecycle**
 

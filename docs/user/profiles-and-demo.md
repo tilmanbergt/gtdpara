@@ -7,6 +7,7 @@ A **profile** is a complete configuration: which folders gtdpara uses, your focu
 Go to **Settings → Advanced**. The Profiles list shows every profile; the active one has a ●.
 
 - **Save** writes the active profile to its file.
+- **Restore** appears instead of **Save** only when gtdpara could not read its stored settings: it puts the settings from the active profile's file back (see [Troubleshooting](troubleshooting.md)).
 - **Switch** changes to another profile, after you confirm in the status line. gtdpara saves the current profile first, then loads the other one and starts the app fresh with it.
 - While a profile other than Production is active, its name (for example `DEMO`) is shown in the tab bar. Tap it to get back to the profile list.
 

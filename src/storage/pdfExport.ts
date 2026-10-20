@@ -200,7 +200,7 @@ export function startPdfExport(doc: PdfDocument, outPath: string, options: PdfEx
     jobId,
     cancel() {
       cancelled = true;
-      if (building) cancelBuild(jobId).catch(() => undefined);
+      if (building) cancelBuild(jobId).catch(() => undefined); // silent: cancelling is best-effort; the job ends either way
     },
     done,
   };

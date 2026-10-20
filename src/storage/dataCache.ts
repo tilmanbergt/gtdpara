@@ -55,6 +55,7 @@ import {log, logError} from '../utils/log';
 import {perfEnd, perfMark, perfStart} from '../utils/perf';
 import {dataFilePath, loadProjectFile, parseProjectFileContent, ProjectFileState, saveFrontMatter} from './projectFile';
 import {errorMessage} from '../utils/errorMessage';
+import {setDataFileReloadListener, takeMergedWrite} from './dataFileWrite';
 
 export interface CachedItem {
   kind: 'project' | 'area';
@@ -207,7 +208,8 @@ export function subscribeInbox(listener: () => void): () => void {
 export function setCachedInbox(
   next: ProjectFileState | null | ((prev: ProjectFileState | null) => ProjectFileState | null),
 ): void {
-  const value = typeof next === 'function' ? next(cachedInbox) : next;
+  let value = typeof next === 'function' ? next(cachedInbox) : next;
+  if (value && takeMergedWrite(value.rawContent)) value = parseProjectFileContent(value.rawContent);
   if (value === cachedInbox) return;
   cachedInbox = value;
   inboxVersion += 1;
@@ -401,7 +403,7 @@ export function rebuildCache(settings: GtdParaSettings): Promise<DataCache> {
   }
   const perfToken = perfStart();
   // A refresh still running finishes first, so the two never write the cache at the same time.
-  const pending = refreshInFlight ? refreshInFlight.catch(() => undefined) : Promise.resolve();
+  const pending = refreshInFlight ? refreshInFlight.catch(() => undefined) : Promise.resolve(); // silent: the refresh logs its own failure
   rebuildInFlight = pending.then(() => doRebuildCache(settings)).finally(() => {
     rebuildInFlight = null;
     perfEnd('cache:rebuild', perfToken);
@@ -650,6 +652,21 @@ export function setTasksWrittenHook(hook: ((path: string) => void) | null): void
   tasksWrittenHook = hook;
 }
 
+/**
+ * After a write that kept an outside edit to other parts of the file
+ * (storage/dataFileWrite.ts), the caller's parsed fields miss that edit -
+ * parse the whole text instead.
+ */
+function reparseIfMerged(item: CachedItem): void {
+  if (takeMergedWrite(item.rawContent)) Object.assign(item, parseProjectFileContent(item.rawContent));
+}
+
+// A save that found its part changed outside gtdpara puts the file as it is now into the cache.
+setDataFileReloadListener((kind, itemPath, content) => {
+  if (kind === 'inbox') applyInboxRawContent(content);
+  else applyItemRawContent(itemPath, content);
+});
+
 /** Write-through after saving an item's Tasks span - see the module doc comment. No-op if this item isn't (yet) in the cache. */
 export function updateItemTasks(
   path: string,
@@ -663,6 +680,7 @@ export function updateItemTasks(
   item.tasks = tasks;
   item.taskExtraLines = taskExtraLines;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
   tasksWrittenHook?.(path);
 }
@@ -680,6 +698,7 @@ export function updateItemMeetings(
   item.meetings = meetings;
   item.meetingExtraLines = meetingExtraLines;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -690,6 +709,7 @@ export function updateItemScope(path: string, rawContent: string, scope: string)
   item.rawContent = rawContent;
   item.scope = scope;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -706,6 +726,7 @@ export function updateItemThreads(
   item.threads = threads;
   item.threadsExtraLines = threadsExtraLines;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -717,6 +738,7 @@ export function updateItemLoops(path: string, rawContent: string, loops: LoopLin
   item.loops = loops;
   item.loopsExtraLines = loopsExtraLines;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -733,6 +755,7 @@ export function updateItemWeeklyGoals(
   item.weeklyGoals = weeklyGoals;
   item.weeklyGoalsExtraLines = weeklyGoalsExtraLines;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -749,6 +772,7 @@ export function updateItemMonthlyGoals(
   item.monthlyGoals = monthlyGoals;
   item.monthlyGoalsExtraLines = monthlyGoalsExtraLines;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -763,6 +787,7 @@ export function updateItemRawContent(path: string, rawContent: string): void {
   const item = cached?.items.find(i => i.path === path);
   if (!item) return;
   item.rawContent = rawContent;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -779,6 +804,7 @@ export function applyItemRawContent(path: string, rawContent: string): void {
   if (!item) return;
   Object.assign(item, parseProjectFileContent(rawContent));
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 
@@ -835,6 +861,7 @@ export function updateItemFrontMatter(path: string, rawContent: string, fm: Fron
   item.area = fm.area;
   item.abbrev = fm.abbrev;
   item.loadError = undefined;
+  reparseIfMerged(item);
   notifyCacheChanged();
 }
 

@@ -80,12 +80,13 @@ export async function fillAccessor<T>(acc: Accessor<T>, values: T[]): Promise<bo
     const ok = await acc.setRange(0, values.length - 1, values);
     if (ok && (await acc.size()) === values.length) {return true;}
   } catch {
-    // fall through to add()
+    // silent: fall through to add()
   }
   let size = 0;
   try {
     size = await acc.size();
   } catch {
+    // silent: an unreadable size counts as empty
     size = 0;
   }
   if (size > values.length) {return false;}

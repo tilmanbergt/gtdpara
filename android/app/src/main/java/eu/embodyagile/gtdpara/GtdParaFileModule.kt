@@ -202,7 +202,19 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
      * (and any missing parent folders) if it doesn't exist yet. Callers on
      * the JS side (domain/markdown.ts) always compute the *entire* new file
      * content before calling this - the span-scoped safe-write logic lives
-     * there, not here, so this native method stays a plain overwrite.
+     * there, not here.
+     *
+     * Atomic replace: the content goes to a hidden temp file in the same
+     * folder ([tempFileFor]), is synced to disk, then renamed over the
+     * target, so a kill or power loss leaves either the old or the new file,
+     * never a truncated one. The temp file must be on the same file system
+     * as the target - a rename cannot cross file systems, which is why it
+     * cannot live in the private folder
+     * (docs/dev/history/technical-design-quality-hardening.md §3.1).
+     * When the rename fails, the content is written directly (the plain
+     * overwrite) and the result says so.
+     *
+     * Resolves "atomic" or "direct".
      */
     @ReactMethod
     fun writeTextFile(path: String?, content: String?, promise: Promise) {
@@ -214,16 +226,38 @@ class GtdParaFileModule(reactContext: ReactApplicationContext) :
         }
         Log.d(TAG, "writeTextFile: start path=$path chars=${content?.length ?: 0}")
         try {
-            val file = File(path)
+            val file = File(path).absoluteFile
             file.parentFile?.mkdirs()
-            file.writeText(content ?: "", Charsets.UTF_8)
-            Log.d(TAG, "writeTextFile: done path=$path")
-            promise.resolve(true)
+            val bytes = (content ?: "").toByteArray(Charsets.UTF_8)
+            val tmp = tempFileFor(file)
+            try {
+                FileOutputStream(tmp).use { out ->
+                    out.write(bytes)
+                    out.flush()
+                    out.fd.sync()
+                }
+            } catch (error: Throwable) {
+                tmp.delete()
+                throw error
+            }
+            if (tmp.renameTo(file)) {
+                Log.d(TAG, "writeTextFile: done (atomic) path=$path")
+                promise.resolve("atomic")
+                return
+            }
+            Log.w(TAG, "writeTextFile: rename over target failed, writing directly path=$path")
+            file.writeBytes(bytes)
+            tmp.delete()
+            Log.d(TAG, "writeTextFile: done (direct) path=$path")
+            promise.resolve("direct")
         } catch (error: Throwable) {
             Log.e(TAG, "writeTextFile: failed path=$path", error)
             promise.reject("E_WRITE", error.message, error)
         }
     }
+
+    /** `<folder>/.<name>.gtdpara-tmp` - hidden, next to [file]; kept in sync with domain/fileName.ts's `writeTempPathFor`. */
+    private fun tempFileFor(file: File): File = File(file.parentFile, ".${file.name}.gtdpara-tmp")
 
     /**
      * Moves a Project/Area folder from [fromPath] to [toPath] - the

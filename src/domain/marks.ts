@@ -447,6 +447,7 @@ export function parseMarkDataFile(text: string | null): MarkDataFile | null {
     if (!parsed || typeof parsed.id !== 'string' || !Array.isArray(parsed.strokes)) {return null;}
     return parsed;
   } catch {
+    // silent: unreadable mark data counts as no data; the caller reports that
     return null;
   }
 }

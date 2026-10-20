@@ -8,7 +8,11 @@ const mockUpdates: string[] = [];
 
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 jest.mock('../../src/supernote/fileSystem', () => ({
-  readTextFile: jest.fn(),
+  readTextFile: async (path: string) => {
+    const written = [...mockWrites].reverse().find(([p]) => p === path);
+    if (written) return written[1];
+    return mockItems.find(i => path.startsWith(`${i.path}/`))?.rawContent ?? null;
+  },
   writeTextFile: async (path: string, text: string) => {
     mockWrites.push([path, text]);
   },

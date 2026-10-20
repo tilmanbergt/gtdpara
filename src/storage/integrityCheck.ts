@@ -27,6 +27,7 @@
  */
 import {
   checkLegacyInboxLeftovers,
+  checkWriteLeftovers,
   formatIntegrityReport,
   IntegrityCheckIO,
   IntegrityFinding,
@@ -35,17 +36,23 @@ import {
   ScannedItemSummary,
 } from '../domain/integrityCheck';
 import {FileFix, NoteRef, planFileNameFixes, unsafeFolderNames} from '../domain/fileNameFix';
-import {invalidFileNameChars} from '../domain/fileName';
+import {invalidFileNameChars, writeTempPathFor} from '../domain/fileName';
 import {todayIso} from '../domain/meetingTime';
 import {GtdParaSettings, resolvePaths} from '../domain/settings';
 import {GtdParaKind, Meeting, Task} from '../domain/types';
 import {collectArchivedItems} from '../domain/closeOut/archiveScan';
-import {fileExists, folderExists, listFolderEntries, writeIntegrityCheckReport} from '../supernote/fileSystem';
+import {
+  fileExists,
+  folderExists,
+  listFolderEntries,
+  statFiles,
+  writeIntegrityCheckReport,
+} from '../supernote/fileSystem';
 import {ensureFileReadPermission} from '../supernote/pluginPermissions';
 import {log, logError} from '../utils/log';
 import {stripPageAnchor} from '../domain/sharedNotePages';
 import {classifyNotePath} from './noteLinks';
-import {loadProjectFile} from './projectFile';
+import {dataFilePath, loadProjectFile} from './projectFile';
 import {errorMessage} from '../utils/errorMessage';
 
 export interface IntegrityCheckSummary {
@@ -146,6 +153,15 @@ interface ScanTarget {
   name: string;
   /** Whether this target was found under Archive rather than live under Projects/Areas - threaded into ScannedItemSummary for checkDuplicateAbbrev's "live items only" rule. */
   inArchive: boolean;
+}
+
+/** Hidden temp files of unfinished saves next to each target's data file (one native stat call; listings hide dot files). */
+async function findWriteLeftovers(targets: ScanTarget[]): Promise<Array<{itemKind: GtdParaKind; itemPath: string; tempPath: string}>> {
+  const candidates = targets.map(t => ({itemKind: t.kind, itemPath: t.path, tempPath: writeTempPathFor(dataFilePath(t.kind, t.path))}));
+  const stats = await statFiles(candidates.map(c => c.tempPath));
+  if (!stats) return [];
+  const existing = new Set(stats.filter(s => s.exists).map(s => s.path));
+  return candidates.filter(c => existing.has(c.tempPath));
 }
 
 export async function runIntegrityCheck(settings: GtdParaSettings): Promise<IntegrityCheckSummary> {
@@ -252,7 +268,14 @@ export async function runIntegrityCheck(settings: GtdParaSettings): Promise<Inte
   const folders = unsafeFolderNames(
     loaded.filter(l => !l.target.inArchive).map(l => ({itemKind: l.target.kind, itemPath: l.target.path, name: l.target.name})),
   );
-  const findings = [...perItemFindings, ...wholeRunFindings, ...leftoverFindings, ...fileNameFindings(fixes, reportOnly, folders)];
+  const writeLeftovers = await findWriteLeftovers(targets);
+  const findings = [
+    ...perItemFindings,
+    ...wholeRunFindings,
+    ...leftoverFindings,
+    ...checkWriteLeftovers(writeLeftovers),
+    ...fileNameFindings(fixes, reportOnly, folders),
+  ];
 
   const report = formatIntegrityReport(findings, targets.length, new Date());
   const reportFileName = await writeIntegrityCheckReport(report);

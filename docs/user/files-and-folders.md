@@ -72,6 +72,14 @@ Turn the back garden into a vegetable garden before winter.
 
 You can edit these files in any text editor, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`, `## Threads`) as they are.
 
+If you edit a file while gtdpara is open, gtdpara reads it again before it saves:
+
+- When your edit was in another part of the file (for example the Scope, while you add a todo in gtdpara), both changes are kept.
+- When both changed the same part (for example the todos), the status line asks which version wins. **Use mine** saves gtdpara's change over the edit; **Use the file** keeps the edit and saves nothing. ✕ counts as **Use the file**. Other parts of the file keep your edit either way.
+- When the file was deleted or moved meanwhile, nothing is saved; tap **Reload all files** in Settings → Advanced to see what is there now.
+
+gtdpara saves a file by writing a hidden copy next to it (for example `.project.txt.gtdpara-tmp`) and putting it in place in one step, so a file is never left half written. If gtdpara is stopped in that moment, the hidden copy stays behind; the next save replaces it, and **Run Integrity Check** lists it.
+
 ## Obsidian
 
 To read and edit your files in Obsidian, with the Tasks and Dataview plugins, see [Using gtdpara with Obsidian](obsidian.md).

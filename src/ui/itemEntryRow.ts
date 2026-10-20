@@ -12,7 +12,7 @@
  */
 import {CachedItem} from '../storage/dataCache';
 import {isFocused} from '../domain/destination';
-import {activeLineEstimator} from './textLineEstimator';
+import {activeLineEstimator} from '../domain/textLineEstimator';
 import {FONT} from './theme';
 
 export const COLUMN_WIDTH_PX = 678;

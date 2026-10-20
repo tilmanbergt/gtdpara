@@ -159,7 +159,7 @@ import MiniTabs from './MiniTabs';
 import {activeTopTab, FILES_GROUP_KEY, groupEntryKey, groupTopTab} from './fileBrowserGroup';
 import PagedSection from './PagedSection';
 import {JumpTo} from './pagination';
-import {activeLineEstimator} from './textLineEstimator';
+import {activeLineEstimator} from '../domain/textLineEstimator';
 import {PinIcon} from './icons';
 import {common} from './commonStyles';
 import {FONT} from './theme';

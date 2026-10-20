@@ -31,7 +31,7 @@ export function loopEventText(event: LoopEvent): string {
 export function useLoopEvents(): void {
   const [event, setEvent] = useState<LoopEvent | null>(null);
   useEffect(() => {
-    reloadLoopKinds().catch(() => undefined);
+    reloadLoopKinds().catch(() => undefined); // silent: loadSettings logs its own failure
     const uninstall = installLoopConversion();
     const unsubscribe = subscribeLoopEvents(setEvent);
     return () => {

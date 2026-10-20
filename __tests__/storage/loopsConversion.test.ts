@@ -15,7 +15,7 @@ jest.mock('../../src/supernote/fileSystem', () => ({
   moveFile: async (from: string, to: string) => {
     mockMoves.push([from, to]);
   },
-  readTextFile: async () => null,
+  readTextFile: async () => (mockItem as {rawContent?: string} | null)?.rawContent ?? null,
 }));
 jest.mock('../../src/storage/dataCache', () => ({
   setTasksWrittenHook: (hook: ((path: string) => void) | null) => {

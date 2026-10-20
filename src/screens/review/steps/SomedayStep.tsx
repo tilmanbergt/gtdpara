@@ -22,7 +22,7 @@ import {mutateEntryTasks} from '../../../storage/itemMutations';
 import {ReviewNextTaskEntry, ReviewSomedayEntry} from '../../../storage/reviewAggregate';
 import {COLUMN_WIDTH_PX} from '../../../ui/itemEntryRow';
 import ReviewMasterDetail from '../../../ui/ReviewMasterDetail';
-import {activeLineEstimator} from '../../../ui/textLineEstimator';
+import {activeLineEstimator} from '../../../domain/textLineEstimator';
 import {FONT} from '../../../ui/theme';
 import {useActionError} from '../../../ui/useActionError';
 import {log} from '../../../utils/log';

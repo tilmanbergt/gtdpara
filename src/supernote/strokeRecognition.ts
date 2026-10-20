@@ -35,7 +35,7 @@ let chain: Promise<unknown> = Promise.resolve();
 
 function serial<T>(job: () => Promise<T>): Promise<T> {
   const run = chain.then(job, job);
-  chain = run.catch(() => undefined);
+  chain = run.catch(() => undefined); // silent: the caller gets the error from `run`; this tail only keeps the queue going
   return run;
 }
 

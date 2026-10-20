@@ -31,14 +31,15 @@
  */
 import {ConfirmText} from '../domain/fileChangeText';
 import {LoopEdit, renameNoteLinks, retagEntries} from '../domain/loopEdit';
-import {findLoopLine, LoopLine, LoopStatus, newLoopLine, withLoopLine, writeLoopsIntoContent} from '../domain/loopsSection';
+import {findLoopLine, LOOPS_HEADING, LoopLine, LoopStatus, newLoopLine, withLoopLine, writeLoopsIntoContent} from '../domain/loopsSection';
 import {closeBlockedText, closeBlockers, LoopRef, loopItselfOf, loopNoteBaseName, loopOf} from '../domain/loops';
-import {ensureSkeleton, writeMeetingsIntoContent, writeTasksIntoContent} from '../domain/markdown';
+import {DATA_FILE_HEADINGS, writeMeetingsIntoContent, writeTasksIntoContent} from '../domain/markdown';
 import {Task} from '../domain/types';
-import {fileExists, moveFile, writeTextFile} from '../supernote/fileSystem';
+import {fileExists, moveFile} from '../supernote/fileSystem';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
 import {applyItemRawContent, CachedItem, findCachedItem, setTasksWrittenHook, updateItemLoops} from './dataCache';
+import {writeDataFile} from './dataFileWrite';
 import {getLoopKinds, LoopKindsState} from './loopKinds';
 import {NoteSetup} from '../domain/noteSetups';
 import {NoteOwnerNames} from '../domain/sharedNotePages';
@@ -138,12 +139,10 @@ async function convertLoopTodos(path: string): Promise<void> {
       ...item.loops,
       ...conversions.map(c => newLoopLine(c.loop.tag, c.task.dueDate, c.task.linkedFile || null)),
     ];
-    const next = writeLoopsIntoContent(
-      writeTasksIntoContent(ensureSkeleton(item.rawContent, item.kind), tasks, item.taskExtraLines),
-      lines,
-      item.loopsExtraLines,
-    );
-    await writeTextFile(dataFilePath(item.kind, item.path), next);
+    const next = await writeDataFile(item.kind, item.path, dataFilePath(item.kind, item.path), item.rawContent, {
+      parts: [DATA_FILE_HEADINGS.tasks, LOOPS_HEADING],
+      apply: content => writeLoopsIntoContent(writeTasksIntoContent(content, tasks, item.taskExtraLines), lines, item.loopsExtraLines),
+    });
     applyItemRawContent(item.path, next);
     for (const c of conversions) {
       let noteMovedTo: string | null = null;
@@ -235,15 +234,21 @@ export async function updateLoop(
   let {tasks, meetings} = tagChanged ? retagEntries(item.tasks, item.meetings, line.tag, newTag) : item;
   if (moveNote) ({tasks, meetings} = renameNoteLinks(tasks, meetings, oldFile, newFile));
   const loops = withLoopLine(item.loops, line.tag, l => ({...l, tag: newTag, mainDate: next.mainDate, linkedFile: linkedFile || null}));
-  let content = ensureSkeleton(item.rawContent, item.kind);
-  if (tasks !== item.tasks) content = writeTasksIntoContent(content, tasks, item.taskExtraLines);
-  if (meetings !== item.meetings) content = writeMeetingsIntoContent(content, meetings, item.meetingExtraLines);
-  content = writeLoopsIntoContent(content, loops, item.loopsExtraLines);
+  const parts: string[] = [LOOPS_HEADING];
+  if (tasks !== item.tasks) parts.push(DATA_FILE_HEADINGS.tasks);
+  if (meetings !== item.meetings) parts.push(DATA_FILE_HEADINGS.meetings);
+  const apply = (raw: string): string => {
+    let content = raw;
+    if (tasks !== item.tasks) content = writeTasksIntoContent(content, tasks, item.taskExtraLines);
+    if (meetings !== item.meetings) content = writeMeetingsIntoContent(content, meetings, item.meetingExtraLines);
+    return writeLoopsIntoContent(content, loops, item.loopsExtraLines);
+  };
 
   // The note moves first; if the file then can't be written, it moves back, so links and note agree.
   if (moveNote) await moveFile(ownerFile(item, oldFile), ownerFile(item, newFile));
+  let content: string;
   try {
-    await writeTextFile(dataFilePath(item.kind, item.path), content);
+    content = await writeDataFile(item.kind, item.path, dataFilePath(item.kind, item.path), item.rawContent, {parts, apply});
   } catch (e) {
     if (moveNote) {
       await moveFile(ownerFile(item, newFile), ownerFile(item, oldFile)).catch(back =>

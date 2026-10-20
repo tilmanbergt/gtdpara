@@ -241,3 +241,32 @@ export function migrationOffCollisionText(): string {
 export function migrationLoopKindTagText(tags: readonly string[]): string {
   return `${tags.map(t => `#${t}`).join(' ')} left out: a loop kind belongs to its Loop setup.`;
 }
+
+/** How a data-file part (domain/writeGuard.ts) is named in messages: its heading's words, "Todos" for Tasks. */
+export function dataFilePartLabel(part: string): string {
+  if (part === 'frontmatter') return 'status and focus';
+  const words = part.replace(/^##\s+/, '');
+  return words === 'Tasks' ? 'Todos' : words;
+}
+
+/** The question when a save and an outside edit changed the same part (docs/dev/history/technical-design-quality-hardening.md §3.2). */
+export function writeConflictText(fileName: string, parts: readonly string[]): {text: string; detail: string} {
+  const what = parts.map(dataFilePartLabel).join(', ');
+  return {
+    text: `"${fileName}" was also changed outside gtdpara (${what}). Which version wins?`,
+    detail:
+      `${what} of "${fileName}" changed outside gtdpara while you changed it here. The screen shows the outside version now. ` +
+      '"Use mine" saves your change over it; "Use the file" keeps the outside version and saves nothing. ' +
+      'Other parts of the file keep their outside changes either way.',
+  };
+}
+
+/** The save's error after "Use the file" (or when the question could not be asked). */
+export function writeConflictKeptFileText(fileName: string): string {
+  return `Not saved: "${fileName}" keeps the version changed outside gtdpara.`;
+}
+
+/** The save's error when the data file disappeared since it was read. */
+export function dataFileGoneText(fileName: string): string {
+  return `Not saved: the file of "${fileName}" was deleted or moved outside gtdpara. Settings → Advanced → Reload all files shows what is there now.`;
+}

@@ -6,15 +6,14 @@
  * behavior - saving a task never rewrites the Meetings section or anything
  * else in the file, and vice versa.
  *
- * Like ItemDetail's own file listing, this is load-once-per-screen, not
- * kept in the cross-project cache (design-overview.md §2.3, which serves
- * cross-project views like Daily) - a mid-session
- * external edit to the file is the same narrow, accepted risk the design
- * doc calls out for write-through in general.
+ * Every save goes through storage/dataFileWrite.ts, which re-reads the file
+ * first: an edit made outside gtdpara since `rawContent` was read is kept
+ * when it touched other parts, and stops the save when it touched the same.
  */
 import {
-  ensureSkeleton,
+  DATA_FILE_HEADINGS,
   FrontMatterFields,
+  FRONT_MATTER_PART,
   parseFrontMatter,
   parseMarksSpan,
   parseMeetingsSpan,
@@ -29,8 +28,8 @@ import {
   writeTasksIntoContent,
   writeWeeklyGoalsIntoContent,
 } from '../domain/markdown';
-import {CounterpartLine, parseThreadsSpan, writeThreadsIntoContent} from '../domain/threadsSection';
-import {LoopLine, parseLoopsSpan, writeLoopsIntoContent} from '../domain/loopsSection';
+import {CounterpartLine, parseThreadsSpan, THREADS_HEADING, writeThreadsIntoContent} from '../domain/threadsSection';
+import {LoopLine, LOOPS_HEADING, parseLoopsSpan, writeLoopsIntoContent} from '../domain/loopsSection';
 import {
   AREA_FILE_NAME,
   GtdParaKind,
@@ -43,7 +42,8 @@ import {
   Task,
   WeeklyGoal,
 } from '../domain/types';
-import {readTextFile, writeTextFile} from '../supernote/fileSystem';
+import {readTextFile} from '../supernote/fileSystem';
+import {writeDataFile} from './dataFileWrite';
 import {log} from '../utils/log';
 import {perfEnd, perfStart} from '../utils/perf';
 
@@ -172,7 +172,8 @@ export function parseProjectFileContent(rawContent: string): ProjectFileState {
  * Saves the Tasks span. `rawContent` should be the state's current
  * rawContent (from loadProjectFile, or the previous save's return value) -
  * scaffolds a fresh file skeleton first if this is the very first todo or
- * meeting ever added to this Project/Area.
+ * meeting ever added to this Project/Area. Resolves the content now in the
+ * file, which includes an outside edit to other parts (storage/dataFileWrite.ts).
  */
 export async function saveTasks(
   kind: GtdParaKind,
@@ -181,10 +182,10 @@ export async function saveTasks(
   tasks: Task[],
   extraLines: string[] = [],
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeTasksIntoContent(base, tasks, extraLines);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [DATA_FILE_HEADINGS.tasks],
+    apply: content => writeTasksIntoContent(content, tasks, extraLines),
+  });
 }
 
 /** Saves the Meetings span - see saveTasks for the shared rawContent/scaffolding behavior. */
@@ -195,10 +196,10 @@ export async function saveMeetings(
   meetings: Meeting[],
   extraLines: string[] = [],
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeMeetingsIntoContent(base, meetings, extraLines);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [DATA_FILE_HEADINGS.meetings],
+    apply: content => writeMeetingsIntoContent(content, meetings, extraLines),
+  });
 }
 
 /** Saves the Threads span (docs/dev/history/technical-design-tending-threads.md §3.9.1) - see saveTasks for the shared rawContent/scaffolding behavior. */
@@ -209,10 +210,10 @@ export async function saveThreads(
   threads: CounterpartLine[],
   extraLines: string[] = [],
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeThreadsIntoContent(base, threads, extraLines);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [THREADS_HEADING],
+    apply: content => writeThreadsIntoContent(content, threads, extraLines),
+  });
 }
 
 /** Saves the Loops span (docs/dev/history/technical-design-loops.md §3.2) - see saveTasks for the shared rawContent/scaffolding behavior. */
@@ -223,10 +224,10 @@ export async function saveLoops(
   loops: LoopLine[],
   extraLines: string[] = [],
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeLoopsIntoContent(base, loops, extraLines);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [LOOPS_HEADING],
+    apply: content => writeLoopsIntoContent(content, loops, extraLines),
+  });
 }
 
 /** Saves the Scope span - see saveTasks for the shared rawContent/scaffolding behavior. */
@@ -236,10 +237,10 @@ export async function saveScope(
   rawContent: string,
   scope: string,
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeScopeIntoContent(base, scope);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [DATA_FILE_HEADINGS.scope],
+    apply: content => writeScopeIntoContent(content, scope),
+  });
 }
 
 /** Saves the Weekly Goals span - see saveTasks for the shared rawContent/scaffolding behavior. */
@@ -250,10 +251,10 @@ export async function saveWeeklyGoals(
   goals: WeeklyGoal[],
   extraLines: string[] = [],
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeWeeklyGoalsIntoContent(base, goals, extraLines);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [DATA_FILE_HEADINGS.weeklyGoals],
+    apply: content => writeWeeklyGoalsIntoContent(content, goals, extraLines),
+  });
 }
 
 /** Saves the Monthly Goals span (docs/dev/history/technical-design-monthly-view.md §2.2) - see saveTasks for the shared rawContent/scaffolding behavior. */
@@ -264,10 +265,10 @@ export async function saveMonthlyGoals(
   goals: MonthlyGoal[],
   extraLines: string[] = [],
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeMonthlyGoalsIntoContent(base, goals, extraLines);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [DATA_FILE_HEADINGS.monthlyGoals],
+    apply: content => writeMonthlyGoalsIntoContent(content, goals, extraLines),
+  });
 }
 
 /**
@@ -285,8 +286,8 @@ export async function saveFrontMatter(
   rawContent: string,
   fm: FrontMatterFields,
 ): Promise<string> {
-  const base = ensureSkeleton(rawContent, kind);
-  const next = writeFrontMatterIntoContent(base, fm);
-  await writeTextFile(dataFilePath(kind, itemPath), next);
-  return next;
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [FRONT_MATTER_PART],
+    apply: content => writeFrontMatterIntoContent(content, fm),
+  });
 }

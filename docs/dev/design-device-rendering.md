@@ -29,7 +29,7 @@
   `ui/taskRowLayout.ts` as `TASK_COLUMN_WIDTH_PX`, `ui/FileBrowserPane.tsx`,
   `screens/InboxScreen.tsx`, `screens/DailyView.tsx`, `screens/ProjectDataPanel.tsx`). This is a
   pixel figure, while a real half-screen column is about **473 dp** wide
-  (`(994 − 2 × 16 − 16) ÷ 2`). The line estimator (`ui/textLineEstimator.ts`) is tuned
+  (`(994 − 2 × 16 − 16) ÷ 2`). The line estimator (`domain/textLineEstimator.ts`) is tuned
   together with 678 (narrow character widths plus a 0.8 safety margin), so the two errors
   partly cancel out. Treat line-count predictions as estimates; changing 678 re-pages every
   task and item list.
