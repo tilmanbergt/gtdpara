@@ -161,8 +161,8 @@ A change is not done while the docs describe the old behavior.
   exported.
 - **Developer docs** come in two kinds (list in `docs/dev/README.md`):
   - **Living documents** (`design-overview.md`, `design-philosophy.md`,
-    `design-device-rendering.md`, `DEVELOPMENT-POLICY.md`, `RELEASING.md`, `inkhub-listing.md`,
-    `docs/dev/README.md`) live directly in `docs/dev/` and
+    `design-device-rendering.md`, `supernote-host-facts.md`, `DEVELOPMENT-POLICY.md`,
+    `RELEASING.md`, `inkhub-listing.md`, `docs/dev/README.md`) live directly in `docs/dev/` and
     describe the current state in present tense: no history ("previously", "superseded",
     "not yet verified"), no open questions, no plans. Each starts with a short "About this
     document" note saying what it is for and how it is kept. Update the affected one in the same

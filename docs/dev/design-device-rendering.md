@@ -6,7 +6,8 @@
 > in present tense; design history stays in `docs/dev/history/` and in git. It is the reference
 > every UI design is checked against (`DEVELOPMENT-POLICY.md` §4). Keep it true: when a style
 > value, row height or layout rule changes, update the matching number here in the same change.
-> When a number is an estimate, say so.
+> When a number is an estimate, say so. Host behavior beyond rendering (limits and quirks the SDK
+> documentation doesn't state) is in `supernote-host-facts.md`.
 
 ## 1. Screen facts
 

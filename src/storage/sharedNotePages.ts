@@ -21,6 +21,7 @@
  * `try`/`catch` only adds the log entry and always rethrows the original
  * error unchanged. `writeRecreatedNotice` uses a plain `log()` instead.
  */
+import {KEYWORD_MAX_LENGTH, keywordFits} from '../domain/keywordLength';
 import {findExactKeywordPage, PageKeyword, recreatedPageNoticeText} from '../domain/sharedNotePages';
 import {pageMarks, timelineInsertIndex} from '../domain/pageOrder';
 import {
@@ -45,7 +46,7 @@ import {
   recordDebugLogEntry,
   toRect,
 } from '../supernote/fileSystem';
-import {log} from '../utils/log';
+import {log, logError} from '../utils/log';
 import {errorMessage} from '../utils/errorMessage';
 
 /** Every keyword currently on `filePath`, as `{page, keyword}` pairs (also used by the close-out scan, storage/closeOut/scan.ts) - one `getNoteTotalPageNum` + one `getKeyWords` call covering every page, never one call per page. Resolves `[]` for a brand-new (zero-page) file without calling `getKeyWords` at all - passing an empty `pageList` is untested API territory, so this sidesteps it rather than relying on it resolving sensibly. */
@@ -98,6 +99,13 @@ export async function ensureSharedNoteFile(folderPath: string, fileName: string,
   }
 }
 
+/** Throws before any write when the Supernote would refuse `keyword` (domain/keywordLength.ts). */
+function assertKeywordFits(keyword: string): void {
+  if (!keywordFits(keyword)) {
+    throw new Error(`A page keyword can have at most ${KEYWORD_MAX_LENGTH} characters (this one has ${keyword.length}).`);
+  }
+}
+
 /**
  * The page carrying an exact-match `keyword` on `filePath`, or `null` if
  * none does (design doc §4's `findKeywordPage`). Reads the whole keyword
@@ -135,18 +143,31 @@ export async function findKeywordPage(filePath: string, keyword: string): Promis
  * index. `date` (YYYY-MM-DD) is the item's date - a meeting's date, a todo's
  * creation date; domain/pageOrder.ts decides the position from it and the
  * file's keywords (note-setups design §13).
+ *
+ * A keyword the Supernote would refuse (over KEYWORD_MAX_LENGTH) is refused
+ * before anything is written, so it never leaves a page without a keyword
+ * (docs/dev/history/technical-design-keyword-length.md §4.3). It is not cut
+ * here: the keyword builders fit it, so the note link stores the same text.
  */
 export async function insertItemPage(filePath: string, keyword: string, template: string, date: string): Promise<number> {
   const start = Date.now();
   try {
+    assertKeywordFits(keyword);
     const {keywords, totalPages} = await readAllKeywords(filePath);
     const index = timelineInsertIndex(pageMarks(keywords, totalPages), date);
     log('insertItemPage: inserting', `page=${index}`, date);
     await insertNotePage(filePath, index, template);
-    await insertKeyWord(filePath, index, keyword);
+    try {
+      await insertKeyWord(filePath, index, keyword);
+    } catch (e) {
+      // Pages are never deleted automatically (deletes need the user's confirmation); the log names the page to remove.
+      logError('insertItemPage: keyword failed, page left without keyword', filePath, `page=${index}`, errorMessage(e));
+      throw e;
+    }
     await recordDebugLogEntry('insertItemPage', true, Date.now() - start, {
       filePath,
       keyword,
+      keywordLength: keyword.length,
       date,
       totalPagesBefore: totalPages,
       insertedPage: index,
@@ -156,6 +177,7 @@ export async function insertItemPage(filePath: string, keyword: string, template
     await recordDebugLogEntry('insertItemPage', false, Date.now() - start, {
       filePath,
       keyword,
+      keywordLength: keyword.length,
       date,
       errorMessage: errorMessage(e),
     });
@@ -181,6 +203,10 @@ export async function insertItemPage(filePath: string, keyword: string, template
  * page at all (already renamed, or hand-edited away), the delete step is
  * silently skipped either way - `newKeyword` still gets added, which is
  * the half of this operation that actually matters for findability.
+ *
+ * `newKeyword` is added before `oldKeyword` is deleted, so a failing insert
+ * leaves the page with its old keyword and the item's link still finds it
+ * (docs/dev/history/technical-design-keyword-length.md §4.3).
  */
 export async function renameKeywordAt(
   filePath: string,
@@ -191,10 +217,12 @@ export async function renameKeywordAt(
 ): Promise<void> {
   const start = Date.now();
   try {
+    assertKeywordFits(newKeyword);
+    await insertKeyWord(filePath, page, newKeyword);
     let deletedOldKeyword = false;
     if (!opts.keepOldKeyword) {
       const onPage = await getKeyWords(filePath, [page]);
-      const hit = onPage.find(kw => kw.keyword === oldKeyword);
+      const hit = onPage.find(kw => kw.page === page && kw.keyword === oldKeyword);
       if (hit) {
         await deleteKeyWord(filePath, page, hit.index);
         deletedOldKeyword = true;
@@ -202,7 +230,6 @@ export async function renameKeywordAt(
         log('renameKeywordAt: old keyword not found on page, skipping delete', filePath, `page=${page}`, oldKeyword);
       }
     }
-    await insertKeyWord(filePath, page, newKeyword);
     await recordDebugLogEntry('renameKeywordAt', true, Date.now() - start, {
       filePath,
       page,

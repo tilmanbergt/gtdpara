@@ -14,6 +14,7 @@
  * every decision that doesn't need the device.
  */
 import {setFlowStateTag} from './flowState';
+import {fitKeyword} from './keywordLength';
 import {RESERVED_BARE_TAGS, stripBareTags} from './flowState';
 import {setDueInLine} from './markdown';
 import {meetingDisplayTitle} from './meetingTracking';
@@ -120,10 +121,11 @@ export function joinNotePath(itemPath: string, target: string): string {
  * already strips `#prepped`/`#reviewed` and any other bare state tags, so
  * those never leak into the keyword - same title text `meetingNoteBaseName`
  * (storage/noteLinks.ts) already uses for an own-note file name, just not
- * filename-sanitized (a keyword isn't a filename).
+ * filename-sanitized (a keyword isn't a filename). Fitted to the Supernote's
+ * keyword limit (`fitKeyword`, domain/keywordLength.ts); the date stays in front.
  */
 export function meetingPageKeyword(meeting: Pick<Meeting, 'date' | 'title'>): string {
-  return `${meeting.date} ${meetingDisplayTitle(meeting)}`.replace(/\s+/g, ' ').trim();
+  return fitKeyword(`${meeting.date} ${meetingDisplayTitle(meeting)}`.replace(/\s+/g, ' ').trim());
 }
 
 /**
@@ -133,12 +135,14 @@ export function meetingPageKeyword(meeting: Pick<Meeting, 'date' | 'title'>): st
  * stay, mirroring `todoNoteBaseName` (storage/noteLinks.ts) exactly except
  * for the filename sanitization step, which doesn't belong on a keyword.
  * Two todos whose text reduces to the same keyword intentionally share one
- * page (design doc §3: "probably they are related anyway").
+ * page (design doc §3: "probably they are related anyway"). Fitted to the
+ * Supernote's keyword limit (`fitKeyword`, domain/keywordLength.ts): a long
+ * todo's keyword leaves out its tags and is cut with "…" if needed.
  */
 export function todoPageKeyword(task: Pick<Task, 'text'>): string {
   const withoutDue = setDueInLine(task.text, null);
   const withoutFlowState = setFlowStateTag(withoutDue, null); // also covers #wf/<slug> and #waiting-for:<slug>
-  return stripBareTags(withoutFlowState, RESERVED_BARE_TAGS);
+  return fitKeyword(stripBareTags(withoutFlowState, RESERVED_BARE_TAGS));
 }
 
 /** Leading `YYYY-MM-DD` of a keyword (meeting keywords always start with one, §3), or `null` for anything else - defensively tolerant of hand-edited/foreign keywords already on a shared file, not just the ones this feature wrote. */
