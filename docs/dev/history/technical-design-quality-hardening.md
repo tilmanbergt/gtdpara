@@ -5,7 +5,8 @@
 > plan and open points; each slice gets its own "As built" section when it is done.
 
 Status: **Q1 built** on `feature/safe-writes` (§3.7) for 0.18.2, waiting for its device test;
-**Q2 built** on `feature/scenario-tests` (§4.9), taken from `feature/safe-writes`; Q3-Q4 designed.
+**Q2 built** on `feature/scenario-tests` (§4.9), taken from `feature/safe-writes`; **Q3** findings and
+fixes in §5, waiting for approval; Q4 designed.
 Decisions D1-D4 in §7.
 
 ## 1. Goal and decisions
@@ -347,17 +348,64 @@ test Q1; it merges after Q1.
 
 ## 5. Q3 "Interruptions and messy files"
 
-Uses the harness's fault injection; every failure found is fixed in this slice.
+### 5.1 Scope, as decided
 
-- **Crash at every step**: for close-out/archive (operation journal), `entryMove` (todo with
-  note, meeting with note), inbox filing and profile switch: run the flow with
-  `crashAfter(n)` for every n, then `closeAndReopen()` and run it again. Expect: nothing lost;
-  duplicates only where the design allows them ("moves append first"); the journal finishes.
-- **Messy-file corpus**: `__tests__/fixtures/files/` with real-world shapes - every older
-  format version, hand edits, CRLF, BOM, empty sections, duplicate headings, very long lines.
-  Each file goes through every `save…` and the parser round-trip; user lines must survive.
-- **External input**: `domain/icsParser.ts` gets unit tests (folded lines, time zones, all-day,
-  recurrence ignored, broken input never throws).
+Tilman (2026-10-20): the Supernote is stable and the environment clean, so this is not a
+transaction system. The bar is: **an interruption or an odd file never loses anything silently,
+and the user can always finish or repair what was interrupted** - with the smallest change that
+gets there. No journals, locks or rollbacks beyond what exists; a visible duplicate or a clear
+Integrity Check line is an acceptable outcome.
+
+### 5.2 Findings
+
+Probed with the fake device (§4): each flow stopped after every single file write, then gtdpara
+reopened; every data-file save run on unusual files; the calendar parser fed odd input.
+
+| # | Where | What happens | Loss? |
+|---|---|---|---|
+| F1 | Moving a todo or meeting with its note (refile, quick-file, close-out checklist) | Stopped after the note moved but before the target file was written: the entry stays in the source, its link points where the note was; the note sits unlinked in the target's `Todos/`/`Meetings/`. Stopped one write later: the designed duplicate, but the source copy's link is broken. | No - the note is intact, only unlinked |
+| F2 | Close-out, "Archive now" | Stopped after the PDF moved into the archive (and before the folder move): on reopening, the checklist shows a blocker (the PDF already sits at the target name) and **Archive now** stays blocked. The close-out cannot be finished in the app. | No - but stuck |
+| F3 | Close-out, "Archive now" | Stopped right after the folder move: the project is in the archive with `status: active`; it is gone from Projects (Archive is never read), so it cannot be finished in the app. The Integrity Check finds it, but its message sends the user to "Review → Done projects", where it isn't. | No - everything is archived |
+| F4 | Any data file saved with Windows line endings (CRLF: Notepad, some sync tools) | Not one todo, meeting or field is recognized: the screen shows the project as empty. The lines survive (kept as unknown lines); a save converts the file to `\n` but leaves the `\r` in the kept lines. | No - but the project looks empty |
+| F5 | Other odd files | A BOM, no frontmatter, a heading with trailing spaces, a `###` sub heading, indented sub todos, an empty or unstructured file: nothing lost on any save. A second `## Tasks` heading: its todos are kept but not shown. | No |
+| F6 | Calendar parser (`domain/icsParser.ts`) | Never throws on garbage, broken dates or unclosed events; folded lines, time zones, all-day and recurring events parse right. It has no tests. | - |
+| - | Interruptions before the PDF move (close-out), before the note move (refile), and the profile switch (each step writes one file; the old profile stays active until the last one) | Resume or stay as they were. | No |
+
+### 5.3 Fixes (the smallest that meets §5.1)
+
+- **F1 - say where the note is.** The Integrity Check's broken-note-link finding, when a note
+  with the same file name exists in the `Todos/` or `Meetings/` folder of another Project, Area
+  or the Inbox, names it: "…not found - a note with this name is in Website/Todos." The user
+  relinks with the existing note link action, or deletes the duplicate entry. No reordering of
+  the move, no automatic relinking.
+- **F2 - the archive step accepts its own work.** The "name is free at the target" check does
+  not count the PDF the close-out itself already moved (the plan's journal says so), so **Archive
+  now** runs the remaining steps, as the journal was designed to.
+- **F3 - an honest message.** The Integrity Check's interrupted-close-out finding gives the
+  step that is left: still in Projects - "open Close out… on its page and tap Archive now";
+  already in the archive - "it is fully archived; only `status:` in its project.txt still says
+  active, which you can change by hand or leave". No new repair action.
+- **F4 - read CRLF files.** `loadProjectFile` (and the outside-edit re-read in
+  `storage/dataFileWrite.ts`) turn `\r\n` into `\n` before parsing. Saves write `\n`, as
+  every gtdpara file already has. A one-line change plus a test.
+- **F5, F6 - tests only.** The odd files of F5 become a small fixture set that every `save…`
+  runs over (nothing lost); the calendar inputs of F6 become unit tests.
+
+### 5.4 Tests
+
+- **Crash tests** (scenario project, `__tests__/scenarios/interruptions.test.tsx`): refile with a
+  note and close-out, each stopped after every write (`crashAfter(n)` for every n), reopened and
+  - for close-out - finished. Assertion: no entry and no file is lost; afterwards either the
+  flow is complete or the Integrity Check names what is left. These pin F1-F3 and keep them
+  fixed.
+- **Scenarios** (in the catalog): "A project file saved with Windows line endings shows its
+  todos" (F4), "An interrupted close-out can be finished" (F2).
+- **Unit tests**: the F5 fixture set over every `save…`; the F6 calendar inputs.
+
+### 5.5 Release
+
+All "Fixed" lines (F2, F3, F4; F1 is an Integrity Check improvement): a patch, 0.18.3, or with
+the next feature release, whichever comes first.
 
 ## 6. Q4 "Quick Add split" and what waits
 
