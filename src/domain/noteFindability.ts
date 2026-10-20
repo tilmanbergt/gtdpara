@@ -5,6 +5,7 @@
  * should carry. No SDK, no I/O - storage/meetingNoteContent.ts and
  * storage/noteFindability.ts read the page and do the writing.
  */
+import {fitKeyword} from './keywordLength';
 import {isNoteTemplateManagedElement} from './meetingNoteBlock';
 import {Meeting, Task} from './types';
 
@@ -81,14 +82,16 @@ export interface PageKeywordPlan {
  * add `date` when it is missing; delete every other bare date (a moved
  * meeting); add each tag that is missing. Tags are never deleted (removed
  * tags stay, the user may have added keywords by hand), and keywords with
- * text after a date - a shared page's anchor - are never touched.
+ * text after a date - a shared page's anchor - are never touched. A tag
+ * longer than the Supernote's keyword limit is compared and added in its
+ * fitted form (`fitKeyword`), so it is added once and found again.
  */
 export function planPageKeywords(params: {onPage: readonly PageKeywordAt[]; date: string | null; tags: readonly string[]}): PageKeywordPlan {
   const {onPage, date, tags} = params;
   const present = new Set(onPage.map(k => k.keyword));
   const add: string[] = [];
   if (date && !present.has(date)) add.push(date);
-  for (const tag of tags) {
+  for (const tag of tags.map(fitKeyword)) {
     if (!present.has(tag) && !add.includes(tag)) add.push(tag);
   }
   const deleteIndexes = onPage

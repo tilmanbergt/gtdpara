@@ -569,7 +569,8 @@ Default with the standard Meeting and First pages; 0.14's Tag Rules are migrated
   (`planPageKeywords`), tag keywords never. The page order reads the bare date as the start of an item.
 - **Notebooks.** A setup with a notebook puts every meeting and todo it covers into one `.note`
   per Project/Area (in the notebook's folder, created on first use): each item gets a page located by keyword (meeting: `<date> <title>`;
-  todo: its text without functional tags), inserted on the timeline (`storage/sharedNotePages.ts`
+  todo: its text without functional tags; both fitted to the 43-character keyword limit by
+  `fitKeyword`), inserted on the timeline (`storage/sharedNotePages.ts`
   is the page engine, decisions in `domain/sharedNotePages.ts`). `domain/pageOrder.ts` alone
   decides a new page's position: `pageMarks` reads each page as the start of an item (bare date
   keyword, or a pre-0.13 anchor with a leading date) or a continuation page, and pinned (a loop
@@ -995,7 +996,9 @@ deleted (`ensureFileDeletePermission(description)`). The only deletes are `delet
 `getPrivateTempDir`, cleaned once per start) and the private data folder for marks
 (`getPrivateDataDir`).
 
-**Host limits.** Linked and shared notes are created with `PluginFileAPI.createNote` and a fixed
+**Host limits** (all host behavior the SDK documentation doesn't state is collected in
+`docs/dev/supernote-host-facts.md`). A keyword has at most 43 characters; every keyword gtdpara
+writes is fitted by `domain/keywordLength.ts`'s `fitKeyword`. Linked and shared notes are created with `PluginFileAPI.createNote` and a fixed
 template name (`style_white`, or a MyStyle file); a template reference from
 `getNoteSystemTemplates()` does not resolve there. Creating notes works only when the plugin was
 opened from a note. The e-ink panel does not always flush a change that arrives without a tap:
