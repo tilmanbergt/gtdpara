@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // All local checks in one go - run before committing a step and before every release.
 //
-//   npm run check            gen, tsc, eslint, jest, script tests, code health
+//   npm run check            gen, tsc, eslint, jest (unit and scenario tests), script tests,
+//                            scenario catalog, code health
 //   npm run check -- --quick same without jest
 //
 // Stops at the first failing check. Design: docs/dev/history/technical-design-quality-0.9.md §3.1;
@@ -30,6 +31,8 @@ const steps = [
   {name: 'script tests', cmd: 'node', args: ['scripts/test-versioning.mjs']},
   {name: 'help page tests', cmd: 'node', args: ['scripts/test-userdocs.mjs']},
   {name: 'code-health tests', cmd: 'node', args: ['scripts/test-code-health.mjs']},
+  {name: 'scenario catalog tests', cmd: 'node', args: ['scripts/test-scenario-catalog.mjs']},
+  {name: 'scenario catalog up to date', cmd: 'node', args: ['scripts/scenario-catalog.mjs', '--check']},
   {name: 'code health', cmd: 'node', args: ['scripts/code-health.mjs', ...(CODE_HEALTH_STRICT ? ['--strict'] : [])]},
 ];
 
