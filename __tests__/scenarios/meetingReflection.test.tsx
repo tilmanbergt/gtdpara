@@ -1,7 +1,8 @@
 import {isoDateOffset} from '../../src/domain/meetingTime';
+import {meetingKey} from '../../src/domain/provenance';
 import {device} from '../../test-helpers/fakeDevice/device';
-import {expectNotShows, expectShows, fieldValue, openApp, tap, tapTab, type} from '../../test-helpers/scenario/app';
-import {areaDir, areaFile, dataFile, pageKeywords, pageTexts, putFile, sectionLines} from '../../test-helpers/scenario/files';
+import {expectNotShows, expectShows, fieldValue, openApp, openEngage, tap, tapTab, type} from '../../test-helpers/scenario/app';
+import {areaDir, areaFile, dataFile, fileText, pageKeywords, pageTexts, putFile, sectionLines} from '../../test-helpers/scenario/files';
 import {and, given, scenario, then, when} from '../../test-helpers/scenario/scenario';
 import {sparringSettings} from '../../test-helpers/scenario/setups';
 
@@ -192,4 +193,58 @@ scenario('Daily: tomorrow\'s tracked meeting offers Prepped, and Daily has no Li
     expectNotShows('Link file');
     expectNotShows('Reflect ›');
   });
+});
+
+scenario('Reflect from Review\'s "Meetings to close out" without ticking it reviewed', {feature: 'Weekly Review', design: 'technical-design-meeting-reflection.md'}, () => {
+  given('the sparring session three days ago is tracked for review and not reviewed yet; its page is followed by two pages added by hand, then the check-in\'s page', () => {
+    coaching([sparringLine(), checkinLine]);
+    sparringNotebook();
+  });
+  when('I open Review, the step "Meetings to close out", tap the session and "Reflect ›", and confirm', async () => {
+    await openApp({settings: sparringSettings()});
+    await tapTab('Review');
+    await tap('Meetings to close out');
+    await tap(/^Sparring Mieke/);
+    await tap('Reflect ›');
+    await tap('Add page');
+  });
+  then('the reflection page comes after the two hand-added pages and before the check-in\'s page', () => {
+    expect(pageKeywords(NOTEBOOK, 3)).toContain(REFLECTION_KW);
+    expect(pageKeywords(NOTEBOOK, 4)).toContain(CHECKIN_KW);
+    expect(device().sdk.opened.at(-1)).toEqual({path: NOTEBOOK, page: 3});
+  });
+  and('the meeting is still not reviewed', () => {
+    expect(fileText(areaFile('Coaching'))).not.toContain('#reviewed');
+    expectShows('Mark reviewed');
+  });
+});
+
+scenario('Engage on the meeting\'s page offers the reflection; on the reflection page it opens on what was agreed', {feature: 'Engage', design: 'technical-design-meeting-reflection.md'}, () => {
+  given('the todo "Send Mieke the role canvas" was agreed in the sparring session three days ago; in the notebook the session\'s page is followed by a page added by hand, then the page of the todo "Prepare the workshop"', () => {
+    const key = meetingKey({date: d1, title: 'Sparring Mieke #sparring/mieke'});
+    coaching(
+      [sparringLine()],
+      [`- [ ] Send Mieke the role canvas #next [meeting:: ${key}]`, `- [ ] Prepare the workshop #sparring/mieke [created:: ${d2}] → [[${NOTEBOOK_REL}#Prepare the workshop #sparring/mieke]]`],
+    );
+    device().sdk.putNote(NOTEBOOK, [{keywords: [d1, MEETING_KW]}, {keywords: []}, {keywords: [d2, 'Prepare the workshop #sparring/mieke']}]);
+  });
+  when('I open Engage on the meeting\'s page', () => openEngage({fromNote: NOTEBOOK, page: 0, settings: sparringSettings()}));
+  then('it offers "Reflect on this meeting ›"', () => expectShows('Reflect on this meeting ›'));
+  when('I tap it and confirm', async () => {
+    await tap('Reflect on this meeting ›');
+    await tap('Add page');
+  });
+  then('the reflection page comes after the hand-added page and before the todo\'s page, and opens', () => {
+    expect(pageKeywords(NOTEBOOK, 2)).toContain(REFLECTION_KW);
+    expect(pageKeywords(NOTEBOOK, 3)).toContain('Prepare the workshop #sparring/mieke');
+    expect(device().sdk.opened.at(-1)).toEqual({path: NOTEBOOK, page: 2});
+  });
+  when('I open Engage on the reflection page', () => openEngage({fromNote: NOTEBOOK, page: 2}));
+  then('it opens on "Agreed 1" from the sparring session, with the agreed todo', () => {
+    expectShows('Agreed 1');
+    expectShows(/^Agreed in Sparring Mieke · /);
+    // The row draws the title and its #next label as one text: match the title at its start.
+    expectShows(/^Send Mieke the role canvas/);
+  });
+  and('it doesn\'t offer to reflect again', () => expectNotShows('Reflect on this meeting ›'));
 });

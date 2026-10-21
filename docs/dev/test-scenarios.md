@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-22 scenarios.
+24 scenarios.
 
 ## Close-out
 
@@ -38,6 +38,21 @@ Test: `__tests__/scenarios/daily.test.tsx` · design: `docs/dev/history/technica
 - **Given** area "Coaching" has a sparring session tomorrow
 - **When** I open Daily, switch to Tomorrow and tap the session
 - **Then** the toolbar offers "☐ Prepped" and nothing else
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+## Engage
+
+### Engage on the meeting's page offers the reflection; on the reflection page it opens on what was agreed
+
+- **Given** the todo "Send Mieke the role canvas" was agreed in the sparring session three days ago; in the notebook the session's page is followed by a page added by hand, then the page of the todo "Prepare the workshop"
+- **When** I open Engage on the meeting's page
+- **Then** it offers "Reflect on this meeting ›"
+- **When** I tap it and confirm
+- **Then** the reflection page comes after the hand-added page and before the todo's page, and opens
+- **When** I open Engage on the reflection page
+- **Then** it opens on "Agreed 1" from the sparring session, with the agreed todo
+- **And** it doesn't offer to reflect again
 
 Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
 
@@ -190,6 +205,15 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
 ## Weekly Review
+
+### Reflect from Review's "Meetings to close out" without ticking it reviewed
+
+- **Given** the sparring session three days ago is tracked for review and not reviewed yet; its page is followed by two pages added by hand, then the check-in's page
+- **When** I open Review, the step "Meetings to close out", tap the session and "Reflect ›", and confirm
+- **Then** the reflection page comes after the two hand-added pages and before the check-in's page
+- **And** the meeting is still not reviewed
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
 
 ### Weekly Review: get the Inbox to zero by filing one todo and finishing the other
 

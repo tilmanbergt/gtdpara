@@ -29,6 +29,7 @@ import {
   addTaskToDestination,
   applyMeetingEdit,
   currentEntryMeeting,
+  MeetingEntryRef,
   applyTaskEdit,
   buildMeeting,
   buildTask,
@@ -48,6 +49,7 @@ import {useEngagePrompt} from './useEngagePrompt';
 import {useEntryMoveUi} from './useEntryMoveUi';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
 import {MeetingToolbarOptions} from './useMeetingToolbar';
+import {openOrCreateReflectionPage} from '../storage/reflectionPage';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
@@ -86,7 +88,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     const {nextInbox} = await mutateEntryTasks(entry, mutate, ctx);
     if (nextInbox) setCachedInbox(nextInbox);
   };
-  const saveMeetings = async (entry: ThreadMeetingEntry, mutate: (meetings: Meeting[]) => Meeting[]) => {
+  const saveMeetings = async (entry: MeetingEntryRef, mutate: (meetings: Meeting[]) => Meeting[]) => {
     const {nextInbox} = await mutateEntryMeetings(entry, mutate, ctx);
     if (nextInbox) setCachedInbox(nextInbox);
   };
@@ -257,6 +259,23 @@ export function useEntryActions(name = 'ThreadOverview') {
     return ok && opened;
   };
 
+  /**
+   * Opens (or creates, after the confirm) the meeting's Reflection page
+   * (docs/dev/history/technical-design-meeting-reflection.md §2.8); resolves true only when it opened.
+   */
+  const reflection = async (entry: MeetingEntryRef & {meeting: Meeting}): Promise<boolean> => {
+    let opened = false;
+    const ok = await rowAction.runSave(async () => {
+      const result = await openOrCreateReflectionPage(entry.meeting, entry.item.path, await currentSettings(), inbox ? {tasks: inbox.tasks} : null, {
+        confirmCreate: confirmNoteCreate,
+        forceOwnTarget: entry.item.kind === 'inbox',
+      });
+      if (result.changed) await saveMeetings(entry, meetings => meetings.map((m, i) => (i === entry.meetingIndex ? result.meeting : m)));
+      opened = !result.cancelled;
+    });
+    return ok && opened;
+  };
+
   const tracking = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
 
   /** The meeting toolbar (ui/useMeetingToolbar.ts) for the edited meeting: its tick and its reflection; no Files pane here. */
@@ -299,6 +318,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     taskNote,
     meetingNote,
     tracking,
+    reflection,
     toolbarOptions,
     openFile,
     openTaskFile,

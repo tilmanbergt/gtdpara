@@ -2,7 +2,9 @@
  * The selected row of Looking back in the overview's right column
  * (docs/dev/history/technical-design-tending-threads.md §3.5.2).
  *
- * - A past meeting: its title, date and counts with "Open note", then the
+ * - A past meeting: its title, date and counts with "Open note" and
+ *   "Reflect ›" / "Reflection ›" (its Reflection page,
+ *   docs/dev/history/technical-design-meeting-reflection.md §2.8), then the
  *   todos agreed in it as one paged list - open ones first, then the done
  *   ones grouped by the day they were done.
  * - The "Since" row: the todos done since the latest past meeting, grouped
@@ -16,6 +18,8 @@ import {formatDateTime, formatDayHeader} from '../../domain/dateFormat';
 import {meetingDisplayTitle} from '../../domain/meetingTracking';
 import {todayIso} from '../../domain/meetingTime';
 import {doneGroupLabel, pastMeetingSummary} from '../../domain/threadText';
+import {reflectionOffered, reflectionPillText} from '../../domain/reflection';
+import {useReflectionLookup} from '../../ui/useReflectionLookup';
 import {PastMeeting, ThreadTaskEntry} from '../../storage/threadAggregate';
 import PagedSection from '../../ui/PagedSection';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../ui/TaskRow';
@@ -63,6 +67,8 @@ interface Props {
 
 export default function PastMeetingPanel({selection, actions, textColor, borderColor}: Props): React.JSX.Element {
   const {edit} = actions;
+  const pastEntry = selection?.kind === 'meeting' ? selection.past.entry : null;
+  const reflection = useReflectionLookup(pastEntry?.meeting ?? null, pastEntry?.item.path ?? null, 'PastMeetingPanel');
   if (!selection) {
     return (
       <View style={styles.empty}>
@@ -98,6 +104,15 @@ export default function PastMeetingPanel({selection, actions, textColor, borderC
         {past && (
           <Pressable style={[styles.pill, {borderColor}]} onPress={() => actions.meetingNote(past.entry)} hitSlop={8}>
             <Text style={[styles.pillText, {color: textColor}]}>{past.entry.meeting.notePath ? 'Open note' : '+ Note'}</Text>
+          </Pressable>
+        )}
+        {past && reflectionOffered(past.entry.meeting, Date.now()) && (
+          <Pressable
+            style={[styles.pill, {borderColor}, reflection.state === 'unknown' && styles.pending]}
+            disabled={reflection.state === 'unknown'}
+            onPress={() => actions.reflection(past.entry).then(opened => opened && reflection.markExists())}
+            hitSlop={8}>
+            <Text style={[styles.pillText, {color: textColor}]}>{reflectionPillText(reflection.state)}</Text>
           </Pressable>
         )}
       </View>
@@ -153,6 +168,7 @@ const styles = StyleSheet.create({
   sub: {fontSize: FONT.small, opacity: 0.6, marginTop: 2},
   pill: {borderWidth: 1, borderRadius: 14, paddingHorizontal: SPACING.md, paddingVertical: 6, marginLeft: SPACING.sm},
   pillText: {fontSize: FONT.small, fontWeight: '600'},
+  pending: {opacity: 0.35},
   head: {height: SUB_HEAD_HEIGHT, justifyContent: 'flex-end', paddingBottom: 2},
   headText: {fontSize: FONT.small, fontWeight: '700', opacity: 0.6},
 });
