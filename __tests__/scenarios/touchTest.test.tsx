@@ -26,7 +26,7 @@ async function touch(x: number, y: number, during: () => void = () => undefined)
   });
 }
 
-scenario('Record taps in the touch test without changing anything', {feature: 'Settings'}, () => {
+scenario('Record taps in the touch test without changing anything', {feature: 'Settings', design: 'technical-design-touch-test.md'}, () => {
   given('the Inbox has the todo "Call Anna"', () => {
     putFile(INBOX_FILE, dataFile('inbox', {Tasks: ['- [ ] Call Anna'], Meetings: []}));
   });
@@ -84,7 +84,7 @@ const appTouchLines = () =>
     .logs.map(l => l.text)
     .filter(t => t.startsWith('touch(app):'));
 
-scenario('Log touches on every screen while "Log touches everywhere" is on', {feature: 'Settings'}, () => {
+scenario('Log touches on every screen while "Log touches everywhere" is on', {feature: 'Settings', design: 'technical-design-touch-test.md'}, () => {
   given('an empty PARA folder', () => undefined);
   when('I switch on "Log touches everywhere" in the touch test, close it and tap twice on Daily', async () => {
     await openApp();

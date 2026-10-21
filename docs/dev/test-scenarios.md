@@ -137,7 +137,7 @@ Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/tec
 - **When** I tap Close
 - **Then** Settings → Advanced shows again
 
-Test: `__tests__/scenarios/touchTest.test.tsx`
+Test: `__tests__/scenarios/touchTest.test.tsx` · design: `docs/dev/history/technical-design-touch-test.md`
 
 ### Log touches on every screen while "Log touches everywhere" is on
 
@@ -147,7 +147,7 @@ Test: `__tests__/scenarios/touchTest.test.tsx`
 - **When** I switch it off again
 - **Then** no touch handler is attached to the app any more
 
-Test: `__tests__/scenarios/touchTest.test.tsx`
+Test: `__tests__/scenarios/touchTest.test.tsx` · design: `docs/dev/history/technical-design-touch-test.md`
 
 ## Weekly Review
 
