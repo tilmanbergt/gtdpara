@@ -29,6 +29,7 @@ import {
   addMeetingToDestination,
   addTaskToDestination,
   applyMeetingEdit,
+  currentEntryMeeting,
   buildMeeting,
   buildTask,
   mutateEntryMeetings,
@@ -208,7 +209,7 @@ export function usePlanningScreen({logTag}: Options) {
     payload: QuickFilePayload,
   ): Promise<void> => {
     if (payload.kind !== 'meeting') return;
-    const updated = applyMeetingEdit(entry.meeting, payload.fields, payload.linkedFile);
+    const updated = applyMeetingEdit(currentEntryMeeting(entry, {inbox, inboxPath}), payload.fields, payload.linkedFile);
     const moved = await moveMeeting(entry.item, entry.meetingIndex, updated, itemTarget(target), moveUi);
     if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
   };

@@ -28,6 +28,7 @@ import {
   addMeetingToDestination,
   addTaskToDestination,
   applyMeetingEdit,
+  currentEntryMeeting,
   applyTaskEdit,
   buildMeeting,
   buildTask,
@@ -205,7 +206,7 @@ export function useEntryActions(name = 'ThreadOverview') {
       moved = await moveTask(e.item, e.taskIndex, applyTaskEdit(e.task, payload.text, payload.linkedFile), itemTarget(target), moveUi);
     } else if ('meeting' in entry && payload.kind === 'meeting') {
       const e = entry.meeting;
-      moved = await moveMeeting(e.item, e.meetingIndex, applyMeetingEdit(e.meeting, payload.fields, payload.linkedFile), itemTarget(target), moveUi);
+      moved = await moveMeeting(e.item, e.meetingIndex, applyMeetingEdit(currentEntryMeeting(e, ctx), payload.fields, payload.linkedFile), itemTarget(target), moveUi);
     }
     if (moved) edit.cancel();
   };

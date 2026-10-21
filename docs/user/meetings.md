@@ -23,6 +23,8 @@ For meetings that need preparing or following up, switch on **Prepare before** a
 - **R** after the meeting, until you tap it (it becomes `#reviewed`)
 - a check mark when the current phase is done
 
+When you edit a meeting in Quick Add, its title shows without `#prepped` and `#reviewed`: the tick is set on the row, not typed, and **Save** keeps it as it is.
+
 Past meetings that still need a review appear in the Review step **Meetings to close out** (last 7 days).
 
 ## Cancelling and repeating

@@ -10,6 +10,11 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Fixed
+- **A meeting's prep or review tick is no longer lost when you save an edit**: Quick Add's edit
+  form shows the title without `#prepped` and `#reviewed`, and **Save** keeps the tick the
+  meeting has, also one you set while the edit was open.
+
 ## [0.18.3] — 2026-10-21
 
 ### Fixed
