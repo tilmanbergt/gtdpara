@@ -984,12 +984,14 @@ when asked for:
   navigation, reopen and cold start, ending after 1.5 s of quiet (15 s at most), written as JSONL
   to `EXPORT/gtdpara/debug/perf/` with data-volume stats (`storage/perfStats.ts`). Off costs one
   check per call. Analysis: `node scripts/perf-report.js`.
-- **Touch test** (`screens/settings/TouchTestScreen.tsx`, classification in
-  `domain/touchDiag.ts`): real `TaskRow`s and `MeetingRow`s with sample entries down to the
-  bottom edge; an observe-only root view (`ui/touchDiag/TouchObserver.tsx`, never the
-  responder) records every touch, the rows report press events through a context only the test
-  provides (`ui/touchDiag/touchProbe.ts`), and each touch is classified handled, cancelled,
-  noTarget or swallowed. One numbers-only log line per touch; "Save log" writes CSV to
+- **Touch test** (`screens/settings/touchTest/`, classification and counts in
+  `domain/touchDiag.ts`): a test column of real `TaskRow`s and `MeetingRow`s with sample entries
+  down to the bottom edge, next to an info column (controls, last tap, verdict, counts). An
+  observe-only view (`ui/touchDiag/TouchObserver.tsx`, never the responder) records every touch;
+  each row gets a probe (`ui/touchDiag/touchProbe.ts`, a context only the test provides) that
+  reports press events as `<row>:<part>` and draws the hit part. Touches are classified handled,
+  swallowed, cancelled or noTarget; Tilman's verdict and what he meant are stored with them. One
+  log line per tap, verdict and intended target (ids and numbers only); "Save log" writes CSV to
   `EXPORT/gtdpara/debug/`. "Log touches everywhere" (`ui/touchDiag/AppTouchObserver.tsx`, not
   persisted) logs raw touches app-wide. Detail: `docs/dev/history/technical-design-touch-test.md`.
 - **Stale build**: `supernote/pluginRuntime.ts` checks whether an older gtdpara build is still

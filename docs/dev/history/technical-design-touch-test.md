@@ -11,26 +11,28 @@ later touch problems.
   tab bar and status slot, like every tab) that tells these hypotheses apart:
   - **H1 never arrives**: the host or system swallows finger touches near the bottom edge; React
     Native never sees them.
-  - **H2 cancelled**: the touch arrives, but jitter or contact size cancels the press (press-in
-    without press).
-  - **H3 missed target**: the touch lands where nothing is tappable (row padding, a blank second
-    line, gaps between checkbox, title and icons).
+  - **H2 cancelled**: the touch arrives, but jitter or contact size cancels the press.
+  - **H3 missed target**: the touch lands where nothing is tappable.
   - **H4 swallowed by a span**: the touch lands on a nested `<Text onPress>` that does nothing on
-    one tap (`#next`/`#now` waits for a double tap) or is small and hard to hit (thread and loop
-    tags).
-  - **H5 wrong span**: a big contact resolves to another span or element than the one under the
-    finger's centre.
-- One page, no scrolling. Top to bottom: Finger/Pen toggle, "Log touches everywhere", Clear,
-  Save log, Close; the counts; a target area down to the very bottom edge with real `TaskRow`s
-  and `MeetingRow`s holding fixed sample entries (plain, 2-line, several context tags, `#next` +
-  due + waiting-for, nested thread tag, loop-style tag, meetings), wired with the real
-  `taskRowHeight`/`numberOfLines`, repeated until the bottom ~150 px are covered.
-- Handlers only report; nothing is edited, ticked or opened.
-- After each touch a marker at its start point (● handled, ○ cancelled, × no target,
-  ◐ swallowed), one e-ink refresh per touch, counts per class split by Finger/Pen and by band
-  (top / middle / bottom 20 % of the screen height).
-- One `log()` line per touch, numbers only. "Save log" writes CSV
-  (`id, mode, band, x, y, endX, endY, maxMove, ms, class, target, pointers`) to
+    one tap (`#next`/`#now`), or on a small tag span.
+  - **H5 wrong target**: the contact resolves to another element than the one Tilman aimed at.
+    Only his verdict can show this.
+- Two columns of the normal two-column width (rows wrap as on Daily and Current): a test column
+  and an info column; "⇄ Swap sides" swaps them, and the side is part of every record.
+- Test column, down to the very bottom edge: real `TaskRow`s and `MeetingRow`s with fixed sample
+  entries (plain 1- and 2-line titles, several context tags, `#next` + due, waiting-for + due,
+  nested thread tag, loop tag, meetings, and todos and meetings that are only or nearly only
+  tags), wired with the real `taskRowHeight`/`numberOfLines`, repeated to the bottom. Handlers
+  only report. The hit part gets a black frame (or is filled) until the next touch; a dot marks
+  the raw touch point, a × replaces it when nothing was hit. One e-ink refresh per touch.
+- Info column: Finger/Pen, ⇄ Swap sides, "Log touches everywhere", Clear, Save log, Close; the
+  last tap in words with position, band, movement and duration; verdict buttons Intended / Not
+  intended (then "Tap what you meant (use the pen)": the next test-column touch becomes that
+  record's `intendedTarget` and is not a test tap) and Skip; a table of classes and verdicts by
+  Finger/Pen, side and band. Taps in the info column are never test taps.
+- Output: one `log()` line per test tap, one per verdict and one per intended target, ids and
+  numbers only. "Save log" writes CSV (`id, mode, side, band, x, y, endX, endY, maxMove, ms,
+  pointers, class, target, verdict, intendedTarget`, positions in device pixels) to
   `EXPORT/gtdpara/debug/touch-<timestamp>.csv`.
 - "Log touches everywhere": the same observer around the app root, raw touches only, one log line
   each. Off by default, not persisted.
@@ -38,95 +40,106 @@ later touch problems.
 
 ## 2. Current state: what the code already says
 
-Numbers in dp (× 1.41 = px on the A5 X). Rows from `ui/TaskRow.tsx` and `ui/MeetingRow.tsx`.
+dp from the styles; px = dp × 1.41 on the A5 X (rounded).
 
-**Todo row** (`paddingVertical 7`, border 1, `overflow: hidden`, 42 dp for one line, 64 for two):
+**Todo row** (`ui/TaskRow.tsx`: `paddingVertical 7`, bottom border 1, `overflow: hidden`;
+42 dp = 59 px for one line, 64 dp = 90 px for two):
 
-- The title `Pressable` is only as tall as its text: 22 dp per line, starting 7 dp below the top.
-  Across the title's width the top **7 dp** and the bottom **13 dp** are dead: 20 of 42 dp
-  (≈ 48 %) in a 1-line row, 20 of 64 dp (≈ 31 %) in a 2-line row. Horizontally the title
-  `Pressable` spans the whole width between checkbox and icons, so blank space to the right of a
-  short title is live.
-- When the line estimator predicts two lines but the title needs one, the row is 64 dp and the
-  blank second line adds **35 dp** of dead area (only the first 29 dp from the top are live).
-- Checkbox and note/clip icons have `hitSlop 8`, clipped by the row's `overflow: hidden`: live
-  from the row top to about 35-37 dp. In a 2-line row the area **below the checkbox and below the
-  icons** (≈ 27-29 dp tall) is dead.
-- There are no horizontal gaps: the checkbox's and note icon's margins sit inside their
-  `Pressable`s, and the 8 dp between note and clip is covered by their hit slop.
+- The title `Pressable` is only as tall as its text (22 dp = 31 px per line, from 7 dp = 10 px
+  below the row top). It spans the whole width between checkbox and icons, so blank space to the
+  right of a short title is live.
+- 1-line row: across the title, the top **10 px** and the bottom **18 px** are dead, 28 of 59 px
+  (≈ 48 %).
+- 2-line row: across the title, top 10 px and bottom 18 px dead (28 of 90 px). Checkbox and icons
+  reach about 37 dp (52 px) down with their `hitSlop 8` (cut off by `overflow: hidden`), so
+  **below the checkbox ≈ 38 px** and **below the icons ≈ 41 px** are dead.
+- A row predicted at two lines whose title fits on one (the estimator errs that way): the empty
+  second line makes **49 px** dead below the title.
+- No dead gaps sideways: the checkbox's and note icon's margins sit inside their `Pressable`s, and
+  the 8 dp between note and clip is covered by hit slop.
 
-**Nested spans** (one tap, Daily's wiring):
+**Meeting row** (`ui/MeetingRow.tsx`): the main `Pressable` (time + title) is the content height.
+1-line row 37 dp = 52 px: top 10 px and bottom 11 px dead. 2-line row 57 dp = 80 px: top 10 px
+and bottom 11 px dead.
 
-- `#next` / `#now` label (`TaskLabels.handleNowPress`, wired wherever `onToggleNow` is passed:
-  Daily, focus-mode picker): a single tap does nothing, it waits 350 ms for a second one. Every
-  Next todo on Daily carries this label, so every Daily row has this dead spot (≈ 40 dp wide).
+**Nested `onPress` spans and what one tap does** (as wired on Daily):
+
+- `#next` / `#now` label (`TaskLabels.handleNowPress`, wherever `onToggleNow` is passed: Daily
+  and the focus-mode picker): **nothing**; it waits 350 ms for a second tap. Every Next todo on
+  Daily shows this label.
 - `#w/f Name` label: opens the counterpart overview.
 - Nested thread or loop tag (`TaggableText`): opens the thread or loop overview.
-- Plain context tag (Daily only, `onToggleContext`): toggles Daily's tag filter, so a tap on it
-  filters instead of editing.
-- `#due …`, `#someday`: no `onPress`; the tap goes to the title (edit).
-- Meeting row: the `#abbrev` / source name opens the Project or Area.
+- Plain context tag (Daily only, `onToggleContext`): toggles Daily's tag filter, not edit.
+- `#due …`, `#someday`: no `onPress` of their own; the tap goes to the title (edit).
+- Meeting `#abbrev` / source name: opens the Project or Area.
 
-**Meeting row**: the main `Pressable` is the content height (22 dp, or 42 for two lines) from
-7 dp down. Dead: top 7 dp and bottom 8 dp of a 37 dp row, top 7 and bottom 8 of a 57 dp row.
+So a title made only of tags is almost all spans: on Daily a tap on it toggles a filter or opens
+an overview, and only the spaces between tags and the blank rest of the line still edit.
 
-H1 and H5 cannot be decided from the code. Android hands RN one point per pointer (the contact
-centroid), and RN resolves a nested span from that point, so H5 would have to come from the host
-or firmware; the CSV's `target` per touch shows it.
+H1 cannot be decided from the code. Android hands React Native one point per pointer, and RN
+resolves a nested span from that point, so a "wrong target" (H5) comes from where that point
+lands relative to the aim, which only Tilman's verdict shows.
 
 ## 3. Design
 
-- **Classification** (`domain/touchDiag.ts`, pure): a raw touch plus the outcome events reported
-  in its window (start − 50 ms .. end + 300 ms; an outcome in the overlap of two quick taps goes
-  to the later touch) gives `handled` (a press, other than a single `#next` tap), `swallowed`
-  (only `#next` presses), `cancelled` (a pressIn, a span losing the responder, or a system touch
-  cancel, without a press) or `noTarget`. Also the band, the counts, the log lines and the CSV.
-- **Observer** (`ui/touchDiag/TouchObserver.tsx`): `onTouchStart/Move/End/Cancel` on a View;
-  they never take the responder. One record per pointer identifier. RN does not tell finger from
-  pen, so the test view labels records with its Finger/Pen toggle.
-- **Probe** (`ui/touchDiag/touchProbe.ts`): a context only the test view provides. `TaskRow`,
-  `TaskLabels`, `TaggableText` and `MeetingRow` add `onPressIn`/`onPressOut` (and
-  `onResponderTerminate` on spans) to their existing tap targets when it is set; thread tags and
-  the `#w/f` label then report instead of opening an overview. `onPressIn`/`onPressOut` do not
-  make a `<Text>` pressable (RN's `Text` checks `onPress`, `onLongPress` and
-  `onStartShouldSetResponder` only), so hit areas stay as they are. Without the context nothing
-  is added.
-- **Store** (`utils/touchDiagStore.ts`): outcomes, the session's classified touches, the
-  app-wide switch. In `utils/` so the debug bundle can read it.
-- **View** (`screens/settings/TouchTestScreen.tsx`, parts in `screens/settings/touchTest/`):
-  replaces the Settings content while open. Two columns like Daily, the right one with the
-  Current tab's "+clip". The target area measures itself and fills each column with rows until
-  the next one would not fit. Each touch is classified 320 ms after it ends.
-- **App-wide** (`ui/touchDiag/AppTouchObserver.tsx` in `App.tsx`'s `AppRoot`): the wrapping
-  View is always there (no remount when switched); while off it has no handlers. Quiet while the
-  test view is open.
-- **Debug bundle**: one line, `touch test: log touches everywhere ON|OFF · records N`.
+- **Classification and counts** (`domain/touchDiag.ts`, pure): targets are `<row>:<part>`
+  (`checkbox`, `title`, `tag:<n>`, `label:<kind>`, `noteIcon`, `clip`, `rowBody`). A raw touch
+  plus the outcome events in its window (start − 50 ms .. end + 300 ms; an outcome in the overlap
+  of two quick taps goes to the later touch) gives `handled`, `swallowed` (only inert presses),
+  `cancelled` (pressIn, a span losing the responder, or a system cancel, without a press) or
+  `noTarget`. Also the words for the info column (no row texts), the counts by mode × side ×
+  band with verdicts, the log lines and the CSV.
+- **Observer** (`ui/touchDiag/TouchObserver.tsx`): `onTouchStart/Move/End/Cancel` on a View, which
+  never take the responder. One record per pointer. RN does not tell finger from pen, so the
+  Finger/Pen toggle labels records. Only the test column is observed, so info-column taps leave
+  no record at all.
+- **Probe** (`ui/touchDiag/touchProbe.ts`): each test row is wrapped in a context provider bound
+  to its row number. With it, `TaskRow`, `TaskLabels`, `TaggableText` and `MeetingRow` add
+  `onPressIn`/`onPressOut` (and `onResponderTerminate` on spans) to their existing tap targets,
+  report a single `#next` tap as an inert press, report tags and the `#w/f` label instead of
+  opening anything, and draw the hit part: `ui/touchDiag/HitFrame.tsx` (an absolute frame, so
+  nothing moves) for `Pressable`s, a filled span for tags and labels. The title gets the frame
+  only: bold would rewrap it and move every target after it. `onPressIn`/`onPressOut` don't make
+  a `<Text>` pressable, so hit areas stay as they are. Without the context nothing is added.
+- **Store** (`utils/touchDiagStore.ts`): outcomes, the session's taps with verdicts, the app-wide
+  switch. In `utils/` so the debug bundle can read it.
+- **View** (`screens/settings/touchTest/`): `TouchTestScreen` (layout and swap), `TestColumn`
+  (measures itself, fills with `TestRows`, draws `LastTouchMarker`), `InfoColumn` with
+  `TestControls`, `LastTapInfo`, `VerdictButtons`, `SummaryTable`; logic in `useTouchSession`.
+  Every second round of samples also shows the Current tab's "+clip".
+- **App-wide** (`ui/touchDiag/AppTouchObserver.tsx` in `App.tsx`'s `AppRoot`): the wrapping View
+  is always there (no remount when switched); while off it has no handlers. Quiet while the test
+  view is open.
+- **Debug bundle**: `touch test: log touches everywhere ON|OFF · records N`.
+- A todo shows `#next` or `#w/f`, never both (one flow state), so the two labels are in two rows.
 
 ## 4. Test scenarios
 
 - Given the Inbox has "Call Anna", when I open Settings → Advanced → Touch test, then numbered
-  sample rows show and none of my todos.
-- When I tap a row's title and then a dead spot, then the first counts as handled (title), the
-  second as no target.
-- When I tap a checkbox and Save log, then a CSV with all touches is in EXPORT/gtdpara/debug and
-  the status line says so; the Inbox is untouched.
-- When I tap Close, Settings → Advanced shows again.
-- When I switch on "Log touches everywhere", close the test and tap twice on Daily, then the log
-  has two numbers-only lines; switched off, no touch handler is attached.
+  sample rows and tag-only rows show, and none of my todos.
+- When I tap the title of row 1, then the info column says "Row 1 · title · handled".
+- When I tap where nothing reacts and say Not intended, then it asks for a tap on what I meant;
+  when I tap the title of row 2, then that is stored as what I meant and not counted as a tap.
+- When I tap `#next` once, then it says "swallowed (needs double tap)" and the label is filled.
+- When I swap sides, tap a checkbox and Save log, then the CSV has every test tap with side,
+  class, target, verdict and intended target; the Inbox is untouched.
+- When I switch on "Log touches everywhere", then a tap in the test gives only its own line and
+  each tap on Daily one raw line; switched off, no touch handler is attached.
 
-Unit tests: every class, the window and overlap rule, bands, log line, CSV and summary.
+Unit tests: every class, the window and overlap rule, bands, words, counts with verdicts,
+verdict updates, log lines and CSV.
 
 ## 5. Test plan (device)
 
-- [ ] The target area reaches the bottom edge; no row is cut off.
-- [ ] Finger: ~5 taps on each row's title, top rows and bottom rows; tags and labels.
-- [ ] Pen: the same.
-- [ ] Each tap gives exactly one marker and one e-ink refresh; taps without a marker noted (H1).
+- [ ] The test column reaches the bottom edge; no row is cut off; the info column fits.
+- [ ] The hit part is framed or filled, the dot or × sits under the finger, one refresh per tap.
+- [ ] Finger: titles, tags and labels in top and bottom rows, ~5 taps each, with a verdict.
+- [ ] Swap sides and repeat; then the same with the pen.
 - [ ] "Log touches everywhere" on, failed taps reproduced on Daily and Current near the bottom.
 - [ ] Save log; CSV and debug bundle sent.
 
 ## As built
 
 As designed. Sample rows are parsed from file lines (`touchTestSamples.ts`), so they carry the
-fields the parser derives. The second tap of a `#next` double tap reports `nowToggle` and counts
-as handled. Meeting rows in the test show no prep/review box (no Note setups are passed).
+fields the parser derives; tag-only rows carry no row number in their text (the info column names
+them). Meeting rows in the test show no prep/review box (no Note setups are passed).

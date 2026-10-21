@@ -2,9 +2,8 @@
  * The touch test's "Log touches everywhere" (Settings → Advanced → Touch
  * test): wraps the whole app in a ui/touchDiag/TouchObserver and writes one
  * log line per touch (position in device pixels, band, movement, duration,
- * pointers - no
- * outcome, no text), so taps on the real Daily and Current screens can be
- * checked near the bottom edge.
+ * pointers - no outcome, no text), so taps on the real Daily and Current
+ * screens can be checked near the bottom edge.
  *
  * The wrapping View is always there, so switching it on or off never
  * remounts the app; while off (the default after every start) it has no

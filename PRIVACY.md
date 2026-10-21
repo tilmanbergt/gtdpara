@@ -73,7 +73,7 @@ file unless you switch it on.
   are needed for debugging, and they can contain your project names.
 - Optional performance tracing (Settings → Advanced, off by default) writes timing files there too.
 - **Touch test** (Settings → Advanced): **Save log** writes the positions and timings of your taps
-  on its sample rows to the same folder; no texts. **Log touches everywhere** (off after every
+  on its sample rows, what they hit and your verdicts to the same folder; no texts. **Log touches everywhere** (off after every
   start) puts the position and timing of each tap into the log above.
 
 ## Profiles

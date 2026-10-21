@@ -11,9 +11,9 @@ or your project/area files are stored.
 ## [Unreleased]
 
 ### New
-- **Touch test** in Settings → Advanced, to diagnose taps that don't register: tap sample rows
-  with finger or pen and see where each tap landed and whether it worked. **Save log** writes the
-  result to `EXPORT/gtdpara/debug` for a bug report.
+- Added: **Touch test** in Settings → Advanced, to diagnose taps that don't register. Tap sample
+  rows with finger or pen, see what each tap hit and say whether that was what you meant; **Save
+  log** writes the result to `EXPORT/gtdpara/debug` for a bug report.
 
 ## [0.18.3] — 2026-10-21
 
