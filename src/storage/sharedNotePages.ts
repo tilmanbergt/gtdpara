@@ -14,7 +14,7 @@
  * decides own-vs-shared or reads a Task/Meeting.
  *
  * The four functions §4 names (`ensureSharedNoteFile`/`findKeywordPage`/
- * `insertItemPage`/`renameKeywordAt`) record one attempt +
+ * `insertItemPage`/`renameKeywordAt`), and `insertPageAt`, record one attempt +
  * success/failure + timing entry per call via `recordDebugLogEntry`
  * (`supernote/fileSystem.ts`'s on-device diagnostic file), so §10's open
  * risks can be checked on the device without `adb logcat`. Their
@@ -143,42 +143,74 @@ export async function findKeywordPage(filePath: string, keyword: string): Promis
  * index. `date` (YYYY-MM-DD) is the item's date - a meeting's date, a todo's
  * creation date; domain/pageOrder.ts decides the position from it and the
  * file's keywords (note-setups design §13).
+ */
+export async function insertItemPage(filePath: string, keyword: string, template: string, date: string): Promise<number> {
+  return insertPage('insertItemPage', filePath, keyword, template, {date}, ({keywords, totalPages}) =>
+    timelineInsertIndex(pageMarks(keywords, totalPages), date),
+  );
+}
+
+/**
+ * Inserts a page for `keyword` into `filePath` at the index `indexOf` picks
+ * from the file's keywords (e.g. domain/pageOrder.ts's `afterItemIndex` for a
+ * meeting's reflection page, docs/dev/history/technical-design-meeting-reflection.md
+ * §2.3) and returns that index.
+ */
+export async function insertPageAt(
+  filePath: string,
+  indexOf: (file: {keywords: PageKeyword[]; totalPages: number}) => number,
+  keyword: string,
+  template: string,
+): Promise<number> {
+  return insertPage('insertPageAt', filePath, keyword, template, {}, indexOf);
+}
+
+/**
+ * The one page insert behind `insertItemPage` and `insertPageAt`: one keyword
+ * read, the page, its keyword, one debug-log entry.
  *
  * A keyword the Supernote would refuse (over KEYWORD_MAX_LENGTH) is refused
  * before anything is written, so it never leaves a page without a keyword
  * (docs/dev/history/technical-design-keyword-length.md §4.3). It is not cut
  * here: the keyword builders fit it, so the note link stores the same text.
  */
-export async function insertItemPage(filePath: string, keyword: string, template: string, date: string): Promise<number> {
+async function insertPage(
+  name: string,
+  filePath: string,
+  keyword: string,
+  template: string,
+  logData: Record<string, string>,
+  indexOf: (file: {keywords: PageKeyword[]; totalPages: number}) => number,
+): Promise<number> {
   const start = Date.now();
   try {
     assertKeywordFits(keyword);
-    const {keywords, totalPages} = await readAllKeywords(filePath);
-    const index = timelineInsertIndex(pageMarks(keywords, totalPages), date);
-    log('insertItemPage: inserting', `page=${index}`, date);
+    const file = await readAllKeywords(filePath);
+    const index = indexOf(file);
+    log(`${name}: inserting`, `page=${index}`, ...Object.values(logData));
     await insertNotePage(filePath, index, template);
     try {
       await insertKeyWord(filePath, index, keyword);
     } catch (e) {
       // Pages are never deleted automatically (deletes need the user's confirmation); the log names the page to remove.
-      logError('insertItemPage: keyword failed, page left without keyword', filePath, `page=${index}`, errorMessage(e));
+      logError(`${name}: keyword failed, page left without keyword`, filePath, `page=${index}`, errorMessage(e));
       throw e;
     }
-    await recordDebugLogEntry('insertItemPage', true, Date.now() - start, {
+    await recordDebugLogEntry(name, true, Date.now() - start, {
       filePath,
       keyword,
       keywordLength: keyword.length,
-      date,
-      totalPagesBefore: totalPages,
+      ...logData,
+      totalPagesBefore: file.totalPages,
       insertedPage: index,
     });
     return index;
   } catch (e) {
-    await recordDebugLogEntry('insertItemPage', false, Date.now() - start, {
+    await recordDebugLogEntry(name, false, Date.now() - start, {
       filePath,
       keyword,
       keywordLength: keyword.length,
-      date,
+      ...logData,
       errorMessage: errorMessage(e),
     });
     throw e;

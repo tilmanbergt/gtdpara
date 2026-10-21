@@ -337,12 +337,13 @@ export function createDefaultHomePage(): PageLayout {
  */
 export const DEFAULT_HOME_NOTEBOOK: Notebook = {name: '{name} {year}', folder: ''};
 
-/** The Default a fresh install starts with: the standard Meeting, First and Home pages; no Todo page (blank); no tracking; every note in the home notebook. */
+/** The Default a fresh install starts with: the standard Meeting, First, Reflection and Home pages; no Todo page (blank); no tracking; every note in the home notebook. */
 export function seedNoteSetupDefaults(): NoteSetupDefaults {
   return {
     pages: {
       meeting: createDefaultMeetingPage(),
       first: withDefaultPieces(emptyPageLayout(), 'first'),
+      review: createDefaultReviewPage(),
       home: createDefaultHomePage(),
     },
     tracking: {...NO_TRACKING},

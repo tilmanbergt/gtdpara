@@ -22,7 +22,9 @@ export type NoteCreationPlanKind =
   /** The item's shared file itself is missing - create it again with a fresh page. */
   | 'recreate-shared-file'
   /** The item's own note file is missing - create it again under the same name. */
-  | 'recreate-own-file';
+  | 'recreate-own-file'
+  /** A meeting's Reflection page after its page (docs/dev/history/technical-design-meeting-reflection.md §2.3). */
+  | 'new-reflection';
 
 export interface NoteCreationPlan {
   kind: NoteCreationPlanKind;
@@ -34,6 +36,8 @@ export interface NoteCreationPlan {
   setupName: string | null;
   /** `link-page` only: the keyword of the existing page. */
   keyword?: string;
+  /** `new-reflection` only: the meeting's own page is created first, in the same step. */
+  withMeetingPage?: boolean;
   /**
    * First-time notes only: the other places this note could go, best first
    * (docs/dev/history/technical-design-note-setups.md §1.2, §4.4) - other

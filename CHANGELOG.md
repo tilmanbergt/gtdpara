@@ -15,6 +15,11 @@ or your project/area files are stored.
   form shows the title without `#prepped` and `#reviewed`, and **Save** keeps the tick the
   meeting has, also one you set while the edit was open.
 
+### Upgrade notes
+- **Note setups**: the Default gets a **Reflection page** (Date & title as a heading) the first
+  time this version starts. Your setups keep their pages; the ones without an own Reflection page
+  use the Default's.
+
 ## [0.18.3] — 2026-10-21
 
 ### Fixed
