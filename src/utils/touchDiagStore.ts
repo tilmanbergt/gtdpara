@@ -2,13 +2,13 @@
  * The touch test's state (Settings → Advanced → Touch test) - a tiny module
  * store like ui/overviewStore.ts, so the probed rows can report press events
  * without props threaded through them, and the app-wide switch reaches
- * App.tsx's root observer.
+ * App.tsx's root observer. In utils/ so the debug bundle can read it too.
  *
  * Nothing here is persisted: the session's touches stay until Clear or the
  * plugin closes, and "Log touches everywhere" is off after every restart.
  */
 import {useSyncExternalStore} from 'react';
-import {OutcomeKind, RawTouch, TouchEntry, TouchOutcome, TouchTarget} from '../../domain/touchDiag';
+import {OutcomeKind, RawTouch, TouchEntry, TouchOutcome, TouchTarget} from '../domain/touchDiag';
 
 // Long enough for every outcome a pending touch still needs; older ones are dropped.
 const OUTCOME_KEEP_MS = 5000;
@@ -79,6 +79,10 @@ export function setAppWideTouchLog(on: boolean): void {
   if (on === appWide) return;
   appWide = on;
   emit();
+}
+
+export function isAppWideTouchLog(): boolean {
+  return appWide;
 }
 
 export function useAppWideTouchLog(): boolean {

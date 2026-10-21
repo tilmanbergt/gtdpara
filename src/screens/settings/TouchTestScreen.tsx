@@ -35,7 +35,7 @@ import {
   setTouchTestOpen,
   useAppWideTouchLog,
   useTouchEntries,
-} from '../../ui/touchDiag/touchDiagStore';
+} from '../../utils/touchDiagStore';
 import {TouchProbeContext} from '../../ui/touchDiag/touchProbe';
 import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';

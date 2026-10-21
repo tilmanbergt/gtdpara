@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-17 scenarios.
+18 scenarios.
 
 ## Close-out
 
@@ -136,6 +136,16 @@ Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/tec
 - **And** the Inbox is untouched: the tapped checkbox ticked nothing
 - **When** I tap Close
 - **Then** Settings → Advanced shows again
+
+Test: `__tests__/scenarios/touchTest.test.tsx`
+
+### Log touches on every screen while "Log touches everywhere" is on
+
+- **Given** an empty PARA folder
+- **When** I switch on "Log touches everywhere" in the touch test, close it and tap twice on Daily
+- **Then** the log has one line per tap, with numbers only
+- **When** I switch it off again
+- **Then** no touch handler is attached to the app any more
 
 Test: `__tests__/scenarios/touchTest.test.tsx`
 

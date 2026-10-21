@@ -14,7 +14,7 @@ import {TouchTarget} from '../../../domain/touchDiag';
 import MeetingRow, {MEETING_ROW_HEIGHT} from '../../../ui/MeetingRow';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../../ui/TaskRow';
 import {TASK_COLUMN_WIDTH_PX} from '../../../ui/taskRowLayout';
-import {reportOutcome} from '../../../ui/touchDiag/touchDiagStore';
+import {reportOutcome} from '../../../utils/touchDiagStore';
 import {touchSample, TouchSample} from './touchTestSamples';
 
 function sampleHeight(sample: TouchSample): number {

@@ -1,4 +1,5 @@
 import {act, fireEvent, screen} from '@testing-library/react-native';
+import {setAppWideTouchLog} from '../../src/utils/touchDiagStore';
 import {device} from '../../test-helpers/fakeDevice/device';
 import {expectShows, openApp, shows, tap, tapTab} from '../../test-helpers/scenario/app';
 import {dataFile, INBOX_FILE, putFile, fileText} from '../../test-helpers/scenario/files';
@@ -74,5 +75,39 @@ scenario('Record taps in the touch test without changing anything', {feature: 'S
   then('Settings → Advanced shows again', () => {
     expectShows('Touch test');
     expectShows('Run Integrity Check');
+  });
+});
+
+/** The app-wide observer's log lines so far. */
+const appTouchLines = () =>
+  device()
+    .logs.map(l => l.text)
+    .filter(t => t.startsWith('touch(app):'));
+
+scenario('Log touches on every screen while "Log touches everywhere" is on', {feature: 'Settings'}, () => {
+  given('an empty PARA folder', () => undefined);
+  when('I switch on "Log touches everywhere" in the touch test, close it and tap twice on Daily', async () => {
+    await openApp();
+    await tapTab('Settings');
+    await tap('Advanced');
+    await tap('Touch test');
+    await tap('Log touches everywhere: OFF');
+    expectShows('Log touches everywhere: ON');
+    await tap('Close');
+    await tapTab('Daily');
+    await touch(500, 1200);
+    await touch(40, 90);
+  });
+  then('the log has one line per tap, with numbers only', () => {
+    const lines = appTouchLines();
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toMatch(/touch\(app\): band=\w+ x=500 y=1200 dx=0 dy=0 move=0 ms=\d+ pointers=1 end=lift$/);
+  });
+  when('I switch it off again', () => {
+    act(() => setAppWideTouchLog(false));
+  });
+  then('no touch handler is attached to the app any more', () => {
+    expect(() => observer()).toThrow('no touch observer on screen');
+    expect(appTouchLines()).toHaveLength(2);
   });
 });

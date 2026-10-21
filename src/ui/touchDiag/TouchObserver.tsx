@@ -13,7 +13,7 @@
 import React, {useRef} from 'react';
 import {GestureResponderEvent, StyleProp, View, ViewStyle} from 'react-native';
 import {RawTouch} from '../../domain/touchDiag';
-import {nextTouchId} from './touchDiagStore';
+import {nextTouchId} from '../../utils/touchDiagStore';
 
 interface Props {
   enabled: boolean;
