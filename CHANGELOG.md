@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.18.3] — 2026-10-21
+
 ### Fixed
 - **Project files saved on Windows show their todos again**: a file saved with Windows line
   endings (Notepad, some sync tools) looked empty in gtdpara. It is read as usual now; the next
