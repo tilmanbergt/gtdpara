@@ -9,6 +9,10 @@
  * top of the page in view (not back to page one) - the
  * list re-pages via PagedSection's `jumpTo` to wherever that row now falls.
  *
+ * A list with Quick Add passes its `toolbar` (ui/MeetingToolbar.tsx, built by
+ * ui/useMeetingToolbar.ts), shown as PagedSection's `subHeader`; the row box
+ * measures what is left, so the page budget follows.
+ *
  * The screen keeps building the rows itself (`renderRow` gets the current
  * layout) - its action wiring (notes, tracking, arming) stays where its
  * state lives, the same split every list in this codebase follows.
@@ -41,6 +45,8 @@ interface Props<T> {
   renderRow: (row: T, layout: MeetingRowLayout) => React.ReactNode;
   resetKey?: string | number;
   emptyHint?: string;
+  /** The toolbar row acting on the selected meeting (ui/useMeetingToolbar.ts), between the header and the rows; lists without Quick Add have none. */
+  toolbar?: React.ReactNode;
   textColor: string;
   borderColor: string;
 }
@@ -53,6 +59,7 @@ export default function MeetingList<T>({
   renderRow,
   resetKey,
   emptyHint,
+  toolbar,
   textColor,
   borderColor,
 }: Props<T>): React.JSX.Element {
@@ -66,6 +73,7 @@ export default function MeetingList<T>({
     <PagedSection
       header={header}
       headerAccessory={<LayoutSwitch layout={layout} onChange={setLayout} textColor={textColor} />}
+      subHeader={toolbar}
       rows={rows}
       rowHeight={row => (isHeaderRow(row) ? MEETING_LIST_HEADER_ROW_HEIGHT : MEETING_ROW_HEIGHT[layout])}
       isCountableRow={row => !isHeaderRow(row)}

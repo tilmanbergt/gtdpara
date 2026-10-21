@@ -16,8 +16,6 @@ import {useCallback, useEffect, useState} from 'react';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination, destinationLabel} from '../domain/destination';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
-import {isHighlight, setHighlight} from '../domain/monthHighlight';
-import {deriveMeetingFields} from '../domain/markdown';
 import {PeriodScope} from '../domain/period';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting} from '../domain/types';
@@ -55,6 +53,7 @@ import {todayIso} from '../domain/meetingTime';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
 import {useCachedInbox} from '../ui/useCachedInbox';
+import {MeetingToolbarOptions} from '../ui/useMeetingToolbar';
 
 /** Stable identity of one listed meeting (source file + index) - what `editingKey` holds. */
 export const meetingKey = (entry: WeeklyMeetingEntry) => `${entry.item.path}#${entry.meetingIndex}`;
@@ -243,19 +242,6 @@ export function usePlanningScreen({logTag}: Options) {
     );
   };
 
-  /** Flips a meeting's Month highlight (`#monthly`) in place - the Month day panel's "M" box (docs/dev/history/technical-design-monthly-view.md §5.9). */
-  const toggleHighlight = (entry: WeeklyMeetingEntry) =>
-    runMeetingAction(async () => {
-      await saveEntryMeetings(entry, meetings => {
-        const current = meetings[entry.meetingIndex];
-        if (!current) return meetings;
-        const title = setHighlight(current.title, !isHighlight(current));
-        meetings[entry.meetingIndex] = {...current, title, ...deriveMeetingFields(title)};
-        return meetings;
-      });
-      requestEinkRefresh();
-    });
-
   /** Adds/removes `item` from `scope` focus - storage/focusSlots.ts's toggleItemFocus (limit check included). */
   const toggleFocus = useCallback(
     async (item: CachedItem, scope: FocusScope, value: boolean): Promise<void> => {
@@ -275,9 +261,26 @@ export function usePlanningScreen({logTag}: Options) {
     [logTag],
   );
 
-  const trackingFor = (entry: WeeklyMeetingEntry): MeetingTrackingConfig => ({
-    setups: trackingSetups(settings),
-    onToggle: kind => handleToggleMeetingTracking(entry, kind),
+  const trackingFor = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
+
+  /**
+   * The day panel's toolbar (docs/dev/history/technical-design-meeting-reflection.md
+   * §2.6) for the meeting in Quick Add's edit mode - pass to ui/useMeetingToolbar.ts.
+   * No Files pane here, so no Link file.
+   */
+  const toolbarOptions = (
+    editing: WeeklyMeetingEntry | null,
+    colors: {textColor: string; borderColor: string},
+  ): MeetingToolbarOptions => ({
+    name: logTag,
+    selection: editing && {meeting: editing.meeting, itemPath: editing.item.path, forceOwn: editing.item.kind === 'inbox'},
+    settings,
+    inbox: inbox ? {tasks: inbox.tasks} : null,
+    onToggle: kind => editing && handleToggleMeetingTracking(editing, kind),
+    persistMeeting: async updated => {
+      if (editing) await saveEntryMeetings(editing, ms => ms.map((m, i) => (i === editing.meetingIndex ? updated : m)));
+    },
+    ...colors,
   });
 
   // --- Day panel (docs/dev/history/technical-design-meeting-lists.md §2.8) -------------
@@ -305,8 +308,9 @@ export function usePlanningScreen({logTag}: Options) {
     });
 
   /**
-   * The planning day panel's row (2-line by default): M toggle, tracking,
-   * note, open linked file (no linking from here), source.
+   * The planning day panel's row (2-line by default): read-only M and
+   * tracking, note, open linked file, source. The M is set in Quick Add's
+   * edit form, the tick in the toolbar (`toolbarOptions`).
    * Spread onto <MeetingRow key=... {...dayRowProps(...)} />.
    */
   const dayRowProps = (
@@ -319,9 +323,8 @@ export function usePlanningScreen({logTag}: Options) {
     layout,
     time: 'time',
     source: {abbrev: entry.item.abbrev ?? entry.item.name, name: entry.item.name, onPress: () => opts.onOpenSource(entry.item)},
-    highlight: 'toggle',
-    onToggleHighlight: () => toggleHighlight(entry),
-    tracking: trackingFor(entry),
+    highlight: 'mark',
+    tracking: trackingFor(),
     note: {onOpen: () => handleMeetingNote(entry), onCreate: () => handleMeetingNote(entry)},
     file: {linkedFile: entry.meeting.linkedFile, onOpen: onOpenLinkedFile},
     onPress: () => startMeetingEdit(entry),
@@ -362,10 +365,10 @@ export function usePlanningScreen({logTag}: Options) {
     handleQuickFileEdit: stableQuickFileEdit,
     handleMeetingNote,
     onOpenLinkedFile,
-    toggleHighlight,
     toggleFocus,
     saveGoal,
     trackingFor,
+    toolbarOptions,
     selectedDate,
     selectDay,
     openMeetingFromGrid,

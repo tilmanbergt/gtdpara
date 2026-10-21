@@ -41,6 +41,7 @@ import {useLinkedFileMissing} from '../usePlanningScreen';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {log} from '../../utils/log';
 import AheadSection, {NextOffer} from './AheadSection';
+import {useMeetingToolbar} from '../../ui/useMeetingToolbar';
 import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
 import {meetingEntryKey, taskEntryKey, useEntryActions} from '../../ui/useEntryActions';
@@ -123,6 +124,9 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
     getCachedData()?.paths ?? null,
   );
 
+  // The meeting toolbar in Ahead while one of its meetings is edited (docs/dev/history/technical-design-meeting-reflection.md §2.6).
+  const meetingToolbar = useMeetingToolbar(actions.toolbarOptions(editingMeeting, {textColor, borderColor}));
+
   if (!overview) {
     return (
       <View style={styles.overlay}>
@@ -193,6 +197,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             actions={actions}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
+            toolbar={editingMeeting ? meetingToolbar : undefined}
             onOpenSomeday={entries => requestReviewStep('somedayMaybe', somedayFilterOf(lens === 'thread' && !counterpartOnly ? `#${overview.thread.tag}` : labels.counterpart, entries))}
             textColor={textColor}
             borderColor={borderColor}

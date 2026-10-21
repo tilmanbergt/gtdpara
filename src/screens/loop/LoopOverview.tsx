@@ -39,6 +39,7 @@ import {log} from '../../utils/log';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {useLinkedFileMissing} from '../usePlanningScreen';
 import AheadSection, {NextOffer} from '../thread/AheadSection';
+import {useMeetingToolbar} from '../../ui/useMeetingToolbar';
 import LookingBackSection, {SINCE_KEY} from '../thread/LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from '../thread/PastMeetingPanel';
 import EngageButton from '../../ui/EngageButton';
@@ -104,6 +105,9 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
     editingTask?.task.linkedFile ?? editingMeeting?.meeting.linkedFile,
     getCachedData()?.paths ?? null,
   );
+
+  // The meeting toolbar in Ahead while one of its meetings is edited (docs/dev/history/technical-design-meeting-reflection.md §2.6).
+  const meetingToolbar = useMeetingToolbar(actions.toolbarOptions(editingMeeting, {textColor, borderColor}));
 
   if (!overview || !lists) {
     return (
@@ -209,6 +213,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
             actions={actions}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
+            toolbar={editingMeeting ? meetingToolbar : undefined}
             sectionLabels={{owe: 'Agreed in its meetings', relevant: 'Todos'}}
             onOpenSomeday={entries => requestReviewStep('somedayMaybe', somedayFilterOf(`#${loop.tag}`, entries))}
             textColor={textColor}

@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-16 scenarios.
+22 scenarios.
 
 ## Close-out
 
@@ -33,6 +33,14 @@ Test: `__tests__/scenarios/closeOut.test.tsx` · design: `docs/dev/history/techn
 
 Test: `__tests__/scenarios/daily.test.tsx` · design: `docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md`
 
+### Daily: tomorrow's tracked meeting offers Prepped, and Daily has no Link file
+
+- **Given** area "Coaching" has a sparring session tomorrow
+- **When** I open Daily, switch to Tomorrow and tap the session
+- **Then** the toolbar offers "☐ Prepped" and nothing else
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
 ## Inbox
 
 ### Refile a todo with its note from the Inbox to a project
@@ -58,6 +66,63 @@ Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/
 - **Then** for every point where gtdpara can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left
 
 Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+## Meetings
+
+### Reflect on a sparring session: the page comes after the meeting's page and the pages added to it by hand
+
+- **Given** area "Coaching" has a sparring session three days ago and a check-in since; in "sparring mieke <year>.note" the session's page is followed by two pages added by hand, then the check-in's page
+- **When** I open Coaching and tap the sparring session
+- **Then** the toolbar acts on it and offers "Reflect ›" and "☐ Reviewed"
+- **When** I tap "Reflect ›" and confirm the new page
+- **Then** the reflection page comes after both hand-added pages, not straight after the session's page, and before the check-in's page
+- **And** the reflection page has no date keyword of its own, so it stays part of the meeting
+- **And** it carries the setup's heading and guiding question
+- **And** it was opened, and the toolbar now says "Reflection ›"
+- **And** the meeting is not ticked reviewed and its line is unchanged
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+### Reflect on a meeting that has no page yet: one question, then meeting page and reflection in order
+
+- **Given** area "Coaching" has a sparring session three days ago without a note, and no sparring notebook exists
+- **When** I tap the session, tap "Reflect ›" and confirm
+- **Then** the notebook exists with the meeting's page first and the reflection second
+- **And** the meeting links its page, and the reflection is what opened
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+### A renamed meeting finds its reflection again
+
+- **Given** the sparring session has a reflection page, and its title was changed to "Sparring Mieke roles" since
+- **When** I tap the session
+- **Then** the toolbar says "Reflection ›"
+- **When** I tap it
+- **Then** the same page opens, now with the keyword of the new title
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+### The toolbar follows the selected meeting
+
+- **Given** area "Coaching" has a sparring session three days ago and one in two days, both tracked by the Sparring setup
+- **When** I open Coaching without tapping a meeting
+- **Then** the toolbar is there but says "Tap a meeting"
+- **When** I tap the session in two days
+- **Then** it offers "☐ Prepped" and "Link file", but no reflection yet
+- **When** I tap the session three days ago
+- **Then** it offers "☐ Reviewed", "Reflect ›" and "Link file"
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+### Tick reviewed in the toolbar while editing the meeting: Save keeps the tick
+
+- **Given** the sparring session three days ago was ticked prepped before it took place
+- **When** I tap the session to edit it
+- **Then** the title field shows the title without #prepped
+- **When** I change the title, tick "☐ Reviewed" in the toolbar and then tap Save
+- **Then** the meeting has the new title and keeps both #prepped and #reviewed
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
 
 ## Profiles and demo space
 

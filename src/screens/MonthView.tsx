@@ -38,6 +38,7 @@ import {FolderEntry} from '../supernote/fileSystem';
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
+import {useMeetingToolbar} from '../ui/useMeetingToolbar';
 import MeetingRow from '../ui/MeetingRow';
 import {MiniTabDef as DayTabDef} from '../ui/MiniTabs';
 import MonthDaysColumn from '../ui/MonthDaysColumn';
@@ -120,6 +121,7 @@ export default function MonthView({
   const editingMeetingEntry: WeeklyMeetingEntry | null =
     editingKey != null ? dayRows.find(e => meetingKey(e) === editingKey) ?? null : null;
   const linkedFileMissing = useLinkedFileMissing(editingMeetingEntry?.meeting.linkedFile, paths);
+  const dayToolbar = useMeetingToolbar(planning.toolbarOptions(editingMeetingEntry, {textColor, borderColor}));
 
   const dayTabs: DayTabDef<DayTab>[] = [
     {key: 'meetings', label: `Meetings (${dayRows.length})`},
@@ -236,6 +238,7 @@ export default function MonthView({
                     activeTab={dayTab}
                     onTabChange={setDayTab}
                     onClose={() => planning.closeDayPanel()}
+                    toolbar={dayToolbar}
                     renderRow={(entry, layout) => (
                       <MeetingRow
                         key={dayEntryKey(entry)}

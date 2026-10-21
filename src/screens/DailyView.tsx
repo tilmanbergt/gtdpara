@@ -147,6 +147,7 @@ import {useActionError} from '../ui/useActionError';
 import {useEngagePrompt} from '../ui/useEngagePrompt';
 import {errorMessage} from '../utils/errorMessage';
 import {useCachedInbox} from '../ui/useCachedInbox';
+import {useMeetingToolbar} from '../ui/useMeetingToolbar';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
@@ -931,24 +932,9 @@ export default function DailyView({
   // up" list (§module doc comment) - contextTag/onToggleContext are gated
   // to `!focusMode` here rather than by having two render functions, since
   // the context filter is Daily-only and never composes with focus
-  // mode (technical-design-context-tags.md §2/§10); `dailyContext` itself
-  // can in practice never be non-null during a focus-mode mount anyway (see
-  // that state's own doc comment), but this keeps the scope explicit rather
-  // than relying on that being true.
-  // `heightPx` (docs/dev/history/technical-design-pagination-fixed-height.md
-  // §3.2): passed by the Calendar column's Today/Tomorrow PagedSection
-  // below, computed via meetingEntryHeight() the same way it's summed for
-  // that PagedSection's own rowHeight - same "pass both together" contract
-  // renderTaskEntry's own heightPx follows. Left undefined for focus
-  // mode's "Coming up" list further down (unpaginated, MeetingRow's own
-  // single-line default).
-  // The row and the sizing helpers take this same object (ui/MeetingRow.tsx's
-  // MeetingTrackingConfig), so height/lines always agree with the icon the
-  // row renders.
-  const trackingFor = (entry: DailyMeetingEntry): MeetingTrackingConfig => ({
-    setups: trackingSetups(settings),
-    onToggle: kind => handleToggleMeetingTracking(entry, kind),
-  });
+  // mode (technical-design-context-tags.md §2/§10).
+  // The row's read-only prep/review icon; the tick is set in the toolbar (ui/useMeetingToolbar.ts).
+  const trackingFor = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
 
   const renderMeetingEntry = (entry: DailyMeetingEntry, layout: MeetingRowLayout) => {
     const key = meetingKey(entry);
@@ -964,7 +950,7 @@ export default function DailyView({
         time="time"
         source={{abbrev: entry.item.abbrev ?? entry.item.name, name: entry.item.name, onPress: () => openItem(entry.item)}}
         highlight="mark"
-        tracking={trackingFor(entry)}
+        tracking={trackingFor()}
         note={{onOpen: () => handleMeetingNote(entry), onCreate: () => handleMeetingNote(entry)}}
         file={{linkedFile: entry.meeting.linkedFile, onOpen: onOpenLinkedFile}}
         onPress={() => startMeetingEdit(entry)}
@@ -1010,6 +996,19 @@ export default function DailyView({
   // comment for why the fallback every other screen relies on is wrong here.
   const editingEntryItem = editingTaskEntry?.item ?? editingMeetingEntry?.item ?? null;
   const editingItemPath = editingEntryItem && editingEntryItem.kind !== 'inbox' ? editingEntryItem.path : null;
+  // The meeting toolbar acts on the edited meeting; Daily has no Files pane, so no Link file.
+  const meetingToolbar = useMeetingToolbar({
+    name: 'DailyView',
+    selection: editingMeetingEntry && {meeting: editingMeetingEntry.meeting, itemPath: editingMeetingEntry.item.path, forceOwn: editingMeetingEntry.item.kind === 'inbox'},
+    settings,
+    inbox: inbox ? {tasks: inbox.tasks} : null,
+    onToggle: kind => editingMeetingEntry && handleToggleMeetingTracking(editingMeetingEntry, kind),
+    persistMeeting: async updated => {
+      if (editingMeetingEntry) await saveEntryMeetings(editingMeetingEntry, ms => ms.map((m, i) => (i === editingMeetingEntry.meetingIndex ? updated : m)));
+    },
+    textColor,
+    borderColor,
+  });
 
   // Read-only linked-file treatment (technical-design-linked-files.md §1/§6
   // - Daily is read-only: a filled clip if a link exists, tap to open, no
@@ -1269,6 +1268,7 @@ export default function DailyView({
                   activeTab={calendarTab}
                   onTabChange={setCalendarTab}
                   renderRow={renderMeetingEntry}
+                  toolbar={meetingToolbar}
                   listResetKey={contextResetKey}
                   emptyHint={`Nothing ${calendarTab === 'tomorrow' ? 'tomorrow' : 'today'}.`}
                   googlePanel={

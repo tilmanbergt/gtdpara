@@ -23,6 +23,7 @@ import {meetingsOnDay} from '../storage/monthlyAggregate';
 import {buildWeeklyAggregate, WeeklyMeetingEntry} from '../storage/weeklyAggregate';
 import {FolderEntry} from '../supernote/fileSystem';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
+import {useMeetingToolbar} from '../ui/useMeetingToolbar';
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import MeetingRow from '../ui/MeetingRow';
@@ -120,6 +121,7 @@ export default function WeekPlanner({
       ? dayRows.find(e => meetingKey(e) === editingKey) ?? aggregate.meetings.find(e => meetingKey(e) === editingKey) ?? null
       : null;
   const linkedFileMissing = useLinkedFileMissing(editingMeetingEntry?.meeting.linkedFile, paths);
+  const dayToolbar = useMeetingToolbar(planning.toolbarOptions(editingMeetingEntry, {textColor, borderColor}));
 
   const openSource = (item: WeeklyMeetingEntry['item']) => {
     if (item.kind === 'inbox') {
@@ -228,6 +230,7 @@ export default function WeekPlanner({
               activeTab={dayTab}
               onTabChange={setDayTab}
               onClose={() => planning.closeDayPanel()}
+              toolbar={dayToolbar}
               renderRow={(entry, layout) => (
                 <MeetingRow
                   key={dayEntryKey(entry)}

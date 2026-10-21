@@ -91,7 +91,8 @@ import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
 import {splitAndSortMeetings, todayIso} from '../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../domain/noteSetups';
-import {ResolvedParaPaths} from '../domain/settings';
+import {useMeetingToolbar} from '../ui/useMeetingToolbar';
+import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {findCachedItem, getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
 import {InboxFilingTarget, resolveFilingPick} from '../storage/inboxFiling';
@@ -209,6 +210,7 @@ export default function InboxScreen({
   const [icsUrl, setIcsUrl] = useState('');
   // Note setups for the meeting rows' prep/review checkpoint icon (loaded with the rest of the settings in `load`).
   const [noteSetups, setNoteSetups] = useState<NoteSetupConfig>(EMPTY_NOTE_SETUP_CONFIG);
+  const [screenSettings, setScreenSettings] = useState<GtdParaSettings | null>(null);
 
   const {
     target: editTarget,
@@ -241,6 +243,7 @@ export default function InboxScreen({
       setHideDone(loadedSettings.hideDoneInboxTasks);
       setIcsUrl(loadedSettings.googleCalendarIcsUrl);
       setNoteSetups(noteSetupConfig(loadedSettings));
+      setScreenSettings(loadedSettings);
       let cache = getCachedData();
       if (!cache || forceRebuild) {
         cache = await rebuildCache(loadedSettings);
@@ -491,17 +494,14 @@ export default function InboxScreen({
     });
   };
 
-  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag on the current copy via saveInboxMeetings, then an explicit e-ink flush for the direct tap. */
+  /** The toolbar's prep/review tick (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag on the current copy via saveInboxMeetings, then an explicit e-ink flush for the direct tap. */
   const handleToggleMeetingTracking = (meetingIndex: number, kind: MeetingTrackingKind) => {
     runMeetingAction(async () => {
       await saveInboxMeetings(meetings => toggleMeetingTrackingAt(meetings, meetingIndex, kind));
       requestEinkRefresh();
     });
   };
-  const trackingFor = (meetingIndex: number): MeetingTrackingConfig => ({
-    setups: noteSetups,
-    onToggle: kind => handleToggleMeetingTracking(meetingIndex, kind),
-  });
+  const trackingFor = (): MeetingTrackingConfig => ({setups: noteSetups});
 
   const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
     runMeetingAction(async () => {
@@ -718,6 +718,20 @@ export default function InboxScreen({
     ...past.map(({meeting, index}): MeetingEntryRow => ({rowKey: `meeting-${index}`, meeting, index})),
   ];
   const editingMeeting = editingMeetingIndex !== null ? meetings[editingMeetingIndex] ?? null : null;
+  // The meeting toolbar acts on the edited (or armed) meeting; Inbox meetings always get their own note.
+  const toolbarIndex = editingMeetingIndex ?? armingMeetingIndex;
+  const toolbarMeeting = toolbarIndex !== null ? meetings[toolbarIndex] : undefined;
+  const meetingToolbar = useMeetingToolbar({
+    name: 'InboxScreen',
+    selection: toolbarMeeting && inboxPath ? {meeting: toolbarMeeting, itemPath: inboxPath, forceOwn: true} : null,
+    settings: screenSettings,
+    inbox: {tasks},
+    onToggle: kind => toolbarIndex !== null && handleToggleMeetingTracking(toolbarIndex, kind),
+    onArmLink: () => toolbarIndex !== null && armLinkTarget('meeting', toolbarIndex),
+    persistMeeting: updated => saveInboxMeetings(ms => ms.map((m, i) => (i === toolbarIndex ? updated : m))),
+    textColor,
+    borderColor,
+  });
 
   return (
     <View style={common.container}>
@@ -862,9 +876,9 @@ export default function InboxScreen({
                         layout={layout}
                         time="dateTime"
                         highlight="mark"
-                        tracking={trackingFor(row.index)}
+                        tracking={trackingFor()}
                         note={{onOpen: () => handleMeetingNote(row.index), onCreate: () => handleMeetingNote(row.index)}}
-                        file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile, onArm: () => armLinkTarget('meeting', row.index)}}
+                        file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile}}
                         onPress={() => startEditTarget('meeting', row.index)}
                         ownerPath={inboxPath}
                         state={
@@ -875,6 +889,7 @@ export default function InboxScreen({
                       />
                     )}
                     emptyHint="No meetings yet."
+                    toolbar={meetingToolbar}
                     textColor={textColor}
                     borderColor={borderColor}
                   />

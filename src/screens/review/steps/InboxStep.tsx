@@ -11,7 +11,7 @@ import {AbbrevFileMatch} from '../../../domain/abbrev';
 import {Destination, destinationLabel} from '../../../domain/destination';
 import {withTaskCancelled, withTaskDone} from '../../../domain/taskEdit';
 import {isTodayOrFuture, todayIso} from '../../../domain/meetingTime';
-import {toggleMeetingTrackingAt} from '../../../domain/meetingTracking';
+import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../../domain/meetingTracking';
 import {Meeting, Task} from '../../../domain/types';
 import {findCachedItem, setCachedInbox} from '../../../storage/dataCache';
 import {InboxFilingTarget, resolveFilingPick} from '../../../storage/inboxFiling';
@@ -20,6 +20,7 @@ import {useEntryMoveUi} from '../../../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../../../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../../../ui/useNoteCreateConfirm';
+import {useMeetingToolbar} from '../../../ui/useMeetingToolbar';
 import {addMeetingToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, mutateEntryMeetings, mutateEntryTasks} from '../../../storage/itemMutations';
 import {loadSettings} from '../../../storage/settingsStorage';
 import {FolderEntry} from '../../../supernote/fileSystem';
@@ -256,14 +257,13 @@ export default function InboxStep({
     log('ReviewScreen: added meeting', destinationLabel(destination));
   };
 
-  const inboxMeetingTrackingFor = (meetingIndex: number): MeetingTrackingConfig => ({
-    setups: trackingSetups(settings),
-    onToggle: kind =>
-      action.run(async () => {
-        await writeMeetings(meetingIndex, meetings => toggleMeetingTrackingAt(meetings, meetingIndex, kind));
-        requestEinkRefresh();
-      }),
-  });
+  const inboxMeetingTrackingFor = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
+  /** The toolbar's prep/review tick on the current copy. */
+  const toggleInboxMeetingTracking = (meetingIndex: number, kind: MeetingTrackingKind) =>
+    action.run(async () => {
+      await writeMeetings(meetingIndex, meetings => toggleMeetingTrackingAt(meetings, meetingIndex, kind));
+      requestEinkRefresh();
+    });
 
   const editingInboxTaskIndex = editTarget?.type === 'task' ? editTarget.index : null;
   const editingInboxMeetingIndex = editTarget?.type === 'meeting' ? editTarget.index : null;
@@ -271,6 +271,23 @@ export default function InboxStep({
   const editingInboxMeeting = editingInboxMeetingIndex !== null ? inbox?.meetings[editingInboxMeetingIndex] ?? null : null;
   const armingInboxTaskIndex = inboxZeroArmTarget?.type === 'task' ? inboxZeroArmTarget.index : null;
   const armingInboxMeetingIndex = inboxZeroArmTarget?.type === 'meeting' ? inboxZeroArmTarget.index : null;
+
+  // The meeting toolbar acts on the edited (or armed) Inbox meeting; Inbox meetings always get their own note.
+  const toolbarIndex = editingInboxMeetingIndex ?? armingInboxMeetingIndex;
+  const toolbarMeeting = toolbarIndex !== null ? inbox?.meetings[toolbarIndex] : undefined;
+  const meetingToolbar = useMeetingToolbar({
+    name: 'ReviewInboxStep',
+    selection: toolbarMeeting && inboxPath ? {meeting: toolbarMeeting, itemPath: inboxPath, forceOwn: true} : null,
+    settings,
+    inbox: inbox ? {tasks: inbox.tasks} : null,
+    onToggle: kind => toolbarIndex !== null && toggleInboxMeetingTracking(toolbarIndex, kind),
+    onArmLink: () => toolbarIndex !== null && armInboxLinkTarget('meeting', toolbarIndex),
+    persistMeeting: async updated => {
+      if (toolbarIndex !== null) await changeMeeting(toolbarIndex, () => updated);
+    },
+    textColor,
+    borderColor,
+  });
 
   // Whether the edited row's linked file still exists - resolved here so Quick Add stays free of I/O.
   const editingInboxItem: Task | Meeting | null = editingInboxTask ?? editingInboxMeeting ?? null;
@@ -448,13 +465,9 @@ return (
             layout={layout}
             time="dateTime"
             highlight="mark"
-            tracking={inboxMeetingTrackingFor(meetingIndex)}
+            tracking={inboxMeetingTrackingFor()}
             note={{onOpen: () => handleInboxMeetingNote(meetingIndex), onCreate: () => handleInboxMeetingNote(meetingIndex)}}
-            file={{
-              linkedFile: meeting.linkedFile,
-              onOpen: onOpenInboxLinkedFile,
-              onArm: () => armInboxLinkTarget('meeting', meetingIndex),
-            }}
+            file={{linkedFile: meeting.linkedFile, onOpen: onOpenInboxLinkedFile}}
             onPress={() => startEditingInboxMeeting(meetingIndex)}
             state={
               editingInboxMeetingIndex === meetingIndex
@@ -468,6 +481,7 @@ return (
           />
         )}
         emptyHint="Inbox meetings are at zero. 🎉"
+        toolbar={meetingToolbar}
         textColor={textColor}
         borderColor={borderColor}
       />

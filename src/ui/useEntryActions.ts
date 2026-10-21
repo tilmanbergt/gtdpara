@@ -47,6 +47,7 @@ import {useEditTarget} from './useEditTarget';
 import {useEngagePrompt} from './useEngagePrompt';
 import {useEntryMoveUi} from './useEntryMoveUi';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
+import {MeetingToolbarOptions} from './useMeetingToolbar';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
@@ -256,13 +257,24 @@ export function useEntryActions(name = 'ThreadOverview') {
     return ok && opened;
   };
 
-  const tracking = (entry: ThreadMeetingEntry): MeetingTrackingConfig => ({
-    setups: trackingSetups(settings),
+  const tracking = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
+
+  /** The meeting toolbar (ui/useMeetingToolbar.ts) for the edited meeting: its tick and its reflection; no Files pane here. */
+  const toolbarOptions = (entry: ThreadMeetingEntry | null, colors: {textColor: string; borderColor: string}): MeetingToolbarOptions => ({
+    name: LOG,
+    selection: entry && {meeting: entry.meeting, itemPath: entry.item.path, forceOwn: entry.item.kind === 'inbox'},
+    settings,
+    inbox: inbox ? {tasks: inbox.tasks} : null,
     onToggle: (kind: MeetingTrackingKind) =>
+      entry &&
       rowAction.run(async () => {
         await saveMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));
         requestEinkRefresh();
       }),
+    persistMeeting: async updated => {
+      if (entry) await saveMeetings(entry, meetings => meetings.map((m, i) => (i === entry.meetingIndex ? updated : m)));
+    },
+    ...colors,
   });
 
   const openFile = (linkedFile: string) => {
@@ -287,6 +299,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     taskNote,
     meetingNote,
     tracking,
+    toolbarOptions,
     openFile,
     openTaskFile,
   };

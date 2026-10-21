@@ -1,8 +1,9 @@
 /**
  * The Meetings list of the Current page's right pane (screens/ProjectDataPanel.tsx):
  * Upcoming above Past in one MeetingList, with its own row actions (note,
- * prep/review tracking), behind a Meetings | Google mini-tab. Add, edit and
- * delete live in ProjectDataPanel's single Quick Add above both lists.
+ * clip) and the toolbar for the edited meeting (prep/review tick, reflection,
+ * Link file), behind a Meetings | Google mini-tab. Add, edit and delete live
+ * in ProjectDataPanel's single Quick Add above both lists.
  */
 import React, {useEffect, useState} from 'react';
 import {Keyboard, View} from 'react-native';
@@ -10,6 +11,7 @@ import {Meeting} from '../../domain/types';
 import {splitAndSortMeetings} from '../../domain/meetingTime';
 import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../domain/meetingTracking';
 import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../../domain/noteSetups';
+import {GtdParaSettings} from '../../domain/settings';
 import {CachedItem, getCachedData} from '../../storage/dataCache';
 import {openOrCreateMeetingNote} from '../../storage/meetingNoteContent';
 import {loadSettings} from '../../storage/settingsStorage';
@@ -19,6 +21,7 @@ import MeetingRow, {MeetingTrackingConfig} from '../../ui/MeetingRow';
 import MeetingList, {MeetingListHeaderRow} from '../../ui/MeetingList';
 import MiniTabs, {MiniTabDef} from '../../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../../ui/featureStore';
+import {useMeetingToolbar} from '../../ui/useMeetingToolbar';
 import {useErrorStatus} from '../../ui/status/StatusProvider';
 import {log, logError} from '../../utils/log';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
@@ -81,12 +84,14 @@ export default function MeetingsSection({
   const [icsUrl, setIcsUrl] = useState('');
   // Note setups for the rows' prep/review checkpoint icon - same one-shot load.
   const [noteSetups, setNoteSetups] = useState<NoteSetupConfig>(EMPTY_NOTE_SETUP_CONFIG);
+  const [screenSettings, setScreenSettings] = useState<GtdParaSettings | null>(null);
   useEffect(() => {
     let cancelled = false;
     loadSettings().then(s => {
       if (cancelled) return;
       setIcsUrl(s.googleCalendarIcsUrl);
       setNoteSetups(noteSetupConfig(s));
+      setScreenSettings(s);
     });
     return () => {
       cancelled = true;
@@ -128,16 +133,33 @@ export default function MeetingsSection({
     });
   };
 
-  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
+  /** The toolbar's prep/review tick (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
   const handleToggleTracking = (index: number, trackingKind: MeetingTrackingKind) => {
     runAction(async () => {
       await onSave(toggleMeetingTrackingAt(meetings, index, trackingKind));
       requestEinkRefresh();
     });
   };
-  const trackingFor = (index: number): MeetingTrackingConfig => ({
-    setups: noteSetups,
-    onToggle: trackingKind => handleToggleTracking(index, trackingKind),
+  const trackingFor = (): MeetingTrackingConfig => ({setups: noteSetups});
+
+  // The toolbar acts on the edited (or armed) meeting (docs/dev/history/technical-design-meeting-reflection.md §2.6).
+  const selectedIndex = editingIndex ?? armingIndex;
+  const selectedMeeting = selectedIndex !== null ? meetings[selectedIndex] : undefined;
+  const toolbar = useMeetingToolbar({
+    name: 'MeetingsSection',
+    selection: selectedMeeting && selectedIndex !== null ? {meeting: selectedMeeting, itemPath} : null,
+    settings: screenSettings,
+    inbox: null,
+    onToggle: trackingKind => selectedIndex !== null && handleToggleTracking(selectedIndex, trackingKind),
+    onArmLink: () => selectedIndex !== null && onArmLink(selectedIndex),
+    persistMeeting: async updated => {
+      if (selectedIndex === null) return;
+      const next = meetings.slice();
+      next[selectedIndex] = updated;
+      await onSave(next);
+    },
+    textColor,
+    borderColor,
   });
 
   // Flattened into one paginated sequence (docs/dev/technical-design-pagination-
@@ -183,9 +205,9 @@ export default function MeetingsSection({
                 layout={layout}
                 time="dateTime"
                 highlight="mark"
-                tracking={trackingFor(row.index)}
+                tracking={trackingFor()}
                 note={{onOpen: () => handleNote(row.index), onCreate: () => handleNote(row.index)}}
-                file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile, onArm: () => onArmLink(row.index)}}
+                file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile}}
                 onPress={() => onStartEdit(row.index)}
                 state={editingIndex === row.index ? 'editing' : armingIndex === row.index ? 'arming' : undefined}
                 ownerPath={itemPath}
@@ -194,6 +216,7 @@ export default function MeetingsSection({
               />
             )}
             emptyHint={filter ? 'No meetings for this counterpart here.' : 'No meetings yet.'}
+            toolbar={toolbar}
             textColor={textColor}
             borderColor={borderColor}
           />
