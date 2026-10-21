@@ -140,8 +140,8 @@ describe('Home page (§3.2)', () => {
     expect(PIECE_PAGES.goals).toEqual(['home']);
     expect(pageKindsOf('thread')).not.toContain('home');
     expect(pageKindsOf('loop')).not.toContain('home');
-    expect(defaultPageKinds({notebook: null})).toEqual(['meeting', 'todo', 'first']);
-    expect(defaultPageKinds({notebook: {name: '{name}', folder: ''}})).toEqual(['meeting', 'todo', 'first', 'home']);
+    expect(defaultPageKinds({notebook: null})).toEqual(['meeting', 'todo', 'first', 'review']);
+    expect(defaultPageKinds({notebook: {name: '{name}', folder: ''}})).toEqual(['meeting', 'todo', 'first', 'review', 'home']);
     expect(seedNoteSetupDefaults().pages.home).toEqual(createDefaultHomePage());
   });
 });

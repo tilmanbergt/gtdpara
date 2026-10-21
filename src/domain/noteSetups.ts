@@ -73,9 +73,10 @@ export function noteSetupConfig(settings: {noteSetups: readonly NoteSetup[]; not
 export const EMPTY_NOTE_SETUP_CONFIG: NoteSetupConfig = {setups: [], defaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}, notebook: null}};
 
 /** The page rows a setup of `kind` has, in the order the setup page lists them. */
-// The Home page is the Default's only (docs/dev/history/technical-design-home-notebooks.md §3.2).
+// The Home page is the Default's only (docs/dev/history/technical-design-home-notebooks.md §3.2);
+// the Reflection page follows a meeting's page (docs/dev/history/technical-design-meeting-reflection.md §2.1).
 export function pageKindsOf(kind: SetupKind): PageKind[] {
-  return kind === 'loop' ? ['meeting', 'todo', 'first'] : ['meeting', 'todo'];
+  return kind === 'loop' ? ['meeting', 'todo', 'first', 'review'] : ['meeting', 'todo', 'review'];
 }
 
 // ---- Tags -------------------------------------------------------------------

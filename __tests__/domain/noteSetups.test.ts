@@ -237,8 +237,8 @@ describe('validateNotebookFolder', () => {
 
 describe('pages and defaults', () => {
   it('page rows per kind', () => {
-    expect(pageKindsOf('thread')).toEqual(['meeting', 'todo']);
-    expect(pageKindsOf('loop')).toEqual(['meeting', 'todo', 'first']);
+    expect(pageKindsOf('thread')).toEqual(['meeting', 'todo', 'review']);
+    expect(pageKindsOf('loop')).toEqual(['meeting', 'todo', 'first', 'review']);
   });
 
   it('a new setup uses the Default layout everywhere; a Loop setup has its loop note', () => {

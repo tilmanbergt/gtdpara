@@ -10,6 +10,11 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Reflection page in Note setups**: Thread and Loop setups and the Default have a new page row,
+  **Reflection page**, for the page you reflect on after a meeting. It starts with Date & title;
+  add your guiding questions as your own texts. See the help page "Note setups".
+
 ### Fixed
 - **A meeting's prep or review tick is no longer lost when you save an edit**: Quick Add's edit
   form shows the title without `#prepped` and `#reviewed`, and **Save** keeps the tick the
