@@ -1,4 +1,5 @@
 import {act, fireEvent, screen} from '@testing-library/react-native';
+import {StyleSheet} from 'react-native';
 import {setAppWideTouchLog} from '../../src/utils/touchDiagStore';
 import {device} from '../../test-helpers/fakeDevice/device';
 import {expectShows, openApp, shows, tap, tapTab} from '../../test-helpers/scenario/app';
@@ -36,35 +37,48 @@ scenario('Record taps in the touch test without changing anything', {feature: 'S
     await tap('Advanced');
     await tap('Touch test');
   });
-  then('sample rows show, numbered, and none of my todos', () => {
+  then('numbered sample rows show, also rows that are only tags, and none of my todos', () => {
     expectShows(/^1 Buy stamps$/);
+    expectShows('#phone #office');
     expect(shows(/Call Anna/)).toBe(false);
+    expectShows('No touch received yet.');
   });
-  when('I tap the title of row 1, then a spot where nothing reacts', async () => {
+  when('I tap the title of row 1', async () => {
     await touch(200, 300, () => fireEvent.press(screen.getAllByText(/^1 Buy stamps$/)[0]));
+  });
+  then('the info column says the title of row 1 was handled', () => {
+    expectShows('Row 1 · title · handled');
+  });
+  when('I tap a spot where nothing reacts', async () => {
     await touch(20, 600);
   });
-  then('the first tap counts as handled on the title, the second as no target', () => {
-    expectShows(/Last: #\d+ finger \w+ noTarget\./);
-    expectShows(/●1/);
-    expectShows(/×1/);
+  then('it says nothing was hit', () => {
+    expectShows('Nothing hit');
+  });
+  when('I tap the #next label of row 4 once', async () => {
+    await touch(300, 200, () => fireEvent.press(screen.getAllByText('#next')[0]));
+  });
+  then('it says the label swallowed the tap, and the label is drawn filled', () => {
+    expectShows('Row 4 · label #next · swallowed (needs double tap)');
+    expect(StyleSheet.flatten(screen.getAllByText('#next')[0].props.style)).toMatchObject({backgroundColor: '#000000'});
   });
   when('I tap the checkbox of row 1 and then Save log', async () => {
     await touch(30, 300, () => fireEvent.press(screen.getAllByText('☐')[0]));
     await tap('Save log');
   });
-  then('a CSV with the three touches is in EXPORT/gtdpara/debug, and the status line says so', () => {
+  then('a CSV with the four touches is in EXPORT/gtdpara/debug, and the status line says so', () => {
     const csv = device()
       .fs.paths(DEBUG_FOLDER)
       .filter(p => /touch-.*\.csv$/.test(p));
     expect(csv).toHaveLength(1);
     expect(fileText(csv[0]).trim().split('\n')).toEqual([
       'id,mode,side,band,x,y,endX,endY,maxMove,ms,pointers,class,target,verdict,intendedTarget',
-      expect.stringMatching(/,handled,title,,$/),
+      expect.stringMatching(/^\d+,finger,left,\w+,400,600,400,600,0,\d+,1,handled,1:title,,$/),
       expect.stringMatching(/,noTarget,,,$/),
-      expect.stringMatching(/,handled,checkbox,,$/),
+      expect.stringMatching(/,swallowed,4:label:next,,$/),
+      expect.stringMatching(/,handled,1:checkbox,,$/),
     ]);
-    expectShows(/^Saved 3 touches as touch-.*\.csv in EXPORT\/gtdpara\/debug\.$/);
+    expectShows(/^Saved 4 touches as touch-.*\.csv in EXPORT\/gtdpara\/debug\.$/);
   });
   and('the Inbox is untouched: the tapped checkbox ticked nothing', () => {
     expect(fileText(INBOX_FILE)).toContain('- [ ] Call Anna');

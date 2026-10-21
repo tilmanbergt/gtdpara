@@ -37,7 +37,7 @@ import AboutTab from './AboutTab';
 import AdvancedTab from './AdvancedTab';
 import {CalendarTab, FocusTab, FoldersTab, GmailTab} from './DraftTabs';
 import {styles} from './settingsStyles';
-import TouchTestScreen from './TouchTestScreen';
+import TouchTestScreen from './touchTest/TouchTestScreen';
 import NoteSetupsTab from './noteSetups/NoteSetupsTab';
 import {useMyStylePngs} from './noteSetups/useMyStylePngs';
 import {useNoteSetupDraft} from './noteSetups/useNoteSetupDraft';

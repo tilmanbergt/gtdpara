@@ -128,11 +128,15 @@ Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/tec
 
 - **Given** the Inbox has the todo "Call Anna"
 - **When** I open Settings → Advanced → Touch test
-- **Then** sample rows show, numbered, and none of my todos
-- **When** I tap the title of row 1, then a spot where nothing reacts
-- **Then** the first tap counts as handled on the title, the second as no target
+- **Then** numbered sample rows show, also rows that are only tags, and none of my todos
+- **When** I tap the title of row 1
+- **Then** the info column says the title of row 1 was handled
+- **When** I tap a spot where nothing reacts
+- **Then** it says nothing was hit
+- **When** I tap the #next label of row 4 once
+- **Then** it says the label swallowed the tap, and the label is drawn filled
 - **When** I tap the checkbox of row 1 and then Save log
-- **Then** a CSV with the three touches is in EXPORT/gtdpara/debug, and the status line says so
+- **Then** a CSV with the four touches is in EXPORT/gtdpara/debug, and the status line says so
 - **And** the Inbox is untouched: the tapped checkbox ticked nothing
 - **When** I tap Close
 - **Then** Settings → Advanced shows again
