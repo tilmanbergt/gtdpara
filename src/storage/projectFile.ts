@@ -14,6 +14,7 @@ import {
   DATA_FILE_HEADINGS,
   FrontMatterFields,
   FRONT_MATTER_PART,
+  normalizeLineEndings,
   parseFrontMatter,
   parseMarksSpan,
   parseMeetingsSpan,
@@ -104,7 +105,7 @@ export async function loadProjectFile(
   log('loadProjectFile: start', path);
   const perfTotal = perfStart();
   const content = await readTextFile(path);
-  const rawContent = content ?? '';
+  const rawContent = normalizeLineEndings(content ?? '');
   const perfParse = perfStart();
   const state = parseProjectFileContent(rawContent);
   // Perf trace (docs/dev/history/technical-design-perf-tracing.md): parse vs. whole load

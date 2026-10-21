@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-13 scenarios.
+16 scenarios.
 
 ## Close-out
 
@@ -44,6 +44,20 @@ Test: `__tests__/scenarios/daily.test.tsx` · design: `docs/dev/history/technica
 - **Then** the note moved into the project's folder, keywords and all
 
 Test: `__tests__/scenarios/inbox.test.tsx` · design: `docs/dev/history/technical-design-filing-unification.md`
+
+## Interruptions
+
+### A refile with its note, stopped after any write, loses nothing and is repairable
+
+- **Then** for every point where gtdpara can be stopped: the todo and its note still exist, and a broken link is named with the note's new place
+
+Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+### A close-out stopped during "Archive now" can be finished, or is fully archived
+
+- **Then** for every point where gtdpara can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left
+
+Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
 ## Profiles and demo space
 
@@ -151,3 +165,12 @@ Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/tec
 - **And** after another change in Obsidian, + Add asks again, and "Use mine" saves the list as gtdpara shows it, with the new todo
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+### A project file saved with Windows line endings shows its todos
+
+- **Given** project "Website" was saved in a Windows editor (CRLF line endings)
+- **When** I open its page
+- **Then** both todos and the Scope show
+- **And** adding a todo keeps both and writes the file with plain line endings
+
+Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`

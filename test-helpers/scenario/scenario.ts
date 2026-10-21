@@ -38,16 +38,21 @@ export const when = (text: string, run: Step['run']) => step('When', text, run);
 export const then = (text: string, run: Step['run']) => step('Then', text, run);
 export const and = (text: string, run: Step['run']) => step('And', text, run);
 
+/** An empty device with no settings and no cache - how every scenario starts; a loop inside one calls it per round. */
+export async function freshDevice(): Promise<void> {
+  await closeApp();
+  resetDevice();
+  await AsyncStorage.clear();
+  clearCachedData();
+}
+
 export function scenario(title: string, _meta: ScenarioMeta, body: () => void): void {
   it(title, async () => {
     steps = [];
     body();
     const collected = steps;
     steps = null;
-    // Each scenario starts on an empty device with no settings and no cache.
-    resetDevice();
-    await AsyncStorage.clear();
-    clearCachedData();
+    await freshDevice();
     try {
       for (const s of collected) {
         try {
@@ -60,5 +65,8 @@ export function scenario(title: string, _meta: ScenarioMeta, body: () => void): 
     } finally {
       await closeApp();
     }
-  });
+  }, SCENARIO_TIMEOUT_MS);
 }
+
+/** A crash-test scenario opens the app once per stopping point. */
+const SCENARIO_TIMEOUT_MS = 120000;

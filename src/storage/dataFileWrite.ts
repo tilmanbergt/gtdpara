@@ -19,7 +19,7 @@
  *   FileConflictError, and the save fails with nothing written.
  */
 import {DataFileChange, decideWrite} from '../domain/writeGuard';
-import {ensureSkeleton} from '../domain/markdown';
+import {ensureSkeleton, normalizeLineEndings} from '../domain/markdown';
 import {dataFileGoneText, writeConflictKeptFileText} from '../domain/fileChangeText';
 import {GtdParaKind, INBOX_FILE_NAME} from '../domain/types';
 import {readTextFile, writeTextFile} from '../supernote/fileSystem';
@@ -94,7 +94,7 @@ export function writeDataFile(
 ): Promise<string> {
   return serialized(filePath, async () => {
     const name = displayName(fileKind, itemPath);
-    const current = (await readTextFile(filePath)) ?? '';
+    const current = normalizeLineEndings((await readTextFile(filePath)) ?? '');
     const decision = decideWrite(fileKind, base, current, change);
     if (decision.kind === 'gone') {
       logWarn('dataFileWrite: file gone, not written', filePath);
@@ -107,7 +107,7 @@ export function writeDataFile(
       log('dataFileWrite: conflict answered', filePath, choice);
       if (choice === 'file') throw new FileConflictError(filePath, writeConflictKeptFileText(name));
       // The file may have changed again while the question was open.
-      const now = (await readTextFile(filePath)) ?? '';
+      const now = normalizeLineEndings((await readTextFile(filePath)) ?? '');
       if (now === '') throw new FileConflictError(filePath, dataFileGoneText(name));
       const content = change.apply(ensureSkeleton(now, fileKind));
       await writeTextFile(filePath, content);

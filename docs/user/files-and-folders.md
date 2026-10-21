@@ -70,7 +70,7 @@ Turn the back garden into a vegetable garden before winter.
 
 ## Editing by hand
 
-You can edit these files in any text editor, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`, `## Threads`) as they are.
+You can edit these files in any text editor, on Windows too, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`, `## Threads`) as they are.
 
 If you edit a file while gtdpara is open, gtdpara reads it again before it saves:
 

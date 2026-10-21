@@ -35,6 +35,13 @@ describe('checkCloseOutInterrupted', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({checkId: 'closeOutInterrupted', entityKind: 'item', entityLabel: 'Workbench'});
   });
+  it('says what is left: Archive now while in Projects, the status line once in the archive', async () => {
+    const raw = file(['- journal: move-pdf done 2026-10-04T10:00']);
+    const [live] = await checkCloseOutInterrupted(input(raw));
+    expect(live.message).toContain('tap "Close out…" and then "Archive now"');
+    const [inArchive] = await checkCloseOutInterrupted({...input(raw), inArchive: true});
+    expect(inArchive.message).toContain('it is fully archived, only "status:" in its project.txt still says active');
+  });
   it('ignores projects without a plan, and areas', async () => {
     expect(await checkCloseOutInterrupted(input('## Tasks\n'))).toEqual([]);
     expect(await checkCloseOutInterrupted(input(file(['- journal: move-pdf done x']), 'area'))).toEqual([]);

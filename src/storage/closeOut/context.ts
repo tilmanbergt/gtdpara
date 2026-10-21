@@ -28,6 +28,17 @@ import {scanProject} from './scan';
 import {errorMessage} from '../../utils/errorMessage';
 import {logWarn} from '../../utils/log';
 
+/**
+ * The PDF at the archive target is this close-out's own when its archive run already started
+ * moving it (journal `move-pdf`) and the project folder does not hold it: an interrupted
+ * "Archive now" then finishes the remaining steps instead of seeing a name collision
+ * (docs/dev/history/technical-design-quality-hardening.md §5.3 F2).
+ */
+async function pdfMovedByThisCloseOut(plan: CloseOutPlan, projectPath: string): Promise<boolean> {
+  if (!plan.pdf || !plan.journal.some(j => j.op === 'move-pdf')) return false;
+  return !(await fileExists(`${projectPath.replace(/\/+$/, '')}/${plan.pdf.fileName}`));
+}
+
 export interface CloseOutContext {
   item: CachedItem;
   settings: GtdParaSettings;
@@ -128,7 +139,7 @@ export async function refreshCloseOutContext(args: {
     projectLinkedPrefix: toLinkedFile(paths, projectPath),
     plan,
     targetFolderExists: await folderExists(targets.folder),
-    targetPdfExists: targets.pdf ? await fileExists(targets.pdf) : null,
+    targetPdfExists: targets.pdf ? (await fileExists(targets.pdf)) && !(await pdfMovedByThisCloseOut(plan, projectPath)) : null,
     targetFolderLabel: display(targets.folder),
     targetPdfLabel: targets.pdf ? display(targets.pdf) : null,
     unreadableNoteNames: contents.unreadable.map(e => e.title),
