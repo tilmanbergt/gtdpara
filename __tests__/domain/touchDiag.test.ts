@@ -9,6 +9,7 @@ import {
   touchCsv,
   touchEntry,
   touchLogLine,
+  touchSummaryLine,
   TouchOutcome,
 } from '../../src/domain/touchDiag';
 
@@ -101,5 +102,6 @@ describe('touchEntry and output', () => {
     expect(counts.finger.bottom.noTarget).toBe(2);
     expect(counts.pen.top.noTarget).toBe(1);
     expect(counts.finger.top.handled).toBe(0);
+    expect(touchSummaryLine(counts, 'finger')).toBe('Finger · top ●0 ○0 ×0 ◐0 · middle ●0 ○0 ×0 ◐0 · bottom ●0 ○0 ×2 ◐0');
   });
 });

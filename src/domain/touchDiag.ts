@@ -125,6 +125,15 @@ export function countTouches(entries: readonly TouchEntry[]): TouchCounts {
   return counts;
 }
 
+/** The touch test's marker per class (grayscale glyphs, no color). */
+export const TOUCH_GLYPH: Record<TouchClass, string> = {handled: '●', cancelled: '○', noTarget: '×', swallowed: '◐'};
+
+/** One summary line per mode: "Finger · top ●3 ○0 ×1 ◐0 · middle … · bottom …". */
+export function touchSummaryLine(counts: TouchCounts, mode: TouchMode): string {
+  const bands = TOUCH_BANDS.map(band => `${band} ${TOUCH_CLASSES.map(cls => `${TOUCH_GLYPH[cls]}${counts[mode][band][cls]}`).join(' ')}`);
+  return [mode === 'finger' ? 'Finger' : 'Pen', ...bands].join(' · ');
+}
+
 const round = (n: number) => Math.round(n);
 
 /** The log line for one classified touch: numbers and classes only, no text. */

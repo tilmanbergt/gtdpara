@@ -1,7 +1,7 @@
 /**
  * Settings → Advanced (docs/dev/history/technical-design-about-debug-experimental.md §3.6):
  * the Experimental switches, and the tools (Reload all files, Integrity
- * Check, Keep tabs in memory, Performance tracing). Presentational: Settings.tsx owns the values and the handlers,
+ * Check, Touch test, Keep tabs in memory, Performance tracing). Presentational: Settings.tsx owns the values and the handlers,
  * every switch saves immediately.
  */
 import React from 'react';
@@ -26,6 +26,7 @@ interface Props {
   onToggleKeepTabsAlive: () => void;
   onToggleNotebookContents: () => void;
   onRunIntegrityCheck: () => void;
+  onOpenTouchTest: () => void;
   textColor: string;
   borderColor: string;
 }
@@ -113,6 +114,14 @@ export default function AdvancedTab(p: Props): React.JSX.Element {
           {p.integrityCheckRunning && <ActivityIndicator style={styles.spinner} />}
           <Text style={[styles.hint, {color: textColor}]}>
             Scans every Project/Area/Archive/Inbox for broken note links and note names that break Obsidian links, and writes a report to EXPORT/gtdpara/debug.
+          </Text>
+        </View>
+        <View style={styles.field}>
+          <Pressable onPress={p.onOpenTouchTest} hitSlop={8} style={styles.button}>
+            <Text style={[styles.buttonText, {color: textColor}]}>Touch test</Text>
+          </Pressable>
+          <Text style={[styles.hint, {color: textColor}]}>
+            Finds out why a tap doesn't register: tap sample rows with finger or pen and see which taps arrive and what they hit. Changes nothing.
           </Text>
         </View>
         <Switch
