@@ -17,15 +17,16 @@
  * own.
  *
  * In the touch test (ui/touchDiag/touchProbe.ts) the tappable labels report
- * their press events; every tap on `#next`/`#now` reports a press on `next`,
- * whether or not it completes a double tap.
+ * their press events as part `label:<kind>`: a single tap on `#next`/`#now`
+ * as an inert press (it does nothing on its own), the tap that completes a
+ * double tap as a real one. The label the last touch hit is drawn filled.
  */
 import React, {useRef} from 'react';
 import {StyleSheet, Text} from 'react-native';
 import {TaskLabel} from '../domain/taskLabels';
 import {LABEL_GAP} from './taskRowLayout';
 import {FONT} from './theme';
-import {probeSpan, useTouchProbe} from './touchDiag/touchProbe';
+import {HIT_SPAN_STYLE, isHit, probeSpan, useTouchProbe} from './touchDiag/touchProbe';
 
 const DOUBLE_TAP_MS = 350;
 
@@ -40,14 +41,15 @@ export default function TaskLabels({labels, onToggleNow, onOpenWaitingFor}: Prop
   const probe = useTouchProbe();
   if (labels.length === 0) return null;
 
-  const handleNowPress = () => {
-    probe?.('press', 'next', true);
+  const handleNowPress = (part: string) => {
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_MS) {
       lastTapRef.current = 0;
+      probe?.report('press', part);
       onToggleNow?.();
       return;
     }
+    probe?.report('press', part, true);
     lastTapRef.current = now;
   };
 
@@ -56,14 +58,15 @@ export default function TaskLabels({labels, onToggleNow, onOpenWaitingFor}: Prop
       {labels.map((label, index) => {
         const toggles = onToggleNow && (label.kind === 'next' || label.kind === 'now');
         const opens = label.kind === 'waiting' ? onOpenWaitingFor : undefined;
+        const part = `label:${label.kind}`;
         return (
           <React.Fragment key={`${label.kind}-${index}`}>
             {LABEL_GAP}
             <Text
-              style={[styles.label, opens && styles.link]}
-              onPress={toggles ? handleNowPress : opens}
+              style={[styles.label, opens && styles.link, (toggles || opens) && isHit(probe, part) && HIT_SPAN_STYLE]}
+              onPress={toggles ? () => handleNowPress(part) : opens}
               suppressHighlighting
-              {...(toggles ? probeSpan(probe, 'next') : opens ? probeSpan(probe, 'label') : {})}>
+              {...(toggles || opens ? probeSpan(probe, part) : {})}>
               {label.text}
             </Text>
           </React.Fragment>

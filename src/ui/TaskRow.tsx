@@ -44,8 +44,11 @@
  * label can't wrap onto a line the row doesn't have.
  *
  * Inside the touch test (ui/touchDiag/touchProbe.ts) every tap target also
- * reports its press events, and the thread tags and `#w/f` label report a
- * press instead of opening an overview. Elsewhere there is no probe.
+ * reports its press events, the thread tags and `#w/f` label report a press
+ * instead of opening an overview, and the part the last touch hit gets a
+ * black frame (the checkbox and note icon also bold text; the title only the
+ * frame, since bold would rewrap it and move every target after it).
+ * Elsewhere there is no probe.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -59,7 +62,8 @@ import {openOverview} from './overviewStore';
 import {WAITING_FOR_TYPE} from '../domain/flowState';
 import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
-import {probePressable, useTouchProbe} from './touchDiag/touchProbe';
+import {isHit, probePressable, useTouchProbe} from './touchDiag/touchProbe';
+import HitFrame from './touchDiag/HitFrame';
 
 /** Kept as an alias so callers' `context` props read as before. */
 export type TaskBadgeContext = TaskLabelContext;
@@ -176,7 +180,8 @@ export default function TaskRow({
           height != null && {height, minHeight: height},
         ]}>
         <Pressable onPress={onToggleDone} hitSlop={8} {...probePressable(probe, 'checkbox')}>
-          <Text style={styles.checkbox}>{task.done ? '☑' : '☐'}</Text>
+          <Text style={[styles.checkbox, isHit(probe, 'checkbox') && styles.hitText]}>{task.done ? '☑' : '☐'}</Text>
+          <HitFrame on={isHit(probe, 'checkbox')} />
         </Pressable>
         <View style={styles.rowTextWrap}>
           <Pressable onPress={onStartEdit} {...probePressable(probe, 'title')}>
@@ -191,30 +196,35 @@ export default function TaskRow({
                   !task.waitingOn
                     ? undefined
                     : probe
-                      ? () => probe('press', 'label')
+                      ? () => probe.report('press', 'label:waiting')
                       : () => openOverview({tag: `${WAITING_FOR_TYPE}/${task.waitingOn}`, ownerPath: ownerPath ?? null})
                 }
               />
             </Text>
+            <HitFrame on={isHit(probe, 'title')} />
           </Pressable>
         </View>
         {task.notePath ? (
-          <Pressable onPress={onOpenNote} hitSlop={8} {...probePressable(probe, 'note')}>
-            <Text style={[styles.noteAction, {color: textColor}]}>📓</Text>
+          <Pressable onPress={onOpenNote} hitSlop={8} {...probePressable(probe, 'noteIcon')}>
+            <Text style={[styles.noteAction, {color: textColor}, isHit(probe, 'noteIcon') && styles.hitText]}>📓</Text>
+            <HitFrame on={isHit(probe, 'noteIcon')} />
           </Pressable>
         ) : (
-          <Pressable onPress={onCreateNote} hitSlop={8} {...probePressable(probe, 'note')}>
-            <Text style={[styles.noteAction, {color: textColor}]}>+📓</Text>
+          <Pressable onPress={onCreateNote} hitSlop={8} {...probePressable(probe, 'noteIcon')}>
+            <Text style={[styles.noteAction, {color: textColor}, isHit(probe, 'noteIcon') && styles.hitText]}>+📓</Text>
+            <HitFrame on={isHit(probe, 'noteIcon')} />
           </Pressable>
         )}
         {linkedFile ? (
           <Pressable onPress={() => onOpenLinkedFile?.(linkedFile)} hitSlop={8} style={styles.clipAction} {...probePressable(probe, 'clip')}>
             <ClipIcon color={textColor} />
+            <HitFrame on={isHit(probe, 'clip')} />
           </Pressable>
         ) : onArmLink ? (
           <Pressable onPress={onArmLink} hitSlop={8} style={styles.clipAction} {...probePressable(probe, 'clip')}>
             <Text style={[styles.clipPlus, {color: textColor}]}>+</Text>
             <ClipIcon color={textColor} />
+            <HitFrame on={isHit(probe, 'clip')} />
           </Pressable>
         ) : null}
       </View>
@@ -320,6 +330,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     paddingHorizontal: 4,
   },
+  hitText: {fontWeight: '700'},
   clipPlus: {
     fontSize: FONT.small,
     fontWeight: '700',

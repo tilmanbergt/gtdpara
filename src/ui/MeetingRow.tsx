@@ -16,8 +16,10 @@
  * - twoLine: line 2 shows the source; without a source a long title wraps
  *   onto line 2 instead. The M (highlight) only shows in twoLine rows, at the
  *   end with the other icons.
- * - In the touch test (ui/touchDiag/touchProbe.ts) the row, source, note
- *   and clip targets also report their press events; nowhere else.
+ * - In the touch test (ui/touchDiag/touchProbe.ts) the main area
+ *   (`rowBody`), source (`label:source`), note and clip targets also report
+ *   their press events, and the part the last touch hit is framed or
+ *   filled; nowhere else.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -33,7 +35,8 @@ import {ClipIcon, TrackingBoxIcon} from './icons';
 import {renderTaggableText} from './TaggableText';
 import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
-import {probePressable, probeSpan, useTouchProbe} from './touchDiag/touchProbe';
+import {HIT_SPAN_STYLE, isHit, probePressable, probeSpan, useTouchProbe} from './touchDiag/touchProbe';
+import HitFrame from './touchDiag/HitFrame';
 
 /**
  * What a screen supplies to switch a meeting list's prep/review icons on: the
@@ -118,7 +121,8 @@ function MeetingRowV2({
 }: MeetingRowProps): React.JSX.Element {
   const twoLine = layout === 'twoLine';
   const probe = useTouchProbe();
-  const sourceProbe = source?.onPress ? probeSpan(probe, 'source') : {};
+  const sourceProbe = source?.onPress ? probeSpan(probe, 'label:source') : {};
+  const sourceHit = isHit(probe, 'label:source') && HIT_SPAN_STYLE;
   const cell = meetingTimeCell(meeting, span, time);
   const continuesBefore = span?.part === 'middle' || span?.part === 'last';
   const continuesAfter = span?.part === 'first' || span?.part === 'middle';
@@ -150,7 +154,7 @@ function MeetingRowV2({
         state === 'selected' && v2.rowSelected,
         done && v2.rowDone,
       ]}>
-      <Pressable onPress={onPress} disabled={!onPress} style={v2.main} {...(onPress ? probePressable(probe, 'row') : {})}>
+      <Pressable onPress={onPress} disabled={!onPress} style={v2.main} {...(onPress ? probePressable(probe, 'rowBody') : {})}>
         <View style={[v2.timeCol, {width: TIME_COLUMN_DP[time][layout]}]}>
           <Text style={[v2.time, {color: textColor}]} numberOfLines={1}>
             {twoLine ? cell.line1 : cell.oneLine}
@@ -166,7 +170,7 @@ function MeetingRowV2({
             <>
               {title}
               {source && (
-                <Text onPress={source.onPress} style={[v2.sub, {color: textColor}]} numberOfLines={1} {...sourceProbe}>
+                <Text onPress={source.onPress} style={[v2.sub, {color: textColor}, sourceHit]} numberOfLines={1} {...sourceProbe}>
                   {source.name}
                 </Text>
               )}
@@ -175,13 +179,14 @@ function MeetingRowV2({
             <View style={v2.oneLineBody}>
               <View style={v2.flex}>{title}</View>
               {source && (
-                <Text onPress={source.onPress} style={[v2.abbrev, {color: textColor}]} numberOfLines={1} {...sourceProbe}>
+                <Text onPress={source.onPress} style={[v2.abbrev, {color: textColor}, sourceHit]} numberOfLines={1} {...sourceProbe}>
                   #{source.abbrev}
                 </Text>
               )}
             </View>
           )}
         </View>
+        <HitFrame on={isHit(probe, 'rowBody')} />
       </Pressable>
       {/* M sits with the other icons at the end of the row, 2-line rows only. */}
       {twoLine && highlight === 'toggle' && (
@@ -204,18 +209,21 @@ function MeetingRowV2({
           onPress={meeting.notePath ? note.onOpen : note.onCreate}
           hitSlop={8}
           style={[v2.action, twoLine && v2.actionTwo]}
-          {...probePressable(probe, 'note')}>
-          <Text style={[v2.noteText, {color: textColor}]}>{meeting.notePath ? '📓' : '+📓'}</Text>
+          {...probePressable(probe, 'noteIcon')}>
+          <Text style={[v2.noteText, {color: textColor}, isHit(probe, 'noteIcon') && v2.hitText]}>{meeting.notePath ? '📓' : '+📓'}</Text>
+          <HitFrame on={isHit(probe, 'noteIcon')} />
         </Pressable>
       )}
       {file && file.linkedFile ? (
         <Pressable onPress={() => file.onOpen?.(file.linkedFile)} hitSlop={8} style={[v2.action, twoLine && v2.actionTwo]} {...probePressable(probe, 'clip')}>
           <ClipIcon color={textColor} />
+          <HitFrame on={isHit(probe, 'clip')} />
         </Pressable>
       ) : file?.onArm ? (
         <Pressable onPress={file.onArm} hitSlop={8} style={[v2.action, twoLine && v2.actionTwo]} {...probePressable(probe, 'clip')}>
           <Text style={[v2.plus, {color: textColor}]}>+</Text>
           <ClipIcon color={textColor} />
+          <HitFrame on={isHit(probe, 'clip')} />
         </Pressable>
       ) : null}
     </View>
@@ -282,6 +290,7 @@ const v2 = StyleSheet.create({
   },
   // 2-line rows: icons centred over both lines.
   actionTwo: {height: TITLE_LINE_DP + 2 + SUB_LINE_DP},
+  hitText: {fontWeight: '700'},
   noteText: {fontSize: FONT.small, includeFontPadding: false},
   plus: {fontSize: FONT.small, fontWeight: '700', marginRight: 1},
 });

@@ -146,7 +146,7 @@ export default function TouchTestScreen({onClose}: {onClose: () => void}): React
           : 'Tap the rows below. '}
         ● handled ○ cancelled × no target ◐ #next single tap
       </Text>
-      <TouchProbeContext.Provider value={reportOutcome}>
+      <TouchProbeContext.Provider value={{report: reportOutcome, hit: null}}>
         <TouchObserver enabled onTouch={handleTouch} style={[styles.area, {borderTopColor: borderColor}]}>
           <View ref={areaRef} style={styles.columns} onLayout={onAreaLayout}>
             <View style={[styles.column, styles.columnLeft]}>

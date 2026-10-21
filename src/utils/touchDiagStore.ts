@@ -8,7 +8,7 @@
  * plugin closes, and "Log touches everywhere" is off after every restart.
  */
 import {useSyncExternalStore} from 'react';
-import {OutcomeKind, RawTouch, TouchEntry, TouchOutcome} from '../domain/touchDiag';
+import {OutcomeKind, RawTouch, TouchEntry, TouchOutcome, TouchVerdict, withIntendedTarget, withVerdict} from '../domain/touchDiag';
 
 // Long enough for every outcome a pending touch still needs; older ones are dropped.
 const OUTCOME_KEEP_MS = 5000;
@@ -57,6 +57,18 @@ export function getRecentTouches(): readonly RawTouch[] {
 
 export function addTouchEntry(entry: TouchEntry): void {
   entries = [...entries, entry];
+  emit();
+}
+
+/** Tilman's verdict on test tap `id`; null leaves it empty ("Skip"). */
+export function setTouchVerdict(id: number, verdict: TouchVerdict | null): void {
+  entries = withVerdict(entries, id, verdict);
+  emit();
+}
+
+/** What the follow-up tap after "Not intended" hit, stored on tap `id`. */
+export function setTouchIntendedTarget(id: number, target: string): void {
+  entries = withIntendedTarget(entries, id, target);
   emit();
 }
 

@@ -18,9 +18,10 @@
  * A tag's `onPress` wins over the row's own tap: React Native gives a touch
  * to the innermost element with its own `onPress`.
  *
- * In the touch test (ui/touchDiag/touchProbe.ts) `probe` is set: every tag
- * span reports its press events, and a nested tag reports a press instead
- * of opening an overview.
+ * In the touch test (ui/touchDiag/touchProbe.ts) `probe` is set: every
+ * tappable tag reports its press events as part `tag:<n>` (the n-th tag in
+ * `text`, from 1), a nested tag reports a press instead of opening an
+ * overview, and the tag the last touch hit is drawn filled.
  *
  * A plain function returning text nodes, not a component, so the segments
  * sit directly inside the row's title `<Text>` and wrap and clamp with it.
@@ -33,7 +34,7 @@ import {threadOf} from '../domain/threads';
 import {log} from '../utils/log';
 import {openOverview} from './overviewStore';
 import {COLORS} from './theme';
-import {probeSpan, TouchProbe} from './touchDiag/touchProbe';
+import {HIT_SPAN_STYLE, isHit, probeSpan, TouchProbe} from './touchDiag/touchProbe';
 
 export interface TaggableTextOptions {
   /** The active Daily filter tag; a matching tag is drawn selected. */
@@ -51,23 +52,27 @@ export function renderTaggableText(text: string, {contextTag, onToggleContext, o
   const segments = splitTextWithTags(text);
   const nested = (tag: string) => isContextTag(tag) && threadOf(tag) !== null;
   if (!onToggleContext && !segments.some(s => s.kind === 'tag' && nested(s.value))) return text;
+  let tagNumber = 0;
   return segments.map((segment, index) => {
     if (segment.kind === 'text') return segment.value;
+    tagNumber += 1;
+    const part = `tag:${tagNumber}`;
+    const hit = isHit(probe, part) && HIT_SPAN_STYLE;
     if (nested(segment.value)) {
       return (
         <Text
           key={`tag-${index}`}
           onPress={
             probe
-              ? () => probe('press', 'tag')
+              ? () => probe.report('press', part)
               : () => {
                   // No tag in the log: tags can hold client names.
                   log('TaggableText: thread tag tapped');
                   openOverview({tag: segment.value, ownerPath: ownerPath ?? null});
                 }
           }
-          style={styles.tag}
-          {...probeSpan(probe, 'tag')}>
+          style={[styles.tag, hit]}
+          {...probeSpan(probe, part)}>
           {segment.raw}
         </Text>
       );
@@ -78,8 +83,8 @@ export function renderTaggableText(text: string, {contextTag, onToggleContext, o
       <Text
         key={`tag-${index}`}
         onPress={() => onToggleContext(segment.value)}
-        style={selected ? styles.tagSelected : styles.tag}
-        {...probeSpan(probe, 'tag')}>
+        style={[selected ? styles.tagSelected : styles.tag, hit]}
+        {...probeSpan(probe, part)}>
         {segment.raw}
       </Text>
     );
