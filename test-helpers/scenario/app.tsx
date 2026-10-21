@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {act, configure, fireEvent, render, screen} from '@testing-library/react-native';
 import App from '../../App';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
+import {ENGAGE_BUTTON_ID} from '../../src/domain/buttonIds';
 import {BUILD_INFO} from '../../src/generated/buildInfo';
 import {device} from '../fakeDevice/device';
 
@@ -59,6 +60,21 @@ export async function openApp(options: {fromNote?: string; settings?: Partial<Gt
   if (!(await AsyncStorage.getItem(SETTINGS_KEY)) || options.settings) await storeSettings(options.settings);
   device().sdk.currentFile = options.fromNote ?? null;
   mounted = render(<App />);
+  await settle();
+}
+
+/**
+ * Opens the Engage panel over page `page` (0-based) of the note `fromNote`, as
+ * the host does when the Engage sidebar button is pressed (index.js registers
+ * it, App.tsx routes it). A gtdpara that is open is closed first.
+ */
+export async function openEngage(options: {fromNote: string; page?: number; settings?: Partial<GtdParaSettings>}): Promise<void> {
+  await closeApp();
+  if (!(await AsyncStorage.getItem(SETTINGS_KEY)) || options.settings) await storeSettings(options.settings);
+  device().sdk.currentFile = options.fromNote;
+  device().sdk.currentPage = options.page ?? 0;
+  mounted = render(<App />);
+  act(() => device().sdk.pressButton(ENGAGE_BUTTON_ID));
   await settle();
 }
 
