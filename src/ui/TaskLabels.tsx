@@ -41,7 +41,7 @@ export default function TaskLabels({labels, onToggleNow, onOpenWaitingFor}: Prop
   if (labels.length === 0) return null;
 
   const handleNowPress = () => {
-    probe?.('press', 'next');
+    probe?.('press', 'next', true);
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_MS) {
       lastTapRef.current = 0;

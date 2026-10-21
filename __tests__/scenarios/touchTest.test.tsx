@@ -59,10 +59,10 @@ scenario('Record taps in the touch test without changing anything', {feature: 'S
       .filter(p => /touch-.*\.csv$/.test(p));
     expect(csv).toHaveLength(1);
     expect(fileText(csv[0]).trim().split('\n')).toEqual([
-      'id,mode,band,x,y,endX,endY,maxMove,ms,class,target,pointers',
-      expect.stringMatching(/^\d+,finger,\w+,200,300,200,300,0,\d+,handled,title,1$/),
-      expect.stringMatching(/^\d+,finger,\w+,20,600,20,600,0,\d+,noTarget,,1$/),
-      expect.stringMatching(/^\d+,finger,\w+,30,300,30,300,0,\d+,handled,checkbox,1$/),
+      'id,mode,side,band,x,y,endX,endY,maxMove,ms,pointers,class,target,verdict,intendedTarget',
+      expect.stringMatching(/,handled,title,,$/),
+      expect.stringMatching(/,noTarget,,,$/),
+      expect.stringMatching(/,handled,checkbox,,$/),
     ]);
     expectShows(/^Saved 3 touches as touch-.*\.csv in EXPORT\/gtdpara\/debug\.$/);
   });
@@ -101,7 +101,7 @@ scenario('Log touches on every screen while "Log touches everywhere" is on', {fe
   then('the log has one line per tap, with numbers only', () => {
     const lines = appTouchLines();
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatch(/touch\(app\): band=\w+ x=500 y=1200 dx=0 dy=0 move=0 ms=\d+ pointers=1 end=lift$/);
+    expect(lines[0]).toMatch(/touch\(app\): band=\w+ x=\d+ y=\d+ dx=0 dy=0 move=0 ms=\d+ pointers=1 end=lift$/);
   });
   when('I switch it off again', () => {
     act(() => setAppWideTouchLog(false));

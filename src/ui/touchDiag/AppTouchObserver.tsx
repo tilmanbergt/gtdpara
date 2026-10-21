@@ -11,14 +11,14 @@
  * this one stays quiet.
  */
 import React from 'react';
-import {Dimensions, StyleSheet} from 'react-native';
+import {Dimensions, PixelRatio, StyleSheet} from 'react-native';
 import {RawTouch, rawTouchLogLine} from '../../domain/touchDiag';
 import {log} from '../../utils/log';
 import {useAppWideTouchLog, useTouchTestOpen} from '../../utils/touchDiagStore';
 import TouchObserver from './TouchObserver';
 
 function logTouch(touch: RawTouch): void {
-  log(rawTouchLogLine(touch, Dimensions.get('window').height));
+  log(rawTouchLogLine(touch, Dimensions.get('window').height, PixelRatio.get()));
 }
 
 export default function AppTouchObserver({children}: {children: React.ReactNode}): React.JSX.Element {

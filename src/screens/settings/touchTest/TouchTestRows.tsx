@@ -10,7 +10,6 @@
  */
 import React from 'react';
 import {View} from 'react-native';
-import {TouchTarget} from '../../../domain/touchDiag';
 import MeetingRow, {MEETING_ROW_HEIGHT} from '../../../ui/MeetingRow';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../../ui/TaskRow';
 import {TASK_COLUMN_WIDTH_PX} from '../../../ui/taskRowLayout';
@@ -34,7 +33,7 @@ export function fillColumn(start: number, height: number): TouchSample[] {
   }
 }
 
-const press = (target: TouchTarget) => () => reportOutcome('press', target);
+const press = (target: string) => () => reportOutcome('press', target);
 
 interface Props {
   samples: TouchSample[];

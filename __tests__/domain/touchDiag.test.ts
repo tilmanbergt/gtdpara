@@ -1,31 +1,35 @@
 import {
   bandOf,
+  cellText,
   classifyTouch,
   countTouches,
+  describeTouch,
+  intendedLogLine,
   outcomesOf,
   RawTouch,
   rawTouchLogLine,
+  targetWords,
   TOUCH_CSV_HEADER,
   touchCsv,
   touchEntry,
+  TouchEntry,
+  touchFacts,
   touchLogLine,
-  touchSummaryLine,
   TouchOutcome,
+  verdictLogLine,
+  withIntendedTarget,
+  withVerdict,
 } from '../../src/domain/touchDiag';
 
 function touch(id: number, startAt: number, endAt: number, extra: Partial<RawTouch> = {}): RawTouch {
   return {id, x: 100, y: 200, endX: 103, endY: 211, maxMove: 11.4, startAt, endAt, pointers: 1, cancelled: false, ...extra};
 }
-const out = (kind: TouchOutcome['kind'], target: TouchOutcome['target'], at: number): TouchOutcome => ({kind, target, at});
+const out = (kind: TouchOutcome['kind'], target: string, at: number, inert = false): TouchOutcome => ({kind, target, at, inert});
+const ctx = {mode: 'finger' as const, side: 'left' as const, screenHeight: 1000};
 
 describe('bandOf', () => {
   it('splits the screen into top, middle and bottom 20 %', () => {
-    expect(bandOf(0, 1000)).toBe('top');
-    expect(bandOf(199, 1000)).toBe('top');
-    expect(bandOf(200, 1000)).toBe('middle');
-    expect(bandOf(799, 1000)).toBe('middle');
-    expect(bandOf(800, 1000)).toBe('bottom');
-    expect(bandOf(999, 1000)).toBe('bottom');
+    expect([0, 199, 200, 799, 800, 999].map(y => bandOf(y, 1000))).toEqual(['top', 'top', 'middle', 'middle', 'bottom', 'bottom']);
   });
   it('treats an unknown screen height as middle', () => {
     expect(bandOf(10, 0)).toBe('middle');
@@ -35,73 +39,125 @@ describe('bandOf', () => {
 describe('classifyTouch', () => {
   const t = touch(1, 1000, 1140);
   it('is handled when a press fired, with its target', () => {
-    expect(classifyTouch(t, [out('pressIn', 'title', 1010), out('pressOut', 'title', 1150), out('press', 'title', 1150)])).toEqual({
+    expect(classifyTouch(t, [out('pressIn', '7:title', 1010), out('pressOut', '7:title', 1150), out('press', '7:title', 1150)])).toEqual({
       cls: 'handled',
-      target: 'title',
+      target: '7:title',
     });
   });
+  it('is swallowed when the only press was on a part that needs a second tap (H4)', () => {
+    expect(classifyTouch(t, [out('pressIn', '5:label:next', 1010), out('press', '5:label:next', 1150, true)])).toEqual({
+      cls: 'swallowed',
+      target: '5:label:next',
+    });
+  });
+  it('is handled on the second tap of a double tap', () => {
+    expect(classifyTouch(t, [out('press', '5:label:next', 1150)]).cls).toBe('handled');
+  });
   it('is cancelled when a press started but none fired (H2)', () => {
-    expect(classifyTouch(t, [out('pressIn', 'checkbox', 1010), out('pressOut', 'checkbox', 1150)])).toEqual({cls: 'cancelled', target: 'checkbox'});
+    expect(classifyTouch(t, [out('pressIn', '2:checkbox', 1010), out('pressOut', '2:checkbox', 1150)])).toEqual({cls: 'cancelled', target: '2:checkbox'});
   });
   it('is cancelled when a span lost the responder', () => {
-    expect(classifyTouch(t, [out('responderTerminate', 'tag', 1100)])).toEqual({cls: 'cancelled', target: 'tag'});
+    expect(classifyTouch(t, [out('responderTerminate', '3:tag:1', 1100)])).toEqual({cls: 'cancelled', target: '3:tag:1'});
   });
   it('is cancelled when the system cancelled the touch and nothing pressed', () => {
     expect(classifyTouch(touch(1, 0, 10, {cancelled: true}), [])).toEqual({cls: 'cancelled', target: null});
   });
-  it('is noTarget when nothing reacted (H3/H4)', () => {
+  it('is noTarget when nothing reacted (H3)', () => {
     expect(classifyTouch(t, [])).toEqual({cls: 'noTarget', target: null});
-  });
-  it('is swallowed when the only press was a single tap on #next (H4)', () => {
-    expect(classifyTouch(t, [out('pressIn', 'next', 1010), out('press', 'next', 1150)])).toEqual({cls: 'swallowed', target: 'next'});
-  });
-  it('is handled on the second tap of a #next double tap', () => {
-    expect(classifyTouch(t, [out('press', 'next', 1150), out('press', 'nowToggle', 1150)])).toEqual({cls: 'handled', target: 'nowToggle'});
   });
 });
 
 describe('outcomesOf', () => {
   it('takes outcomes from just before the start to the end plus the grace time', () => {
     const t = touch(1, 1000, 1100);
-    const all = [out('pressIn', 'title', 940), out('pressIn', 'title', 960), out('press', 'title', 1400), out('press', 'title', 1401)];
+    const all = [out('pressIn', '1:title', 940), out('pressIn', '1:title', 960), out('press', '1:title', 1400), out('press', '1:title', 1401)];
     expect(outcomesOf(t, [t], all).map(o => o.at)).toEqual([960, 1400]);
   });
   it('gives an outcome in the overlap of two quick taps to the later touch', () => {
     const a = touch(1, 1000, 1100);
     const b = touch(2, 1250, 1350);
-    const all = [out('press', 'title', 1110), out('pressIn', 'checkbox', 1255), out('press', 'checkbox', 1360)];
+    const all = [out('press', '1:title', 1110), out('pressIn', '1:checkbox', 1255), out('press', '1:checkbox', 1360)];
     expect(outcomesOf(a, [a, b], all).map(o => o.at)).toEqual([1110]);
     expect(outcomesOf(b, [a, b], all).map(o => o.at)).toEqual([1255, 1360]);
   });
 });
 
-describe('touchEntry and output', () => {
-  const t = touch(7, 1000, 1140, {y: 1250, endY: 1261});
-  const entry = touchEntry(t, [t], [], 'finger', 1300);
-
-  it('adds mode, band and class', () => {
-    expect(entry).toMatchObject({id: 7, mode: 'finger', band: 'bottom', cls: 'noTarget', target: null});
+describe('words', () => {
+  const entry = (outcomes: TouchOutcome[], extra: Partial<RawTouch> = {}) => {
+    const t = touch(12, 1000, 1140, extra);
+    return touchEntry(t, [t], outcomes, ctx);
+  };
+  it('names targets without any text from the rows', () => {
+    expect(targetWords('7:label:next')).toBe('Row 7 · label #next');
+    expect(targetWords('3:tag:2')).toBe('Row 3 · tag 2');
+    expect(targetWords('4:noteIcon')).toBe('Row 4 · note icon');
+    expect(targetWords('6:rowBody')).toBe('Row 6 · meeting');
+    expect(targetWords('6:label:source')).toBe('Row 6 · label source');
   });
-  it('logs numbers only', () => {
-    expect(touchLogLine(entry)).toBe('touch: finger band=bottom class=noTarget x=100 y=1250 dx=3 dy=11 move=11 ms=140 target=- pointers=1');
-    expect(rawTouchLogLine(touch(1, 0, 90, {cancelled: true, pointers: 2}), 1000)).toBe(
-      'touch(app): band=middle x=100 y=200 dx=3 dy=11 move=11 ms=90 pointers=2 end=cancel',
+  it('says what the last tap hit', () => {
+    expect(describeTouch(entry([out('press', '7:label:next', 1150, true)]), 1.41)).toBe('Row 7 · label #next · swallowed (needs double tap)');
+    expect(describeTouch(entry([out('press', '2:title', 1150)]), 1.41)).toBe('Row 2 · title · handled');
+    expect(describeTouch(entry([]), 1.41)).toBe('Nothing hit');
+    expect(describeTouch(entry([out('pressIn', '2:title', 1010)], {maxMove: 10}), 1.41)).toBe('Row 2 · title · press cancelled (moved 14 px)');
+    expect(describeTouch(entry([], {cancelled: true, maxMove: 10}), 1.41)).toBe('Press cancelled (moved 14 px)');
+  });
+  it('gives position, band, movement and duration in device pixels', () => {
+    expect(touchFacts(entry([]), 1.41)).toBe('#12 · finger · middle · x 141 y 282 px · moved 16 px · 140 ms');
+  });
+});
+
+describe('counts', () => {
+  const e = (mode: TouchEntry['mode'], side: TouchEntry['side'], y: number, cls: TouchEntry['cls'], verdict: TouchEntry['verdict']): TouchEntry => ({
+    ...touch(1, 0, 1, {y}),
+    mode,
+    side,
+    band: bandOf(y, 1000),
+    cls,
+    target: null,
+    verdict,
+    intendedTarget: null,
+  });
+  it('splits classes and verdicts by mode, side and band', () => {
+    const counts = countTouches([
+      e('finger', 'left', 900, 'noTarget', 'notIntended'),
+      e('finger', 'left', 950, 'handled', 'intended'),
+      e('pen', 'right', 100, 'swallowed', null),
+    ]);
+    expect(counts.finger.left.bottom).toEqual({handled: 1, swallowed: 0, cancelled: 0, noTarget: 1, intended: 1, notIntended: 1});
+    expect(counts.pen.right.top.swallowed).toBe(1);
+    expect(counts.finger.right.bottom.handled).toBe(0);
+    expect(cellText(counts.finger.left.bottom)).toBe('●1 ◐0 ○0 ×1 ✓1 ✗1');
+  });
+});
+
+describe('verdicts', () => {
+  const t = touch(4, 0, 10);
+  const base = [touchEntry(t, [t], [], ctx)];
+  it('sets and clears a verdict, and the intended target only with "not intended"', () => {
+    const wrong = withIntendedTarget(withVerdict(base, 4, 'notIntended'), 4, '9:title');
+    expect(wrong[0]).toMatchObject({verdict: 'notIntended', intendedTarget: '9:title'});
+    expect(withVerdict(wrong, 4, 'intended')[0]).toMatchObject({verdict: 'intended', intendedTarget: null});
+    expect(withVerdict(wrong, 4, null)[0]).toMatchObject({verdict: null, intendedTarget: null});
+    expect(withVerdict(wrong, 5, 'intended')).toEqual(wrong);
+  });
+});
+
+describe('output', () => {
+  const t = touch(7, 1000, 1140, {y: 950, endY: 961});
+  const entry = touchEntry(t, [t], [out('press', '3:tag:1', 1150)], {...ctx, side: 'right'});
+
+  it('logs ids and numbers only, in device pixels', () => {
+    expect(touchLogLine(entry, 1)).toBe('touch: finger side=right band=bottom class=handled target=3:tag:1 x=100 y=950 dx=3 dy=11 move=11 ms=140 pointers=1 id=7');
+    expect(verdictLogLine(7, 'notIntended')).toBe('touch verdict: id=7 verdict=notIntended');
+    expect(verdictLogLine(7, null)).toBe('touch verdict: id=7 verdict=skip');
+    expect(intendedLogLine(7, 'none')).toBe('touch intended: id=7 target=none');
+    expect(rawTouchLogLine(touch(1, 0, 90, {cancelled: true, pointers: 2}), 1000, 2)).toBe(
+      'touch(app): band=middle x=200 y=400 dx=6 dy=22 move=23 ms=90 pointers=2 end=cancel',
     );
   });
   it('writes CSV with the agreed columns', () => {
-    const handled = touchEntry(touch(8, 0, 50), [touch(8, 0, 50)], [out('press', 'clip', 60)], 'pen', 1000);
-    expect(touchCsv([entry, handled]).split('\n')).toEqual([
-      TOUCH_CSV_HEADER,
-      '7,finger,bottom,100,1250,103,1261,11,140,noTarget,,1',
-      '8,pen,middle,100,200,103,211,11,50,handled,clip,1',
-      '',
-    ]);
-  });
-  it('counts per mode, band and class', () => {
-    const counts = countTouches([entry, entry, touchEntry(touch(9, 0, 1), [touch(9, 0, 1)], [], 'pen', 1300)]);
-    expect(counts.finger.bottom.noTarget).toBe(2);
-    expect(counts.pen.top.noTarget).toBe(1);
-    expect(counts.finger.top.handled).toBe(0);
-    expect(touchSummaryLine(counts, 'finger')).toBe('Finger · top ●0 ○0 ×0 ◐0 · middle ●0 ○0 ×0 ◐0 · bottom ●0 ○0 ×2 ◐0');
+    const judged = withIntendedTarget(withVerdict([entry], 7, 'notIntended'), 7, '3:title');
+    expect(touchCsv(judged, 1).split('\n')).toEqual([TOUCH_CSV_HEADER, '7,finger,right,bottom,100,950,103,961,11,140,1,handled,3:tag:1,notIntended,3:title', '']);
+    expect(TOUCH_CSV_HEADER).toBe('id,mode,side,band,x,y,endX,endY,maxMove,ms,pointers,class,target,verdict,intendedTarget');
   });
 });

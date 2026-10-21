@@ -8,7 +8,7 @@
  * plugin closes, and "Log touches everywhere" is off after every restart.
  */
 import {useSyncExternalStore} from 'react';
-import {OutcomeKind, RawTouch, TouchEntry, TouchOutcome, TouchTarget} from '../domain/touchDiag';
+import {OutcomeKind, RawTouch, TouchEntry, TouchOutcome} from '../domain/touchDiag';
 
 // Long enough for every outcome a pending touch still needs; older ones are dropped.
 const OUTCOME_KEEP_MS = 5000;
@@ -32,9 +32,9 @@ function subscribe(listener: () => void): () => void {
 }
 
 /** A test row's press event (ui/touchDiag/touchProbe.ts). */
-export function reportOutcome(kind: OutcomeKind, target: TouchTarget): void {
+export function reportOutcome(kind: OutcomeKind, target: string, inert = false): void {
   const at = Date.now();
-  outcomes = [...outcomes.filter(o => o.at > at - OUTCOME_KEEP_MS), {kind, target, at}];
+  outcomes = [...outcomes.filter(o => o.at > at - OUTCOME_KEEP_MS), {kind, target, inert, at}];
 }
 
 export function getOutcomes(): readonly TouchOutcome[] {

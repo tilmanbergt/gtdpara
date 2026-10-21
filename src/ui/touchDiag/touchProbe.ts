@@ -9,9 +9,9 @@
  * pressable, so the hit areas under test stay as they are.
  */
 import {createContext, useContext} from 'react';
-import {OutcomeKind, TouchTarget} from '../../domain/touchDiag';
+import {OutcomeKind} from '../../domain/touchDiag';
 
-export type TouchProbe = (kind: OutcomeKind, target: TouchTarget) => void;
+export type TouchProbe = (kind: OutcomeKind, target: string, inert?: boolean) => void;
 
 export const TouchProbeContext = createContext<TouchProbe | null>(null);
 
@@ -25,13 +25,13 @@ interface ProbeHandlers {
 }
 
 /** pressIn/pressOut reporters for a `Pressable`; empty without a probe. */
-export function probePressable(probe: TouchProbe | null, target: TouchTarget): ProbeHandlers {
+export function probePressable(probe: TouchProbe | null, target: string): ProbeHandlers {
   if (!probe) return {};
   return {onPressIn: () => probe('pressIn', target), onPressOut: () => probe('pressOut', target)};
 }
 
 /** The same for a nested `<Text onPress>` span, which also reports losing the responder. */
-export function probeSpan(probe: TouchProbe | null, target: TouchTarget): ProbeHandlers & {onResponderTerminate?: () => void} {
+export function probeSpan(probe: TouchProbe | null, target: string): ProbeHandlers & {onResponderTerminate?: () => void} {
   if (!probe) return {};
   return {...probePressable(probe, target), onResponderTerminate: () => probe('responderTerminate', target)};
 }

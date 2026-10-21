@@ -16,8 +16,8 @@
  * session's records as CSV to EXPORT/gtdpara/debug.
  */
 import React, {useEffect, useRef, useState} from 'react';
-import {Dimensions, LayoutChangeEvent, StyleSheet, Text, View} from 'react-native';
-import {countTouches, OUTCOME_GRACE_MS, RawTouch, touchCsv, touchEntry, touchLogLine, TouchMode, touchSummaryLine} from '../../domain/touchDiag';
+import {Dimensions, LayoutChangeEvent, PixelRatio, StyleSheet, Text, View} from 'react-native';
+import {cellText, countTouches, OUTCOME_GRACE_MS, RawTouch, TOUCH_BANDS, touchCsv, touchEntry, touchLogLine, TouchMode} from '../../domain/touchDiag';
 import {saveTouchLog} from '../../storage/touchLog';
 import PillButton from '../../ui/PillButton';
 import {useStatus} from '../../ui/status/StatusProvider';
@@ -89,9 +89,9 @@ export default function TouchTestScreen({onClose}: {onClose: () => void}): React
     rememberTouch(touch);
     const timer = setTimeout(() => {
       timers.current.delete(timer);
-      const entry = touchEntry(touch, getRecentTouches(), getOutcomes(), touchMode, Dimensions.get('window').height);
+      const entry = touchEntry(touch, getRecentTouches(), getOutcomes(), {mode: touchMode, side: 'left', screenHeight: Dimensions.get('window').height});
       addTouchEntry(entry);
-      log(touchLogLine(entry));
+      log(touchLogLine(entry, PixelRatio.get()));
       requestEinkRefresh();
     }, CLASSIFY_DELAY_MS);
     timers.current.add(timer);
@@ -100,7 +100,7 @@ export default function TouchTestScreen({onClose}: {onClose: () => void}): React
   const handleSave = async () => {
     const current = getTouchEntries();
     try {
-      const fileName = await saveTouchLog(touchCsv(current));
+      const fileName = await saveTouchLog(touchCsv(current, PixelRatio.get()));
       log('TouchTest: log saved', current.length);
       setSaved({kind: 'success', text: `Saved ${current.length} touches as ${fileName} in EXPORT/gtdpara/debug.`});
     } catch (e) {
@@ -138,8 +138,8 @@ export default function TouchTestScreen({onClose}: {onClose: () => void}): React
         <View style={styles.flex} />
         <PillButton label="Close" onPress={onClose} {...pill} />
       </View>
-      <Text style={[styles.summary, {color: textColor}]}>{touchSummaryLine(counts, 'finger')}</Text>
-      <Text style={[styles.summary, {color: textColor}]}>{touchSummaryLine(counts, 'pen')}</Text>
+      <Text style={[styles.summary, {color: textColor}]}>{TOUCH_BANDS.map(b => `${b} ${cellText(counts.finger.left[b])}`).join(' · ')}</Text>
+      <Text style={[styles.summary, {color: textColor}]}>{TOUCH_BANDS.map(b => `${b} ${cellText(counts.pen.left[b])}`).join(' · ')}</Text>
       <Text style={[styles.summary, styles.hint, {color: textColor}]}>
         {last
           ? `Last: #${last.id} ${last.mode} ${last.band} ${last.cls}${last.target ? ` (${last.target})` : ''}. `
