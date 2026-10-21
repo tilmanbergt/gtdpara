@@ -13,7 +13,13 @@ import {NoteOwnerNames, renderSharedFileName} from './sharedNotePages';
 
 export const SETUP_KIND_LABELS: Record<SetupKind, string> = {thread: 'Thread', loop: 'Loop'};
 
-export const PAGE_KIND_LABELS: Record<PageKind, string> = {meeting: 'Meeting page', todo: 'Todo page', first: 'First page', home: 'Home page'};
+export const PAGE_KIND_LABELS: Record<PageKind, string> = {
+  meeting: 'Meeting page',
+  todo: 'Todo page',
+  first: 'First page',
+  home: 'Home page',
+  review: 'Reflection page',
+};
 
 /** Under the Default's Notes when it uses one notebook (docs/dev/history/technical-design-home-notebooks.md §3.8). */
 export const DEFAULT_NOTEBOOK_HOME_HINT = "This is each Project's and Area's home notebook.";

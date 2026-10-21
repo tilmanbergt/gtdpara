@@ -44,8 +44,13 @@ describe('pieceIsHeading', () => {
 });
 
 describe('Date & title piece and new-page defaults', () => {
-  it('belongs to Meeting and First pages only', () => {
-    expect(PIECE_PAGES.dateTitle).toEqual(['meeting', 'first']);
+  it('belongs to Meeting, First and Reflection pages only', () => {
+    expect(PIECE_PAGES.dateTitle).toEqual(['meeting', 'first', 'review']);
+  });
+  it('new Reflection pages start with Date & title only, a heading', () => {
+    const layout = withDefaultPieces(emptyPageLayout(), 'review');
+    expect(layout.pieces.map(p => p.type)).toEqual(['dateTitle']);
+    expect(pieceIsHeading(layout.pieces[0])).toBe(true);
   });
   it('new Meeting pages start with Date & title (heading), Time, Linked file', () => {
     const rule = withDefaultPieces(emptyPageLayout(), 'meeting');

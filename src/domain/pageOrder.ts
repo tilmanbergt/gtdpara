@@ -1,9 +1,10 @@
 /**
  * Page order in a notebook or loop note
  * (docs/dev/history/technical-design-note-setups.md §13): where a new page
- * for a meeting or todo goes. The one place that computes a page position;
- * storage/sharedNotePages.ts's `insertItemPage` reads the keywords and
- * inserts. Pure.
+ * for a meeting or todo goes, and where a page that belongs to an item goes
+ * (a meeting's reflection page). The one place that computes a page position;
+ * storage/sharedNotePages.ts's `insertItemPage`/`insertPageAt` read the
+ * keywords and insert. Pure.
  *
  * A file's pages are read as items: a page that starts an item (it has a
  * date) and the pages after it without one, which the user added to that
@@ -59,6 +60,21 @@ export function timelineInsertIndex(marks: readonly PageMark[], date: string): n
   for (let page = from; page < marks.length; page++) {
     const start = marks[page].startDate;
     if (start !== null && start > date) return page;
+  }
+  return marks.length;
+}
+
+/**
+ * The index right after the item starting at `itemPage` and its continuation
+ * pages (docs/dev/history/technical-design-meeting-reflection.md §2.2, R3): the
+ * first page after `itemPage` that starts an item (a meeting's or a todo's
+ * page) or is pinned, else the page count. Pages the user inserted by hand
+ * after the item's page, and an existing reflection page, are continuation
+ * pages, so a page inserted here goes after them and before the next item.
+ */
+export function afterItemIndex(marks: readonly PageMark[], itemPage: number): number {
+  for (let page = Math.max(0, itemPage + 1); page < marks.length; page++) {
+    if (marks[page].startDate !== null || marks[page].pinned) return page;
   }
   return marks.length;
 }

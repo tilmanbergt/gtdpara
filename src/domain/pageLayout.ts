@@ -19,9 +19,11 @@ import {renderSinceLast, SinceLast} from './sinceLastText';
 /**
  * The kinds of page a note setup can describe (§1.4 keeps more kinds open).
  * `home` is the Default's only: page 1 of a home notebook
- * (docs/dev/history/technical-design-home-notebooks.md §3.2).
+ * (docs/dev/history/technical-design-home-notebooks.md §3.2). `review` is a
+ * meeting's Reflection page, after the meeting's page
+ * (docs/dev/history/technical-design-meeting-reflection.md §2.1).
  */
-export type PageKind = 'meeting' | 'todo' | 'first' | 'home';
+export type PageKind = 'meeting' | 'todo' | 'first' | 'home' | 'review';
 
 /**
  * `link` (docs/dev/history/technical-design-linked-file-piece.md): a tappable
@@ -113,14 +115,14 @@ export interface PageLayout {
  * out of sync with the note's own tags.
  */
 export const PIECE_PAGES: Record<PieceType, PageKind[]> = {
-  title: ['todo', 'meeting', 'first', 'home'],
-  date: ['meeting'],
-  time: ['meeting'],
-  text: ['todo', 'meeting', 'first', 'home'],
+  title: ['todo', 'meeting', 'first', 'home', 'review'],
+  date: ['meeting', 'review'],
+  time: ['meeting', 'review'],
+  text: ['todo', 'meeting', 'first', 'home', 'review'],
   related: ['todo', 'meeting'],
-  link: ['todo', 'meeting', 'first'],
+  link: ['todo', 'meeting', 'first', 'review'],
   sinceLast: ['meeting'],
-  dateTitle: ['meeting', 'first'],
+  dateTitle: ['meeting', 'first', 'review'],
   scope: ['home'],
   goals: ['home'],
 };
@@ -130,13 +132,15 @@ export const PIECE_PAGES: Record<PieceType, PageKind[]> = {
  * (docs/dev/history/technical-design-projects-findable-notes.md §2.1 R3):
  * a meeting page Date & title, Time, Linked file; a todo page Title and
  * Linked file; a loop's first page Date & title and Linked file; a Home page
- * Title, Scope and Goals.
+ * Title, Scope and Goals; a Reflection page Date & title only (its guiding
+ * questions are the user's own texts).
  */
 export const DEFAULT_PIECE_TYPES: Record<PageKind, PieceType[]> = {
   meeting: ['dateTitle', 'time', 'link'],
   todo: ['title', 'link'],
   first: ['dateTitle', 'link'],
   home: ['title', 'scope', 'goals'],
+  review: ['dateTitle'],
 };
 
 /** Default pieces seeded with the Heading switch set on explicitly (a todo's and a Home page's heading is its Title, §2.1 R3). */
@@ -366,7 +370,7 @@ export function migrateLegacyTextPieces<T extends PageLayout>(layout: T): T {
 export interface PieceRenderContext {
   /** The note's own title - a Meeting's title, a Task's text, or a loop's name, depending on the page. */
   title: string;
-  /** Meeting only - ISO date (Meeting.date), formatted here (domain/dateFormat.ts), not by the caller. */
+  /** Meeting and Reflection pages - ISO date (Meeting.date), formatted here (domain/dateFormat.ts), not by the caller. */
   date?: string;
   /** Meeting only - HH:mm 24h, or unset/empty for a date-only meeting. Rendered verbatim (already the display format Meeting.time is stored in), unlike `date`. */
   time?: string;

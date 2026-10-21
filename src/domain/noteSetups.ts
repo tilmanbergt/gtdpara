@@ -320,6 +320,11 @@ export function createDefaultMeetingPage(): PageLayout {
   return addPiece(withDefaultPieces(emptyPageLayout(), 'meeting'), 'related');
 }
 
+/** The standard Reflection page (docs/dev/history/technical-design-meeting-reflection.md §2.1): Date & title, a heading. */
+export function createDefaultReviewPage(): PageLayout {
+  return withDefaultPieces(emptyPageLayout(), 'review');
+}
+
 /** The standard Home page (docs/dev/history/technical-design-home-notebooks.md §3.2): Title (a heading), Scope, Goals. */
 export function createDefaultHomePage(): PageLayout {
   return withDefaultPieces(emptyPageLayout(), 'home');
