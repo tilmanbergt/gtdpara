@@ -650,3 +650,72 @@ scenario('Engage on the meeting\'s page offers the reflection; on the reflection
   and('it doesn\'t offer to reflect again', () => expectNotShows('Reflect on this meeting ›'));
 });
 ```
+
+## As built
+
+Built on `feature/meeting-reflection` in the steps of Part B §4 (S0-S7), each its own commit with
+`npm run check` green. All eight scenarios of Part C are in
+`__tests__/scenarios/meetingReflection.test.tsx`. The device test (Part B §5, items 1-9) is the
+last step and was still open when this section was written.
+
+### What was built, by step
+
+- **S0 Harness.** The fake SDK keeps the elements the plugin writes per page (textboxes, links,
+  title elements, numbered from 1, deletable by number), reports title elements through
+  `getTitles`, and `NativeModules.TextboxMetrics` gets a simple fake measurement. New helpers:
+  `pageKeywords`, `pageTexts`, `pageHeadings` (`test-helpers/scenario/files.ts`), `openEngage`
+  (`test-helpers/scenario/app.tsx`), `sparringSettings` and `reflectionPageWith`
+  (`test-helpers/scenario/setups.ts`). Unit test: `__tests__/fakeDevice/fakeSdk.test.ts`.
+- **S1 Domain.** Page kind `review` ("Reflection page", default pieces Date & title),
+  `domain/reflection.ts`, `pageOrder.afterItemIndex`, `domain/meetingToolbar.ts`,
+  `stripTrackingTags`/`withTrackingTagsOf`, with the Jest tests of Part B §5.
+- **S2 Edit form (M7).** As designed, plus `itemMutations.currentEntryMeeting` (see deviations).
+- **S3 Storage.** `insertPageAt`, `ensureMeetingNote`, `storage/reflectionPage.ts`, plan kind
+  `new-reflection` with the fixed texts, `noteTargets.setupForLink`, the Default's Reflection page
+  (seed, and `completeDefaultPages` in the migration, next to the Home page). Upgrade note in the
+  CHANGELOG.
+- **S4 Settings.** `pageKindsOf` and `defaultPageKinds` list `review`; the settings screens are
+  generic over page kinds and needed no change. Help page `note-setups.md`.
+- **S5 Toolbar.** `ui/MeetingToolbar.tsx`, `ui/useMeetingToolbar.ts`, the `toolbar` prop on
+  `MeetingList`/`DayMeetingsPanel` (PagedSection already had `subHeader`), the quieter
+  `MeetingRow`, wiring in Daily, Week/Month (`usePlanningScreen.toolbarOptions`), Project/Area,
+  Inbox, Review's Inbox step and the thread/loop overviews' Ahead.
+- **S6 Entry points.** Close-out pill, Looking back pill (`useEntryActions.reflection`),
+  `screens/engage/ReflectLine.tsx`, the reflection keyword in `sharedPageHit`; the shared lookup
+  `ui/useReflectionLookup.ts`.
+- **S7 Docs.** Help pages (`meetings.md`, `note-setups.md`, `review.md`, `engage.md`,
+  `threads.md`, `loops.md`, `daily.md`, `week-and-month.md`, `projects-and-areas.md`,
+  `quick-add.md`), README feature list, CHANGELOG, `design-overview.md`,
+  `design-device-rendering.md`, `docs/dev/test-scenarios.md`.
+
+### Deviations from the design
+
+1. **A new Thread notebook starts with an empty page.** `createNote` makes a note with one page,
+   and `ensureSharedNoteFile` leaves it empty, so the meeting's page of a new notebook is page 1,
+   not page 0 (current behaviour, unchanged). The scenario "Reflect on a meeting that has no page
+   yet" therefore checks the order - empty page(s), meeting page, reflection right after it, last
+   page opened - instead of fixed page numbers.
+2. **Engage scenario, agreed todo.** The Agreed row draws the title and its `#next` label as one
+   text, so the check matches the title at its start (`/^Send Mieke the role canvas/`).
+3. **`insertPageAt(filePath, indexOf, keyword, template)`** takes a function that picks the index
+   from the file's keywords, so the position comes from the same keyword read as the insert.
+4. **Every quick-file move path reads the current copy**, not only Daily's: Week/Month and the
+   thread/loop overview built the edited meeting from a render-time entry too.
+   `currentEntryMeeting` reads the Inbox or the cache.
+5. **Two more lists get the toolbar.** Review's Inbox step and the Ahead list of the thread and
+   loop overviews have Quick Add and used the row's tick and +clip, so by M3 they get the toolbar.
+   Ahead is a mixed list with a fixed viewport: the toolbar shows there only while one of its
+   meetings is edited, and the row box shrinks by its height.
+6. **The selected meeting** is the edited one, or on the Project/Area page, the Inbox and the
+   Review's Inbox step the armed one while a file is being linked.
+7. **Empty toolbar.** With nothing selected it shows greyed **Reflect ›** (and **Link file** where
+   the list can link) and "Tap a meeting"; no greyed checkpoint, since whether it would be Prepped
+   or Reviewed depends on the meeting.
+8. **A meeting whose page is missing for another reason** (its notebook page or file was deleted,
+   or a page with its keyword exists) gets the meeting plan's own question (recreate / link) and the
+   reflection follows without a second one; only first-time plans get the "pages for the meeting
+   and its reflection" wording.
+9. **Labels in one place.** `reflectionPillText` and `REFLECT_ON_MEETING_TEXT` live in
+   `domain/reflection.ts`, `toolbarSlotText` in `domain/meetingToolbar.ts`.
+10. **Help pages and CHANGELOG lines for the toolbar** came with S7, as the step plan said, not in
+    the S5 commit.

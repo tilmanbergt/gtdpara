@@ -11,9 +11,26 @@ or your project/area files are stored.
 ## [Unreleased]
 
 ### New
+- **Reflection page for meetings**: once a meeting is over, **Reflect ›** adds one page to its note
+  for reflecting in your own handwriting - after the meeting's page and the pages you added to
+  it, filled from the setup's Reflection page. It asks once; afterwards **Reflection ›** opens it.
+  It never ticks the meeting reviewed. Reach it from the meeting list's toolbar, the Review step
+  **Meetings to close out**, a past meeting in a thread or loop overview, and Engage on the
+  meeting's page ("Reflect on this meeting ›"). On the reflection page, Engage and lasso capture
+  treat it as the meeting's page. See the help page "Meetings".
 - **Reflection page in Note setups**: Thread and Loop setups and the Default have a new page row,
-  **Reflection page**, for the page you reflect on after a meeting. It starts with Date & title;
-  add your guiding questions as your own texts. See the help page "Note setups".
+  **Reflection page**. It starts with Date & title; add your guiding questions as your own texts.
+  See the help page "Note setups".
+- **Meeting toolbar**: every meeting list with Quick Add (Daily, Week and Month day panels, a
+  project's or area's Meetings, the Inbox, the Review's Inbox step, a thread or loop overview's
+  Ahead) has one toolbar row for the selected meeting: **☐ Prepped** / **☐ Reviewed**,
+  **Reflect ›** and, where a Files pane is there, **Link file**.
+
+### Changed
+- **A quieter meeting row**: the prep/review mark on a row only shows the state - tapping it
+  selects the meeting, the tick is in the toolbar. The **+clip** moved to the toolbar's
+  **Link file**; the clip shows only when a file is linked. The **M** box left the Week and Month
+  day panels: switch a monthly highlight in Quick Add's edit form (2-line rows still show the M).
 
 ### Fixed
 - **A meeting's prep or review tick is no longer lost when you save an edit**: Quick Add's edit

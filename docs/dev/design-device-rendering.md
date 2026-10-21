@@ -89,6 +89,7 @@ top-aligned, so if a prediction is too large the spare space sits at the bottom 
 | Meeting row, 1-line | `ui/MeetingRow.tsx` | **37 (fixed)** | `MEETING_ROW_HEIGHT.oneLine`: `paddingVertical 7 × 2` + one 22 dp line + border. Time column 58 dp (`time`) or 118 dp (`dateTime`, e.g. "28.12. 23:59"). |
 | Meeting row, 2-line | `ui/MeetingRow.tsx` | **57 (fixed)** | `MEETING_ROW_HEIGHT.twoLine`: 22 dp title + 2 + 18 dp source line (or the title wrapping onto line 2 at 2 × 21 dp when there is no source). Time column 58 dp or 96 dp. Every meeting list has a 1-line/2-line switch. |
 | Meeting group header (Upcoming/Past) | `ui/MeetingList.tsx` | **30 (fixed)** | `MEETING_LIST_HEADER_ROW_HEIGHT`. |
+| Meeting toolbar | `ui/MeetingToolbar.tsx` | **44 (fixed)** | `MEETING_TOOLBAR_HEIGHT`: a 40 dp row (ghost buttons, `paddingVertical 6 × 2` + small line ~18 + border 2 ≈ 32) + `marginBottom 4`. One per meeting list with Quick Add, as PagedSection's `subHeader` between the header line and the rows; it costs about one 1-line row (37) or less than one 2-line row (57) per page. The thread/loop overview's Ahead (explicit `viewportHeight`) shows it only while a meeting is edited and shrinks its row box by the same 44. |
 | Google Calendar event | `ui/GoogleCalendarPanel.tsx` | **37 (fixed)** | `GOOGLE_EVENT_ROW_PX = MEETING_ROW_HEIGHT.oneLine`, same time column as a meeting row. |
 | Week chip | `ui/MeetingChip.tsx` | **34 (fixed)** | `MEETING_CHIP_HEIGHT`. The Week grid shows 4 rows × 2 chips per weekday and 2 × 2 per weekend day, under a 30 dp day header (`WEEK_DAY_HEADER_HEIGHT`). |
 | File/folder entry | `ui/FileBrowserPane.tsx` → `fileEntryHeight()` | **42** / **64** | `FILE_ENTRY_CHROME_PX 20` (`paddingVertical 5` on both the row and the text, × 2) + lines × 22, max 2 lines. |
@@ -172,6 +173,7 @@ See §3. Other single-line rows:
 
 | Element | File | Height (dp) | Composition |
 |---|---|---|---|
+| Meeting toolbar | `ui/MeetingToolbar.tsx` | **44** | See §3. Budget it under the header line of every meeting list with Quick Add (Daily's calendar column, the Week/Month day panel, a project's or area's Meetings, the Inbox, the Review's Inbox step). |
 | `PagedSection` header line | `ui/PagedSection.tsx` | **~31** | `paddingVertical 4 × 2` + small line ~18 + border 1 + `marginBottom 4` (`SECTION_HEADER_ROW_PX` in `screens/ItemsList.tsx`). The arrow buttons (medium text + `paddingVertical 2 × 2` ≈ 26) are taller than the header text, so a header with arrows can be a few dp taller (estimate). Self-measuring lists absorb this. |
 | Mini-tab strip | `ui/MiniTabs.tsx` | **~45** | Tab `paddingVertical 6 × 2` + medium line ~22 + underline 2, + row border 1 + `marginBottom 8`. |
 | Status pill (Active/On Hold) | `ui/ItemStatusPanel.tsx` | **~36** | `paddingVertical 8 × 2` + small line ~18 + border 2 (plus `marginBottom 8` below). |

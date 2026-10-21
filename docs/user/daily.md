@@ -17,7 +17,7 @@ Todos marked Someday or Maybe never appear on Daily. Todos are grouped by projec
 
 After a todo's title, short labels show what matters about it: `#next`, `#now`, `#w/f Lena` (waiting for Lena), `#due 5.10.` (with `!` when overdue). If a title is too long, it is shortened with … so the labels always fit. The same labels appear on every tab; in a list grouped by Next, Waiting For and so on, the label the heading already says is left out.
 
-The left column shows meetings with the tabs **Today** and **Tomorrow** (and **Google** when the Google Calendar integration is on).
+The left column shows meetings with the tabs **Today** and **Tomorrow** (and **Google** when the Google Calendar integration is on). Tap a meeting to edit it in Quick Add; the toolbar above the meetings then offers **☐ Prepped** or **☐ Reviewed** and, once it is over, **Reflect ›** (see [Meetings](meetings.md)). Daily has no Files pane, so linking a file happens on the project's page.
 
 ## Daily focus
 

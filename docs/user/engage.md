@@ -11,7 +11,7 @@ The panel is about one **owner** at a time: a Project, an Area, a loop or a thre
 
 - **Engage ›** on a page: that page's Project, Area, loop or thread.
 - The Engage button on a todo's note (its own note, its page in a loop note, or its page in a shared notebook): that todo becomes the one you are working on. The owner is its loop; else its thread (the todo's own thread tag, or the thread of the meeting it was agreed in); else its Project or Area.
-- The Engage button on a meeting's note or page: the meeting's thread, or else its loop or its Project or Area. When todos were agreed in that meeting, Engage opens on **Agreed** (below).
+- The Engage button on a meeting's note or page: the meeting's thread, or else its loop or its Project or Area. When todos were agreed in that meeting, Engage opens on **Agreed** (below). The meeting's Reflection page counts as its page ([Meetings](meetings.md)).
 - On a loop note: the loop. On any other note in a Project's or Area's folder: that Project or Area.
 - On a note that belongs to none of them: the owner of the todo you were last working on.
 - Nothing fits: Engage shows today's focus to choose from (or this week's, when nothing is in today's focus).
@@ -81,6 +81,7 @@ Engage never moves on to another owner by itself. **Select next focus ›** list
 
 ## Quick Add, marks and leaving
 
+- **Reflect on this meeting ›**: on a meeting's page once the meeting is over, this line opens its Reflection page - after one question the first time, when it creates it - and closes the panel. On the Reflection page itself it isn't shown. See [Meetings](meetings.md).
 - **Go to** with the notebook's name, for example "Go to Garden renovation 2026 ›": when the owner is a project or area with a home notebook ([Projects and Areas](projects-and-areas.md)) and you are in another of its notes, this line opens the notebook and closes the panel.
 - **+ Quick Add** at the bottom opens Quick Add for the owner. For a loop or a thread, its tag is added to what you enter. **Cancel** folds it again.
 - When the owner's Project or Area has marks to process, a line says so; it opens Process marks, and Close there brings you back to Engage.

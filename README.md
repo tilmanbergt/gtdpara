@@ -61,6 +61,8 @@ More in [Why gtdpara works this way](docs/user/philosophy.md).
   thread, what you owe first; what was agreed in the meeting you are in; the next meeting here
   and today; when none is left, the plan to pick from
 - **Focus mode** (`#now`): only the few things you are doing right now
+- **Meetings** with prep and review ticks and a **Reflection page** after the meeting's page - one
+  handwritten page per meeting for how it went, never a todo; one toolbar per meeting list
 - **Quick Add** for todos, meetings and notes, with tags, due dates and refiling
 - **Projects & Areas** with status, scope, abbreviations and linked files
 - **Home notebooks**: one notebook per project and area (and year), one tap away from every list -
