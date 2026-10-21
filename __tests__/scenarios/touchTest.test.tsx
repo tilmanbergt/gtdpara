@@ -114,19 +114,21 @@ const appTouchLines = () =>
 
 scenario('Log touches on every screen while "Log touches everywhere" is on', {feature: 'Settings', design: 'technical-design-touch-test.md'}, () => {
   given('an empty PARA folder', () => undefined);
-  when('I switch on "Log touches everywhere" in the touch test, close it and tap twice on Daily', async () => {
+  when('I switch on "Log touches everywhere" in the touch test, tap once in it, close it and tap twice on Daily', async () => {
     await openApp();
     await tapTab('Settings');
     await tap('Advanced');
     await tap('Touch test');
     await tap('Log touches everywhere: OFF');
     expectShows('Log touches everywhere: ON');
+    await touch(200, 300);
     await tap('Close');
     await tapTab('Daily');
     await touch(500, 1200);
     await touch(40, 90);
   });
-  then('the log has one line per tap, with numbers only', () => {
+  then('the log has one line per tap on Daily, with numbers only; the tap in the touch test has only its own line', () => {
+    expect(device().logs.filter(l => l.text.startsWith('touch: '))).toHaveLength(1);
     const lines = appTouchLines();
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(/touch\(app\): band=\w+ x=\d+ y=\d+ dx=0 dy=0 move=0 ms=\d+ pointers=1 end=lift$/);

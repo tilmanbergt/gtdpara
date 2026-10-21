@@ -149,8 +149,8 @@ Test: `__tests__/scenarios/touchTest.test.tsx` · design: `docs/dev/history/tech
 ### Log touches on every screen while "Log touches everywhere" is on
 
 - **Given** an empty PARA folder
-- **When** I switch on "Log touches everywhere" in the touch test, close it and tap twice on Daily
-- **Then** the log has one line per tap, with numbers only
+- **When** I switch on "Log touches everywhere" in the touch test, tap once in it, close it and tap twice on Daily
+- **Then** the log has one line per tap on Daily, with numbers only; the tap in the touch test has only its own line
 - **When** I switch it off again
 - **Then** no touch handler is attached to the app any more
 
