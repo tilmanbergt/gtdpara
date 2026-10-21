@@ -42,6 +42,10 @@
  * §3.3): what's drawn (title, then labels as nested spans) and the height a
  * caller reserves both come from ui/taskRowLayout.ts's `taskRowLayout`, so a
  * label can't wrap onto a line the row doesn't have.
+ *
+ * Inside the touch test (ui/touchDiag/touchProbe.ts) every tap target also
+ * reports its press events, and the thread tags and `#w/f` label report a
+ * press instead of opening an overview. Elsewhere there is no probe.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -55,6 +59,7 @@ import {openOverview} from './overviewStore';
 import {WAITING_FOR_TYPE} from '../domain/flowState';
 import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
+import {probePressable, useTouchProbe} from './touchDiag/touchProbe';
 
 /** Kept as an alias so callers' `context` props read as before. */
 export type TaskBadgeContext = TaskLabelContext;
@@ -145,6 +150,7 @@ export default function TaskRow({
   borderColor,
 }: Props): React.JSX.Element {
   perfCount('row:task');
+  const probe = useTouchProbe();
   // Whether this row is showing because of an active Daily context filter
   // (technical-design-context-tags.md §6) - derived from contextTag rather
   // than a separate prop, since the two always agree (DailyView always
@@ -169,40 +175,44 @@ export default function TaskRow({
           // "raised" with a blank gap under it.
           height != null && {height, minHeight: height},
         ]}>
-        <Pressable onPress={onToggleDone} hitSlop={8}>
+        <Pressable onPress={onToggleDone} hitSlop={8} {...probePressable(probe, 'checkbox')}>
           <Text style={styles.checkbox}>{task.done ? '☑' : '☐'}</Text>
         </Pressable>
         <View style={styles.rowTextWrap}>
-          <Pressable onPress={onStartEdit}>
+          <Pressable onPress={onStartEdit} {...probePressable(probe, 'title')}>
             <Text
               style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]}
               numberOfLines={numberOfLines ?? layout.lines}>
-              {renderTaggableText(layout.title, {contextTag, onToggleContext, ownerPath})}
+              {renderTaggableText(layout.title, {contextTag, onToggleContext, ownerPath, probe})}
               <TaskLabels
                 labels={layout.labels}
                 onToggleNow={onToggleNow}
                 onOpenWaitingFor={
-                  task.waitingOn ? () => openOverview({tag: `${WAITING_FOR_TYPE}/${task.waitingOn}`, ownerPath: ownerPath ?? null}) : undefined
+                  !task.waitingOn
+                    ? undefined
+                    : probe
+                      ? () => probe('press', 'label')
+                      : () => openOverview({tag: `${WAITING_FOR_TYPE}/${task.waitingOn}`, ownerPath: ownerPath ?? null})
                 }
               />
             </Text>
           </Pressable>
         </View>
         {task.notePath ? (
-          <Pressable onPress={onOpenNote} hitSlop={8}>
+          <Pressable onPress={onOpenNote} hitSlop={8} {...probePressable(probe, 'note')}>
             <Text style={[styles.noteAction, {color: textColor}]}>📓</Text>
           </Pressable>
         ) : (
-          <Pressable onPress={onCreateNote} hitSlop={8}>
+          <Pressable onPress={onCreateNote} hitSlop={8} {...probePressable(probe, 'note')}>
             <Text style={[styles.noteAction, {color: textColor}]}>+📓</Text>
           </Pressable>
         )}
         {linkedFile ? (
-          <Pressable onPress={() => onOpenLinkedFile?.(linkedFile)} hitSlop={8} style={styles.clipAction}>
+          <Pressable onPress={() => onOpenLinkedFile?.(linkedFile)} hitSlop={8} style={styles.clipAction} {...probePressable(probe, 'clip')}>
             <ClipIcon color={textColor} />
           </Pressable>
         ) : onArmLink ? (
-          <Pressable onPress={onArmLink} hitSlop={8} style={styles.clipAction}>
+          <Pressable onPress={onArmLink} hitSlop={8} style={styles.clipAction} {...probePressable(probe, 'clip')}>
             <Text style={[styles.clipPlus, {color: textColor}]}>+</Text>
             <ClipIcon color={textColor} />
           </Pressable>
