@@ -48,12 +48,25 @@ scenario('Record taps in the touch test without changing anything', {feature: 'S
   });
   then('the info column says the title of row 1 was handled', () => {
     expectShows('Row 1 · title · handled');
+    expectShows(/^Taps received: 1\./);
   });
-  when('I tap a spot where nothing reacts', async () => {
+  when('I say it was intended', async () => {
+    await tap('Intended');
+  });
+  when('I tap a spot where nothing reacts and say it was not intended', async () => {
     await touch(20, 600);
-  });
-  then('it says nothing was hit', () => {
     expectShows('Nothing hit');
+    await tap('Not intended');
+  });
+  then('it asks for a tap on what I meant', () => {
+    expectShows('Tap what you meant (use the pen)');
+  });
+  when('I tap the title of row 2', async () => {
+    await touch(200, 360, () => fireEvent.press(screen.getAllByText(/^2 Write the long summary/)[0]));
+  });
+  then('that tap is stored as what I meant, not counted as a test tap', () => {
+    expectShows('You meant: Row 2 · title');
+    expectShows(/^Taps received: 2\./);
   });
   when('I tap the #next label of row 4 once', async () => {
     await touch(300, 200, () => fireEvent.press(screen.getAllByText('#next')[0]));
@@ -62,21 +75,22 @@ scenario('Record taps in the touch test without changing anything', {feature: 'S
     expectShows('Row 4 · label #next · swallowed (needs double tap)');
     expect(StyleSheet.flatten(screen.getAllByText('#next')[0].props.style)).toMatchObject({backgroundColor: '#000000'});
   });
-  when('I tap the checkbox of row 1 and then Save log', async () => {
-    await touch(30, 300, () => fireEvent.press(screen.getAllByText('☐')[0]));
+  when('I swap sides, tap the checkbox of row 1 and then Save log', async () => {
+    await tap('⇄ Swap sides');
+    await touch(530, 300, () => fireEvent.press(screen.getAllByText('☐')[0]));
     await tap('Save log');
   });
-  then('a CSV with the four touches is in EXPORT/gtdpara/debug, and the status line says so', () => {
+  then('a CSV with the four test taps, their sides and verdicts is in EXPORT/gtdpara/debug, and the status line says so', () => {
     const csv = device()
       .fs.paths(DEBUG_FOLDER)
       .filter(p => /touch-.*\.csv$/.test(p));
     expect(csv).toHaveLength(1);
     expect(fileText(csv[0]).trim().split('\n')).toEqual([
       'id,mode,side,band,x,y,endX,endY,maxMove,ms,pointers,class,target,verdict,intendedTarget',
-      expect.stringMatching(/^\d+,finger,left,\w+,400,600,400,600,0,\d+,1,handled,1:title,,$/),
-      expect.stringMatching(/,noTarget,,,$/),
-      expect.stringMatching(/,swallowed,4:label:next,,$/),
-      expect.stringMatching(/,handled,1:checkbox,,$/),
+      expect.stringMatching(/^\d+,finger,left,\w+,400,600,400,600,0,\d+,1,handled,1:title,intended,$/),
+      expect.stringMatching(/,left,.*,noTarget,,notIntended,2:title$/),
+      expect.stringMatching(/,left,.*,swallowed,4:label:next,,$/),
+      expect.stringMatching(/,right,.*,handled,1:checkbox,,$/),
     ]);
     expectShows(/^Saved 4 touches as touch-.*\.csv in EXPORT\/gtdpara\/debug\.$/);
   });

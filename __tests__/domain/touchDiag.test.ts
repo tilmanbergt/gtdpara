@@ -1,6 +1,6 @@
 import {
   bandOf,
-  cellText,
+  cellLines,
   classifyTouch,
   countTouches,
   describeTouch,
@@ -126,7 +126,7 @@ describe('counts', () => {
     expect(counts.finger.left.bottom).toEqual({handled: 1, swallowed: 0, cancelled: 0, noTarget: 1, intended: 1, notIntended: 1});
     expect(counts.pen.right.top.swallowed).toBe(1);
     expect(counts.finger.right.bottom.handled).toBe(0);
-    expect(cellText(counts.finger.left.bottom)).toBe('●1 ◐0 ○0 ×1 ✓1 ✗1');
+    expect(cellLines(counts.finger.left.bottom)).toEqual(['●1 ◐0 ○0 ×1', '✓1 ✗1']);
   });
 });
 

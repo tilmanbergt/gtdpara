@@ -203,9 +203,10 @@ export function countTouches(entries: readonly TouchEntry[]): TouchCounts {
 /** The touch test's glyph per class and verdict (grayscale, no color). */
 export const TOUCH_GLYPH = {handled: '●', swallowed: '◐', cancelled: '○', noTarget: '×', intended: '✓', notIntended: '✗'} as const;
 
-/** One summary cell as text: "●3 ◐1 ○0 ×2 ✓2 ✗1". */
-export function cellText(cell: TouchCell): string {
-  return (['handled', 'swallowed', 'cancelled', 'noTarget', 'intended', 'notIntended'] as const).map(k => `${TOUCH_GLYPH[k]}${cell[k]}`).join(' ');
+/** One summary cell as two lines: classes "●3 ◐1 ○0 ×2", verdicts "✓2 ✗1". */
+export function cellLines(cell: TouchCell): [string, string] {
+  const text = (keys: readonly (keyof TouchCell)[]) => keys.map(k => `${TOUCH_GLYPH[k]}${cell[k]}`).join(' ');
+  return [text(['handled', 'swallowed', 'cancelled', 'noTarget']), text(['intended', 'notIntended'])];
 }
 
 // ------------------------------------------------------------------ output
