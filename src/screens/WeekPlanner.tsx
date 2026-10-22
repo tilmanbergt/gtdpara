@@ -29,7 +29,7 @@ import MeetingRow from '../ui/MeetingRow';
 import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import PeriodFocusPanel from '../ui/PeriodFocusPanel';
 import PeriodGoalsHistoryPanel from '../ui/PeriodGoalsHistoryPanel';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor, MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {useStableCallback} from '../ui/useStableCallback';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {CachedItem} from '../storage/dataCache';
@@ -203,9 +203,8 @@ export default function WeekPlanner({
             onAddMeeting={planning.handleAddMeeting}
             initialDate={selectedDate ?? (isCurrentWeek ? todayIso() : weekStart)}
             isMeetingDateVisible={stableIsMeetingDateVisible}
-            editingMeeting={editingMeetingEntry?.meeting}
+            editTarget={editTargetFor(editingKey, {meeting: editingMeetingEntry?.meeting})}
             onSaveEditMeeting={editingMeetingEntry ? stableSaveEditMeeting : undefined}
-            editTargetKey={editingKey}
             flushEditRef={planning.flushEditRef}
             onCancelEdit={planning.cancelEditTarget}
             onDeleteEdit={stableDeleteEdit}

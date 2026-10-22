@@ -1,294 +1,74 @@
 /**
- * The unified Todo/Meeting add-and-edit widget (docs/dev/technical-design-
- * unified-quickadd.md). Sits inside one Todo/Meeting mini-tab (Todo default)
- * rather than two independent fixed-slot forms side by side, so every screen
- * has exactly one add/edit surface no matter which of the four styles
- * (Create·Todo, Edit·Todo, Create·Meeting, Edit·Meeting) is showing - see
- * the design doc §1 for why (screen estate, a stable spot for text input,
- * an edit of one type is never silently closed by tapping a row of the
- * other type, room for Refile/a wider meeting date field).
+ * The unified Todo/Meeting/Note add-and-edit widget
+ * (docs/dev/history/technical-design-unified-quickadd.md). Every screen has exactly
+ * one add/edit surface: a box of four fixed rows (ui/quickAdd/QuickAddFrame.tsx)
+ * whose contents follow the tab and whether an item is being edited:
+ *   R1 Tabs      - Todo/Meeting(/Note) (ui/quickAdd/TabsRow.tsx).
+ *   R2 Input     - todo text + due date, or meeting title + date, or note title.
+ *   R3 Metadata  - flow chips + tag chips (or "Waiting on"), or meeting time +
+ *                  tag chips, or note tag chips; the linked file while editing.
+ *   R4 Actions   - create: "+ Add" (relabelled "+ Add to <Name>" when a
+ *                  recognized abbreviation #tag files it elsewhere,
+ *                  docs/dev/history/technical-design-abbrev-quick-file.md);
+ *                  edit: delete, Refile or "File: <Name>", New from this,
+ *                  Cancel, Save (ui/quickAdd/ActionRow.tsx).
  *
- * Four fixed rows, same slots in every style (design doc §3):
- *   R1 Tabs      - Todo/Meeting mini-tab. Never disappears; the inactive tab
- *                  greys out (doesn't hide) while locked - taskOnly or an
- *                  edit of the other type in progress.
- *   R2 Input     - task text + a due-date affordance (icon that unfolds into
- *                  an inline field, never re-collapses once opened), or
- *                  meeting title + date (meetings show the date field
- *                  inline from the start - they almost always have one).
- *   R3 Metadata  - flow chips (create) or flow chips + attachment (edit) for
- *                  Todo; time only (create) or time + attachment (edit) for
- *                  Meeting. Selecting the w/f chip swaps the other three
- *                  chips out for a "Waiting on" field in this same row,
- *                  rather than growing a fifth row for it.
- *   R4 Actions   - create styles: "+ Add" right (status texts go to the
- *                  central status slot, docs/dev/history/technical-design-status-slot.md)
- *                  (relabels to "+ Add to <Name>" and creates there directly
- *                  when a recognized abbreviation #tag is typed -
- *                  docs/dev/history/technical-design-abbrev-quick-file.md).
- *                  edit styles: trash icon (delete) + Refile (Refile only
- *                  when the caller passes onRefile - storage/inboxFiling.ts's
- *                  module doc comment §7) on the left, Cancel + Save on
- *                  the right - Refile's
- *                  own slot shows "File: <Name>" instead whenever a
- *                  recognized abbreviation #tag is present (onQuickFile,
- *                  independent of onRefile's own presence).
+ * The parts: one hook per draft (ui/quickAdd/useTaskDraft.ts,
+ * useMeetingDraft.ts, useNoteDraft.ts) over the shared state of
+ * ui/quickAdd/useQuickAddCore.ts; the edit session (loading, focus,
+ * save-then-switch) in ui/quickAdd/useEditSession.ts; the rows in
+ * ui/quickAdd/*Rows.tsx. The lasso capture panel is its own shell over the
+ * same parts (ui/quickAdd/CaptureQuickAdd.tsx).
  *
- * Two persistent drafts, one edit-fields slot (design doc §5). `taskDraft`/
- * `meetingDraft` are created once and never reset by switching tabs or by an
- * edit starting/ending elsewhere on the same screen - that's what makes
- * "flip tabs mid-typing, come back, draft's still there" and "an edit
- * detour doesn't lose what you were adding" both true for free: neither
- * draft is touched by anything except its own submit/reset. `editFields`
- * holds the separate form state for whichever of `editingTask`/
- * `editingMeeting` is currently set - seeded by an effect, not by
- * remounting.
+ * No key-remount: remounting would wipe the create drafts, so the widget is
+ * a stable, long-lived instance per screen and call sites pass no `key`.
+ * An edit detour never touches the drafts, and a tab switch never remounts a
+ * row (they are hidden with `display: none`).
  *
- * No key-remount. Remounting this widget would wipe taskDraft/meetingDraft,
- * defeating the point above, so QuickAddWidget must be a stable, long-lived
- * instance per screen; call sites pass no `key` at all. The seeding effect
- * below only reacts to `editingTask`/`editingMeeting` *transitioning*
- * between unset and set (tracked via `wasEditingRef`, not the effect's
- * dependency identity) - callers hand in a freshly-spread object on every
- * render (e.g. `{...task, text: displayTaskText(...)}`), so keying naively
- * off that object reference would reseed - and clobber whatever the user
- * just typed - on every unrelated re-render while an edit is open.
+ * Direct switches (docs/dev/history/technical-design-meeting-lists.md §10):
+ * tapping another row while an edit is open switches to it. Before the
+ * screen switches, it calls `flushEditRef.current()` (ui/useEditFlush.ts),
+ * which saves the current target's changes - only if the fields differ from
+ * what was loaded - and resolves false when that save failed, so the screen
+ * stays on the current target and the error shows. Leaving the tab
+ * (unmount) saves the same way. Drafts of new items are never saved
+ * implicitly.
  *
- * Direct switches (docs/dev/history/technical-design-meeting-lists.md §10): tapping
- * another row while an edit is open switches to it. A screen passes
- * `editTargetKey` (a stable id of the target, e.g. "meeting:/p#3"); when it
- * changes while editing, the fields reload from the new target. Before the
- * screen switches, it calls `flushEditRef.current()` (ui/useEditFlush.ts's
- * afterSave), which saves the current target's changes - only if the fields
- * differ from what was loaded - and resolves false when that save failed, so
- * the screen stays on the current target and the error shows. Leaving the
- * tab (unmount) saves the same way. Drafts of new items are separate and
- * never saved implicitly.
- *
- * Row 2/row 3 never remount on tab switch. Task's and Meeting's row2/row3
- * are both always in the tree; only their `display` (styles.hidden) toggles
- * with the active tab, so their TextInputs are created once and stay mounted
- * for the widget's whole lifetime. Swapping the two subtrees in and out of
- * the JSX would force Android to freshly create each TextInput's native view
- * on every tab switch, which briefly measures at its own intrinsic size
- * before the custom border/padding style applies - a one-frame "widget
- * grows, then shrinks back" flicker. Because the fields stay mounted,
- * `autoFocus` can't reliably grab focus when an edit starts (it only fires
- * on mount); `taskInputRef`/`meetingInputRef` do that imperatively instead,
- * from a small dedicated effect below.
- *
- * Third mini-tab "Note" - creates a standalone, unlinked .note file
- * (storage/standaloneNotes.ts), not a fourth kind of edit-able item:
- * `onAddNote`/`noteFolderPath` are its only props, both optional, and Row 1's
- * Note tab is rendered at all only when `onAddNote` is passed (same "absent,
- * not permanently greyed" convention `onRefile` uses) - so screens with no
- * Files pane (Daily, Review's bare add-only cards) never show it. Where it IS
- * rendered, it's `disabled` purely off `noteFolderPath` being `null` (no
- * extra label/banner) - the Files pane's currently-browsed folder, re-read
- * fresh at the moment "+Add" is pressed, not frozen when the Note tab was
- * opened, so freely switching the Files pane around mid-draft does nothing
- * until Add is actually pressed. Tags aren't a separate input: typing `#tag`
- * into the title (or tapping a TagChips suggestion, which inserts/removes
- * `#tag` in the title text exactly like Todo/Meeting do) pins it; `#tag`
- * tokens are stripped back out of the title before it's saved, and become
- * real Supernote page-keywords instead (`insertKeyWord`), not this app's own
- * `#context` markdown-tag convention. No edit mode, no persistent per-tab
- * drafts beyond the plain `noteDraft` below, no project.txt/area.txt
- * footprint at all.
- *
- * Date fields (docs/dev/technical-design-meeting-date-nudge-and-new-
- * from-this.md §A): the Meeting date and the Todo due date are both
- * ui/DateInput.tsx - a text field that shows a -1/Today/+1/+7 button strip
- * above itself while focused. Tapping the Todo 📅 icon unfolds the due field
- * and focuses it (`dueInputRef` + `dueFocusRequested` below) so the strip is
- * there straight away; an edit that merely starts with an existing due date
- * does NOT focus it (that focus belongs to the text field).
- *
- * "New from this" (same design doc §B): a Meeting-edit-only Row 4
- * button (`handleNewFromThis`) that cancels the edit through the screen's own
- * `onCancelEdit` and flips this widget to Create·Meeting with the draft
- * pre-filled from the edit form's current values - so a meeting can be used
- * as the starting point for a new one. Where the original lives in a
- * different file than this widget would create in (Daily, Week: their
- * `fixedDestination` is always Inbox), the original's Project/Area
- * abbreviation #tag is appended to the draft title, which makes the existing
- * abbreviation quick-file machinery show "+ Add to <Name>", file it there and
- * strip the tag again on Add - the destination is visible and overridable by
- * deleting the tag.
+ * "New from this" (docs/dev/technical-design-meeting-date-nudge-and-new-
+ * from-this.md §B): a Meeting-edit-only R4 button that ends the edit through
+ * the screen's own `onCancelEdit` and turns the edit form's current values
+ * into the Meeting create draft.
  */
-import React, {useEffect, useRef, useState} from 'react';
-import {Keyboard, LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import React from 'react';
+import {Keyboard} from 'react-native';
 import {AbbrevFileMatch, resolveAbbrevFileTarget} from '../domain/abbrev';
-import {Selection} from '../domain/clipboardText';
-import {describeAddedDate} from '../domain/dateLabel';
-import {Destination, destinationLabel} from '../domain/destination';
-import {joinItems, splitAtSelection, splitByHand} from '../domain/captureText';
-import {composeTaskText} from '../domain/quickAddCompose';
-import {extractContextTags, insertTagAtPosition, removeTagFromText, stripSpaceAfterHash} from '../domain/markdown';
-import {formatMeetingWhen, MeetingField, todayIso, validateMeetingFields} from '../domain/meetingTime';
-import {setHighlight} from '../domain/monthHighlight';
+import {insertTagAtPosition, stripSpaceAfterHash} from '../domain/markdown';
+import {formatMeetingWhen} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
-import {FlowState, Meeting, Task} from '../domain/types';
-import {getRecentTags, getRecentTagsSync, recordTagsUsed} from '../storage/tagUsage';
-import {getRecentDestinations, getRecentDestinationsSync, recordDestinationUsed} from '../storage/destinationUsage';
-import {FILE_TO_SHORT} from '../domain/captureFileTo';
-import ClipboardStrip, {clipboardActions} from './ClipboardStrip';
-import ClipboardTextInput from './ClipboardTextInput';
-import DateInput, {DateInputHandle} from './DateInput';
-import FlowStateChips from './FlowStateChips';
-import {ClipIcon, WarningIcon} from './icons';
-import {COLORS, FONT} from './theme';
-import HighlightMark from './HighlightMark';
-import TagChips from './TagChips';
-import TagChipGrid, {GridChip} from './TagChipGrid';
-import {useTagRowBudget} from './tagChipLayout';
-import {useStatus} from './status/StatusProvider';
-import MarkWrap from './status/StatusMark';
+import {Destination} from '../domain/destination';
 import {usePerfRender} from '../utils/perf';
-import {useAbbrevItems} from './useAbbrevItems';
-import {useOnScreenHide} from './screenActivity';
-import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
-import {CreateActionRow, EditActionRow, quickAddButtons} from './quickAdd/ActionRow';
-import {useLoopMode} from './quickAdd/useLoopMode';
-import {buildFileToChips} from './quickAdd/fileToChips';
-import ProvenanceLine, {QuickAddAdds} from './quickAdd/ProvenanceLine';
-import {EditFields, loadEditFields, MeetingEditFields, TaskEditFields} from './quickAdd/editFields';
 import {errorMessage} from '../utils/errorMessage';
+import HighlightMark from './HighlightMark';
+import {CreateActionRow, EditActionRow} from './quickAdd/ActionRow';
+import {MeetingInputRow, MeetingMetaRow} from './quickAdd/MeetingRows';
+import {NoteInputRow, NoteTagRow} from './quickAdd/NoteRows';
+import ProvenanceLine, {QuickAddAdds} from './quickAdd/ProvenanceLine';
+import QuickAddFrame from './quickAdd/QuickAddFrame';
+import TabsRow from './quickAdd/TabsRow';
+import {TaskInputRow, TaskMetaRow} from './quickAdd/TaskRows';
+import {MeetingQuickAddFields, QuickAddEditTarget, QuickFilePayload, sameEditTarget, truncateItemName} from './quickAdd/types';
+import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
+import {useEditSession} from './quickAdd/useEditSession';
+import {useMeetingDraft} from './quickAdd/useMeetingDraft';
+import {useNoteDraft} from './quickAdd/useNoteDraft';
+import {useQuickAddCore} from './quickAdd/useQuickAddCore';
+import {useQuickAddStatus} from './quickAdd/useQuickAddStatus';
+import {useTaskDraft} from './quickAdd/useTaskDraft';
 
-/** The fields of a meeting being added or edited; other files import this type from here. */
-export interface MeetingQuickAddFields {
-  title: string;
-  date: string;
-  /** Already normalized (HH:mm, zero-padded) or '' - see validateMeetingFields. */
-  time: string;
-  /** HH:mm end or '' (docs/dev/history/technical-design-monthly-view.md §2.3) - parsed from the same time field ("15-16.30"). */
-  endTime: string;
-  /** Whole days of a date-only meeting ("3d"), 1 for a timed one. A blank time field saves as 1 day. */
-  days: number;
-}
-
-/**
- * `Selection`, `spliceAtSelection` and `copyCutRange` - the pure logic
- * behind the custom Select All/Copy/Cut/Paste overlay below - live in
- * domain/clipboardText.ts, shared with ui/ClipboardTextInput.tsx (a reusable
- * version of the same field). See that module for why a custom overlay
- * exists at all on this hardware, and why the selection itself is tracked
- * in a ref (`taskLastSelectionRef`/`meetingLastSelectionRef` below), never
- * React state.
- */
-
-interface TaskDraft {
-  text: string;
-  flowState: FlowState;
-  waitingOnText: string;
-  dueDate: string;
-  /** Whether the due-date field has been unfolded - independent of dueDate's value, and stays true for the life of this draft once set (no need to hide the field again once shown). */
-  dueDateOpen: boolean;
-}
-
-interface MeetingDraft {
-  title: string;
-  date: string;
-  /** The time field's raw text - "15", "15-16.30", "3d" or '' (= 1d); parsed on submit by validateMeetingFields. */
-  time: string;
-  /** The "M" toggle (docs/dev/history/technical-design-monthly-view.md §5.1) - composed into the title as `#monthly` on submit, never shown in the title field. */
-  monthly: boolean;
-}
-
-/** Note has no edit mode and no metadata beyond its (taggable) title - one field is all this needs. */
-interface NoteDraft {
-  titleRaw: string;
-}
-
-function makeTaskDraft(): TaskDraft {
-  return {text: '', flowState: null, waitingOnText: '', dueDate: '', dueDateOpen: false};
-}
-
-function makeMeetingDraft(initialDate?: string, initialMonthly = false): MeetingDraft {
-  // Time starts EMPTY (most meetings get a time); a blank field is saved as
-  // 1d.
-  return {title: '', date: initialDate ?? todayIso(), time: '', monthly: initialMonthly};
-}
-
-function makeNoteDraft(): NoteDraft {
-  return {titleRaw: ''};
-}
-
-/**
- * Keeps Row 4's "+ Add to <Name>"/"File: <Name>" buttons from growing
- * unboundedly on a long Project/Area name - shows the first 14 characters
- * verbatim, "…" beyond that. Display-only; never affects which item actually
- * gets matched/filed (resolveAbbrevFileTarget always sees the real,
- * untruncated name).
- */
-/** Which field a Quick Add error is about - the in-place ⚠ mark goes there. */
-type QuickAddField = 'text' | MeetingField;
-
-/** Per-instance suffix for this widget's status-slot ids (several widgets can be mounted at once). */
-let nextQuickAddInstance = 0;
-
-function truncateItemName(name: string, max = 14): string {
-  return name.length > max ? `${name.slice(0, max)}…` : name;
-}
-
-/**
- * What `onQuickFile` (edit mode) hands the caller to save at the resolved
- * target - the widget's own currently-edited text/fields, fully composed
- * exactly the way `Save` itself composes them (flow-state tag and
- * `[due:: …]` field folded in by domain/quickAddCompose.ts's
- * `composeTaskText` for a task, `validateMeetingFields`-normalized for a
- * meeting), the matched abbreviation tag stripped via `removeTagFromText`. Callers must NOT re-read their own
- * last-*saved* task/meeting for the text/title - that would silently discard
- * whatever the user typed or changed during this edit session. `linkedFile`
- * is threaded through the same way `onSaveEditTask`/`onSaveEditMeeting`'s
- * own second parameter is. The `kind` always matches whichever of
- * `editingTask`/`editingMeeting` is currently set - callers already know
- * this from their own edit-target state, but it's included so this type
- * stands alone as a single parameter.
- */
-export type QuickFilePayload =
-  | {kind: 'task'; text: string; linkedFile: string}
-  | {kind: 'meeting'; fields: MeetingQuickAddFields; linkedFile: string};
-
-/** Which Save button of the capture variant was pressed (docs/dev/history/technical-design-lasso-0.8.md §3.9). */
-export type CaptureSaveMode = 'next' | 'view' | 'close';
-
-/**
- * Text the capture screen puts into the draft (recognized lasso or mark).
- * A new `key` (another lasso/mark) replaces the whole draft; the same key
- * again (recognition finished) only fills the text, and only while the
- * user hasn't typed.
- */
-export interface CaptureSeed {
-  key: string;
-  /** One entry per item; several only with `split`. */
-  items: string[];
-  split: boolean;
-  /** Meeting date default (the mark's day). */
-  date?: string;
-  /** Meeting title when the user switches to Meeting (one line); defaults to the items joined. */
-  meetingTitle?: string;
-}
+export type {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields, QuickAddEditTarget, QuickFilePayload} from './quickAdd/types';
+export {editTargetFor} from './quickAdd/types';
 
 interface Props {
-  /**
-   * 'capture' (docs/dev/history/technical-design-lasso-0.8.md §3.9): the wide panel of
-   * the lasso capture / marks screen - multi-line text or one row per item
-   * (Split lines), flow chips without the paged tag row, Save & next / view /
-   * close right under the input, then tag and "File to" chips in wrapped rows
-   * and the screen's own extras. `fixedDestination` is the destination
-   * picked there; a typed #ABBR still wins, as in Quick Add.
-   */
-  variant?: 'default' | 'capture';
-  captureSeed?: CaptureSeed | null;
-  /** After a successful capture save (all split items saved). */
-  onCaptureSaved?: (mode: CaptureSaveMode) => void;
-  /** "File to" chip pressed. */
-  onCaptureDestinationChange?: (destination: Destination) => void;
-  /** The mark's or lasso's own Project/Area - always in the short "File to" list. */
-  captureOwnDestination?: Destination | null;
-  /** Rendered below the chips (link checkbox, Mark for later / Cancel, ...). */
-  captureExtras?: React.ReactNode;
   /**
    * Optional id of the screen slot this widget sits in (e.g. 'daily',
    * 'current') - its tag-row widths are remembered under it, so a revisit
@@ -320,21 +100,11 @@ interface Props {
   onAddTask: (text: string, destination: Destination) => Promise<void>;
   onAddMeeting: (fields: MeetingQuickAddFields, destination: Destination) => Promise<void>;
 
-  /** Mutually exclusive - the caller's own single edit-target state already keeps that invariant (design doc §6). */
-  editingTask?: Task;
-  editingMeeting?: Meeting;
-  /** `editingTask` stands for a loop (screens/loop/LoopOverview.tsx): no flow chips, no Delete, "Save loop". */
-  editingLoop?: boolean;
+  /** The item being edited, or null/absent (create mode). Build it with `editTargetFor`. */
+  editTarget?: QuickAddEditTarget | null;
   /** Resolve `false` when the save failed (the screen showed its own error) - the widget then keeps the edit open. */
   onSaveEditTask?: (nextText: string, nextLinkedFile: string) => Promise<void | boolean>;
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
-  /**
-   * Identity of the item being edited (e.g. "path#index"). When it changes
-   * while editing, the fields reload from the new target, so switching
-   * directly from one row to another never keeps the previous row's fields.
-   * Without it, only unset<->set transitions reload.
-   */
-  editTargetKey?: string | null;
   /**
    * Save-then-switch (docs/dev/history/technical-design-meeting-lists.md §10): the
    * widget puts a `flush()` here that saves pending edits of the current
@@ -389,15 +159,15 @@ interface Props {
    * `#tag` tokens the widget parsed back out of the typed title, to be
    * applied as real Supernote page-keywords. Absent entirely (no tab
    * rendered at all) on screens with no Files pane to source a destination
-   * from - see the module doc comment's "Third mini-tab" note.
+   * from (ui/quickAdd/useNoteDraft.ts).
    */
   onAddNote?: (title: string, tags: string[], folderPath: string) => Promise<void>;
   /**
    * Where a new Note would be created *right now* - the Files pane's
    * currently active location, `null` whenever its active root isn't the
    * item's own root ('Project Files'/'Area Files'). Re-read at the moment
-   * "+Add" is pressed, not captured when the Note tab was opened - see the
-   * module doc comment. Ignored when `onAddNote` isn't passed.
+   * "+Add" is pressed, not captured when the Note tab was opened. Ignored
+   * when `onAddNote` isn't passed.
    */
   noteFolderPath?: string | null;
 
@@ -420,567 +190,89 @@ interface Props {
   placeholderColor: string;
 }
 
-function QuickAddWidget({
-  variant = 'default',
-  captureSeed,
-  onCaptureSaved,
-  onCaptureDestinationChange,
-  captureOwnDestination = null,
-  captureExtras,
-  layoutKey,
-  fixedDestination,
-  taskOnly = false,
-  initialDate,
-  initialMonthly,
-  isMeetingDateVisible,
-  onAddTask,
-  onAddMeeting,
-  editingTask,
-  editingLoop,
-  editingMeeting,
-  onSaveEditTask,
-  onSaveEditMeeting,
-  editTargetKey,
-  flushEditRef,
-  onCancelEdit,
-  onDeleteEdit,
-  onRefile,
-  onQuickFile,
-  editingItemPath,
-  linkedFileMissing,
-  onAddNote,
-  noteFolderPath = null,
-  prefill,
-  meetingSeed,
-  provenance,
-  placeholder = 'New task',
-  textColor,
-  borderColor,
-  placeholderColor,
-}: Props): React.JSX.Element {
+function QuickAddWidget(props: Props): React.JSX.Element {
   usePerfRender('QuickAddWidget');
-  const [activeType, setActiveType] = useState<'task' | 'meeting' | 'note'>('task');
-  const [taskDraft, setTaskDraft] = useState<TaskDraft>(makeTaskDraft);
-  const [meetingDraft, setMeetingDraft] = useState<MeetingDraft>(() => makeMeetingDraft(initialDate, initialMonthly));
-  // Follow a changed `initialDate`/`initialMonthly` (the Month view's day
-  // panel: tapping another day retargets the draft) - but only while the
-  // draft is still untouched, so a half-typed meeting never jumps dates.
-  useEffect(() => {
-    setMeetingDraft(d =>
-      d.title.trim() || d.time.trim()
-        ? d
-        : {...d, date: initialDate ?? d.date, monthly: initialMonthly ?? d.monthly},
-    );
-  }, [initialDate, initialMonthly]);
-  const [noteDraft, setNoteDraft] = useState<NoteDraft>(makeNoteDraft);
-  // ---- capture variant (docs/dev/history/technical-design-lasso-0.8.md §3.9) ----
-  const isCapture = variant === 'capture';
-  // One row per item while "Split lines" is on; null = one item in taskDraft.text.
-  const [splitRows, setSplitRows] = useState<string[] | null>(null);
-  const [splitPage, setSplitPage] = useState(0);
-  // "File to": short list, or the full alphabetical list (paged) behind More….
-  const [recentDestinations, setRecentDestinations] = useState<string[]>(() => getRecentDestinationsSync() ?? []);
-  const [fileToAll, setFileToAll] = useState(false);
-  const [fileToPage, setFileToPage] = useState(0);
-  useEffect(() => {
-    if (!isCapture) return;
-    let alive = true;
-    getRecentDestinations().then(paths => {
-      if (alive) setRecentDestinations(paths);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [isCapture]);
-  const seedKeyRef = useRef<string | null>(null);
-  // The user typed since the last seed - recognition then never overwrites.
-  const captureTouchedRef = useRef(false);
-  const seedSignature = captureSeed
-    ? `${captureSeed.key}\u0000${captureSeed.split}\u0000${captureSeed.items.join('\n')}\u0000${captureSeed.meetingTitle ?? ''}`
-    : null;
-  useEffect(() => {
-    if (!isCapture || !captureSeed) return;
-    const newKey = captureSeed.key !== seedKeyRef.current;
-    if (!newKey && captureTouchedRef.current) return;
-    seedKeyRef.current = captureSeed.key;
-    captureTouchedRef.current = false;
-    const items = captureSeed.items.length > 0 ? captureSeed.items : [''];
-    const split = captureSeed.split && items.length > 1;
-    if (newKey) {
-      setTaskDraft({...makeTaskDraft(), text: split ? '' : items[0]});
-      setMeetingDraft({...makeMeetingDraft(captureSeed.date ?? initialDate), title: captureSeed.meetingTitle ?? joinItems(items)});
-    } else {
-      setTaskDraft(d => ({...d, text: split ? '' : items[0]}));
-      setMeetingDraft(d => ({...d, title: captureSeed.meetingTitle ?? joinItems(items)}));
-    }
-    setSplitRows(split ? items : null);
-    setSplitPage(0);
-    taskLastSelectionRef.current = null;
-    meetingLastSelectionRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCapture, seedSignature]);
-  const [taskJustAdded, setTaskJustAdded] = useState<string | null>(null);
-  const [meetingJustAdded, setMeetingJustAdded] = useState<string | null>(null);
-  // Set together with meetingJustAdded when the added meeting's date is not in the screen's visible list (isMeetingDateVisible); null otherwise.
-  const [meetingAddedWhen, setMeetingAddedWhen] = useState<string | null>(null);
-  // Row 4's centre note after "New from this" (a complete string, unlike
-  // meetingJustAdded's bare title). Mutually exclusive with meetingJustAdded:
-  // handleNewFromThis clears the latter, and any edit or Add clears this one.
-  const [meetingCopyNote, setMeetingCopyNote] = useState<string | null>(null);
-  const [noteJustAdded, setNoteJustAdded] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState<EditFields | null>(null);
-  const [pending, setPending] = useState(false);
-  // Validation/save error, plus which field it's about (drives the in-place
-  // ⚠ mark; null = the Add/Save button gets it). The text itself goes to
-  // the central status slot (docs/dev/history/technical-design-status-slot.md §7.3).
-  const [errorState, setErrorState] = useState<{text: string; field: QuickAddField | null} | null>(null);
-  const error = errorState?.text ?? null;
-  const setError = (text: string | null, field: QuickAddField | null = null) =>
-    setErrorState(text ? {text, field} : null);
-  const fieldMark = (field: QuickAddField) => (errorState?.field === field ? ('warning' as const) : null);
-  // "Saved …" after a successful edit save (D9) - shown once the edit form
-  // closes, cleared like the "Added" messages on the next typing.
-  const [savedNote, setSavedNote] = useState<string | null>(null);
+  const {fixedDestination, editTarget, editingItemPath, taskOnly = false, onAddNote, noteFolderPath = null} = props;
+  const {onCancelEdit, onQuickFile, onRefile, onDeleteEdit, provenance, layoutKey, linkedFileMissing} = props;
+  const {textColor, borderColor, placeholderColor} = props;
+  const colors = {textColor, borderColor, placeholderColor};
 
-  // Context-tag suggestion row state (technical-design-context-tags.md §5,
-  // §8). `recentTags` is loaded once on mount and refreshed after every
-  // successful add/edit save (recordTagsUsed may have changed the order);
-  // `taskTagPage`/`meetingTagPage` are lifted here rather than owned inside
-  // TagChips because for Todo the page number also decides whether
-  // FlowStateChips shows at all (see TagChips.tsx's own doc comment) - reset
-  // to 0 wherever the create/edit target changes (the wasEditingRef
-  // transition effect below, and each successful create submit).
-  // Starts from the last list read this session (render-perf-ab §3 A1), so
-  // the mount-time refresh below only re-renders if the list changed.
-  const [recentTags, setRecentTags] = useState<string[]>(() => getRecentTagsSync() ?? []);
-  const applyRecentTags = (tags: string[]) =>
-    setRecentTags(prev => (prev.length === tags.length && prev.every((t, i) => t === tags[i]) ? prev : tags));
-  const [taskTagPage, setTaskTagPage] = useState(0);
-  const [meetingTagPage, setMeetingTagPage] = useState(0);
-  const [noteTagPage, setNoteTagPage] = useState(0);
-  // Set for exactly one render right after a tag is inserted, so the
-  // TextInput's `selection` prop can jump the cursor to just past the
-  // inserted tag - then released back to uncontrolled (see the domain
-  // Selection type's doc comment on why this isn't controlled all the
-  // time). Cleared by the field's own onSelectionChange once RN reports
-  // the selection actually landed there.
-  const [taskSelectionOverride, setTaskSelectionOverride] = useState<Selection>(null);
-  const [meetingSelectionOverride, setMeetingSelectionOverride] = useState<Selection>(null);
-  // Whether the task-text/meeting-title field currently has focus - shows/
-  // hides the custom Select All/Copy/Cut/Paste overlay (only while that
-  // field is focused). See that overlay's render for why it stays mounted
-  // (display:none) rather than being conditionally included/excluded from
-  // the tree.
-  const [taskInputFocused, setTaskInputFocused] = useState(false);
-  const [meetingInputFocused, setMeetingInputFocused] = useState(false);
+  const core = useQuickAddCore({fixedDestination, editingItemPath});
+  const {displayType, isEditing, editFields, pending, setError, setPending} = core;
+  const task = useTaskDraft(core, {
+    fixedDestination,
+    editingItemPath,
+    editingLoop: editTarget?.kind === 'loop',
+    loopsEnabled: true,
+    onAddTask: props.onAddTask,
+    onSaveEditTask: props.onSaveEditTask,
+  });
+  const meeting = useMeetingDraft(core, {
+    fixedDestination,
+    initialDate: props.initialDate,
+    initialMonthly: props.initialMonthly,
+    isMeetingDateVisible: props.isMeetingDateVisible,
+    onAddMeeting: props.onAddMeeting,
+    onSaveEditMeeting: props.onSaveEditMeeting,
+  });
+  const note = useNoteDraft(core, {onAddNote, noteFolderPath});
+  useEditSession(core, task, meeting, {editTarget, flushEditRef: props.flushEditRef, onCancelEdit});
 
-  const refreshRecentTags = () => {
-    getRecentTags().then(applyRecentTags);
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    getRecentTags().then(tags => {
-      if (!cancelled) applyRecentTags(tags);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Task/Meeting field groups (row 2 + row 3) stay mounted at all times -
-  // see the "no tab-switch flicker" note below on taskRow2/meetingRow2 - so
-  // the main TextInput for each is a stable, long-lived native view rather
-  // than something freshly created when a tab becomes active. That means
-  // the `autoFocus` prop (which only fires on mount) can't reliably grab
-  // focus when an edit starts, so it's done imperatively via these refs
-  // instead, in the focus effect further below.
-  const taskInputRef = useRef<TextInput>(null);
-  const meetingInputRef = useRef<TextInput>(null);
-  // The Todo due-date field only exists in the tree once unfolded (or once an
-  // edit seeds an existing due date), so focusing it right after the 📅 tap
-  // has to wait for that render to commit - `dueFocusRequested` is set by
-  // openTaskDueDate and consumed by the effect below, same idea as the
-  // `hasEditFields` focus effect further down.
-  const dueInputRef = useRef<DateInputHandle>(null);
-  const [dueFocusRequested, setDueFocusRequested] = useState(false);
-  useEffect(() => {
-    if (!dueFocusRequested) return;
-    dueInputRef.current?.focus();
-    setDueFocusRequested(false);
-  }, [dueFocusRequested]);
-  // Last known cursor/selection position for each field's text - see the
-  // `Selection` type's doc comment above for why these are refs (no
-  // re-render) rather than part of TaskDraft/TaskEditFields state.
-  const taskLastSelectionRef = useRef<Selection>(null);
-  const meetingLastSelectionRef = useRef<Selection>(null);
-
-  // See the module doc comment's "No key-remount" note - only
-  // reacts to unset<->set transitions, never to editingTask/editingMeeting
-  // being a fresh object with the same underlying target.
-  const wasEditingRef = useRef(false);
-  // The target the fields were last loaded from, and those fields as loaded
-  // (JSON) - `flush` compares against it to save only real changes.
-  const lastTargetKeyRef = useRef<string | null | undefined>(undefined);
-  const loadedFieldsRef = useRef<string | null>(null);
-  useEffect(() => {
-    const isEditingNow = !!editingTask || !!editingMeeting;
-    const targetChanged = editTargetKey !== undefined && editTargetKey !== lastTargetKeyRef.current;
-    if (isEditingNow && (!wasEditingRef.current || targetChanged)) {
-      // Fresh edit target: the previous field's cursor position is not
-      // meaningful for it - see taskLastSelectionRef/meetingLastSelectionRef's
-      // doc comment for why this lives in a ref instead of field state.
-      taskLastSelectionRef.current = null;
-      meetingLastSelectionRef.current = null;
-      const loaded = loadEditFields(editingTask, editingMeeting);
-      setEditFields(loaded);
-      loadedFieldsRef.current = loaded ? JSON.stringify(loaded.fields) : null;
-      setError(null);
-      setSavedNote(null);
-      setTaskTagPage(0);
-      setMeetingTagPage(0);
-    } else if (!isEditingNow && wasEditingRef.current) {
-      setEditFields(null);
-      loadedFieldsRef.current = null;
-      setError(null);
-      setTaskTagPage(0);
-      setMeetingTagPage(0);
-    }
-    wasEditingRef.current = isEditingNow;
-    lastTargetKeyRef.current = isEditingNow ? editTargetKey : undefined;
-  }, [editingTask, editingMeeting, editTargetKey]);
-
-  // Puts `draft` into the Meeting create draft and shows the Meeting tab
-  // ("New from this", "+ Next", a meeting prefill).
-  const showMeetingDraft = (draft: MeetingDraft, copyNote: string | null) => {
-    setMeetingDraft(draft);
-    meetingLastSelectionRef.current = null;
-    setMeetingTagPage(0);
-    setMeetingJustAdded(null);
-    setMeetingAddedWhen(null);
-    setMeetingCopyNote(copyNote);
-    setError(null);
-    setActiveType('meeting');
-  };
-  useDraftRequests(prefill, meetingSeed, editFields !== null, {
+  useDraftRequests(props.prefill, props.meetingSeed, isEditing, {
     text: (kind, addition) => {
       const appendTo = (current: string): string => (current.trim() ? `${current.replace(/\s+$/, '')} ${addition}` : addition);
       if (kind === 'meeting') {
-        if (!taskOnly) showMeetingDraft({...meetingDraft, title: stripSpaceAfterHash(appendTo(meetingDraft.title))}, null);
+        if (!taskOnly) meeting.showDraft({...meeting.draft, title: stripSpaceAfterHash(appendTo(meeting.draft.title))}, null);
         return;
       }
-      setTaskDraft(d => ({...d, text: stripSpaceAfterHash(appendTo(d.text))}));
-      taskLastSelectionRef.current = null;
-      setTaskJustAdded(null);
-      setTaskTagPage(0);
-      setActiveType('task');
+      task.setDraft(d => ({...d, text: stripSpaceAfterHash(appendTo(d.text))}));
+      task.lastSelectionRef.current = null;
+      task.setJustAdded(null);
+      task.setTagPage(0);
+      core.setActiveType('task');
       setError(null);
     },
     seed: fields => {
-      if (!taskOnly) showMeetingDraft({title: fields.title, date: fields.date, time: formatMeetingWhen(fields), monthly: false}, null);
+      if (!taskOnly) meeting.showDraft({title: fields.title, date: fields.date, time: formatMeetingWhen(fields), monthly: false}, null);
     },
   });
 
-  // Focusing the right field on edit-start has to be its own effect, keyed
-  // off `editFields` (state) rather than done inline in the seeding effect
-  // above. At the point the seeding effect runs, editFields has only just
-  // been *scheduled* to update - the row's `display: none -> flex` toggle
-  // (which depends on displayType, which depends on editFields) hasn't
-  // committed yet, so a same-tick `.focus()` call can land on a still-
-  // hidden native view and silently no-op. This effect instead fires after
-  // React commits the render where editFields (and so displayType) has
-  // actually taken effect - the dependency is deliberately `editFields !==
-  // null` rather than `editFields` itself, so retyping into an open edit
-  // (which replaces editFields on every keystroke) doesn't keep stealing
-  // focus back.
-  const hasEditFields = editFields !== null;
-  useEffect(() => {
-    if (editFields?.kind === 'task') taskInputRef.current?.focus();
-    else if (editFields?.kind === 'meeting') meetingInputRef.current?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasEditFields]);
-
-  // What's actually showing - the edit target's own type while one is open
-  // (row 1 "forced to match" per design doc §5), the freely-toggled
-  // activeType otherwise. Deliberately never writes editFields' type back
-  // into activeType, so activeType (and therefore the create draft it
-  // points at) is exactly where it was before the edit detour once
-  // editFields clears again - the "draft + active tab stashed" flow the
-  // mockup demonstrates falls out of this for free.
-  const displayType: 'task' | 'meeting' | 'note' = editFields ? editFields.kind : activeType;
-  const isEditing = editFields !== null;
-
-  const todoTabDisabled = editFields?.kind === 'meeting';
-  const meetingTabDisabled = taskOnly || editFields?.kind === 'task';
-  // Note has no edit mode of its own, so it's never locked by editFields -
-  // only by not having a valid destination right now (see the module doc
-  // comment's "Third mini-tab" note).
-  const noteTabDisabled = !noteFolderPath;
-
-  const selectTab = (type: 'task' | 'meeting' | 'note') => {
-    if (isEditing) return; // locked tabs are non-interactive while editing
-    if (type === 'meeting' && taskOnly) return;
-    if (type === 'note' && !noteFolderPath) return;
-    setActiveType(type);
-  };
-
-  // Any typing/chip change in the widget clears its own slot messages:
-  // the ✓ and "Added …" go as soon as the next item is started (§8 Q13),
-  // and an error (with its ⚠ mark) as soon as the user starts fixing it.
-  const clearTransientMessages = () => {
-    if (errorState !== null) setErrorState(null);
-    if (savedNote !== null) setSavedNote(null);
-  };
-  const clearTaskJustAdded = () => {
-    if (taskJustAdded !== null) setTaskJustAdded(null);
-    clearTransientMessages();
-  };
-  const clearMeetingJustAdded = () => {
-    if (meetingJustAdded !== null) setMeetingJustAdded(null);
-    if (meetingAddedWhen !== null) setMeetingAddedWhen(null);
-    if (meetingCopyNote !== null) setMeetingCopyNote(null);
-    clearTransientMessages();
-  };
-  const clearNoteJustAdded = () => {
-    if (noteJustAdded !== null) setNoteJustAdded(null);
-    clearTransientMessages();
-  };
-
-  const updateTaskEditField = (patch: Partial<TaskEditFields>) => {
-    setEditFields(current => (current?.kind === 'task' ? {kind: 'task', fields: {...current.fields, ...patch}} : current));
-  };
-  const updateMeetingEditField = (patch: Partial<MeetingEditFields>) => {
-    setEditFields(current => (current?.kind === 'meeting' ? {kind: 'meeting', fields: {...current.fields, ...patch}} : current));
-  };
-
-  const submitTaskCreate = () => {
-    Keyboard.dismiss();
-    const trimmed = taskDraft.text.trim();
-    if (!trimmed) return;
-    // Flow-state, due and - for abbreviation quick-file - removing the
-    // matched #tag, which did its job picking the destination:
-    // domain/quickAddCompose.ts, shared with the lasso capture panel.
-    const finalText = composeTaskText(taskDraft, taskAbbrevTarget ? taskAbbrevTarget.tag : null);
-    if (loopMode.kind === 'exists') return;
-    const startsLoop = loopMode.kind === 'add';
-    setError(null);
-    setPending(true);
-    onAddTask(finalText, taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination)
-      .then(() => {
-        setTaskDraft(d => ({...d, text: '', flowState: null, waitingOnText: '', dueDate: ''}));
-        taskLastSelectionRef.current = null;
-        if (startsLoop) return;
-        setTaskJustAdded(
-          `Added todo "${truncateItemName(trimmed, 40)}" to ${destinationLabel(
-            taskAbbrevTarget ? abbrevDestination(taskAbbrevTarget) : fixedDestination,
-          )}`,
-        );
-        setTaskTagPage(0);
-        recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags);
-      })
-      .catch(e => setError(errorMessage(e)))
-      .finally(() => setPending(false));
-  };
-
-  const submitTaskEdit = (): Promise<boolean> => {
-    if (!editFields || editFields.kind !== 'task') return Promise.resolve(true);
-    Keyboard.dismiss();
-    const trimmed = editFields.fields.text.trim();
-    if (!trimmed) {
-      setError('A todo needs some text.', 'text');
-      return Promise.resolve(false);
-    }
-    const finalText = composeTaskText(editFields.fields);
-    setError(null);
-    setPending(true);
-    return (onSaveEditTask ?? (() => Promise.resolve()))(finalText, editFields.fields.linkedFile)
-      .then(result => {
-        if (result === false) return false;
-        setSavedNote(`Saved ${loopMode.kind === 'loop' ? 'loop' : 'todo'} "${truncateItemName(trimmed, 40)}"`);
-        recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags);
-        return true;
-      })
-      .catch(e => {
-        setError(errorMessage(e));
-        return false;
-      })
-      .finally(() => setPending(false));
-  };
-
-  const submitMeetingCreate = () => {
-    Keyboard.dismiss();
-    const result = validateMeetingFields(meetingDraft.title, meetingDraft.date, meetingDraft.time);
-    if (!result.ok) {
-      setError(result.error, result.field);
-      return;
-    }
-    // Abbreviation quick-file: see submitTaskCreate's identical note just
-    // above.
-    const trimmedTitle = setHighlight(
-      meetingAbbrevTarget
-        ? removeTagFromText(meetingDraft.title.trim(), meetingAbbrevTarget.tag)
-        : meetingDraft.title.trim(),
-      meetingDraft.monthly,
-    );
-    const addedDate = meetingDraft.date;
-    setError(null);
-    setPending(true);
-    onAddMeeting(
-      {title: trimmedTitle, date: addedDate, time: result.time, endTime: result.endTime, days: result.days},
-      meetingAbbrevTarget ? abbrevDestination(meetingAbbrevTarget) : fixedDestination,
-    )
-      .then(() => {
-        setMeetingDraft(makeMeetingDraft(initialDate, initialMonthly));
-        meetingLastSelectionRef.current = null;
-        setMeetingCopyNote(null);
-        setMeetingJustAdded(
-          `Added meeting "${truncateItemName(meetingDisplayTitle({title: trimmedTitle}), 40)}" to ${destinationLabel(
-            meetingAbbrevTarget ? abbrevDestination(meetingAbbrevTarget) : fixedDestination,
-          )}`,
-        );
-        setMeetingAddedWhen(isMeetingDateVisible && !isMeetingDateVisible(addedDate) ? describeAddedDate(addedDate) : null);
-        setMeetingTagPage(0);
-        recordTagsUsed(extractContextTags(trimmedTitle)).then(refreshRecentTags);
-      })
-      .catch(e => setError(errorMessage(e)))
-      .finally(() => setPending(false));
-  };
-
-  const submitMeetingEdit = (): Promise<boolean> => {
-    if (!editFields || editFields.kind !== 'meeting') return Promise.resolve(true);
-    Keyboard.dismiss();
-    const result = validateMeetingFields(editFields.fields.title, editFields.fields.date, editFields.fields.time);
-    if (!result.ok) {
-      setError(result.error, result.field);
-      return Promise.resolve(false);
-    }
-    const trimmedTitle = setHighlight(editFields.fields.title.trim(), editFields.fields.monthly);
-    setError(null);
-    setPending(true);
-    return (onSaveEditMeeting ?? (() => Promise.resolve()))(
-      {title: trimmedTitle, date: editFields.fields.date, time: result.time, endTime: result.endTime, days: result.days},
-      editFields.fields.linkedFile,
-    )
-      .then(saved => {
-        if (saved === false) return false;
-        setSavedNote(`Saved meeting "${truncateItemName(meetingDisplayTitle({title: trimmedTitle}), 40)}"`);
-        recordTagsUsed(extractContextTags(trimmedTitle)).then(refreshRecentTags);
-        return true;
-      })
-      .catch(e => {
-        setError(errorMessage(e));
-        return false;
-      })
-      .finally(() => setPending(false));
-  };
+  // Note has no filing concept - never matched.
+  const abbrevTarget = displayType === 'task' ? task.abbrevTarget : displayType === 'meeting' ? meeting.abbrevTarget : null;
 
   /**
-   * Save-then-switch (see the `flushEditRef` prop): saves the current edit
-   * target's pending changes - only if something changed - and resolves
-   * whether the caller may move on (false = validation or save failed; the
-   * error is showing and the edit stays open). Also run when the widget
-   * unmounts mid-edit (leaving the tab/screen), fire-and-forget.
+   * Edit-mode quick-file: hands the screen the fields composed exactly the
+   * way Save composes them, so every other change made during this edit
+   * (text, flow state, due, time, a pending linked-file pick) moves along
+   * instead of the last-saved copy; the matched abbreviation tag is
+   * additionally stripped.
    */
-  const flushEdit = (): Promise<boolean> => {
-    if (!editFields) return Promise.resolve(true);
-    if (JSON.stringify(editFields.fields) === loadedFieldsRef.current) return Promise.resolve(true);
-    return editFields.kind === 'task' ? submitTaskEdit() : submitMeetingEdit();
-  };
-  const latestFlushRef = useRef(flushEdit);
-  latestFlushRef.current = flushEdit;
-  if (flushEditRef) flushEditRef.current = () => latestFlushRef.current();
-  useEffect(
-    () => () => {
-      // Unmount while editing (tab/screen left): save what changed.
-      latestFlushRef.current().catch(() => undefined); // silent: the flush shows its own errors
-      if (flushEditRef) flushEditRef.current = null;
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-  // Kept tab hidden (docs/dev/history/technical-design-keep-tabs-alive.md §4.1, D2):
-  // same as leaving the tab - save what changed, then close the
-  // edit. If the save fails, the edit stays open and its error shows when
-  // the tab is shown again. Drafts of new items are left as they are (D3).
-  useOnScreenHide(() => {
+  const handleQuickFile = () => {
+    if (!abbrevTarget || !onQuickFile || !editFields) return;
     Keyboard.dismiss();
-    if (!editFields) return;
-    latestFlushRef
-      .current()
-      .then(ok => {
-        if (ok) onCancelEdit?.();
-      })
-      .catch(() => undefined); // silent: the flush shows its own errors
-  });
-
-  // ---- Note create (no edit mode) ----
-  const setNoteTitleRaw = (t: string) => {
-    setNoteDraft(d => ({...d, titleRaw: stripSpaceAfterHash(t)}));
-    clearNoteJustAdded();
-  };
-  const insertNoteTag = (tag: string) => {
-    setNoteTitleRaw(insertTagAtPosition(noteDraft.titleRaw, tag, null).text);
-  };
-  const removeNoteTag = (tag: string) => {
-    setNoteTitleRaw(removeTagFromText(noteDraft.titleRaw, tag));
-  };
-
-  const submitNoteCreate = () => {
-    Keyboard.dismiss();
-    if (!onAddNote) return;
-    const tags = extractContextTags(noteDraft.titleRaw);
-    const cleanTitle = tags.reduce((t, tag) => removeTagFromText(t, tag), noteDraft.titleRaw).trim();
-    if (!cleanTitle) return;
-    if (!noteFolderPath) {
-      setError('Switch the Files pane back to Project Files/Area Files to add a note here.');
-      return;
-    }
+    const composed = editFields.kind === 'task' ? task.quickFilePayload(abbrevTarget) : meeting.quickFilePayload(abbrevTarget);
+    if (!composed) return;
     setError(null);
     setPending(true);
-    onAddNote(cleanTitle, tags, noteFolderPath)
-      .then(() => {
-        setNoteDraft(makeNoteDraft());
-        setNoteJustAdded(`Created note "${truncateItemName(cleanTitle, 40)}"`);
-        setNoteTagPage(0);
-        recordTagsUsed(tags).then(refreshRecentTags);
-      })
+    onQuickFile(abbrevTarget, composed.payload)
+      .then(() => core.recordTags(composed.tags))
       .catch(e => setError(errorMessage(e)))
       .finally(() => setPending(false));
   };
 
-  const handleDelete = () => {
-    Keyboard.dismiss();
-    onDeleteEdit?.();
-  };
-
-  const handleRefile = () => {
-    Keyboard.dismiss();
-    onRefile?.();
-  };
-
   /**
-   * "New from this" (docs/dev/technical-design-meeting-date-nudge-and-new-from-
-   * this.md §B) - Meeting edit mode only. Uses the edit form's CURRENT values
-   * (unsaved tweaks included) as the starting point of a new meeting: puts
-   * them in the Meeting create draft (replacing whatever was in it), switches
-   * to the Meeting tab, and ends the edit via the screen's own onCancelEdit
-   * (highlight off, nothing saved, original untouched). Not carried over:
-   * linked file/note (they belong to the original) and the
-   * #prepped/#reviewed tick tags (a copy starts un-ticked -
-   * meetingDisplayTitle strips them).
+   * "New from this" - Meeting edit mode only. The edit form's CURRENT values
+   * (unsaved tweaks included) become the Meeting create draft, and the edit
+   * ends through the screen's own onCancelEdit (nothing saved, original
+   * untouched). Not carried over: the linked file and the #prepped/#reviewed
+   * tick tags (meetingDisplayTitle strips them), nor M.
    *
-   * Destination: when the original lives somewhere other than where this
-   * widget creates (Daily and Week create in Inbox no matter where the edited
-   * meeting is), the original's Project/Area abbreviation tag is appended to
-   * the draft title. That is all it takes - resolveAbbrevFileTarget then
-   * matches it, Row 4 shows "+ Add to <Name>", submitMeetingCreate files it
-   * there and strips the tag - and the user can override by deleting the tag.
-   * Only inserted when the tag will actually resolve (the item has an
-   * abbreviation and is Active/On Hold, same eligibility as
-   * resolveAbbrevFileTarget) and the title doesn't already carry a recognized
-   * abbreviation tag of its own (an explicit tag wins). On screens whose
-   * fixedDestination already IS the original's file (Current tab, Inbox tab,
-   * Review's Inbox-to-zero) nothing is inserted - it would only self-exclude.
+   * When the original lives somewhere other than where this widget creates
+   * (Daily and Week create in Inbox), its Project/Area abbreviation tag is
+   * appended to the draft title - resolveAbbrevFileTarget then matches it,
+   * R4 shows "+ Add to <Name>", and the user can override by deleting the
+   * tag. Only when the tag will resolve (an abbreviation, Active/On Hold)
+   * and the title carries no recognized abbreviation of its own.
    *
    * All state changes happen in one event handler (one batched render), and
    * the draft is set BEFORE the edit ends, so no frame shows an empty draft.
@@ -991,943 +283,56 @@ function QuickAddWidget({
     const fields = editFields.fields;
     const displayTitle = meetingDisplayTitle({title: fields.title});
     let draftTitle = displayTitle;
+    const {fixedExcludePath, abbrevItems} = core;
     const originPath = editingItemPath !== undefined ? editingItemPath : fixedExcludePath;
-    const origin = originPath && originPath !== fixedExcludePath ? cachedAbbrevItems.find(item => item.path === originPath) : undefined;
+    const origin = originPath && originPath !== fixedExcludePath ? abbrevItems.find(item => item.path === originPath) : undefined;
     if (
       origin?.abbrev &&
       (origin.status === 'active' || origin.status === 'on-hold') &&
-      !resolveAbbrevFileTarget(displayTitle, cachedAbbrevItems, fixedExcludePath)
+      !resolveAbbrevFileTarget(displayTitle, abbrevItems, fixedExcludePath)
     ) {
       draftTitle = insertTagAtPosition(displayTitle, origin.abbrev, null).text;
     }
-    // M is not carried over - highlights are hand-picked per meeting.
-    showMeetingDraft(
+    meeting.showDraft(
       {title: draftTitle, date: fields.date, time: fields.time, monthly: false},
       `Copied "${truncateItemName(displayTitle, 16)}" - adjust, then Add`,
     );
     onCancelEdit();
   };
 
-  // ---- Row 1: Tabs ----
-  const row1 = (
-    <View style={styles.row1}>
-      <View style={styles.tabs}>
-        <Pressable onPress={() => selectTab('task')} hitSlop={8} disabled={isEditing || todoTabDisabled}>
-          <Text
-            style={[
-              styles.tabText,
-              {color: textColor},
-              displayType === 'task' && styles.tabTextActive,
-              todoTabDisabled && styles.tabTextDisabled,
-            ]}>
-            Todo
-          </Text>
-        </Pressable>
-        <Pressable onPress={() => selectTab('meeting')} hitSlop={8} disabled={isEditing || meetingTabDisabled}>
-          <Text
-            style={[
-              styles.tabText,
-              {color: textColor},
-              displayType === 'meeting' && styles.tabTextActive,
-              meetingTabDisabled && styles.tabTextDisabled,
-            ]}>
-            Meeting
-          </Text>
-        </Pressable>
-        {onAddNote && (
-          <Pressable onPress={() => selectTab('note')} hitSlop={8} disabled={isEditing || noteTabDisabled}>
-            <Text
-              style={[
-                styles.tabText,
-                {color: textColor},
-                displayType === 'note' && styles.tabTextActive,
-                noteTabDisabled && styles.tabTextDisabled,
-              ]}>
-              Note
-            </Text>
-          </Pressable>
-        )}
-      </View>
-    </View>
-  );
+  const buttonMark = useQuickAddStatus(core, task, meeting, note);
 
-  // ---- Tag display: recognized-abbreviation uppercasing ----
-  // Recognized Project/Area tags are written in upper case so they stand out
-  // in the tag list - purely a TagChips display transform (Row 3's tag chip
-  // row, both pinned and suggested chips), never touches the stored/typed
-  // text, matching, or `onInsertTag`/`onRemoveTag`'s own tag string.
-  // "Recognized" uses the same Active-or-On-Hold eligibility
-  // resolveAbbrevFileTarget itself applies - a Done/Archived item's
-  // abbreviation renders as a plain lowercase tag, consistent with it not
-  // being a valid quick-file target either. Declared above Row 2/3 so it
-  // exists before every TagChips call site that needs it;
-  // `cachedAbbrevItems` below reuses this same read rather than calling
-  // `getCachedData()` a second time.
-  // Subscribed (not a plain getCachedData() read) since this component is
-  // React.memo'd (render-perf-ab §3 B2): it must re-render by itself when an
-  // abbreviation or status changes - but only then (useAbbrevItems,
-  // render-perf-ab §7), not on every cache change. Returns [] while no cache
-  // exists yet.
-  const cachedAbbrevItems = useAbbrevItems();
-  const recognizedAbbrevTags = new Set(
-    cachedAbbrevItems
-      .filter(item => item.abbrev !== null && (item.status === 'active' || item.status === 'on-hold'))
-      .map(item => item.abbrev!.toLowerCase()),
-  );
-
-  // ---- Row 2 + Row 3: Task style ----
-  const taskFields = editFields?.kind === 'task' ? editFields.fields : taskDraft;
-  // A todo that is only a loop tag starts the loop (ui/quickAdd/useLoopMode.ts).
-  const loopMode = useLoopMode({
-    active: displayType === 'task' && !isCapture,
-    fields: taskFields,
-    editing: editFields?.kind === 'task',
-    editingLoop: !!editingLoop && editFields?.kind === 'task',
-    fixedDestination,
-    editingItemPath,
-    abbrevItems: cachedAbbrevItems,
-  });
-  const setTaskText = (t: string) => {
-    captureTouchedRef.current = true;
-    const stripped = stripSpaceAfterHash(t);
-    if (editFields?.kind === 'task') updateTaskEditField({text: stripped});
-    else setTaskDraft(d => ({...d, text: stripped}));
-    clearTaskJustAdded();
-  };
-  const setTaskDueDate = (d: string) => {
-    if (editFields?.kind === 'task') updateTaskEditField({dueDate: d});
-    else setTaskDraft(dr => ({...dr, dueDate: d}));
-    clearTaskJustAdded();
-  };
-  const openTaskDueDate = () => {
-    if (editFields?.kind === 'task') updateTaskEditField({dueDateOpen: true});
-    else setTaskDraft(d => ({...d, dueDateOpen: true}));
-    // Focus the freshly unfolded field so its -1/Today/+1/+7 strip shows at once.
-    setDueFocusRequested(true);
-  };
-  const setTaskFlowState = (next: FlowState) => {
-    if (editFields?.kind === 'task') updateTaskEditField({flowState: next});
-    else setTaskDraft(d => ({...d, flowState: next}));
-    clearTaskJustAdded();
-  };
-  const setTaskWaitingOn = (w: string) => {
-    const stripped = stripSpaceAfterHash(w);
-    if (editFields?.kind === 'task') updateTaskEditField({waitingOnText: stripped});
-    else setTaskDraft(d => ({...d, waitingOnText: stripped}));
-    clearTaskJustAdded();
-  };
-  const clearTaskLinkedFile = () => updateTaskEditField({linkedFile: ''});
-  const insertTaskTag = (tag: string) => {
-    const {text, cursor} = insertTagAtPosition(taskFields.text, tag, taskLastSelectionRef.current?.start ?? null);
-    setTaskText(text);
-    const selection = {start: cursor, end: cursor};
-    taskLastSelectionRef.current = selection;
-    setTaskSelectionOverride(selection);
-  };
-  const removeTaskTag = (tag: string) => {
-    setTaskText(removeTagFromText(taskFields.text, tag));
-  };
-  // No setState here on purpose - see the `Selection` type's doc comment.
-  // onSelectionChange fires on almost every cursor/selection movement, and
-  // a setState-driven re-render on every one of those breaks native text
-  // selection (drag handles, the copy/cut/paste/select-all action bar) on
-  // Android.
-  const onTaskSelectionChange = (selection: Selection) => {
-    taskLastSelectionRef.current = selection;
-    if (taskSelectionOverride) setTaskSelectionOverride(null);
-  };
-
-  // Custom Select All/Copy/Cut/Paste (see the module doc comment on
-  // spliceAtSelection/copyCutRange for why these exist at all).
-  const taskClipboard = clipboardActions(taskFields.text, taskLastSelectionRef, setTaskText, setTaskSelectionOverride);
-
-  // The due-date control: in R2 next to the field; in the capture variant
-  // in the options row under it (checkpoint B).
-  const taskDueControl =
-    taskFields.dueDateOpen ? (
-      <View style={styles.dateInline}>
-        <DateInput
-          ref={dueInputRef}
-          value={taskFields.dueDate}
-          onChangeText={setTaskDueDate}
-          placeholder={loopMode.kind === 'none' || loopMode.kind === 'exists' ? 'Due YYYY-MM-DD' : 'Main date YYYY-MM-DD'}
-          placeholderColor={placeholderColor}
-          textColor={textColor}
-          borderColor={borderColor}
-        />
-        {taskFields.dueDate.length > 0 && (
-          <Pressable onPress={() => setTaskDueDate('')} hitSlop={8}>
-            <Text style={[styles.clearX, {color: textColor}]}>✕</Text>
-          </Pressable>
-        )}
-      </View>
-    ) : (
-      <Pressable style={[styles.iconButton, {borderColor}]} onPress={openTaskDueDate} hitSlop={8}>
-        <Text style={[styles.iconButtonText, {color: textColor}]}>📅</Text>
-      </Pressable>
-    );
-  // ---- Capture: Split lines (docs/dev/history/technical-design-lasso-0.8.md §3.5, §3.9) ----
-  // One editable row per item, each removable; more than SPLIT_ROWS_PER_PAGE
-  // rows page with ‹ › instead of scrolling. Chips apply to every row.
-  function toggleSplit() {
-    captureTouchedRef.current = true;
-    splitCursorRef.current = null;
-    if (splitRows) {
-      setTaskDraft(d => ({...d, text: joinItems(splitRows)}));
-      setSplitRows(null);
-    } else {
-      setSplitRows(splitByHand(taskDraft.text));
-      setTaskDraft(d => ({...d, text: ''}));
-    }
-    setSplitPage(0);
-    clearTaskJustAdded();
-  }
-  const updateSplitRow = (index: number, value: string) => {
-    captureTouchedRef.current = true;
-    setSplitRows(rows => (rows ? rows.map((r, i) => (i === index ? stripSpaceAfterHash(value) : r)) : rows));
-    clearTaskJustAdded();
-  };
-  const removeSplitRow = (index: number) => {
-    captureTouchedRef.current = true;
-    splitCursorRef.current = null;
-    setSplitRows(rows => {
-      if (!rows) return rows;
-      const next = rows.filter((_, i) => i !== index);
-      return next.length > 0 ? next : [''];
-    });
-    clearTaskJustAdded();
-  };
-  // ✂ Split at cursor (checkpoint B: the recognizer gives no reliable line
-  // breaks). A plain cursor splits there; a selection is cut out and becomes
-  // the next item. The single field turns into rows; in rows the focused row
-  // is split and the new item goes right below it. Where the cursor was is
-  // kept in refs (onSelectionChange), as for Cut/Paste above - pressing the
-  // button blurs the field first.
-  const splitCursorRef = useRef<{index: number; selection: Selection} | null>(null);
-  const splitAtCursor = () => {
-    captureTouchedRef.current = true;
-    clearTaskJustAdded();
-    if (splitRows) {
-      const at = splitCursorRef.current;
-      const parts =
-        at && at.selection && at.index < splitRows.length
-          ? splitAtSelection(splitRows[at.index], at.selection.start, at.selection.end)
-          : null;
-      if (!at || !parts) {
-        setError('Tap into the text where it should be split.', 'text');
-        return;
-      }
-      const next = [...splitRows.slice(0, at.index), parts[0], parts[1], ...splitRows.slice(at.index + 1)];
-      setSplitRows(next);
-      setSplitPage(Math.floor((at.index + 1) / SPLIT_ROWS_PER_PAGE));
-      splitCursorRef.current = null;
-      setError(null);
-      return;
-    }
-    const selection = taskLastSelectionRef.current;
-    const parts = selection ? splitAtSelection(taskDraft.text, selection.start, selection.end) : null;
-    if (!parts) {
-      setError('Tap into the text where it should be split.', 'text');
-      return;
-    }
-    setSplitRows(parts);
-    setTaskDraft(d => ({...d, text: ''}));
-    setSplitPage(0);
-    taskLastSelectionRef.current = null;
-    splitCursorRef.current = null;
-    setError(null);
-  };
-  const captureOptionsRow =
-    isCapture && displayType === 'task' && !isEditing ? (
-      <View style={styles.captureOptions}>
-        <Pressable onPress={toggleSplit} hitSlop={8} accessibilityRole="checkbox">
-          <Text style={[styles.splitToggleText, {color: textColor}]}>{splitRows ? '☑' : '☐'} Split lines</Text>
-        </Pressable>
-        <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={splitAtCursor} hitSlop={6}>
-          <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>✂ Split at cursor</Text>
-        </Pressable>
-        <View style={quickAddButtons.centerSpacer} />
-        {taskDueControl}
-      </View>
-    ) : null;
-  const splitPageCount = splitRows ? Math.max(1, Math.ceil(splitRows.length / SPLIT_ROWS_PER_PAGE)) : 1;
-  const safeSplitPage = Math.min(splitPage, splitPageCount - 1);
-  const splitRowsBlock = splitRows ? (
-    <View>
-      <View style={styles.splitHeader}>
-        <Text style={[styles.splitHeaderText, {color: textColor}]}>
-          {splitRows.filter(r => r.trim()).length} items
-        </Text>
-        {splitPageCount > 1 ? (
-          <View style={styles.splitPager}>
-            <Pressable onPress={() => setSplitPage(Math.max(0, safeSplitPage - 1))} disabled={safeSplitPage === 0} hitSlop={8}>
-              <Text style={[styles.splitPagerText, {color: textColor}, safeSplitPage === 0 && styles.tabTextDisabled]}>‹</Text>
-            </Pressable>
-            <Text style={[styles.splitHeaderText, {color: textColor}]}>
-              {safeSplitPage + 1}/{splitPageCount}
-            </Text>
-            <Pressable
-              onPress={() => setSplitPage(Math.min(splitPageCount - 1, safeSplitPage + 1))}
-              disabled={safeSplitPage >= splitPageCount - 1}
-              hitSlop={8}>
-              <Text style={[styles.splitPagerText, {color: textColor}, safeSplitPage >= splitPageCount - 1 && styles.tabTextDisabled]}>›</Text>
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
-      {splitRows.slice(safeSplitPage * SPLIT_ROWS_PER_PAGE, (safeSplitPage + 1) * SPLIT_ROWS_PER_PAGE).map((row, i) => {
-        const index = safeSplitPage * SPLIT_ROWS_PER_PAGE + i;
-        return (
-          <View key={index} style={styles.splitRow}>
-            <Text style={[styles.splitIndex, {color: textColor}]}>{index + 1}</Text>
-            <TextInput
-              style={[styles.input, styles.inputFlex, {color: textColor, borderColor}]}
-              value={row}
-              onChangeText={t => updateSplitRow(index, t)}
-              onFocus={() => {
-                if (splitCursorRef.current?.index !== index) splitCursorRef.current = {index, selection: null};
-              }}
-              onSelectionChange={e => {
-                splitCursorRef.current = {index, selection: e.nativeEvent.selection};
-              }}
-              placeholder="Todo"
-              placeholderTextColor={placeholderColor}
-              autoCapitalize="none"
-            />
-            <Pressable onPress={() => removeSplitRow(index)} hitSlop={8} accessibilityLabel={`Remove item ${index + 1}`}>
-              <Text style={[styles.splitRemove, {color: textColor}]}>✕</Text>
-            </Pressable>
-          </View>
-        );
-      })}
-    </View>
-  ) : null;
-
-  // Row 2 and row 3 for both Task and Meeting stay mounted at all times -
-  // only their `display` toggles with the active tab (styles.hidden below)
-  // - rather than the two variants being swapped in and out of the JSX
-  // tree. Swapping subtrees means Android has to freshly create each
-  // TextInput's native view on every tab switch, which briefly renders at
-  // its native intrinsic size before the custom padding/border style
-  // settles - a "widget grows for an instant, then shrinks back" flicker.
-  // Keeping both variants' native views alive the whole time and just
-  // hiding the inactive one avoids that remount entirely, consistent with
-  // this widget's fixed-row, avoid-reflow design (design doc §3).
-  const taskRow2 = (
-    <View style={[styles.row2, displayType !== 'task' && styles.hidden]}>
-      {isCapture && splitRows ? splitRowsBlock : null}
-      <View style={[styles.row2Wrap, isCapture && splitRows !== null && styles.hidden]}>
-        <MarkWrap mark={fieldMark('text')} textColor={textColor} flex>
-        <TextInput
-          ref={taskInputRef}
-          style={[styles.input, styles.inputFlex, isCapture && styles.inputMultiline, {color: textColor, borderColor}]}
-          multiline={isCapture}
-          textAlignVertical={isCapture ? 'top' : undefined}
-          value={taskFields.text}
-          onChangeText={setTaskText}
-          onSubmitEditing={editFields?.kind === 'task' ? submitTaskEdit : submitTaskCreate}
-          onSelectionChange={e => onTaskSelectionChange(e.nativeEvent.selection)}
-          selection={taskSelectionOverride ?? undefined}
-          onFocus={() => setTaskInputFocused(true)}
-          onBlur={() => setTaskInputFocused(false)}
-          placeholder={placeholder}
-          placeholderTextColor={placeholderColor}
-          autoCapitalize="none"
-        />
-        </MarkWrap>
-        {isCapture ? null : taskDueControl}
-      </View>
-      {/* Custom Select All/Copy/Cut/Paste overlay -
-          hovers above the field, right-aligned so it clears row 1's Todo/
-          Meeting tabs (which sit top-left, directly above this row) rather
-          than covering them. Absolutely positioned (`bottom: '100%'` = flush
-          above this row's own top edge) so it never pushes row2's height or
-          anything below it - stays mounted at all times with `display`
-          toggling on focus (styles.hidden), not conditional JSX, so a tap
-          on one of these buttons isn't lost to the same native-view-torn-
-          out-from-under-the-gesture race that motivated the row2/row3
-          `display:none` pattern above (blur fires on touch-down, but the
-          already-claimed touch responder keeps receiving the rest of that
-          gesture as long as the view instance itself survives). */}
-      <ClipboardStrip visible={taskInputFocused} actions={taskClipboard} textColor={textColor} borderColor={borderColor} />
-    </View>
-  );
-
-  // `onLayout` feeds that row's tag budget (ui/tagChipLayout.ts) so the
-  // chips leave room for this cluster instead of painting over the ✕.
-  const attachmentCluster = (linkedFile: string, onClear: () => void, onLayout?: (e: LayoutChangeEvent) => void) =>
-    linkedFile ? (
-      <View style={styles.attachCluster} onLayout={onLayout}>
-        <ClipIcon color={textColor} />
-        {linkedFileMissing && <WarningIcon color={textColor} />}
-        <Pressable onPress={onClear} hitSlop={8}>
-          <Text style={[styles.attachRemove, {color: textColor}]}>✕</Text>
-        </Pressable>
-      </View>
-    ) : null;
-
-  // Row 3 pixel budgets for TagChips (ui/tagChipLayout.ts): each variant
-  // measures its row, the element sharing page 0 with the tags, and the
-  // attachment cluster, instead of trusting fixed chip counts.
-  // Widths remembered per screen via `layoutKey` (render-perf-ab §3 A2).
-  const taskTagBudget = useTagRowBudget(
-    editFields?.kind === 'task' && !!editFields.fields.linkedFile,
-    layoutKey ? `${layoutKey}:task` : undefined,
-  );
-  const meetingTagBudget = useTagRowBudget(
-    editFields?.kind === 'meeting' && !!editFields.fields.linkedFile,
-    layoutKey ? `${layoutKey}:meeting` : undefined,
-  );
-  const noteTagBudget = useTagRowBudget(false, layoutKey ? `${layoutKey}:note` : undefined);
-
-  const taskRow3Hidden = displayType !== 'task' && styles.hidden;
-  // Row 3, page 0 vs page 1+ (technical-design-context-tags.md §8): past
-  // page 0, TagChips takes the whole row at its wide capacity and
-  // FlowStateChips (or the waiting-for mini-layout, which is also flow-
-  // state UI) drops out entirely - "‹" on the chip row itself is the way
-  // back to page 0, where flow chips reappear. Page 0 keeps today's layout,
-  // with a narrow TagChips squeezed in alongside FlowStateChips; the
-  // waiting-for mini-layout's "Waiting on" text field already fills the row
-  // on its own, so no room for tags there either - reachable via page 1+'s
-  // "‹" any time.
-  const taskRow3 =
-    taskTagPage > 0 ? (
-      <View style={[styles.row3, taskRow3Hidden]} onLayout={taskTagBudget.onRowLayout}>
-        <TagChips
-          text={taskFields.text}
-          recentTags={recentTags}
-          recognizedTags={recognizedAbbrevTags}
-          page={taskTagPage}
-          onPageChange={setTaskTagPage}
-          page0Width={taskTagBudget.page0Width}
-          laterWidth={taskTagBudget.laterWidth}
-          onInsertTag={insertTaskTag}
-          onRemoveTag={removeTaskTag}
-          textColor={textColor}
-          borderColor={borderColor}
-        />
-        {editFields?.kind === 'task' && attachmentCluster(editFields.fields.linkedFile, clearTaskLinkedFile, taskTagBudget.onAttachLayout)}
-      </View>
-    ) : taskFields.flowState === 'waiting-for' ? (
-      <View style={[styles.row3, taskRow3Hidden]}>
-        <Pressable
-          style={[styles.chip, styles.chipSelected]}
-          onPress={() => setTaskFlowState(null)}
-          hitSlop={8}>
-          <Text style={styles.chipTextSelected}>w/f</Text>
-        </Pressable>
-        <TextInput
-          style={[styles.input, styles.waitingInput, {color: textColor, borderColor}]}
-          value={taskFields.waitingOnText}
-          onChangeText={setTaskWaitingOn}
-          placeholder="Waiting on (who/what)"
-          placeholderTextColor={placeholderColor}
-          autoCapitalize="none"
-        />
-        {editFields?.kind === 'task' && attachmentCluster(editFields.fields.linkedFile, clearTaskLinkedFile, taskTagBudget.onAttachLayout)}
-      </View>
-    ) : (
-      <View style={[styles.row3, taskRow3Hidden]} onLayout={taskTagBudget.onRowLayout}>
-        <View style={styles.row3ChipsGroup}>
-          <View style={styles.row3Lead} onLayout={taskTagBudget.onLeadLayout}>
-            {loopMode.kind !== 'loop' && <FlowStateChips value={taskFields.flowState} onChange={setTaskFlowState} textColor={textColor} borderColor={borderColor} />}
-          </View>
-          {!isCapture && <TagChips
-            text={taskFields.text}
-            recentTags={recentTags}
-            recognizedTags={recognizedAbbrevTags}
-            page={taskTagPage}
-            onPageChange={setTaskTagPage}
-            page0Width={taskTagBudget.page0Width}
-            laterWidth={taskTagBudget.laterWidth}
-            onInsertTag={insertTaskTag}
-            onRemoveTag={removeTaskTag}
-            textColor={textColor}
-            borderColor={borderColor}
-          />}
-        </View>
-        {editFields?.kind === 'task' && attachmentCluster(editFields.fields.linkedFile, clearTaskLinkedFile, taskTagBudget.onAttachLayout)}
-      </View>
-    );
-
-  // ---- Row 2 + Row 3: Meeting style ----
-  const meetingFields = editFields?.kind === 'meeting' ? editFields.fields : meetingDraft;
-  const setMeetingTitle = (t: string) => {
-    captureTouchedRef.current = true;
-    const stripped = stripSpaceAfterHash(t);
-    if (editFields?.kind === 'meeting') updateMeetingEditField({title: stripped});
-    else setMeetingDraft(d => ({...d, title: stripped}));
-    clearMeetingJustAdded();
-  };
-  const setMeetingDate = (d: string) => {
-    if (editFields?.kind === 'meeting') updateMeetingEditField({date: d});
-    else setMeetingDraft(dr => ({...dr, date: d}));
-    clearMeetingJustAdded();
-  };
-  const setMeetingTime = (t: string) => {
-    if (editFields?.kind === 'meeting') updateMeetingEditField({time: t});
-    else setMeetingDraft(d => ({...d, time: t}));
-    clearMeetingJustAdded();
-  };
-  const clearMeetingLinkedFile = () => updateMeetingEditField({linkedFile: ''});
-  const toggleMeetingMonthly = () => {
-    if (editFields?.kind === 'meeting') updateMeetingEditField({monthly: !editFields.fields.monthly});
-    else setMeetingDraft(d => ({...d, monthly: !d.monthly}));
-  };
   // The "M" box left of + Add / Save (meeting tab only) - see ui/HighlightMark.tsx.
   const monthlyToggle =
     displayType === 'meeting' ? (
-      <HighlightMark on={meetingFields.monthly} variant="toggle" onPress={toggleMeetingMonthly} disabled={pending} textColor={textColor} />
+      <HighlightMark on={meeting.fields.monthly} variant="toggle" onPress={meeting.toggleMonthly} disabled={pending} textColor={textColor} />
     ) : null;
-  const insertMeetingTag = (tag: string) => {
-    const {text, cursor} = insertTagAtPosition(meetingFields.title, tag, meetingLastSelectionRef.current?.start ?? null);
-    setMeetingTitle(text);
-    const selection = {start: cursor, end: cursor};
-    meetingLastSelectionRef.current = selection;
-    setMeetingSelectionOverride(selection);
-  };
-  const removeMeetingTag = (tag: string) => {
-    setMeetingTitle(removeTagFromText(meetingFields.title, tag));
-  };
-  // No setState here on purpose - see onTaskSelectionChange's comment above.
-  const onMeetingSelectionChange = (selection: Selection) => {
-    meetingLastSelectionRef.current = selection;
-    if (meetingSelectionOverride) setMeetingSelectionOverride(null);
-  };
-
-  // Custom Select All/Copy/Cut/Paste - see taskClipboard's comment above.
-  const meetingClipboard = clipboardActions(meetingFields.title, meetingLastSelectionRef, setMeetingTitle, setMeetingSelectionOverride);
-
-  const meetingRow2 = (
-    <View style={[styles.row2, displayType !== 'meeting' && styles.hidden]}>
-      <View style={styles.row2Wrap}>
-        <MarkWrap mark={fieldMark('title')} textColor={textColor} flex>
-        <TextInput
-          ref={meetingInputRef}
-          style={[styles.input, styles.inputFlex, {color: textColor, borderColor}]}
-          value={meetingFields.title}
-          onChangeText={setMeetingTitle}
-          onSelectionChange={e => onMeetingSelectionChange(e.nativeEvent.selection)}
-          selection={meetingSelectionOverride ?? undefined}
-          onFocus={() => setMeetingInputFocused(true)}
-          onBlur={() => setMeetingInputFocused(false)}
-          placeholder="New meeting title"
-          placeholderTextColor={placeholderColor}
-          autoCapitalize="none"
-        />
-        </MarkWrap>
-        <MarkWrap mark={fieldMark('date')} textColor={textColor}>
-          <DateInput
-            value={meetingFields.date}
-            onChangeText={setMeetingDate}
-            placeholder="YYYY-MM-DD"
-            placeholderColor={placeholderColor}
-            textColor={textColor}
-            borderColor={borderColor}
-          />
-        </MarkWrap>
-      </View>
-      {/* Same hovering overlay as taskRow2's - see its comment for why. */}
-      <ClipboardStrip visible={meetingInputFocused} actions={meetingClipboard} textColor={textColor} borderColor={borderColor} />
-    </View>
-  );
-
-  // Meeting Row 3 has no flow chips ever competing for space, so TagChips
-  // runs wide from page 0 on (technical-design-context-tags.md §8) - the
-  // time field shrinks to make room for it (time stays always visible,
-  // just smaller), same paging as Todo's page 1+ once tag count exceeds one
-  // page.
-  const meetingRow3 = (
-    <View style={[styles.row3, displayType !== 'meeting' && styles.hidden]} onLayout={meetingTagBudget.onRowLayout}>
-      <View style={styles.row3ChipsGroup}>
-        <View style={styles.row3Lead} onLayout={meetingTagBudget.onLeadLayout}>
-        <MarkWrap mark={fieldMark('time')} textColor={textColor}>
-          <TextInput
-            style={[styles.input, styles.timeInputCompact, {color: textColor, borderColor}]}
-            value={meetingFields.time}
-            onChangeText={setMeetingTime}
-            placeholder="15 · 15-16.30 · 2d"
-            placeholderTextColor={placeholderColor}
-            autoCapitalize="none"
-          />
-        </MarkWrap>
-        </View>
-        {!isCapture && <TagChips
-          text={meetingFields.title}
-          recentTags={recentTags}
-          recognizedTags={recognizedAbbrevTags}
-          page={meetingTagPage}
-          onPageChange={setMeetingTagPage}
-          page0Width={meetingTagBudget.page0Width}
-          laterWidth={meetingTagBudget.laterWidth}
-          onInsertTag={insertMeetingTag}
-          onRemoveTag={removeMeetingTag}
-          textColor={textColor}
-          borderColor={borderColor}
-        />}
-      </View>
-      {editFields?.kind === 'meeting' && attachmentCluster(editFields.fields.linkedFile, clearMeetingLinkedFile, meetingTagBudget.onAttachLayout)}
-    </View>
-  );
-
-  // ---- Row 2 + Row 3: Note style ----
-  // No due-date affordance, no clipboard overlay, no edit mode - a plain
-  // title field (ClipboardTextInput already gives it the same Select All/
-  // Copy/Cut/Paste affordance Task/Meeting's own fields have, without
-  // re-deriving the selection-ref/overlay dance inline - see that
-  // component's own doc comment) plus the same TagChips primitive Task/
-  // Meeting already use, pinning/toggling `#tag` tokens directly in the
-  // title text.
-  const noteRow2 = (
-    <View style={[styles.row2, displayType !== 'note' && styles.hidden]}>
-      <ClipboardTextInput
-        value={noteDraft.titleRaw}
-        onChangeText={setNoteTitleRaw}
-        onSubmitEditing={submitNoteCreate}
-        placeholder="New note"
-        placeholderColor={placeholderColor}
-        textColor={textColor}
-        borderColor={borderColor}
-        editable={!pending}
-      />
-    </View>
-  );
-
-  const noteRow3 = (
-    <View style={[styles.row3, displayType !== 'note' && styles.hidden]} onLayout={noteTagBudget.onRowLayout}>
-      <TagChips
-        text={noteDraft.titleRaw}
-        recentTags={recentTags}
-        recognizedTags={recognizedAbbrevTags}
-        page={noteTagPage}
-        onPageChange={setNoteTagPage}
-        page0Width={noteTagBudget.page0Width}
-        laterWidth={noteTagBudget.laterWidth}
-        onInsertTag={insertNoteTag}
-        onRemoveTag={removeNoteTag}
-        textColor={textColor}
-        borderColor={borderColor}
-      />
-    </View>
-  );
-
-  // ---- Abbreviation quick-file (docs/dev/history/technical-design-abbrev-quick-file.md) ----
-  // The one Project/Area a recognized #tag in the CURRENT field's text
-  // resolves to, or null - see domain/abbrev.ts's resolveAbbrevFileTarget
-  // for the match/status-filter/self-exclude rules. Deliberately derived
-  // from taskFields/meetingFields (not taskDraft/meetingDraft directly) so
-  // this one pair of consts serves both submitTaskCreate/submitMeetingCreate
-  // above (create mode: taskFields === taskDraft, so this closure reference
-  // resolves to the live draft text by the time those handlers actually
-  // run - safe despite being declared later in this same component
-  // function, since neither submit function is invoked until well after
-  // this render has finished assigning it) and Row 4's "File: <Name>" render
-  // below (edit mode: taskFields === editFields.fields). Recomputed every
-  // render, same as TagChips re-deriving extractContextTags(text)
-  // every render - one array scan over however many Projects/Areas exist,
-  // cheap enough to not memoize. `cachedAbbrevItems` itself is declared up
-  // above, before Row 2/3, so the tag-display recognizedAbbrevTags Set (see
-  // that section's own comment) can reuse this same getCachedData() read.
-  // A tag naming wherever this item already is/would be created is a no-op,
-  // not a destination. In create mode (and on every screen where
-  // fixedDestination always names the edited item's own location - Current
-  // tab's own item; Inbox/Review's Inbox-to-zero step are always {type:
-  // 'inbox'}, which has no path and so never self-excludes, correctly,
-  // since Inbox itself can never carry an abbreviation) this is exactly
-  // fixedDestination's own path. While editing, `editingItemPath` - when the
-  // caller passes it - overrides that: Daily's fixedDestination is always
-  // {type: 'inbox'} regardless of which Project/Area the entry being edited
-  // actually lives in, so it passes the entry's real path here instead (see
-  // that prop's own doc comment).
-  const fixedExcludePath = fixedDestination.type === 'item' ? fixedDestination.path : null;
-  const abbrevExcludePath = isEditing && editingItemPath !== undefined ? editingItemPath : fixedExcludePath;
-  const taskAbbrevTarget = resolveAbbrevFileTarget(taskFields.text, cachedAbbrevItems, abbrevExcludePath);
-  const meetingAbbrevTarget = resolveAbbrevFileTarget(meetingFields.title, cachedAbbrevItems, abbrevExcludePath);
-  // Note has no filing concept - never matched.
-  const abbrevTarget = displayType === 'task' ? taskAbbrevTarget : displayType === 'meeting' ? meetingAbbrevTarget : null;
-
-  const abbrevDestination = (target: AbbrevFileMatch): Destination => ({
-    type: 'item',
-    kind: target.kind,
-    name: target.name,
-    path: target.path,
-  });
-
-  /**
-   * Edit-mode quick-file. Composes the payload exactly the way
-   * submitTaskEdit/submitMeetingEdit compose their own `nextText`/`fields` -
-   * flow-state/due tags folded in, meeting fields validated/normalized - so
-   * any OTHER edit made during this session (text changes, a flow-state/due/
-   * time change, a pending linked-file pick) is carried over to the new
-   * location instead of being discarded in favor of the last-saved copy. The
-   * one difference from Save: the matched abbreviation tag is additionally
-   * stripped via `removeTagFromText`, same as the create-mode submit
-   * functions just above.
-   */
-  const handleQuickFile = () => {
-    if (!abbrevTarget || !onQuickFile || !editFields) return;
-    Keyboard.dismiss();
-    if (editFields.kind === 'task') {
-      const trimmed = editFields.fields.text.trim();
-      if (!trimmed) return;
-      const finalText = composeTaskText(editFields.fields, abbrevTarget.tag);
-      setError(null);
-      setPending(true);
-      onQuickFile(abbrevTarget, {kind: 'task', text: finalText, linkedFile: editFields.fields.linkedFile})
-        .then(() => recordTagsUsed(extractContextTags(finalText)).then(refreshRecentTags))
-        .catch(e => setError(errorMessage(e)))
-        .finally(() => setPending(false));
-    } else {
-      const result = validateMeetingFields(editFields.fields.title, editFields.fields.date, editFields.fields.time);
-      if (!result.ok) {
-        setError(result.error, result.field);
-        return;
-      }
-      const trimmedTitle = setHighlight(
-        removeTagFromText(editFields.fields.title.trim(), abbrevTarget.tag),
-        editFields.fields.monthly,
-      );
-      setError(null);
-      setPending(true);
-      onQuickFile(abbrevTarget, {
-        kind: 'meeting',
-        fields: {title: trimmedTitle, date: editFields.fields.date, time: result.time, endTime: result.endTime, days: result.days},
-        linkedFile: editFields.fields.linkedFile,
-      })
-        .then(() => recordTagsUsed(extractContextTags(trimmedTitle)).then(refreshRecentTags))
-        .catch(e => setError(errorMessage(e)))
-        .finally(() => setPending(false));
-    }
-  };
-
-  // ---- Row 4: Actions ----
-  // Row 4 has no status text: errors, the "blocked" warning and the success
-  // messages go to the central status slot
-  // (docs/dev/history/technical-design-status-slot.md §7.3); only a ⚠/✓ mark stays in
-  // place (on the field concerned, or on the Add/Save button), in edit mode
-  // as well as create mode.
-  const justAdded = displayType === 'task' ? taskJustAdded : displayType === 'meeting' ? meetingJustAdded : noteJustAdded;
-  const successText = isEditing
-    ? null
-    : displayType === 'meeting' && meetingCopyNote
-      ? null
-      : justAdded
-        ? displayType === 'meeting' && meetingAddedWhen
-          ? `${justAdded} - ${meetingAddedWhen}`
-          : justAdded
-        : savedNote;
-  const infoText = !isEditing && displayType === 'meeting' ? meetingCopyNote : null;
-  const dismissSuccess = () => {
-    setTaskJustAdded(null);
-    setMeetingJustAdded(null);
-    setMeetingAddedWhen(null);
-    setNoteJustAdded(null);
-    setSavedNote(null);
-  };
-
-  const statusId = useRef(`quickadd.${++nextQuickAddInstance}`).current;
-  useStatus(`${statusId}.error`, error ? {kind: 'error', text: error, onDismiss: () => setError(null)} : null);
-  useStatus(`${statusId}.success`, successText ? {kind: 'success', text: successText, onDismiss: dismissSuccess} : null);
-  useStatus(`${statusId}.info`, infoText ? {kind: 'info', text: infoText, onDismiss: () => setMeetingCopyNote(null)} : null);
-  useStatus(
-    `${statusId}.loop`,
-    loopMode.kind === 'exists' && !isEditing ? {kind: 'info', text: `Loop ${loopMode.loop.tag} exists - add words for a todo of it`} : null,
-  );
-
-  const buttonMark = errorState && errorState.field === null ? ('warning' as const) : successText ? ('success' as const) : null;
-
-  // ---- Capture: save, buttons, chips (docs/dev/history/technical-design-lasso-0.8.md §3.9) ----
-  const captureItems = (): string[] =>
-    (splitRows ?? [taskDraft.text]).map(t => t.trim()).filter(t => t.length > 0);
-  // A typed #ABBR in any item wins over the "File to" choice, as in Quick Add.
-  const captureAbbrevTarget = isCapture
-    ? displayType === 'meeting'
-      ? meetingAbbrevTarget
-      : resolveAbbrevFileTarget(splitRows ? splitRows.join(' ') : taskDraft.text, cachedAbbrevItems, fixedExcludePath)
-    : null;
-  const captureDestination: Destination = captureAbbrevTarget ? abbrevDestination(captureAbbrevTarget) : fixedDestination;
-  const captureCount = displayType === 'task' ? captureItems().length : 1;
-
-  const rememberCaptureDestination = (dest: Destination) => {
-    if (dest.type !== 'item') return;
-    setRecentDestinations(prev => [dest.path, ...prev.filter(p => p !== dest.path)]);
-    recordDestinationUsed(dest.path);
-  };
-
-  const submitCapture = async (mode: CaptureSaveMode) => {
-    Keyboard.dismiss();
-    if (pending) return;
-    if (displayType === 'meeting') {
-      const result = validateMeetingFields(meetingDraft.title, meetingDraft.date, meetingDraft.time);
-      if (!result.ok) {
-        setError(result.error, result.field);
-        return;
-      }
-      const title = setHighlight(
-        meetingAbbrevTarget ? removeTagFromText(meetingDraft.title.trim(), meetingAbbrevTarget.tag) : meetingDraft.title.trim(),
-        meetingDraft.monthly,
-      );
-      setError(null);
-      setPending(true);
-      try {
-        await onAddMeeting(
-          {title, date: meetingDraft.date, time: result.time, endTime: result.endTime, days: result.days},
-          captureDestination,
-        );
-      } catch (e) {
-        setError(errorMessage(e));
-        setPending(false);
-        return;
-      }
-      setPending(false);
-      setMeetingDraft(d => ({...makeMeetingDraft(d.date, false)}));
-      setMeetingJustAdded(`Added meeting "${truncateItemName(meetingDisplayTitle({title}), 40)}" to ${destinationLabel(captureDestination)}`);
-      recordTagsUsed(extractContextTags(title)).then(refreshRecentTags);
-      rememberCaptureDestination(captureDestination);
-      captureTouchedRef.current = false;
-      onCaptureSaved?.(mode);
-      return;
-    }
-    const items = captureItems();
-    if (items.length === 0) {
-      setError('Nothing to save - write a todo first.', 'text');
-      return;
-    }
-    const tag = captureAbbrevTarget ? captureAbbrevTarget.tag : null;
-    const texts = items.map(item => composeTaskText({...taskDraft, text: item}, tag));
-    setError(null);
-    setPending(true);
-    let saved = 0;
-    try {
-      for (const text of texts) {
-        await onAddTask(text, captureDestination);
-        saved += 1;
-      }
-    } catch (e) {
-      const message = errorMessage(e);
-      // Saved ones are gone from the list; the rest stays for another try.
-      if (splitRows && saved > 0) setSplitRows(splitRows.filter(r => r.trim()).slice(saved));
-      setError(saved > 0 ? `Saved ${saved} of ${texts.length}. ${message}` : message);
-      setPending(false);
-      return;
-    }
-    setPending(false);
-    setTaskDraft(d => ({...d, text: '', flowState: null, waitingOnText: '', dueDate: ''}));
-    setSplitRows(null);
-    taskLastSelectionRef.current = null;
-    captureTouchedRef.current = false;
-    setTaskJustAdded(
-      texts.length === 1
-        ? `Added todo "${truncateItemName(items[0], 40)}" to ${destinationLabel(captureDestination)}`
-        : `Added ${texts.length} todos to ${destinationLabel(captureDestination)}`,
-    );
-    recordTagsUsed(texts.flatMap(t => extractContextTags(t))).then(refreshRecentTags);
-    rememberCaptureDestination(captureDestination);
-    onCaptureSaved?.(mode);
-  };
-
-  // Tags: toggled in the single text, or in every row while split.
-  // Tags already in the text come first (like Quick Add's pinned chips), then the recent ones.
-  const captureTagSource = isCapture
-    ? Array.from(
-        new Set([
-          ...extractContextTags(
-            displayType === 'meeting' ? meetingFields.title : splitRows ? splitRows.join(' ') : taskFields.text,
-          ),
-          ...recentTags,
-        ]),
-      )
-    : [];
-  const captureTagChips: GridChip[] = isCapture
-    ? captureTagSource.map(tag => {
-        const lower = tag.toLowerCase();
-        const has = (text: string) => extractContextTags(text).some(t => t.toLowerCase() === lower);
-        const on =
-          displayType === 'meeting'
-            ? has(meetingFields.title)
-            : splitRows
-              ? splitRows.length > 0 && splitRows.every(has)
-              : has(taskFields.text);
-        const onPress = () => {
-          if (displayType === 'meeting') {
-            if (on) removeMeetingTag(tag);
-            else insertMeetingTag(tag);
-          } else if (splitRows) {
-            captureTouchedRef.current = true;
-            setSplitRows(rows =>
-              rows ? rows.map(r => (on ? removeTagFromText(r, tag) : has(r) ? r : insertTagAtPosition(r, tag, null).text)) : rows,
-            );
-          } else if (on) removeTaskTag(tag);
-          else insertTaskTag(tag);
-        };
-        return {key: tag, label: `#${recognizedAbbrevTags.has(lower) ? tag.toUpperCase() : tag}`, on, onPress};
-      })
-    : [];
-  const fileToChips: GridChip[] = isCapture
-    ? buildFileToChips({
-        items: cachedAbbrevItems,
-        own: captureOwnDestination,
-        current: captureDestination,
-        recent: recentDestinations,
-        showAll: fileToAll,
-        page: fileToPage,
-        pageSize: FILE_TO_PAGE,
-        onPick: destination => onCaptureDestinationChange?.(destination),
-        setShowAll: setFileToAll,
-        setPage: setFileToPage,
-      })
-    : [];
-  const countLabel = captureCount > 1 ? ` ${captureCount}` : '';
-  const captureRow4 = (
-    <View style={quickAddButtons.row4}>
-      <Text style={[styles.captureDest, {color: textColor}]} numberOfLines={1}>
-        → {truncateItemName(destinationLabel(captureDestination), 24)}
-      </Text>
-      <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={() => submitCapture('next')} disabled={pending} hitSlop={6}>
-        <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>Save{countLabel} & next</Text>
-      </Pressable>
-      <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={() => submitCapture('view')} disabled={pending} hitSlop={6}>
-        <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>Save{countLabel} & view</Text>
-      </Pressable>
-      <MarkWrap mark={errorState && errorState.field === null ? 'warning' : null} textColor={textColor}>
-        <Pressable style={quickAddButtons.primaryButton} onPress={() => submitCapture('close')} disabled={pending} hitSlop={6}>
-          <Text style={quickAddButtons.primaryButtonText}>Save{countLabel} & close</Text>
-        </Pressable>
-      </MarkWrap>
-      {monthlyToggle}
-    </View>
-  );
-  const captureBelow = isCapture ? (
-    <View style={styles.captureBelow}>
-      {captureTagChips.length > 0 ? (
-        <>
-          <Text style={[styles.captureLabel, {color: textColor}]}>Tags</Text>
-          <TagChipGrid chips={captureTagChips} maxChips={18} textColor={textColor} borderColor={borderColor} />
-        </>
-      ) : null}
-      <Text style={[styles.captureLabel, {color: textColor}]}>File to</Text>
-      <TagChipGrid
-        chips={fileToChips}
-        maxChips={fileToAll ? FILE_TO_PAGE + 2 : FILE_TO_SHORT + 1}
-        maxLabelChars={22}
-        textColor={textColor}
-        borderColor={borderColor}
-      />
-      {captureExtras}
-    </View>
-  ) : null;
-
-  const row4 = isCapture && !isEditing ? captureRow4 : isEditing ? (
+  const loopMode = task.loopMode;
+  const row4 = isEditing ? (
     <EditActionRow
       pending={pending}
-      onDelete={loopMode.kind === 'loop' ? undefined : handleDelete}
+      onDelete={
+        loopMode.kind === 'loop'
+          ? undefined
+          : () => {
+              Keyboard.dismiss();
+              onDeleteEdit?.();
+            }
+      }
       onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
-      onRefile={onRefile ? handleRefile : undefined}
+      onRefile={
+        onRefile
+          ? () => {
+              Keyboard.dismiss();
+              onRefile();
+            }
+          : undefined
+      }
       quickFile={onQuickFile && abbrevTarget ? {name: truncateItemName(abbrevTarget.name), onPress: handleQuickFile} : null}
       onCancel={onCancelEdit}
       saveLabel={loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : 'Save'}
-      onSave={editFields?.kind === 'meeting' ? submitMeetingEdit : submitTaskEdit}
-      errorOnSave={!!errorState && errorState.field === null}
+      onSave={editFields?.kind === 'meeting' ? meeting.submitEdit : task.submitEdit}
+      errorOnSave={!!core.errorState && core.errorState.field === null}
       monthlyToggle={monthlyToggle}
       textColor={textColor}
       borderColor={borderColor}
@@ -1935,7 +340,7 @@ function QuickAddWidget({
   ) : (
     <CreateActionRow
       label={loopMode.kind === 'add' ? '+ Add loop' : abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
-      onPress={displayType === 'meeting' ? submitMeetingCreate : displayType === 'note' ? submitNoteCreate : submitTaskCreate}
+      onPress={displayType === 'meeting' ? meeting.submitCreate : displayType === 'note' ? note.submitCreate : task.submitCreate}
       disabled={pending || loopMode.kind === 'exists'}
       mark={buttonMark}
       monthlyToggle={monthlyToggle}
@@ -1944,190 +349,41 @@ function QuickAddWidget({
   );
 
   return (
-    <View style={[styles.card, {borderColor}]}>
-      {row1}
-      {taskRow2}
-      {captureOptionsRow}
-      {meetingRow2}
-      {noteRow2}
-      {taskRow3}
-      {meetingRow3}
-      {noteRow3}
-      {provenance && provenance.length > 0 && displayType === 'task' && !isEditing ? <ProvenanceLine parts={provenance} textColor={textColor} /> : null}
-      {row4}
-      {captureBelow}
-    </View>
+    <QuickAddFrame
+      row1={<TabsRow core={core} taskOnly={taskOnly} hasNoteTab={!!onAddNote} noteFolderPath={noteFolderPath} textColor={textColor} />}
+      row2={
+        <>
+          <TaskInputRow core={core} task={task} placeholder={props.placeholder ?? 'New task'} {...colors} />
+          <MeetingInputRow core={core} meeting={meeting} {...colors} />
+          <NoteInputRow core={core} note={note} {...colors} />
+        </>
+      }
+      row3={
+        <>
+          <TaskMetaRow core={core} task={task} layoutKey={layoutKey} showTags linkedFileMissing={linkedFileMissing} {...colors} />
+          <MeetingMetaRow core={core} meeting={meeting} layoutKey={layoutKey} showTags linkedFileMissing={linkedFileMissing} {...colors} />
+          <NoteTagRow core={core} note={note} layoutKey={layoutKey} textColor={textColor} borderColor={borderColor} />
+        </>
+      }
+      beforeActions={
+        provenance && provenance.length > 0 && displayType === 'task' && !isEditing ? (
+          <ProvenanceLine parts={provenance} textColor={textColor} />
+        ) : null
+      }
+      row4={row4}
+      borderColor={borderColor}
+    />
   );
 }
 
-/** Capture's Split lines: rows shown per page before ‹ › paging. */
-const SPLIT_ROWS_PER_PAGE = 6;
-/** Capture's "File to" full list: items per page behind More…. */
-const FILE_TO_PAGE = 15;
-
-// Row 3 tag paging is width-based - see ui/tagChipLayout.ts and
-// useTagRowBudget above.
-
-const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 10,
-  },
-  row1: {
-    minHeight: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  tabs: {
-    flexDirection: 'row',
-  },
-  tabText: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    marginRight: 18,
-  },
-  tabTextActive: {
-    textDecorationLine: 'underline',
-  },
-  tabTextDisabled: {
-    opacity: 0.35,
-  },
-  row2: {
-    minHeight: 36,
-    marginBottom: 6,
-    // Positioning context for the clipboard strip (common.floatingStrip) - it is
-    // absolutely positioned against *this* row, not the whole widget, so it
-    // hovers right above the input regardless of which row2 (task/meeting)
-    // is currently showing.
-    position: 'relative',
-  },
-  row2Wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  // Custom Select All/Copy/Cut/Paste overlay - see
-  // taskRow2's comment for the full reasoning. `bottom: '100%'` sits it
-  // flush above row2's own top edge without any hardcoded height; `right: 0`
-  // keeps it clear of row 1's Todo/Meeting tabs (top-left) instead of
-  // hovering over them.
-  row3: {
-    minHeight: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  /** Keeps the inactive tab's row2/row3 native views mounted (see taskRow2's comment) instead of unmounting them - Yoga skips display:none entirely, so it contributes no height. */
-  hidden: {
-    display: 'none',
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    fontSize: FONT.medium,
-  },
-  inputFlex: {
-    flex: 1,
-    marginRight: 6,
-  },
-  /** Capture: recognized text can be several lines (3 visible, up to ~6). */
-  inputMultiline: {
-    minHeight: 96,
-    maxHeight: 170,
-  },
-  captureOptions: {flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6, minHeight: 36},
-  splitToggleText: {fontSize: FONT.small, fontWeight: '600'},
-  splitHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: 6, minHeight: 32},
-  splitHeaderText: {fontSize: FONT.small, fontWeight: '600', marginRight: 10},
-  splitPager: {flexDirection: 'row', alignItems: 'center'},
-  splitPagerText: {fontSize: FONT.large, fontWeight: '600', paddingHorizontal: 8},
-  splitRow: {flexDirection: 'row', alignItems: 'center', marginBottom: 6},
-  splitIndex: {width: 24, fontSize: FONT.small, fontWeight: '600'},
-  splitRemove: {fontSize: FONT.medium, paddingHorizontal: 8},
-  captureDest: {flex: 1, fontSize: FONT.small, fontWeight: '600', marginRight: 8},
-  captureBelow: {borderTopWidth: 1, borderTopColor: COLORS.borderLight, marginTop: 10, paddingTop: 8},
-  captureLabel: {fontSize: FONT.small, fontWeight: '700', marginBottom: 6, marginTop: 4},
-  /** Meeting Row 3's time field, sized to leave room for TagChips alongside it (see meetingRow3's own comment). */
-  timeInputCompact: {
-    fontSize: FONT.small,
-    // 110 wide (docs/dev/history/technical-design-monthly-view.md §5.1): the field
-    // also takes a range/length - "15:00-16:30" must fit.
-    width: 110,
-    marginRight: 6,
-  },
-  /** Groups FlowStateChips/time-input with TagChips so the pair flows together on the row's left side, leaving row3's space-between to place the attachment cluster (when present) on the right. */
-  row3ChipsGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    // Safety net: tags can never paint past this group into the attachment
-    // cluster.
-    overflow: 'hidden',
-  },
-  /** Wraps FlowStateChips / the meeting time field so its width can be measured for the tag budget; never shrinks. */
-  row3Lead: {
-    flexShrink: 0,
-  },
-  waitingInput: {
-    flex: 1,
-    marginRight: 6,
-  },
-  dateInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  clearX: {
-    fontSize: FONT.small,
-    opacity: 0.7,
-    marginLeft: 3,
-    paddingHorizontal: 4,
-  },
-  iconButton: {
-    width: 32,
-    height: 32,
-    borderWidth: 1,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconButtonText: {
-    fontSize: FONT.medium,
-  },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    marginRight: 6,
-    borderColor: COLORS.accent,
-  },
-  chipSelected: {
-    backgroundColor: COLORS.accent,
-  },
-  chipTextSelected: {
-    fontSize: FONT.small,
-    fontWeight: '600',
-    color: COLORS.accentText,
-  },
-  attachCluster: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    // Never squeezed by the tags; the padding keeps a
-    // visible gap to the last chip and is included in the measured width.
-    flexShrink: 0,
-    paddingLeft: 8,
-  },
-  attachRemove: {
-    fontSize: FONT.small,
-    opacity: 0.7,
-    marginLeft: 3,
-    paddingHorizontal: 4,
-  },
-});
+/** React.memo's prop check: shallow, except that an edit target counts as equal when it names the same item. */
+function sameProps(prev: Props, next: Props): boolean {
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)] as Array<keyof Props>);
+  for (const key of keys) {
+    if (key === 'editTarget' ? !sameEditTarget(prev.editTarget, next.editTarget) : prev[key] !== next[key]) return false;
+  }
+  return true;
+}
 
 /**
  * Memoized (docs/dev/history/technical-design-render-perf-ab.md §3 B2): re-renders only
@@ -2135,4 +391,4 @@ const styles = StyleSheet.create({
  * (ui/useStableCallback.ts); an unstable prop somewhere only means the memo
  * doesn't skip there, never a stale render.
  */
-export default React.memo(QuickAddWidget);
+export default React.memo(QuickAddWidget, sameProps);

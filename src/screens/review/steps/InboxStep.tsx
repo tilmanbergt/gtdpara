@@ -31,7 +31,7 @@ import MeetingRow, {MeetingTrackingConfig, trackingSetups} from '../../../ui/Mee
 import MeetingList from '../../../ui/MeetingList';
 import {useEditTarget} from '../../../ui/useEditTarget';
 import PagedSection from '../../../ui/PagedSection';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../../../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor, MeetingQuickAddFields, QuickFilePayload} from '../../../ui/QuickAddWidget';
 import {displayTaskText} from '../../../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../../ui/TaskRow';
 import {common} from '../../../ui/commonStyles';
@@ -358,10 +358,10 @@ return (
         fixedDestination={FIXED_INBOX_DESTINATION}
         onAddTask={onAddTask}
         onAddMeeting={handleAddInboxMeeting}
-        editingTask={
-          editingInboxTask ? {...editingInboxTask, text: displayTaskText(editingInboxTask, 'flat')} : undefined
-        }
-        editingMeeting={editingInboxMeeting ?? undefined}
+        editTarget={editTargetFor(editTarget ? `${editTarget.type}:${editTarget.index}` : null, {
+          task: editingInboxTask ? {...editingInboxTask, text: displayTaskText(editingInboxTask, 'flat')} : null,
+          meeting: editingInboxMeeting,
+        })}
         onSaveEditTask={
           editingInboxTaskIndex !== null
             ? (nextText, nextLinkedFile) => handleInboxTaskSave(editingInboxTaskIndex, nextText, nextLinkedFile)
@@ -372,7 +372,6 @@ return (
             ? (fields, nextLinkedFile) => handleInboxMeetingCommitEdit(editingInboxMeetingIndex, fields, nextLinkedFile)
             : undefined
         }
-        editTargetKey={editTarget ? `${editTarget.type}:${editTarget.index}` : null}
         flushEditRef={flushEditRef}
         onCancelEdit={cancelEditTarget}
         onDeleteEdit={handleDeleteEditForWidget}

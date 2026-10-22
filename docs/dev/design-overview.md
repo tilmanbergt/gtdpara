@@ -394,8 +394,13 @@ Todo | Meeting (plus Note where the screen passes `onAddNote`) on row 1; text an
 row 4. Create mode adds to the screen's `fixedDestination`; edit mode shows Delete (soft cancel),
 Refile (where the screen passes `onRefile`), Cancel and Save, and for meetings "New from this"
 (a new meeting pre-filled from the edited one). The widget is long-lived per screen (no `key`
-remounts): the todo and meeting drafts survive tab flips and edits elsewhere. `variant="capture"`
-is the lasso-capture layout (§2.10). The Note tab creates a standalone `.note` in the Files
+remounts): the todo and meeting drafts survive tab flips and edits elsewhere. A screen names the
+item being edited with one `editTarget` prop (`editTargetFor(key, {task, meeting, loop})`). The
+widget is a composition in `ui/quickAdd/`: the box with its row slots (`QuickAddFrame.tsx`), one
+hook per draft (`useTaskDraft`, `useMeetingDraft`, `useNoteDraft`) over the shared state of
+`useQuickAddCore`, the edit session (`useEditSession`: loading, focus, save-then-switch) and the
+row components. The lasso-capture panel is its own shell over the same parts
+(`ui/quickAdd/CaptureQuickAdd.tsx`, §2.10). The Note tab creates a standalone `.note` in the Files
 pane's current folder (`storage/standaloneNotes.ts`), its `#tags` becoming page keywords.
 
 **Tags in the widget.** `ui/TagChips.tsx` shows recently used tags (`storage/tagUsage.ts`,
@@ -865,7 +870,7 @@ Detail: `docs/dev/history/technical-design-project-close-out.md`,
 **Capture** (`screens/CaptureScreen.tsx`, `mode: 'capture'`). Opened from the lasso button
 (`CaptureRequest {source: 'lasso'}`) or from a "marks to process" card (`source: 'marks'`, with a
 scope and where to return). Left: `ui/capture/MarksColumn.tsx` (open marks grouped by note,
-hidden when empty). Right: the picture, then `QuickAddWidget variant="capture"`: split rows
+hidden when empty). Right: the picture, then `ui/quickAdd/CaptureQuickAdd.tsx`: split rows
 (✂ Split at cursor, `domain/captureText.ts`), a "File to" short list
 (`domain/captureFileTo.ts` plus recent destinations from `storage/destinationUsage.ts`), and Save
 buttons. "Link to this page" stores `<note>#page=N` as the item's `linkedFile`. When the source
