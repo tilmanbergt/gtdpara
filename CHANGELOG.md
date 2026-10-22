@@ -38,6 +38,8 @@ or your project/area files are stored.
   fields only (the rest is on its card). See the help page "Quick Add and capture".
 - **Save to <Name>**: with a project's or area's abbreviation tag in the text, **Save** saves
   the edit and moves the item there in one step (it replaces **File: <Name>**).
+- **Meeting and todo rows are easier to tap**: a tap anywhere in a row's height selects it, not
+  only on the text line - one-line meeting rows (Daily, the Inbox) ignored most taps before.
 - **The next item keeps the abbreviation tag**: after **+ Add to <Name>**, the field starts with
   that tag again, so a run of items for one project needs it once.
 - **A quieter meeting row**: the prep/review mark on a row only shows the state - tapping it

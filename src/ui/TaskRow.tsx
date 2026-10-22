@@ -56,6 +56,9 @@ import {WAITING_FOR_TYPE} from '../domain/flowState';
 import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
 
+/** Space above and below the row's content, inside each tap target. */
+const ROW_PAD_DP = 7;
+
 /** Kept as an alias so callers' `context` props read as before. */
 export type TaskBadgeContext = TaskLabelContext;
 
@@ -169,11 +172,11 @@ export default function TaskRow({
           // "raised" with a blank gap under it.
           height != null && {height, minHeight: height},
         ]}>
-        <Pressable onPress={onToggleDone} hitSlop={8}>
+        <Pressable onPress={onToggleDone} hitSlop={8} style={styles.target}>
           <Text style={styles.checkbox}>{task.done ? '☑' : '☐'}</Text>
         </Pressable>
         <View style={styles.rowTextWrap}>
-          <Pressable onPress={onStartEdit}>
+          <Pressable onPress={onStartEdit} style={styles.editTarget}>
             <Text
               style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]}
               numberOfLines={numberOfLines ?? layout.lines}>
@@ -189,20 +192,20 @@ export default function TaskRow({
           </Pressable>
         </View>
         {task.notePath ? (
-          <Pressable onPress={onOpenNote} hitSlop={8}>
+          <Pressable onPress={onOpenNote} hitSlop={8} style={styles.target}>
             <Text style={[styles.noteAction, {color: textColor}]}>📓</Text>
           </Pressable>
         ) : (
-          <Pressable onPress={onCreateNote} hitSlop={8}>
+          <Pressable onPress={onCreateNote} hitSlop={8} style={styles.target}>
             <Text style={[styles.noteAction, {color: textColor}]}>+📓</Text>
           </Pressable>
         )}
         {linkedFile ? (
-          <Pressable onPress={() => onOpenLinkedFile?.(linkedFile)} hitSlop={8} style={styles.clipAction}>
+          <Pressable onPress={() => onOpenLinkedFile?.(linkedFile)} hitSlop={8} style={[styles.target, styles.clipAction]}>
             <ClipIcon color={textColor} />
           </Pressable>
         ) : onArmLink ? (
-          <Pressable onPress={onArmLink} hitSlop={8} style={styles.clipAction}>
+          <Pressable onPress={onArmLink} hitSlop={8} style={[styles.target, styles.clipAction]}>
             <Text style={[styles.clipPlus, {color: textColor}]}>+</Text>
             <ClipIcon color={textColor} />
           </Pressable>
@@ -233,7 +236,7 @@ export function ReadOnlyTaskRow({
   const layout = taskRowLayout(task, TASK_COLUMN_WIDTH_PX, context);
   return (
     <View style={styles.wrap}>
-      <View style={[styles.row, {borderBottomColor: borderColor}]}>
+      <View style={[styles.row, styles.rowReadOnly, {borderBottomColor: borderColor}]}>
         <Text style={styles.checkbox}>{task.done ? '☑' : '☐'}</Text>
         <View style={styles.rowTextWrap}>
           <Text style={[styles.rowText, {color: textColor}, task.done && styles.rowTextDone]} numberOfLines={layout.lines}>
@@ -258,7 +261,9 @@ const styles = StyleSheet.create({
     // own doc comment calls the harmless direction for a misprediction.
     alignItems: 'flex-start',
     borderBottomWidth: 1,
-    paddingVertical: 7,
+    // No vertical padding here: each tap target carries ROW_PAD_DP itself, so
+    // the edit target spans the row's full height and a tap above or below
+    // the title still edits.
     // Reserves space for up to 2 lines of text + badges regardless of
     // content length, so every row in a paginated page is the same height
     // (docs/dev/history/technical-design-pagination-edit-reuse.md §3). Only the floor
@@ -274,6 +279,10 @@ const styles = StyleSheet.create({
     // line) instead of overlapping an unrelated row.
     overflow: 'hidden',
   },
+  rowReadOnly: {paddingVertical: ROW_PAD_DP},
+  target: {paddingVertical: ROW_PAD_DP},
+  // Stretched to the row's height, so the space under a 1-line title edits too.
+  editTarget: {flex: 1, paddingVertical: ROW_PAD_DP},
   rowEditing: {
     borderLeftWidth: 4,
     borderLeftColor: '#000000',
@@ -285,6 +294,7 @@ const styles = StyleSheet.create({
   },
   rowTextWrap: {
     flex: 1,
+    alignSelf: 'stretch',
   },
   rowText: {
     fontSize: FONT.medium,

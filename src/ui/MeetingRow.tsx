@@ -15,8 +15,11 @@
  *   §2.7, M1-M2): besides the title's tags only the notebook and a linked
  *   file's clip are their own targets. The prep/review icon is read-only and
  *   sits inside the row's main tap target, so tapping it selects the meeting
- *   like the title does; ticking it, Reflect and Link file live in the list's
- *   toolbar (ui/MeetingToolbar.tsx), the M toggle in Quick Add's edit form.
+ *   like the title does; ticking it, Reflect, Link file and the M toggle live
+ *   on the meeting card (ui/itemCard/MeetingCard.tsx).
+ * - Tap targets span the row's full height: the vertical padding sits inside
+ *   the main target and the icon targets, not on the row, so a tap above or
+ *   below the text line still lands on something.
  * - `state`: editing/arming/selected rows get a clear black 4 dp bar on the
  *   left, the same everywhere.
  * - twoLine: line 2 shows the source; without a source a long title wraps
@@ -41,7 +44,7 @@ import {perfCount} from '../utils/perf';
 /**
  * What a screen supplies to switch a meeting list's prep/review icons on: the
  * Note setups (`trackingSetups(settings)`). The icon only shows the state;
- * the tick is set in the list's toolbar.
+ * the tick is set on the meeting card.
  */
 export interface MeetingTrackingConfig {
   setups: NoteSetupConfig;
@@ -59,6 +62,8 @@ export const MEETING_ROW_HEIGHT: Record<MeetingRowLayout, number> = {oneLine: 37
 
 const TITLE_LINE_DP = 22;
 const SUB_LINE_DP = 18;
+/** Space above and below the content: (37 - 1 border - 22) / 2 = (57 - 1 - 42) / 2. */
+export const ROW_PAD_DP = 7;
 /** Time-column widths (dp) so times line up down a list; see design §2.3. */
 /** The time column's width - exported so ui/GoogleCalendarPanel.tsx's event rows line up with meeting rows. */
 export const TIME_COLUMN_DP: Record<MeetingTimeMode, Record<MeetingRowLayout, number>> = {
@@ -139,7 +144,6 @@ function MeetingRowV2({
         // Bottom border only: a whole-row `borderColor` could win over the
         // marked row's black left bar and grey it out.
         {borderBottomColor: borderColor, height: MEETING_ROW_HEIGHT[layout]},
-        twoLine ? v2.rowTwo : v2.rowOne,
         (state === 'editing' || state === 'arming' || state === 'selected') && v2.rowMarked,
         state === 'selected' && v2.rowSelected,
         done && v2.rowDone,
@@ -190,13 +194,17 @@ function MeetingRowV2({
         )}
       </Pressable>
       {note && (
-        <Pressable onPress={meeting.notePath ? note.onOpen : note.onCreate} hitSlop={8} style={[v2.action, twoLine && v2.actionTwo]}>
-          <Text style={[v2.noteText, {color: textColor}]}>{meeting.notePath ? '📓' : '+📓'}</Text>
+        <Pressable onPress={meeting.notePath ? note.onOpen : note.onCreate} hitSlop={8} style={v2.target}>
+          <View style={[v2.action, twoLine && v2.actionTwo]}>
+            <Text style={[v2.noteText, {color: textColor}]}>{meeting.notePath ? '📓' : '+📓'}</Text>
+          </View>
         </Pressable>
       )}
       {file && file.linkedFile ? (
-        <Pressable onPress={() => file.onOpen?.(file.linkedFile)} hitSlop={8} style={[v2.action, twoLine && v2.actionTwo]}>
-          <ClipIcon color={textColor} />
+        <Pressable onPress={() => file.onOpen?.(file.linkedFile)} hitSlop={8} style={v2.target}>
+          <View style={[v2.action, twoLine && v2.actionTwo]}>
+            <ClipIcon color={textColor} />
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -204,13 +212,12 @@ function MeetingRowV2({
 }
 
 const v2 = StyleSheet.create({
+  // Children stretch to the full height; each tap target carries ROW_PAD_DP itself.
   row: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     borderBottomWidth: 1,
-    paddingVertical: 7,
   },
-  rowOne: {alignItems: 'center'},
-  rowTwo: {alignItems: 'flex-start'},
   // Editing/arming/selected: a clear black 4 dp bar on the left.
   rowMarked: {
     borderLeftWidth: 4,
@@ -223,7 +230,9 @@ const v2 = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
+    paddingVertical: ROW_PAD_DP,
   },
+  target: {paddingVertical: ROW_PAD_DP},
   timeCol: {marginRight: 8},
   time: {
     fontSize: FONT.medium,
