@@ -1,17 +1,21 @@
 /**
  * What the item card shows (docs/dev/history/technical-design-item-card.md K8,
- * §6): the card takes Quick Add's place when a meeting is tapped once, in the
- * same four rows. Which slots appear and what they say is decided here;
- * ui/itemCard/MeetingCard.tsx only lays them out. Pure.
+ * K9, §6): the card takes Quick Add's place when a meeting or todo is tapped
+ * once, in the same four rows. Which slots appear and what they say is
+ * decided here; ui/itemCard/MeetingCard.tsx and TodoCard.tsx only lay them
+ * out. Pure.
  */
-import {formatDayHeader} from './dateFormat';
+import {formatDate, formatDayHeader} from './dateFormat';
+import {titleCaseSlug} from './flowState';
 import {formatMeetingWhen, todayIso} from './meetingTime';
 import {MeetingTrackingKind, meetingDisplayTitle, resolveMeetingTracking} from './meetingTracking';
 import {isHighlight} from './monthHighlight';
 import {NoteSetupConfig} from './noteSetups';
 import {reflectionOffered} from './reflection';
-import {threadsOfTags} from './threads';
-import {Meeting} from './types';
+import {parseKeywordLeadingDate} from './sharedNotePages';
+import {displayTaskText, taskLabels} from './taskLabels';
+import {threadOf, threadsOfTags} from './threads';
+import {FlowState, Meeting, Task} from './types';
 
 /** Whether the meeting has a reflection page: still being looked up, none, or one. */
 export type ReflectionLookup = 'unknown' | 'none' | 'exists';
@@ -96,5 +100,79 @@ export function meetingCardModel(input: MeetingCardInput): MeetingCardModel {
         : null,
     owner: {name: input.ownerName, canRefile: input.canRefile},
     canCancel: phase !== 'cancelled',
+  };
+}
+
+export interface TodoCardModel {
+  /** R1: "Todo · due 24.10.", "· waiting for Lena", "· next", "· done". */
+  heading: string;
+  /** R1: the meeting the todo was agreed in ("↳ Sparring Mieke ›"), opening its thread's overview when the meeting has a thread tag. */
+  origin: {label: string; threadTag: string | null} | null;
+  /** R2: the title without the tags its labels show, and the labels (`#next`, `#due 24.10.`). */
+  title: string;
+  labels: string[];
+  /** R3: the checkbox, the flow chips' value, and Now (offered only with Next). */
+  done: boolean;
+  flowState: FlowState;
+  now: boolean;
+  nowOffered: boolean;
+  note: 'open' | 'create';
+  /** R4: the area chip, the linked file or +clip, delete unless already deleted. */
+  owner: {name: string; canRefile: boolean};
+  file: {kind: 'linked'; path: string; name: string} | {kind: 'link'} | null;
+  canDelete: boolean;
+}
+
+export interface TodoCardInput {
+  task: Task;
+  today: string;
+  ownerName: string;
+  canLink: boolean;
+  canRefile: boolean;
+}
+
+/** What R1 says after "Todo · ": done or deleted first, then the due date, then the flow state. */
+function todoStatus(task: Task, today: string): string {
+  if (task.cancelled) return 'deleted';
+  if (task.done) return 'done';
+  if (task.dueDate) {
+    if (task.dueDate === today) return 'due today';
+    return `${task.dueDate < today ? 'overdue' : 'due'} ${formatDate(task.dueDate, today)}`;
+  }
+  if (task.flowState === 'waiting-for') return task.waitingOn ? `waiting for ${titleCaseSlug(task.waitingOn)}` : 'waiting';
+  return task.flowState ?? 'open';
+}
+
+/** The meeting a provenance key (`2026-10-14 Sparring Mieke sparring/mieke`) names: its title words, and its first thread tag. */
+export function originOfKey(key: string): {label: string; threadTag: string | null} | null {
+  const words = key.split(' ').filter(Boolean);
+  if (words.length === 0) return null;
+  const date = parseKeywordLeadingDate(key);
+  const rest = date ? words.slice(1) : words;
+  const threadTag = rest.map(word => threadOf(word)?.tag).find((tag): tag is string => !!tag) ?? null;
+  const title = rest.filter(word => !threadOf(word)).join(' ') || rest.join(' ');
+  return title ? {label: `↳ ${title}`, threadTag} : null;
+}
+
+export function todoCardModel(input: TodoCardInput): TodoCardModel {
+  const {task, today} = input;
+  const origin = task.fields.meeting ? originOfKey(task.fields.meeting) : null;
+  return {
+    heading: `Todo · ${todoStatus(task, today)}`,
+    origin: origin ? {label: origin.threadTag ? `${origin.label} ›` : origin.label, threadTag: origin.threadTag} : null,
+    title: displayTaskText(task, 'flat'),
+    labels: taskLabels(task, 'flat', today).map(label => label.text),
+    done: task.done,
+    flowState: task.flowState,
+    now: task.now,
+    nowOffered: task.flowState === 'next',
+    note: task.notePath ? 'open' : 'create',
+    owner: {name: input.ownerName, canRefile: input.canRefile},
+    file: task.linkedFile
+      ? {kind: 'linked', path: task.linkedFile, name: fileName(task.linkedFile)}
+      : input.canLink
+        ? {kind: 'link'}
+        : null,
+    canDelete: !task.cancelled,
   };
 }

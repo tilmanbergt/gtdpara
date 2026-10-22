@@ -13,13 +13,14 @@
  *   R3 Metadata  - flow chips + tag chips (or "Waiting on"), or meeting time +
  *                  tag chips, or note tag chips.
  *   R4           - more tag chips (one page spans R3 and R4); the provenance
- *                  line while a screen adds one; while editing, the commands
- *                  that act at once (delete, New from this, Refile, the linked
- *                  file's ✕, M - ui/quickAdd/ActionRow.tsx).
+ *                  line while a screen adds one.
  *
- * A meeting selected once shows its item card in the box instead
- * (`editTarget.mode === 'card'`, ui/itemCard/MeetingCard.tsx, where the
- * screen passes `meetingCard`); its edit form then holds fields only.
+ * A meeting or todo selected once shows its item card in the box instead
+ * (`editTarget.mode === 'card'`, ui/itemCard/, where the screen passes
+ * `meetingCard` / `todoCard`); its edit form then holds fields only. Where a
+ * screen passes no card - and for a loop's own edit - the edit form keeps
+ * the commands that act at once in R4 (delete, New from this, Refile, the
+ * linked file's ✕, M - ui/quickAdd/ActionRow.tsx).
  *
  * The parts: one hook per draft (ui/quickAdd/useTaskDraft.ts,
  * useMeetingDraft.ts, useNoteDraft.ts) over the shared state of
@@ -57,6 +58,8 @@ import {Destination} from '../domain/destination';
 import {usePerfRender} from '../utils/perf';
 import MeetingCard from './itemCard/MeetingCard';
 import {MeetingCardData} from './itemCard/useMeetingCard';
+import TodoCard from './itemCard/TodoCard';
+import {TodoCardData} from './itemCard/useTodoCard';
 import {errorMessage} from '../utils/errorMessage';
 import HighlightMark from './HighlightMark';
 import {CreateActions, EditActions, EditCommands} from './quickAdd/ActionRow';
@@ -118,6 +121,8 @@ interface Props {
    * it, the meeting's edit form holds fields only: the commands are on the card.
    */
   meetingCard?: MeetingCardData | null;
+  /** The selected todo's card (ui/itemCard/useTodoCard.ts), the same way: shown while `editTarget` is a todo in 'card' mode. */
+  todoCard?: TodoCardData | null;
   /** Resolve `false` when the save failed (the screen showed its own error) - the widget then keeps the edit open. */
   onSaveEditTask?: (nextText: string, nextLinkedFile: string) => Promise<void | boolean>;
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
@@ -209,7 +214,7 @@ interface Props {
 function QuickAddWidget(props: Props): React.JSX.Element {
   usePerfRender('QuickAddWidget');
   const {fixedDestination, editTarget, editingItemPath, taskOnly = false, onAddNote, noteFolderPath = null} = props;
-  const {onCancelEdit, onQuickFile, onRefile, onDeleteEdit, provenance, layoutKey, linkedFileMissing, meetingCard} = props;
+  const {onCancelEdit, onQuickFile, onRefile, onDeleteEdit, provenance, layoutKey, linkedFileMissing, meetingCard, todoCard} = props;
   const {textColor, borderColor, placeholderColor} = props;
   const colors = {textColor, borderColor, placeholderColor};
 
@@ -350,7 +355,10 @@ function QuickAddWidget(props: Props): React.JSX.Element {
 
   const editKind = editFields?.kind ?? null;
   // The item card in the box's place: a meeting selected once, where the screen passes its card.
-  const cardShown = editTarget?.mode === 'card' && editTarget.kind === 'meeting' && !!meetingCard;
+  const cardShown =
+    editTarget?.mode === 'card' && ((editTarget.kind === 'meeting' && !!meetingCard) || (editTarget.kind === 'task' && !!todoCard));
+  // A loop's own edit (the loop overview) has no card: it keeps the commands.
+  const taskCommands = editKind === 'task' && (!todoCard || editTarget?.kind === 'loop');
   const editCommands = editKind ? (
     <EditCommands
       pending={pending}
@@ -385,9 +393,12 @@ function QuickAddWidget(props: Props): React.JSX.Element {
     />
   ) : null;
   // R4 of the Todo tab: the provenance line while creating (K6), the
-  // commands while editing, else the second tag row.
-  const taskRow4 =
-    editKind === 'task' ? editCommands : provenance && provenance.length > 0 && !isEditing ? <ProvenanceLine parts={provenance} textColor={textColor} /> : undefined;
+  // commands while editing without a card, else the second tag row.
+  const taskRow4 = taskCommands
+    ? editCommands
+    : editKind === 'task'
+      ? undefined
+      : provenance && provenance.length > 0 && !isEditing ? <ProvenanceLine parts={provenance} textColor={textColor} /> : undefined;
 
   return (
     <QuickAddFrame
@@ -415,7 +426,9 @@ function QuickAddWidget(props: Props): React.JSX.Element {
         </>
       }
       card={
-        cardShown && meetingCard ? (
+        !cardShown ? null : editTarget?.kind === 'task' && todoCard ? (
+          <TodoCard card={todoCard} textColor={textColor} borderColor={borderColor} />
+        ) : meetingCard ? (
           <MeetingCard
             card={meetingCard}
             onNewFromThis={() =>

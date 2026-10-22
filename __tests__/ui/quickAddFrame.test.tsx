@@ -32,17 +32,19 @@ import {QuickAddAdds} from '../../src/ui/quickAdd/ProvenanceLine';
 import FlowStateChips from '../../src/ui/FlowStateChips';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
 import {Meeting, Task} from '../../src/domain/types';
-import {meetingCardModel} from '../../src/domain/itemCard';
+import {meetingCardModel, todoCardModel} from '../../src/domain/itemCard';
 import {EMPTY_NOTE_SETUP_CONFIG} from '../../src/domain/noteSetups';
 import {MeetingCardData} from '../../src/ui/itemCard/useMeetingCard';
+import {TodoCardData} from '../../src/ui/itemCard/useTodoCard';
 
-const task = {text: 'Call Tom #tag1', done: false, cancelled: false, tags: [], dueDate: null, flowState: null, waitingOn: null, now: false, notePath: '', linkedFile: 'Docs/plan.pdf'} as unknown as Task;
+const task = {text: 'Call Tom #tag1', done: false, cancelled: false, tags: [], dueDate: null, flowState: null, waitingOn: null, now: false, notePath: '', linkedFile: 'Docs/plan.pdf', fields: {meeting: null}} as unknown as Task;
 const meeting: Meeting = {title: 'Sync', date: '2026-10-22', time: '10:00', endTime: '', days: 1, tags: [], cancelled: false, notePath: '', linkedFile: 'Docs/a.pdf'};
 
 interface Setup {
   editTarget?: QuickAddEditTarget | null;
   provenance?: QuickAddAdds;
   meetingCard?: MeetingCardData | null;
+  todoCard?: TodoCardData | null;
 }
 
 /** Card data for `m` as useMeetingCard builds it, every handler a mock. */
@@ -55,7 +57,7 @@ function cardFor(m: Meeting, extra: Partial<Parameters<typeof meetingCardModel>[
   };
 }
 
-function render({editTarget = null, provenance, meetingCard}: Setup = {}) {
+function render({editTarget = null, provenance, meetingCard, todoCard}: Setup = {}) {
   let r!: TestRenderer.ReactTestRenderer;
   act(() => {
     r = TestRenderer.create(
@@ -75,6 +77,7 @@ function render({editTarget = null, provenance, meetingCard}: Setup = {}) {
           onQuickFile={async () => undefined}
           provenance={provenance}
           meetingCard={meetingCard}
+          todoCard={todoCard}
           textColor="#000"
           borderColor="#000"
           placeholderColor="#888"
@@ -167,6 +170,16 @@ describe('Quick Add box height', () => {
     }],
     ['meeting card, over, with a linked file', () =>
       render({editTarget: editTargetFor('meeting:1', {meeting}, 'card'), meetingCard: cardFor(meeting, {reflection: 'exists'})})],
+    ['todo card', () => {
+      const model = todoCardModel({task, today: '2026-10-21', ownerName: 'Garden renovation', canLink: true, canRefile: true});
+      const fn = () => jest.fn();
+      const data: TodoCardData = {
+        task, model, onEdit: fn(), onClose: fn(), onToggleDone: fn(), onFlow: fn(), onToggleNow: fn(), onNote: fn(), onUnlink: fn(), onDelete: fn(),
+      };
+      return render({editTarget: editTargetFor('task:1', {task}, 'card'), todoCard: data});
+    }],
+    ['edit todo where the screen has a card', () =>
+      render({editTarget: editTargetFor('task:1', {task}), todoCard: {} as TodoCardData})],
     ['meeting card, cancelled', () => {
       const cancelled = {...meeting, cancelled: true};
       return render({editTarget: editTargetFor('meeting:1', {meeting: cancelled}, 'card'), meetingCard: cardFor(cancelled)});

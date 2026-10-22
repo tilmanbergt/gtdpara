@@ -1,9 +1,9 @@
-/** The meeting card's model (docs/dev/history/technical-design-item-card.md K8, §6). */
-import {meetingCardModel, MeetingCardInput, meetingPhase} from '../../src/domain/itemCard';
+/** The item cards' models (docs/dev/history/technical-design-item-card.md K8, K9, §6). */
+import {meetingCardModel, MeetingCardInput, meetingPhase, originOfKey, todoCardModel, TodoCardInput} from '../../src/domain/itemCard';
 import {deriveMeetingFields} from '../../src/domain/markdown';
 import {createNoteSetup, NoteSetupConfig} from '../../src/domain/noteSetups';
 import {Meeting} from '../../src/domain/types';
-import {meeting} from '../../test-helpers/fixtures';
+import {meeting, task} from '../../test-helpers/fixtures';
 
 // Wed 21.10.2026, noon.
 const nowMs = new Date(2026, 9, 21, 12, 0).getTime();
@@ -76,5 +76,55 @@ describe('meetingCardModel', () => {
     expect(model(ahead, {canRefile: true, ownerName: 'Inbox'}).owner).toEqual({name: 'Inbox', canRefile: true});
     expect(model(ahead).canCancel).toBe(true);
     expect(model({...ahead, cancelled: true}).canCancel).toBe(false);
+  });
+});
+
+describe('todoCardModel', () => {
+  const today = '2026-10-21';
+  const todo = (text: string, extra: Parameters<typeof task>[1] = {}, input: Partial<TodoCardInput> = {}) =>
+    todoCardModel({task: task(text, extra), today, ownerName: 'Garden renovation', canLink: false, canRefile: false, ...input});
+
+  it('R1: done or deleted first, then the due date, then the flow state', () => {
+    expect(todo('Order soil #next', {done: true}).heading).toBe('Todo · done');
+    expect(todo('Order soil', {cancelled: true}).heading).toBe('Todo · deleted');
+    expect(todo('Order soil #next', {dueDate: '2026-10-24'}).heading).toBe('Todo · due 24.10.');
+    expect(todo('Order soil', {dueDate: '2026-10-21'}).heading).toBe('Todo · due today');
+    expect(todo('Order soil', {dueDate: '2026-10-19'}).heading).toBe('Todo · overdue 19.10.');
+    expect(todo('Quote #wf/marco').heading).toBe('Todo · waiting for Marco');
+    expect(todo('Quote #someday').heading).toBe('Todo · someday');
+    expect(todo('Quote').heading).toBe('Todo · open');
+  });
+
+  it('R1: the meeting it was agreed in, linking to its thread when the key has one', () => {
+    const agreed = todo('Send the canvas', {fields: {...task('x').fields, meeting: '2026-10-14 Sparring Mieke sparring/mieke'}});
+    expect(agreed.origin).toEqual({label: '↳ Sparring Mieke ›', threadTag: 'sparring/mieke'});
+    const plain = todo('Send the canvas', {fields: {...task('x').fields, meeting: '2026-10-14 Team sync'}});
+    expect(plain.origin).toEqual({label: '↳ Team sync', threadTag: null});
+    expect(todo('Send the canvas').origin).toBeNull();
+    expect(originOfKey('')).toBeNull();
+  });
+
+  it('R2: the title without the tags the labels show, then the labels', () => {
+    const card = todo('Order soil #next #garden', {dueDate: '2026-10-24'});
+    expect(card.title).toBe('Order soil #garden');
+    expect(card.labels).toEqual(['#next', '#due 24.10.']);
+  });
+
+  it('R3: done, flow state, Now only with Next, note', () => {
+    expect(todo('Order soil #next').nowOffered).toBe(true);
+    expect(todo('Order soil #next #now').now).toBe(true);
+    expect(todo('Order soil #someday').nowOffered).toBe(false);
+    expect(todo('Order soil #maybe').flowState).toBe('maybe');
+    expect(todo('Order soil').note).toBe('create');
+    expect(todo('Order soil', {notePath: 'Todos/x.note'}).note).toBe('open');
+  });
+
+  it('R4: refile, file or +clip by screen; delete unless deleted', () => {
+    expect(todo('Order soil', {}, {canRefile: true}).owner).toEqual({name: 'Garden renovation', canRefile: true});
+    expect(todo('Order soil', {linkedFile: 'Resources/plan.pdf'}).file).toEqual({kind: 'linked', path: 'Resources/plan.pdf', name: 'plan.pdf'});
+    expect(todo('Order soil', {}, {canLink: true}).file).toEqual({kind: 'link'});
+    expect(todo('Order soil').file).toBeNull();
+    expect(todo('Order soil').canDelete).toBe(true);
+    expect(todo('Order soil', {cancelled: true}).canDelete).toBe(false);
   });
 });
