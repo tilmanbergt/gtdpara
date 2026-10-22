@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-34 scenarios.
+36 scenarios.
 
 ## Close-out
 
@@ -61,7 +61,7 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 ### Refile a todo with its note from the Inbox to a project
 
 - **Given** Inbox.txt has the todo "Call Anna" with its note "Call Anna.note", and project "Website" exists
-- **When** I open the Inbox, tap "Call Anna", tap Refile, open Projects, tap "Website" and confirm Move
+- **When** I open the Inbox, tap "Call Anna", tap the refile arrow on its card, open Projects, tap "Website" and confirm Move
 - **Then** Website's project.txt has the todo with its note link, after "Write copy"
 - **Then** Inbox.txt no longer has it
 - **Then** the note moved into the project's folder, keywords and all
@@ -257,6 +257,22 @@ Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/techn
 
 Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
+### Todo card: Now, a flow chip, done and delete act at once
+
+- **Given** project "Garden renovation" has the todos "Order soil #next" and "Fix the fence"
+- **When** I tap "Order soil" on the project page
+- **Then** its card shows it as Next, with Now offered
+- **When** I tap Now
+- **Then** the todo gets #now
+- **When** I tap Someday on the card
+- **Then** it is Someday, and Now went with Next
+- **When** I tick it done on the card
+- **Then** it is done with today's completion date
+- **When** I tap the row "Fix the fence", Delete on its card, and confirm
+- **Then** it is marked cancelled, and Quick Add is back
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
 ### Quick Add a todo in a project
 
 - **Given** project "Website" has the todo "Write copy" and a hand-written Scope
@@ -270,9 +286,9 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 ### Edit a todo, then tap another one: the first edit is saved
 
 - **Given** project "Website" has the todos "Write copy" and "Fix footer"
-- **When** I open "Website", tap "Write copy", change it to "Write landing page copy" and tap "Fix footer"
+- **When** I open "Website", tap "Write copy" and Edit on its card, change it to "Write landing page copy" and tap "Fix footer"
 - **Then** project.txt has the changed todo, still #next, and "Fix footer" unchanged
-- **Then** "Fix footer" is now the one being edited
+- **Then** "Fix footer" is now the selected one, shown as its card (technical-design-item-card.md §3)
 
 Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-meeting-lists.md`
 
@@ -304,6 +320,18 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 - **And** "Start over" stores the defaults and the message goes away
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+## Threads
+
+### Todo card: the meeting a todo was agreed in opens its thread
+
+- **Given** area "Coaching" has a sparring session last week and a todo agreed in it
+- **When** I tap the todo on Coaching
+- **Then** its card names the meeting
+- **When** I tap it
+- **Then** the thread overview opens
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
 ## Weekly Review
 

@@ -1,6 +1,6 @@
 {
   "maxLines": {
-    "src/screens/DailyView.tsx": 1537,
+    "src/screens/DailyView.tsx": 1509,
     "src/supernote/fileSystem.ts": 1250
   }
 }

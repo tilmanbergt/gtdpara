@@ -117,11 +117,14 @@ export function useTodoCard(options: TodoCardOptions): TodoCardData | null {
     onEdit: options.onEdit,
     onClose: options.onClose,
     onToggleDone: options.onToggleDone ?? (() => write('ticked done', t => withTaskDone(t, !t.done, todayIso()))),
-    // Tapping the chip that is on clears it, as on the row's chips.
+    // Tapping the chip that is on clears it, as on the row's chips. Now
+    // exists only with Next, so leaving Next drops it.
     onFlow: next =>
-      write(`set flow ${next ?? 'none'}`, t =>
-        withTaskText(t, setFlowStateTag(t.text, next === t.flowState ? null : next, next === 'waiting-for' ? t.waitingOn ?? undefined : undefined)),
-      ),
+      write(`set flow ${next ?? 'none'}`, t => {
+        const flow = next === t.flowState ? null : next;
+        const text = setFlowStateTag(t.text, flow, flow === 'waiting-for' ? t.waitingOn ?? undefined : undefined);
+        return withTaskText(t, flow === 'next' ? text : setNowTag(text, false));
+      }),
     onToggleNow: options.onToggleNow ?? (() => write('switched now', t => withTaskText(t, setNowTag(t.text, !t.now)))),
     onNote: options.onNote,
     onOpenFile: linkedFile && options.onOpenFile ? () => options.onOpenFile?.(linkedFile) : undefined,

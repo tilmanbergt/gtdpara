@@ -1,5 +1,5 @@
 import {device} from '../../test-helpers/fakeDevice/device';
-import {closeApp, expectShows, openApp, runIntegrityCheck, shows, tap, tapTab, type} from '../../test-helpers/scenario/app';
+import {closeApp, expectShows, openApp, runIntegrityCheck, shows, tap, tapLabel, tapTab, type} from '../../test-helpers/scenario/app';
 import {dataFile, INBOX_FILE, PATHS, projectDir, projectFile, putFile} from '../../test-helpers/scenario/files';
 import {and, freshDevice, given, scenario, then, when} from '../../test-helpers/scenario/scenario';
 
@@ -45,7 +45,7 @@ scenario('A refile with its note, stopped after any write, loses nothing and is 
       await openApp();
       await tapTab('Inbox');
       await tap('Call Anna');
-      await tap('Refile');
+      await tapLabel('Refile');
       await tap('📁 Projects ›');
       await tap(/Website/);
       await stopAfter(n, () => tap('Move'));

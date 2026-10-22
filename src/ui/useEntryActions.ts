@@ -48,6 +48,7 @@ import {useEngagePrompt} from './useEngagePrompt';
 import {useEntryMoveUi} from './useEntryMoveUi';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
 import {MeetingCardOptions} from './itemCard/useMeetingCard';
+import {TodoCardOptions} from './itemCard/useTodoCard';
 import {openOrCreateReflectionPage} from '../storage/reflectionPage';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
@@ -163,7 +164,7 @@ export function useEntryActions(name = 'ThreadOverview') {
         tasks[entry.taskIndex] = applyTaskEdit(tasks[entry.taskIndex], text, linkedFile);
         return tasks;
       });
-      edit.cancel();
+      edit.saved(); // back to the todo's card
     });
   };
   const commitMeetingEdit = (entry: ThreadMeetingEntry, fields: MeetingQuickAddFields, linkedFile: string): Promise<boolean> =>
@@ -277,6 +278,24 @@ export function useEntryActions(name = 'ThreadOverview') {
 
   const tracking = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
 
+  /** The selected todo's card (ui/itemCard/useTodoCard.ts); done goes through the row's own toggleDone. */
+  const todoCardOptions = (entry: ThreadTaskEntry | null): TodoCardOptions => ({
+    name: LOG,
+    selection: entry && {task: entry.task, itemPath: entry.item.path, ownerName: entry.item.name, inbox: entry.item.kind === 'inbox'},
+    updateTask: async change => {
+      if (entry) await saveTasks(entry, tasks => tasks.map((t, i) => (i === entry.taskIndex ? change(t) : t)));
+    },
+    onToggleDone: () => {
+      if (entry) toggleDone(entry);
+    },
+    onNote: () => {
+      if (entry) taskNote(entry);
+    },
+    onOpenFile: linkedFile => openFile(linkedFile),
+    onEdit: edit.edit,
+    onClose: edit.cancel,
+  });
+
   /** The selected meeting's card (ui/itemCard/useMeetingCard.ts); no Files pane here: no +clip, refile only by abbreviation tag. */
   const cardOptions = (entry: ThreadMeetingEntry | null): MeetingCardOptions => ({
     name: LOG,
@@ -318,6 +337,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     tracking,
     reflection,
     cardOptions,
+    todoCardOptions,
     openFile,
     openTaskFile,
   };

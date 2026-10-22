@@ -20,6 +20,7 @@ import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../../../ui/useNoteCreateConfirm';
 import {useMeetingCard} from '../../../ui/itemCard/useMeetingCard';
+import {useTodoCard} from '../../../ui/itemCard/useTodoCard';
 import {addMeetingToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, mutateEntryMeetings, mutateEntryTasks} from '../../../storage/itemMutations';
 import {loadSettings} from '../../../storage/settingsStorage';
 import {FolderEntry} from '../../../supernote/fileSystem';
@@ -85,7 +86,6 @@ export default function InboxStep({
     target: editTarget,
     mode: editMode,
     arm: inboxZeroArmTarget,
-    start: startEditTarget,
     select: selectEditTarget,
     edit: editSelected,
     saved: savedEditTarget,
@@ -182,7 +182,7 @@ export default function InboxStep({
 
   const armInboxLinkTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'});
   const armInboxFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
-  const startEditingInboxTask = (taskIndex: number) => startEditTarget({type: 'task', index: taskIndex});
+  const selectInboxTask = (taskIndex: number) => selectEditTarget({type: 'task', index: taskIndex});
   /** First tap: the meeting's card; a second tap edits (ui/useEditTarget.ts). */
   const selectInboxMeeting = (meetingIndex: number) => selectEditTarget({type: 'meeting', index: meetingIndex});
 
@@ -216,7 +216,7 @@ export default function InboxStep({
   const handleInboxTaskSave = (taskIndex: number, nextText: string, nextLinkedFile: string): Promise<boolean> =>
     action.runSave(async () => {
       await changeTask(taskIndex, t => applyTaskEdit(t, nextText, nextLinkedFile));
-      cancelEditTarget();
+      savedEditTarget(); // back to the todo's card
       log('ReviewScreen: inbox task edited', taskIndex);
     });
 
@@ -268,6 +268,23 @@ export default function InboxStep({
   const editingInboxMeeting = editingInboxMeetingIndex !== null ? inbox?.meetings[editingInboxMeetingIndex] ?? null : null;
   const armingInboxTaskIndex = inboxZeroArmTarget?.type === 'task' ? inboxZeroArmTarget.index : null;
   const armingInboxMeetingIndex = inboxZeroArmTarget?.type === 'meeting' ? inboxZeroArmTarget.index : null;
+
+  // The selected Inbox todo's card.
+  const todoIndex = editingInboxTaskIndex;
+  const todoCard = useTodoCard({
+    name: 'ReviewInboxStep',
+    selection: editingInboxTask && inboxPath ? {task: editingInboxTask, itemPath: inboxPath, ownerName: 'Inbox', inbox: true} : null,
+    updateTask: async change => {
+      if (todoIndex !== null) await changeTask(todoIndex, change);
+    },
+    onToggleDone: () => todoIndex !== null && handleInboxTaskDone(todoIndex),
+    onNote: () => todoIndex !== null && handleInboxTaskNote(todoIndex),
+    onOpenFile: linkedFile => onOpenInboxLinkedFile(linkedFile),
+    onArmLink: () => todoIndex !== null && armInboxLinkTarget('task', todoIndex),
+    onArmRefile: () => todoIndex !== null && armInboxFileTarget('task', todoIndex),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
+  });
 
   // The selected Inbox meeting's card; Inbox meetings always get their own note.
   const cardIndex = editingInboxMeetingIndex;
@@ -378,6 +395,7 @@ return (
           meeting: editingInboxMeeting,
         }, editMode)}
         meetingCard={meetingCard}
+        todoCard={todoCard}
         onSaveEditTask={
           editingInboxTaskIndex !== null
             ? (nextText, nextLinkedFile) => handleInboxTaskSave(editingInboxTaskIndex, nextText, nextLinkedFile)
@@ -423,7 +441,7 @@ return (
             task={task}
             isEditing={editingInboxTaskIndex === taskIndex}
             isArming={armingInboxTaskIndex === taskIndex}
-            onStartEdit={() => startEditingInboxTask(taskIndex)}
+            onStartEdit={() => selectInboxTask(taskIndex)}
             ownerPath={inboxPath}
             onToggleDone={() => handleInboxTaskDone(taskIndex)}
             onCreateNote={() => handleInboxTaskNote(taskIndex)}

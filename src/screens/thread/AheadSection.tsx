@@ -152,7 +152,7 @@ export default function AheadSection(props: Props): React.JSX.Element {
             key={row.key}
             task={entry.task}
             isEditing={edit.target?.type === 'task' && edit.target.key === taskEntryKey(entry)}
-            onStartEdit={() => edit.start({type: 'task', key: taskEntryKey(entry)})}
+            onStartEdit={() => edit.select({type: 'task', key: taskEntryKey(entry)})}
             onToggleDone={() => actions.toggleDone(entry)}
             onCreateNote={() => actions.taskNote(entry)}
             onOpenNote={() => actions.taskNote(entry)}

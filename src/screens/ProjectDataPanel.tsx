@@ -73,7 +73,7 @@ import {
 import {Meeting, Task} from '../domain/types';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination} from '../domain/destination';
-import {withTaskCancelled} from '../domain/taskEdit';
+import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
 import {ResolvedParaPaths, resolvePaths} from '../domain/settings';
 import {CachedItem, ensureItemCached, findCachedItem, updateItemMeetings, updateItemTasks} from '../storage/dataCache';
 import {resolveFilingPick} from '../storage/inboxFiling';
@@ -84,7 +84,10 @@ import {linkedFileStatus, linkRootPath, locateLinkedFile, openLinkedFile, toLink
 import {saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {GtdParaSettings} from '../domain/settings';
-import {openOrCreateMeetingNote} from '../storage/meetingNoteContent';
+import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../storage/meetingNoteContent';
+import {todayIso} from '../domain/meetingTime';
+import {useEngagePrompt} from '../ui/useEngagePrompt';
+import {useTodoCard} from '../ui/itemCard/useTodoCard';
 import {useMeetingCard} from '../ui/itemCard/useMeetingCard';
 import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {createStandaloneNote} from '../storage/standaloneNotes';
@@ -210,7 +213,6 @@ export default function ProjectDataPanel({
     target: editTarget,
     mode: editMode,
     arm: armTarget,
-    start: startEdit,
     select: selectEdit,
     edit: editSelected,
     saved: savedEditTarget,
@@ -226,6 +228,7 @@ export default function ProjectDataPanel({
   // create/open note), lifted here since the widget itself is lifted too.
   const widgetAction = useActionError('ProjectDataPanel.widgetError', 'ProjectDataPanel: widget action failed');
   const confirmNoteCreate = useNoteCreateConfirm('ProjectDataPanel.cardNoteCreateConfirm');
+  const engagePrompt = useEngagePrompt('ProjectDataPanel');
   // Loaded once on mount, same self-contained "load your own settings"
   // pattern hideDone/icsUrl below already use - needed to resolve linkedFile
   // (base-root-relative) to/from an absolute path and to know where the
@@ -447,7 +450,6 @@ export default function ProjectDataPanel({
   );
 
   // One edit at a time (ui/useEditTarget.ts): starting another saves this one first.
-  const startEditTarget = useCallback((type: 'task' | 'meeting', index: number) => startEdit({type, index}), [startEdit]);
   // Arming (Link, Refile) is reached from inside edit mode; the edit stays open meanwhile.
   const armLinkTarget = useCallback((type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'}), [armFor]);
   const armRefileTarget = useCallback((type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'refile'}), [armFor]);
@@ -509,7 +511,7 @@ export default function ProjectDataPanel({
       const next = state.tasks.slice();
       next[index] = applyTaskEdit(next[index], nextText, nextLinkedFile);
       await withTasks(next);
-      cancelEditTarget();
+      savedEditTarget(); // back to the todo's card
     });
   };
 
@@ -603,6 +605,39 @@ export default function ProjectDataPanel({
     if (editTarget) armRefileTarget(editTarget.type, editTarget.index);
   });
 
+  // The selected todo's card: writes go through withTasks on the todo's current stored copy.
+  const todoIndex = editTarget?.type === 'task' ? editTarget.index : null;
+  const todoTask = todoIndex !== null ? state?.tasks[todoIndex] : undefined;
+  const changeTask = async (change: (task: Task) => Task) => {
+    if (!state || todoIndex === null) return;
+    await withTasks(state.tasks.map((t, i) => (i === todoIndex ? change(t) : t)));
+  };
+  const todoCard = useTodoCard({
+    name: 'ProjectDataPanel',
+    selection: todoTask ? {task: todoTask, itemPath: path, ownerName: name} : null,
+    updateTask: changeTask,
+    // As the row's checkbox: ticking a todo done may offer Engage next.
+    onToggleDone: () => {
+      if (!todoTask) return;
+      runWidgetAction(async () => {
+        await changeTask(t => withTaskDone(t, !t.done, todayIso()));
+        if (!todoTask.done) engagePrompt.afterDone(path, todoTask);
+      });
+    },
+    onNote: () => {
+      if (todoIndex === null || !todoTask || !settings) return;
+      runWidgetAction(async () => {
+        const {task: next, changed} = await openOrCreateTodoNote(todoTask, path, settings, null, {confirmCreate: confirmNoteCreate});
+        if (changed) await changeTask(t => ({...t, notePath: next.notePath}));
+      });
+    },
+    onOpenFile: onOpenLinkedFile,
+    onArmLink: () => todoIndex !== null && armLinkTarget('task', todoIndex),
+    onArmRefile: () => todoIndex !== null && armRefileTarget('task', todoIndex),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
+  });
+
   // The selected meeting's card (docs/dev/history/technical-design-item-card.md §6):
   // writes go through withMeetings on the meeting's current stored copy.
   const cardIndex = editTarget?.type === 'meeting' ? editTarget.index : null;
@@ -674,6 +709,7 @@ export default function ProjectDataPanel({
           editMode,
         )}
         meetingCard={meetingCard}
+        todoCard={todoCard}
         onSaveEditTask={stableCommitTaskEdit}
         onSaveEditMeeting={stableCommitMeetingEdit}
         flushEditRef={flushEditRef}
@@ -705,7 +741,7 @@ export default function ProjectDataPanel({
             onSave={withTasks}
             editingIndex={editTarget?.type === 'task' ? editTarget.index : null}
             armingIndex={armTarget?.type === 'task' ? armTarget.index : null}
-            onStartEdit={index => startEditTarget('task', index)}
+            onStartEdit={index => selectEdit({type: 'task', index})}
             onArmLink={index => armLinkTarget('task', index)}
             onOpenLinkedFile={onOpenLinkedFile}
             filter={predicates?.task}

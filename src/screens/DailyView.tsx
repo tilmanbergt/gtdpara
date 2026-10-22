@@ -94,7 +94,7 @@ import {
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination, destinationLabel} from '../domain/destination';
 import {setNowTag} from '../domain/flowState';
-import {withTaskCancelled, withTaskDone, withTaskText} from '../domain/taskEdit';
+import {withTaskDone, withTaskText} from '../domain/taskEdit';
 import {isoDateOffset, meetingTimestampMs, todayIso} from '../domain/meetingTime';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
@@ -147,6 +147,7 @@ import {useEngagePrompt} from '../ui/useEngagePrompt';
 import {errorMessage} from '../utils/errorMessage';
 import {useCachedInbox} from '../ui/useCachedInbox';
 import {useMeetingCard} from '../ui/itemCard/useMeetingCard';
+import {useTodoCard} from '../ui/itemCard/useTodoCard';
 
 interface Props {
   onOpenItem: (kind: 'project' | 'area', entry: FolderEntry) => void;
@@ -273,7 +274,6 @@ export default function DailyView({
   const {
     target: editTarget,
     mode: editMode,
-    start: startEditTarget,
     select: selectEditTarget,
     edit: editSelected,
     saved: savedEditTarget,
@@ -448,7 +448,6 @@ export default function DailyView({
   const widgetAction = useActionError('DailyView.widgetError', 'DailyView: widget action failed');
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
-  const runWidgetAction = widgetAction.run;
   const engagePrompt = useEngagePrompt('DailyView');
 
   const handleToggleDone = (entry: DailyTaskEntry) => {
@@ -561,9 +560,8 @@ export default function DailyView({
   // - same shape as ProjectDataPanel's runAction.
   const runTaskAction = tasksAction.run;
 
-  const startTaskEdit = (entry: DailyTaskEntry) => {
-    startEditTarget({type: 'task', key: taskKey(entry)});
-  };
+  /** First tap: the todo's card in Quick Add's place; a second tap edits (ui/useEditTarget.ts). */
+  const selectTask = (entry: DailyTaskEntry) => selectEditTarget({type: 'task', key: taskKey(entry)});
 
   /**
    * ui/QuickAddWidget.tsx's `editingTask` mode onSaveEditTask - `nextText`
@@ -583,19 +581,7 @@ export default function DailyView({
         tasks[entry.taskIndex] = applyTaskEdit(tasks[entry.taskIndex], text, nextLinkedFile);
         return tasks;
       });
-      cancelEditTarget();
-    });
-  };
-
-  /** Soft-delete, triggered by ui/QuickAddWidget.tsx's "Delete" button in edit mode (technical-design-linked-files.md §1/§7) - only ever called on the entry currently being edited (handleDeleteEditForWidget below), so closing edit mode on success here is safe. */
-  const handleCancelTask = (entry: DailyTaskEntry) => {
-    Keyboard.dismiss();
-    runWidgetAction(async () => {
-      await saveEntryTasks(entry, tasks => {
-        tasks[entry.taskIndex] = withTaskCancelled(tasks[entry.taskIndex], true);
-        return tasks;
-      });
-      cancelEditTarget();
+      savedEditTarget(); // back to the todo's card
     });
   };
 
@@ -650,23 +636,6 @@ export default function DailyView({
     });
   };
 
-  /** See handleCancelTask above - only ever called on the entry currently being edited (handleDeleteEditForWidget below). */
-  const handleCancelMeeting = (entry: DailyMeetingEntry) => {
-    Keyboard.dismiss();
-    runWidgetAction(async () => {
-      await saveEntryMeetings(entry, meetings => {
-        meetings[entry.meetingIndex] = {...meetings[entry.meetingIndex], cancelled: true};
-        return meetings;
-      });
-      cancelEditTarget();
-    });
-  };
-
-  /** ui/QuickAddWidget.tsx's onDeleteEdit - single entry point since only one of editingTaskEntry/editingMeetingEntry can be set at a time (the screen's own §6 guard). */
-  const handleDeleteEditForWidget = () => {
-    if (editTarget?.type === 'task' && editingTaskEntry) handleCancelTask(editingTaskEntry);
-    else if (editTarget?.type === 'meeting' && editingMeetingEntry) handleCancelMeeting(editingMeetingEntry);
-  };
 
   /**
    * QuickAddWidget's onQuickFile in edit mode: "save, but file elsewhere".
@@ -816,17 +785,10 @@ export default function DailyView({
   const meetingsToday = displayAggregate.meetings.filter(entry => dailyEntryDate(entry) === todayDate);
   const meetingsTomorrow = displayAggregate.meetings.filter(entry => dailyEntryDate(entry) === tomorrowDate);
 
-  // Row markup itself is the shared ui/TaskRow.tsx (docs/dev/technical-design-
-  // inbox-tab.md §1) - this screen just wires its own handlers into it,
-  // same as ProjectDataPanel/ReviewScreen/InboxScreen do. No `onFile` here -
-  // Daily is not a filing surface (see the module doc comment).
-  //
-  // `heightPx` (docs/dev/history/technical-design-pagination-fixed-height.md §3.1):
-  // passed by renderFlatTaskRow below, computed via taskRowHeight() the same
-  // way it's summed for PagedSection's own viewport math, so the rendered
-  // row matches exactly what pagination assumed - same height/numberOfLines
-  // pairing ui/TaskRow.tsx's own doc comment documents. Left undefined for
-  // focus mode's renderFocusTaskEntry below (unpaginated).
+  // The shared ui/TaskRow.tsx with this screen's handlers; no `onFile` (Daily
+  // is not a filing surface). `heightPx` (technical-design-pagination-fixed-
+  // height.md §3.1) is what pagination assumed for the row, from taskRowHeight();
+  // undefined for focus mode's unpaginated rows.
   const renderTaskEntry = (entry: DailyTaskEntry, heightPx?: number) => {
     const key = taskKey(entry);
     return (
@@ -834,7 +796,7 @@ export default function DailyView({
         key={key}
         task={entry.task}
         isEditing={editTarget?.type === 'task' && editTarget.key === key}
-        onStartEdit={() => startTaskEdit(entry)}
+        onStartEdit={() => selectTask(entry)}
         onToggleDone={() => handleToggleDone(entry)}
         onCreateNote={() => handleTaskNote(entry)}
         onOpenNote={() => handleTaskNote(entry)}
@@ -986,7 +948,22 @@ export default function DailyView({
   // comment for why the fallback every other screen relies on is wrong here.
   const editingEntryItem = editingTaskEntry?.item ?? editingMeetingEntry?.item ?? null;
   const editingItemPath = editingEntryItem && editingEntryItem.kind !== 'inbox' ? editingEntryItem.path : null;
-  // The selected meeting's card; Daily has no Files pane: no +clip, refile only by abbreviation tag.
+  // The selected todo's and meeting's cards; Daily has no Files pane: no +clip, refile only by abbreviation tag.
+  const todoEntry = editingTaskEntry;
+  const todoCard = useTodoCard({
+    name: 'DailyView',
+    selection: todoEntry && {task: todoEntry.task, itemPath: todoEntry.item.path, ownerName: todoEntry.item.name, inbox: todoEntry.item.kind === 'inbox'},
+    updateTask: async change => {
+      if (todoEntry) await saveEntryTasks(todoEntry, ts => ts.map((t, i) => (i === todoEntry.taskIndex ? change(t) : t)));
+    },
+    onToggleDone: () => todoEntry && handleToggleDone(todoEntry),
+    onToggleNow: () => todoEntry && handleToggleNow(todoEntry),
+    onNote: () => todoEntry && handleTaskNote(todoEntry),
+    onOpenFile: linkedFile => onOpenLinkedFile(linkedFile),
+    onOpenOwner: () => todoEntry && openItem(todoEntry.item),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
+  });
   const meetingCard = useMeetingCard({
     name: 'DailyView',
     selection: editingMeetingEntry && {
@@ -1087,7 +1064,6 @@ export default function DailyView({
     editingMeetingEntry ? commitMeetingEdit(editingMeetingEntry, fields, nextLinkedFile) : Promise.resolve(false),
   );
   const stableCancelEdit = useStableCallback(cancelEditTarget);
-  const stableDeleteEdit = useStableCallback(handleDeleteEditForWidget);
   const stableQuickFileEdit = useStableCallback(handleQuickFileEdit);
   const editingTaskForWidget = useMemo(
     () =>
@@ -1340,11 +1316,11 @@ export default function DailyView({
                   isMeetingDateVisible={stableIsMeetingDateVisible}
                   editTarget={editTargetFor(editTarget && `${editTarget.type}:${editTarget.key}`, {task: editingTaskForWidget, meeting: editingMeetingEntry?.meeting}, editMode)}
                   meetingCard={meetingCard}
+                  todoCard={todoCard}
                   onSaveEditTask={editingTaskEntry ? stableSaveEditTask : undefined}
                   onSaveEditMeeting={editingMeetingEntry ? stableSaveEditMeeting : undefined}
                   flushEditRef={flushEditRef}
                   onCancelEdit={stableCancelEdit}
-                  onDeleteEdit={stableDeleteEdit}
                   onQuickFile={editTarget ? stableQuickFileEdit : undefined}
                   editingItemPath={editingItemPath}
                   linkedFileMissing={linkedFileMissing}

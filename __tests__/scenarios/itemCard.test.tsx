@@ -260,3 +260,68 @@ scenario('Link a file from the card on an Area page, and unlink it', {feature: '
     expect(labelled('Link file')).not.toBeNull();
   });
 });
+
+scenario('Todo card: Now, a flow chip, done and delete act at once', {feature: 'Quick Add', design: 'technical-design-item-card.md'}, () => {
+  given('project "Garden renovation" has the todos "Order soil #next" and "Fix the fence"', () => {
+    putFile(projectFile('Garden renovation'), dataFile('project', {Scope: [], Tasks: ['- [ ] Order soil #next', '- [ ] Fix the fence'], Meetings: []}));
+  });
+  when('I tap "Order soil" on the project page', async () => {
+    await openApp();
+    await tapTab('Projects');
+    await tap(/^Garden renovation/);
+    await tap('Order soil');
+  });
+  then('its card shows it as Next, with Now offered', () => {
+    expectShows('Todo · next');
+    expect(labelled('Now')).toEqual({on: false, disabled: false});
+  });
+  when('I tap Now', () => tapLabel('Now'));
+  then('the todo gets #now', () => {
+    expect(sectionLines(projectFile('Garden renovation'), 'Tasks')[0]).toBe('- [ ] Order soil #next #now');
+  });
+  when('I tap Someday on the card', () => tap('Someday'));
+  then('it is Someday, and Now went with Next', () => {
+    expect(sectionLines(projectFile('Garden renovation'), 'Tasks')[0]).toBe('- [ ] Order soil #someday');
+    expectShows('Todo · someday');
+  });
+  when('I tick it done on the card', () => tapLabel('Done'));
+  then('it is done with today\'s completion date', () => {
+    expect(sectionLines(projectFile('Garden renovation'), 'Tasks')[0]).toMatch(/^- \[x\] Order soil #someday \[completion:: \d{4}-\d{2}-\d{2}\]$/);
+  });
+  when('I tap the row "Fix the fence", Delete on its card, and confirm', async () => {
+    // After the tick, Engage's prompt in the status line offers "Fix the fence" first; the row is the second.
+    await tap('Fix the fence', 1);
+    await tapLabel('Delete');
+    expectShows(/^Delete "Fix the fence"\?/);
+    await tap('Delete');
+  });
+  then('it is marked cancelled, and Quick Add is back', () => {
+    expect(sectionLines(projectFile('Garden renovation'), 'Tasks')[1]).toBe('- [-] Fix the fence');
+    expectShows('+ Add');
+  });
+});
+
+scenario('Todo card: the meeting a todo was agreed in opens its thread', {feature: 'Threads', design: 'technical-design-item-card.md'}, () => {
+  given('area "Coaching" has a sparring session last week and a todo agreed in it', () => {
+    putFile(
+      areaFile('Coaching'),
+      dataFile('area', {
+        Scope: [],
+        Tasks: [`- [ ] Send Mieke the role canvas [meeting:: ${lastWeek} Sparring Mieke sparring/mieke]`],
+        Meetings: [`- ${lastWeek} 10:00-11:00 Sparring Mieke #sparring/mieke`],
+      }),
+    );
+  });
+  when('I tap the todo on Coaching', async () => {
+    await openApp();
+    await tapTab('Areas');
+    await tap(/^Coaching/);
+    await tap('Send Mieke the role canvas');
+  });
+  then('its card names the meeting', () => expectShows('↳ Sparring Mieke ›'));
+  when('I tap it', () => tap('↳ Sparring Mieke ›'));
+  then('the thread overview opens', () => {
+    expectShows('Looking back');
+    expectShows('#sparring/mieke');
+  });
+});

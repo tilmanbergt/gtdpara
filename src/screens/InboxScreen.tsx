@@ -87,10 +87,11 @@ import {ActivityIndicator, Keyboard, Pressable, StyleSheet, Text, View} from 're
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination} from '../domain/destination';
 import {groupTasksByFlowState} from '../domain/flowState';
-import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
+import {withTaskDone} from '../domain/taskEdit';
 import {splitAndSortMeetings, todayIso} from '../domain/meetingTime';
 import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../domain/noteSetups';
 import {useMeetingCard} from '../ui/itemCard/useMeetingCard';
+import {useTodoCard} from '../ui/itemCard/useTodoCard';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {findCachedItem, getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
@@ -215,7 +216,6 @@ export default function InboxScreen({
     target: editTarget,
     mode: editMode,
     arm: armTarget,
-    start: startEdit,
     select: selectEdit,
     edit: editSelected,
     saved: savedEditTarget,
@@ -300,7 +300,7 @@ export default function InboxScreen({
   };
 
   // Used by every other Tasks-row action below (toggle done, create/open
-  // note, file, link); add/edit/delete go through runWidgetAction instead.
+  // note, file, link); edits go through runWidgetSave, the card's writes through its own hook.
   const runTaskAction = tasksAction.run;
 
   const handleToggleTaskDone = (taskIndex: number) => {
@@ -312,8 +312,6 @@ export default function InboxScreen({
     );
   };
 
-  // One edit at a time (ui/useEditTarget.ts): starting another saves this one first.
-  const startEditTarget = (type: 'task' | 'meeting', index: number) => startEdit({type, index});
   // Arming is reached from inside edit mode; the edit stays open meanwhile.
   const armLinkTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'});
   const armFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
@@ -327,7 +325,6 @@ export default function InboxScreen({
    */
   /** Resolves true on success, false when it failed (error shown) - Quick Add's save-then-switch needs to know (ui/useEditFlush.ts). */
   const runWidgetSave = widgetAction.runSave;
-  const runWidgetAction = widgetAction.run;
 
   /**
    * QuickAddWidget's `editingTask` mode onSaveEditTask - `nextText` is
@@ -335,9 +332,9 @@ export default function InboxScreen({
    * this only needs to write through. `nextLinkedFile` is assigned straight
    * onto the field - it's never embedded in `nextText` (see
    * domain/markdown.ts's extractLinkedFile/appendLinkedFile doc comments).
-   * cancelEditTarget() is called inside the try so edit mode closes only on
-   * a successful save: runWidgetAction swallows errors, so chaining
-   * `.then(() => cancelEditTarget())` would close it even on failure.
+   * savedEditTarget() is called inside the try so the edit returns to the
+   * card only on a successful save: runWidgetSave swallows errors, so
+   * chaining `.then(...)` would leave the edit even on failure.
    */
   const commitTaskEdit = (nextText: string, nextLinkedFile: string): Promise<boolean> => {
     if (editTarget?.type !== 'task') return Promise.resolve(false);
@@ -349,7 +346,7 @@ export default function InboxScreen({
         tasks[taskIndex] = applyTaskEdit(tasks[taskIndex], text, nextLinkedFile);
         return tasks;
       });
-      cancelEditTarget();
+      savedEditTarget(); // back to the todo's card
     });
   };
 
@@ -401,7 +398,7 @@ export default function InboxScreen({
   };
 
   // Used by every other Meetings-row action below (create/open note, file,
-  // link); add/edit/delete go through runWidgetAction instead.
+  // link); edits go through runWidgetSave, the card's writes through its own hook.
   const runMeetingAction = meetingsAction.run;
 
   /**
@@ -421,27 +418,6 @@ export default function InboxScreen({
         return meetings;
       });
       savedEditTarget(); // back to the meeting's card
-    });
-  };
-
-  /** Soft-deletes the edited row; triggered by QuickAddWidget's "Delete" button in edit mode, for both row types. */
-  const handleDeleteEditForWidget = () => {
-    if (!editTarget) return;
-    Keyboard.dismiss();
-    const target = editTarget;
-    runWidgetAction(async () => {
-      if (target.type === 'task') {
-        await saveInboxTasks(tasks => {
-          tasks[target.index] = withTaskCancelled(tasks[target.index], true);
-          return tasks;
-        });
-      } else {
-        await saveInboxMeetings(meetings => {
-          meetings[target.index] = {...meetings[target.index], cancelled: true};
-          return meetings;
-        });
-      }
-      cancelEditTarget();
     });
   };
 
@@ -714,6 +690,21 @@ export default function InboxScreen({
     ...past.map(({meeting, index}): MeetingEntryRow => ({rowKey: `meeting-${index}`, meeting, index})),
   ];
   const editingMeeting = editingMeetingIndex !== null ? meetings[editingMeetingIndex] ?? null : null;
+  // The selected todo's card; the done tick goes through the row's own handler.
+  const cardTask = editingTaskIndex !== null ? tasks[editingTaskIndex] : undefined;
+  const todoCard = useTodoCard({
+    name: 'InboxScreen',
+    selection: cardTask && inboxPath ? {task: cardTask, itemPath: inboxPath, ownerName: 'Inbox', inbox: true} : null,
+    updateTask: change => saveInboxTasks(ts => ts.map((t, i) => (i === editingTaskIndex ? change(t) : t))),
+    onToggleDone: () => editingTaskIndex !== null && handleToggleTaskDone(editingTaskIndex),
+    onNote: () => editingTaskIndex !== null && handleTaskNote(editingTaskIndex),
+    onOpenFile: onOpenLinkedFile,
+    onArmLink: () => editingTaskIndex !== null && armLinkTarget('task', editingTaskIndex),
+    onArmRefile: () => editingTaskIndex !== null && armFileTarget('task', editingTaskIndex),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
+  });
+
   // The selected meeting's card; Inbox meetings always get their own note.
   const cardMeeting = editingMeetingIndex !== null ? meetings[editingMeetingIndex] : undefined;
   const meetingCard = useMeetingCard({
@@ -769,11 +760,11 @@ export default function InboxScreen({
                 editMode,
               )}
               meetingCard={meetingCard}
+              todoCard={todoCard}
               onSaveEditTask={commitTaskEdit}
               onSaveEditMeeting={commitMeetingEdit}
               flushEditRef={flushEditRef}
               onCancelEdit={cancelEditTarget}
-              onDeleteEdit={handleDeleteEditForWidget}
               onRefile={editTarget ? () => armFileTarget(editTarget.type, editTarget.index) : undefined}
               onQuickFile={editTarget ? handleQuickFileEdit : undefined}
               linkedFileMissing={linkedFileMissing}
@@ -820,7 +811,7 @@ export default function InboxScreen({
                       task={row.task}
                       isEditing={editingTaskIndex === row.index}
                       isArming={armingTaskIndex === row.index}
-                      onStartEdit={() => startEditTarget('task', row.index)}
+                      onStartEdit={() => selectEdit({type: 'task', index: row.index})}
                       ownerPath={inboxPath}
                       onToggleDone={() => handleToggleTaskDone(row.index)}
                       onCreateNote={() => handleTaskNote(row.index)}

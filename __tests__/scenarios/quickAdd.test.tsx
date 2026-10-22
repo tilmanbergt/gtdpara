@@ -1,4 +1,4 @@
-import {expectShows, fieldValue, firstCheckboxOf, openApp, tap, tapTab, type} from '../../test-helpers/scenario/app';
+import {expectShows, firstCheckboxOf, openApp, tap, tapTab, type} from '../../test-helpers/scenario/app';
 import {dataFile, expectFileContains, INBOX_FILE, loggedErrors, projectFile, putFile, sectionLines} from '../../test-helpers/scenario/files';
 import {given, scenario, then, when} from '../../test-helpers/scenario/scenario';
 
@@ -36,20 +36,21 @@ scenario('Edit a todo, then tap another one: the first edit is saved', {feature:
   given('project "Website" has the todos "Write copy" and "Fix footer"', () => {
     putFile(projectFile('Website'), dataFile('project', {Scope: [], Tasks: ['- [ ] Write copy #next', '- [ ] Fix footer'], Meetings: []}));
   });
-  when('I open "Website", tap "Write copy", change it to "Write landing page copy" and tap "Fix footer"', async () => {
+  when('I open "Website", tap "Write copy" and Edit on its card, change it to "Write landing page copy" and tap "Fix footer"', async () => {
     await openApp();
     await tapTab('Projects');
     await tap(/^Website/);
     await tap('Write copy');
+    await tap('Edit');
     await type('New task', 'Write landing page copy');
     await tap('Fix footer');
   });
   then('project.txt has the changed todo, still #next, and "Fix footer" unchanged', () => {
     expect(sectionLines(projectFile('Website'), 'Tasks')).toEqual(['- [ ] Write landing page copy #next', '- [ ] Fix footer']);
   });
-  then('"Fix footer" is now the one being edited', () => {
-    expectShows('Save');
-    expect(fieldValue('New task')).toBe('Fix footer');
+  then('"Fix footer" is now the selected one, shown as its card (technical-design-item-card.md §3)', () => {
+    expectShows('Todo · open');
+    expectShows('Edit');
   });
 });
 
@@ -62,6 +63,7 @@ scenario('An abbreviation tag files a todo into its project while editing', {fea
     await openApp();
     await tapTab('Inbox');
     await tap('Ask about hosting');
+    await tap('Edit');
     await type('New task', 'Ask about hosting #WEB');
     await tap(/^Save to Website/);
   });
