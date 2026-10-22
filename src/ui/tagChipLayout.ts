@@ -14,6 +14,7 @@
  */
 import {useRef, useState} from 'react';
 import {LayoutChangeEvent} from 'react-native';
+import {log} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 import {estimateTextWidthPx} from '../domain/textLineEstimator';
 import {FONT} from './theme';
@@ -170,6 +171,9 @@ export function useTagRowBudget(
     // display:none rows report 0 - keep the last real measurement.
     if (w <= 0 || widthsRef.current[key] === w) return;
     const next = {...widthsRef.current, [key]: w};
+    // In the debug log, so a tag row that looks wrong on the device can be
+    // checked against what it measured.
+    log('tag row', cacheKey ?? '-', key, w);
     widthsRef.current = next;
     if (cacheKey) widthCache.set(cacheKey, next);
     setWidths(next);

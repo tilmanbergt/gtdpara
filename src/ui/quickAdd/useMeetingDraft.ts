@@ -61,6 +61,8 @@ export function useMeetingDraft(core: QuickAddCore, input: Input) {
   const [tagPage, setTagPage] = useState(0);
   const [selectionOverride, setSelectionOverride] = useState<Selection>(null);
   const [inputFocused, setInputFocused] = useState(false);
+  // Whether the date field has focus - shows its -1/Today/+1/+7 strip, drawn by the row.
+  const [dateFocused, setDateFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const lastSelectionRef = useRef<Selection>(null);
 
@@ -229,6 +231,8 @@ export function useMeetingDraft(core: QuickAddCore, input: Input) {
     selectionOverride,
     inputFocused,
     setInputFocused,
+    dateFocused,
+    setDateFocused,
     inputRef,
     lastSelectionRef,
     clearJustAdded,

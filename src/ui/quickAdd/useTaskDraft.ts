@@ -64,6 +64,8 @@ export function useTaskDraft(core: QuickAddCore, input: Input) {
   // 📅 tap has to wait for that render to commit.
   const dueInputRef = useRef<DateInputHandle>(null);
   const [dueFocusRequested, setDueFocusRequested] = useState(false);
+  // Whether the due field has focus - shows its -1/Today/+1/+7 strip, drawn by the row.
+  const [dueFocused, setDueFocused] = useState(false);
   useEffect(() => {
     if (!dueFocusRequested) return;
     dueInputRef.current?.focus();
@@ -230,6 +232,8 @@ export function useTaskDraft(core: QuickAddCore, input: Input) {
     inputRef,
     lastSelectionRef,
     dueInputRef,
+    dueFocused,
+    setDueFocused,
     clearJustAdded,
     setText,
     setDueDate,

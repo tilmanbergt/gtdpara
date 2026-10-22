@@ -192,11 +192,12 @@ state (`ui/quickAdd/QuickAddFrame.tsx`, `QUICK_ADD_HEIGHT`); budget it as one bl
 |---|---|---|
 | Row 1 | 30 | Todo / Meeting / Note tabs; + Add, or Cancel · Save |
 | Row 2 | 36 | Main text input and date |
-| Row 3 | 32 | Flow chips or time, tag chips |
-| Row 4 | 32 | More tag chips, the provenance line, or the edit commands |
+| Row 3 | 34 | Flow chips or time, tag chips |
+| Row 4 | 34 | More tag chips, the provenance line, or the edit commands |
 
-Box total = `border 1 + padding 10 + 30 + 6 + 36 + 6 + 32 + 6 + 32 + padding 10 + border 1` =
-**170 dp**, whatever it shows. The capture screen's panel (`ui/quickAdd/CaptureQuickAdd.tsx`) is
+Box total = `border 1 + padding 10 + 30 + 6 + 36 + 6 + 34 + 6 + 34 + padding 10 + border 1` =
+**174 dp**, whatever it shows. Chips in rows 3 and 4 use 4 dp vertical padding: their label draws
+about 21 dp high on the device, so a chip is about 31 dp. The capture screen's panel (`ui/quickAdd/CaptureQuickAdd.tsx`) is
 the exception: it grows with its multi-line text and adds rows below.
 
 ### 5.5 Section headings and labels

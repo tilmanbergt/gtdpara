@@ -7,7 +7,7 @@
 import React from 'react';
 import {StyleSheet, TextInput, View} from 'react-native';
 import ClipboardStrip from '../ClipboardStrip';
-import DateInput from '../DateInput';
+import DateInput, {DateNudgeStrip} from '../DateInput';
 import MarkWrap from '../status/StatusMark';
 import TagChips, {useTwoRowTagChips} from '../TagChips';
 import {useTagRowBudget} from '../tagChipLayout';
@@ -47,7 +47,7 @@ export function MeetingInputRow({core, meeting, capture = false, textColor, bord
         </MarkWrap>
         <MarkWrap mark={core.fieldMark('date')} textColor={textColor}>
           <DateInput
-            stripBelow={!capture}
+            onFocusChange={capture ? undefined : meeting.setDateFocused}
             value={meeting.fields.date}
             onChangeText={meeting.setDate}
             placeholder="YYYY-MM-DD"
@@ -57,7 +57,17 @@ export function MeetingInputRow({core, meeting, capture = false, textColor, bord
           />
         </MarkWrap>
       </View>
-      {/* The same hovering Select All/Copy/Cut/Paste strip as the Todo row's. */}
+      {/* The same hovering strips as the Todo row's, over the tabs. */}
+      {capture ? null : (
+        <DateNudgeStrip
+          visible={meeting.dateFocused}
+          value={meeting.fields.date}
+          onChangeText={meeting.setDate}
+          placement="above-left"
+          textColor={textColor}
+          borderColor={borderColor}
+        />
+      )}
       <ClipboardStrip
         visible={meeting.inputFocused}
         actions={meeting.clipboard}

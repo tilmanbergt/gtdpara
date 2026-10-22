@@ -92,8 +92,23 @@ const pressText = (r: TestRenderer.ReactTestRenderer, label: string) =>
   });
 
 describe('Quick Add box height', () => {
-  it('is 170 dp: border, padding, four rows and three gaps', () => {
-    expect(QUICK_ADD_HEIGHT).toBe(170);
+  it('is 174 dp: border, padding, four rows and three gaps', () => {
+    expect(QUICK_ADD_HEIGHT).toBe(174);
+  });
+
+  // Measured on the A5 X: a chip label (FONT.small, weight 600) draws about 21 dp high. A chip in
+  // R3/R4 is that plus its padding and border; it must fit its row, or the row clips it.
+  const DEVICE_CHIP_LABEL_DP = 22;
+  it('a chip as tall as on the device fits R3 and R4', () => {
+    const r = render();
+    const chipStyles = r.root
+      .findAll(n => n.type === Pressable && n.findAllByType(Text).some(t => /^(Next|#tag0)$/.test(String(t.props.children))))
+      .map(p => StyleSheet.flatten(p.props.style));
+    expect(chipStyles.length).toBeGreaterThanOrEqual(2);
+    for (const style of chipStyles) {
+      const height = 2 * Number(style.borderWidth ?? 0) + 2 * Number(style.paddingVertical ?? 0) + DEVICE_CHIP_LABEL_DP;
+      expect(height).toBeLessThanOrEqual(Math.min(QUICK_ADD_ROWS.meta, QUICK_ADD_ROWS.extra));
+    }
   });
 
   const cases: Array<[string, () => TestRenderer.ReactTestRenderer]> = [

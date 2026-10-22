@@ -32,6 +32,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {extractContextTags} from '../domain/markdown';
 import {estimateChipWidth, paginateByWidth, paginateTwoRows, tagChipLabel, TwoRowWidths} from './tagChipLayout';
 import {COLORS, FONT} from './theme';
+import {QUICK_ADD_CHIP_PADDING} from './quickAdd/QuickAddFrame';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 
 interface Common {
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     borderWidth: 1,
     borderRadius: 6,
-    paddingVertical: 6,
+    paddingVertical: QUICK_ADD_CHIP_PADDING,
     paddingHorizontal: 8,
     marginRight: 4,
   },

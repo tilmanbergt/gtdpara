@@ -90,13 +90,6 @@ export const common = StyleSheet.create({
     right: undefined,
     left: 0,
   },
-  /** floatingStrip variant: flush below the field, right-aligned (over Quick Add's R3, so R1's buttons stay free). */
-  floatingStripBelow: {
-    bottom: undefined,
-    top: '100%',
-    marginBottom: 0,
-    marginTop: 3,
-  },
   floatingStripButton: {
     borderWidth: 1,
     borderRadius: 3,

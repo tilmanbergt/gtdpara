@@ -7,7 +7,7 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import ClipboardStrip from '../ClipboardStrip';
-import DateInput from '../DateInput';
+import DateInput, {DateNudgeStrip} from '../DateInput';
 import FlowStateChips from '../FlowStateChips';
 import {ClipIcon, WarningIcon} from '../icons';
 import MarkWrap from '../status/StatusMark';
@@ -25,8 +25,8 @@ interface Colors {
 }
 
 /** The due date: a 📅 button that unfolds into an inline date field (never folds back). */
-/** `stripBelow`: the date strip below the field (Quick Add's box, so R1's buttons stay free). */
-export function TaskDueControl({task, stripBelow = false, textColor, borderColor, placeholderColor}: {task: TaskDraftState; stripBelow?: boolean} & Colors) {
+/** `ownStrip`: the field draws its date strip itself (the capture panel); in the box the row draws it over the tabs. */
+export function TaskDueControl({task, ownStrip = false, textColor, borderColor, placeholderColor}: {task: TaskDraftState; ownStrip?: boolean} & Colors) {
   const {fields, loopMode} = task;
   if (!fields.dueDateOpen) {
     return (
@@ -39,7 +39,7 @@ export function TaskDueControl({task, stripBelow = false, textColor, borderColor
     <View style={styles.dateInline}>
       <DateInput
         ref={task.dueInputRef}
-        stripBelow={stripBelow}
+        onFocusChange={ownStrip ? undefined : task.setDueFocused}
         value={fields.dueDate}
         onChangeText={task.setDueDate}
         placeholder={loopMode.kind === 'none' || loopMode.kind === 'exists' ? 'Due YYYY-MM-DD' : 'Main date YYYY-MM-DD'}
@@ -92,12 +92,23 @@ export function TaskInputRow({core, task, placeholder, capture, ...colors}: Inpu
             autoCapitalize="none"
           />
         </MarkWrap>
-        {capture ? null : <TaskDueControl task={task} stripBelow {...colors} />}
+        {capture ? null : <TaskDueControl task={task} {...colors} />}
       </View>
-      {/* Select All/Copy/Cut/Paste, hovering above the field - left-aligned in
-          the box, over the tabs, so R1's main button stays reachable while
-          typing. Stays mounted (display toggles on focus) so a tap on it isn't
-          lost when the field blurs on touch-down. */}
+      {/* The date strip and Select All/Copy/Cut/Paste hover above the row -
+          left-aligned in the box, over the tabs, so R1's main button stays
+          reachable while typing (only one field has focus at a time). They
+          stay mounted (display toggles on focus) so a tap on them isn't lost
+          when the field blurs on touch-down. */}
+      {capture ? null : (
+        <DateNudgeStrip
+          visible={task.dueFocused}
+          value={task.fields.dueDate}
+          onChangeText={task.setDueDate}
+          placement="above-left"
+          textColor={textColor}
+          borderColor={borderColor}
+        />
+      )}
       <ClipboardStrip
         visible={task.inputFocused}
         actions={task.clipboard}
@@ -201,7 +212,7 @@ export function TaskMetaRows({core, task, layoutKey, capture = false, row4, ...c
       <View style={rowStyles.row3ChipsGroup}>
         <View style={rowStyles.row3Lead} onLayout={budget.onLeadLayout}>
           {task.loopMode.kind !== 'loop' && (
-            <FlowStateChips value={task.fields.flowState} onChange={task.setFlowState} textColor={textColor} borderColor={borderColor} />
+            <FlowStateChips value={task.fields.flowState} onChange={task.setFlowState} compact={!capture} textColor={textColor} borderColor={borderColor} />
           )}
         </View>
         {tags}

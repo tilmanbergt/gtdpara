@@ -93,7 +93,7 @@ function CaptureQuickAdd(props: Props): React.JSX.Element {
           <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>✂ Split at cursor</Text>
         </Pressable>
         <View style={quickAddButtons.centerSpacer} />
-        <TaskDueControl task={task} {...colors} />
+        <TaskDueControl task={task} ownStrip {...colors} />
       </View>
     ) : null;
 

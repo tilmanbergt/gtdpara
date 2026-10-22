@@ -3,7 +3,7 @@
  * bordered card of four rows at fixed heights -
  *   R1 tabs and the main button · R2 input · R3 metadata · R4 more tags,
  *   the provenance line, or the edit form's commands -
- * the same 170 dp whatever it shows, so the lists below it never move when
+ * the same 174 dp whatever it shows, so the lists below it never move when
  * the user switches tabs, starts an edit or pages the tags. Every row sets
  * its own height (ui/quickAdd/styles.ts); each slot holds every tab's
  * version of its rows at once, the inactive ones hidden with
@@ -15,8 +15,15 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 
-/** Row heights and the gap below each row (none below R4), in dp. */
-export const QUICK_ADD_ROWS = {tabs: 30, input: 36, meta: 32, extra: 32, gap: 6} as const;
+/**
+ * Row heights and the gap below each row (none below R4), in dp. R3 and R4
+ * hold chips: on the device a chip label is about 20 dp high, so a chip with
+ * QUICK_ADD_CHIP_PADDING above and below and its border is about 30 dp.
+ */
+export const QUICK_ADD_ROWS = {tabs: 30, input: 36, meta: 34, extra: 34, gap: 6} as const;
+
+/** Vertical padding of the chips in the box (flow chips, tag chips). */
+export const QUICK_ADD_CHIP_PADDING = 4;
 
 const PADDING = 10;
 const BORDER = 1;

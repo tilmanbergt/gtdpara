@@ -57,8 +57,12 @@ interface Props {
   editable?: boolean;
   /** Input width in px. Default 140 (QuickAddWidget's due/meeting date field). */
   width?: number;
-  /** The -1/Today/+1/+7 strip below the field instead of above it (Quick Add: R1's buttons stay free). */
-  stripBelow?: boolean;
+  /**
+   * The caller draws the -1/Today/+1/+7 strip itself (`DateNudgeStrip`) and
+   * learns about focus here - Quick Add hovers it over its tabs, so the main
+   * button at R1's right stays free.
+   */
+  onFocusChange?: (focused: boolean) => void;
   /** Margins/flex for the wrapper around the input - not the input itself. */
   containerStyle?: StyleProp<ViewStyle>;
   /** Extra input styling (e.g. ReviewScreen's pill-shaped corners) applied over the defaults. */
@@ -76,7 +80,7 @@ const DateInput = forwardRef<DateInputHandle, Props>(function DateInput(
     borderColor,
     editable = true,
     width = 140,
-    stripBelow = false,
+    onFocusChange,
     containerStyle,
     inputStyle,
   },
@@ -95,29 +99,54 @@ const DateInput = forwardRef<DateInputHandle, Props>(function DateInput(
         value={value}
         onChangeText={onChangeText}
         onSubmitEditing={onSubmitEditing}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={() => {
+          setFocused(true);
+          onFocusChange?.(true);
+        }}
+        onBlur={() => {
+          setFocused(false);
+          onFocusChange?.(false);
+        }}
         placeholder={placeholder}
         placeholderTextColor={placeholderColor}
         autoCapitalize="none"
         editable={editable}
       />
-      <View style={[common.floatingStrip, stripBelow && common.floatingStripBelow, {borderColor}, !focused && styles.hidden]}>
-        {DATE_NUDGES.map(({kind, label}) => (
-          <Pressable
-            key={kind}
-            style={[common.floatingStripButton, {borderColor}]}
-            onPress={() => onChangeText(nudgeIsoDate(value, kind))}
-            hitSlop={6}>
-            <Text style={[common.floatingStripButtonText, {color: textColor}]}>{label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      {onFocusChange ? null : (
+        <DateNudgeStrip visible={focused} value={value} onChangeText={onChangeText} textColor={textColor} borderColor={borderColor} />
+      )}
     </View>
   );
 });
 
 export default DateInput;
+
+interface StripProps {
+  visible: boolean;
+  value: string;
+  onChangeText: (next: string) => void;
+  /** 'above-left': left-aligned over the positioning context (Quick Add's R2, so the strip sits over the tabs). */
+  placement?: 'above-right' | 'above-left';
+  textColor: string;
+  borderColor: string;
+}
+
+/** The -1/Today/+1/+7 strip; stays mounted, hidden while not `visible` (see the module doc comment). */
+export function DateNudgeStrip({visible, value, onChangeText, placement = 'above-right', textColor, borderColor}: StripProps): React.JSX.Element {
+  return (
+    <View style={[common.floatingStrip, placement === 'above-left' && common.floatingStripLeft, {borderColor}, !visible && styles.hidden]}>
+      {DATE_NUDGES.map(({kind, label}) => (
+        <Pressable
+          key={kind}
+          style={[common.floatingStripButton, {borderColor}]}
+          onPress={() => onChangeText(nudgeIsoDate(value, kind))}
+          hitSlop={6}>
+          <Text style={[common.floatingStripButtonText, {color: textColor}]}>{label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   /** Positioning context for the strip. */
