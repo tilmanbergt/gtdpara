@@ -88,7 +88,7 @@ import {log, logError} from '../utils/log';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {ARMING_TEXT, LinkTarget} from '../ui/FileBrowserPane';
 import {useEditTarget} from '../ui/useEditTarget';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor, MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import MarksCard from '../ui/MarksCard';
 import {MarkScope} from '../domain/marks';
 import {displayTaskText} from '../domain/taskLabels';
@@ -628,11 +628,12 @@ export default function ProjectDataPanel({
         meetingSeed={meetingSeed}
         onAddTask={stableAddTask}
         onAddMeeting={stableAddMeeting}
-        editingTask={editingTaskForWidget}
-        editingMeeting={editingMeetingForWidget}
+        editTarget={editTargetFor(editTarget ? `${editTarget.type}:${editTarget.index}` : null, {
+          task: editingTaskForWidget,
+          meeting: editingMeetingForWidget,
+        })}
         onSaveEditTask={stableCommitTaskEdit}
         onSaveEditMeeting={stableCommitMeetingEdit}
-        editTargetKey={editTarget ? `${editTarget.type}:${editTarget.index}` : null}
         flushEditRef={flushEditRef}
         onCancelEdit={stableCancelEdit}
         onDeleteEdit={stableDeleteEdit}

@@ -10,6 +10,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {TrashIcon} from '../icons';
 import MarkWrap from '../status/StatusMark';
 import {COLORS, FONT} from '../theme';
+import {QUICK_ADD_ROWS} from './QuickAddFrame';
 
 type Mark = 'warning' | 'success' | null;
 
@@ -147,7 +148,7 @@ export function EditActionRow({
 
 export const quickAddButtons = StyleSheet.create({
   row4: {
-    minHeight: 32,
+    minHeight: QUICK_ADD_ROWS.actions,
     flexDirection: 'row',
     alignItems: 'center',
   },

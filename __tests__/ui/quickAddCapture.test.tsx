@@ -1,4 +1,4 @@
-// docs/dev/history/technical-design-lasso-0.8.md §3.9: QuickAddWidget variant="capture".
+// docs/dev/history/technical-design-lasso-0.8.md §3.9: the capture panel (ui/quickAdd/CaptureQuickAdd.tsx).
 jest.mock('react-native-svg', () => {
   const ReactLib = require('react');
   const stub = (props: object) => ReactLib.createElement('Svg', props);
@@ -33,7 +33,8 @@ jest.mock('../../src/ui/useAbbrevItems', () => ({
 import React from 'react';
 import {Text, TextInput} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
-import QuickAddWidget, {CaptureSeed} from '../../src/ui/QuickAddWidget';
+import CaptureQuickAdd from '../../src/ui/quickAdd/CaptureQuickAdd';
+import {CaptureSeed} from '../../src/ui/QuickAddWidget';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
 import {Destination} from '../../src/domain/destination';
 
@@ -44,7 +45,6 @@ function setup(seed: CaptureSeed, destination: Destination = inbox) {
   const saved: string[] = [];
   const destChanges: Destination[] = [];
   const props = {
-    variant: 'capture' as const,
     fixedDestination: destination,
     captureSeed: seed,
     onAddTask: async (text: string, dest: Destination) => {
@@ -61,7 +61,7 @@ function setup(seed: CaptureSeed, destination: Destination = inbox) {
   act(() => {
     r = TestRenderer.create(
       <StatusProvider>
-        <QuickAddWidget {...props} />
+        <CaptureQuickAdd {...props} />
       </StatusProvider>,
     );
   });
@@ -69,7 +69,7 @@ function setup(seed: CaptureSeed, destination: Destination = inbox) {
     act(() => {
       r.update(
         <StatusProvider>
-          <QuickAddWidget {...props} captureSeed={nextSeed} />
+          <CaptureQuickAdd {...props} captureSeed={nextSeed} />
         </StatusProvider>,
       );
     });
@@ -94,7 +94,7 @@ function press(r: TestRenderer.ReactTestRenderer, label: string) {
 
 const visibleInputs = (r: TestRenderer.ReactTestRenderer) => r.root.findAllByType(TextInput).map(i => i.props.value as string);
 
-describe('QuickAddWidget capture', () => {
+describe('CaptureQuickAdd', () => {
   it('shows split items as rows and saves each with the same chips', async () => {
     const {r, added, saved} = setup({key: 'lasso-1', items: ['book room', 'agenda to Tom', 'slides'], split: true});
     expect(visibleInputs(r)).toEqual(expect.arrayContaining(['book room', 'agenda to Tom', 'slides']));

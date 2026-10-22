@@ -438,6 +438,33 @@ Approved by Tilman ("go"), built on `feature/interruptions` from `main` with the
 variant becomes its own thin shell. Every file ≤ 600 lines; its baseline entry is removed;
 the `exhaustive-deps` suppressions in it are resolved, not moved.
 
+### 6.1 As built (Q4)
+
+Built on `feature/quickadd-split` from `main`, with two additions agreed for the item card
+(the item-card design, §2): the box as row slots, and a `mode` on the edit target.
+
+- **Parts** (`src/ui/quickAdd/`): `types.ts` (drafts, `QuickAddEditTarget`, `editTargetFor`,
+  `sameEditTarget`, the capture seed), `useQuickAddCore.ts` (tab, edit-fields slot, pending, error,
+  recent tags, abbreviation items), `useTaskDraft.ts`, `useMeetingDraft.ts`, `useNoteDraft.ts`,
+  `useEditSession.ts`, `useQuickAddStatus.ts`, `QuickAddFrame.tsx` (`QUICK_ADD_ROWS` = 22/36/32/32,
+  gap 6 - unchanged), `TabsRow.tsx`, `TaskRows.tsx`, `MeetingRows.tsx`, `NoteRows.tsx`,
+  `styles.ts`; the capture panel `CaptureQuickAdd.tsx` with `useCapture.ts`.
+  `ui/QuickAddWidget.tsx` composes them (394 lines; the largest part is 306). The baseline entry
+  is gone.
+- **Edit target**: `editTarget: {kind: 'task' | 'loop' | 'meeting', mode: 'edit', key, task |
+  meeting}` replaces `editingTask`, `editingMeeting`, `editingLoop` and `editTargetKey` on all
+  eight screens. React.memo compares it by kind, mode, key and item identity, so a fresh wrapper
+  costs no render that the old props did not.
+- **Suppressions**: the capture seed is applied through a stable callback keyed on the seed's
+  signature; focus on a fresh edit is an explicit request set when the fields load (so a switch
+  between targets still never moves focus); the flush is a stable callback, registered in
+  `flushEditRef` by an effect and run on unmount by another.
+- **Tests**: unchanged scenarios and Quick Add tests green. New
+  `__tests__/ui/quickAddEditSession.test.tsx` (edit target helpers, loading versus a fresh
+  object, the draft through an edit detour, focus only on a fresh edit, flush only on a change and
+  on a failed save, save on unmount). `engageOverlay.test.tsx` finds the widget non-deep: the
+  memo with a prop check is a node of its own in the test renderer.
+
 **Not in this plan** (to the backlog): splitting DailyView, InboxScreen, ItemDetail,
 FileBrowserPane and `supernote/fileSystem.ts`; a section registry for data-file sections; one
 `createStore` helper for the 14 hand-written stores; Prettier (adopt or remove the config);
