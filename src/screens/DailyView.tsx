@@ -132,7 +132,7 @@ import DayMeetingsPanel from '../ui/DayMeetingsPanel';
 import {useEditTarget} from '../ui/useEditTarget';
 import {MiniTabDef} from '../ui/MiniTabs';
 import PagedSection from '../ui/PagedSection';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor, MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {displayTaskText} from '../domain/taskLabels';
 import TaskRow, {taskRowHeight, taskRowLines} from '../ui/TaskRow';
 import {useCachedItems} from '../ui/useCachedItems';
@@ -1341,11 +1341,9 @@ export default function DailyView({
                   // 09/28). Not passed to the focus-mode widget above: its
                   // list is a 4-hour look-ahead a date cannot express.
                   isMeetingDateVisible={stableIsMeetingDateVisible}
-                  editingTask={editingTaskForWidget}
-                  editingMeeting={editingMeetingEntry?.meeting}
+                  editTarget={editTargetFor(editTarget && `${editTarget.type}:${editTarget.key}`, {task: editingTaskForWidget, meeting: editingMeetingEntry?.meeting})}
                   onSaveEditTask={editingTaskEntry ? stableSaveEditTask : undefined}
                   onSaveEditMeeting={editingMeetingEntry ? stableSaveEditMeeting : undefined}
-                  editTargetKey={editTarget ? `${editTarget.type}:${editTarget.key}` : null}
                   flushEditRef={flushEditRef}
                   onCancelEdit={stableCancelEdit}
                   onDeleteEdit={stableDeleteEdit}

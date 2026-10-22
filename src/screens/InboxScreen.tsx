@@ -116,7 +116,7 @@ import {useEditTarget} from '../ui/useEditTarget';
 import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import PagedSection from '../ui/PagedSection';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor, MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import MarksCard from '../ui/MarksCard';
 import {MarkScope} from '../domain/marks';
 
@@ -766,11 +766,12 @@ export default function InboxScreen({
               fixedDestination={FIXED_INBOX_DESTINATION}
               onAddTask={handleAddTask}
               onAddMeeting={handleAddMeeting}
-              editingTask={editingTask ? {...editingTask, text: displayTaskText(editingTask, 'grouped')} : undefined}
-              editingMeeting={editingMeeting ?? undefined}
+              editTarget={editTargetFor(editTarget ? `${editTarget.type}:${editTarget.index}` : null, {
+                task: editingTask ? {...editingTask, text: displayTaskText(editingTask, 'grouped')} : null,
+                meeting: editingMeeting,
+              })}
               onSaveEditTask={commitTaskEdit}
               onSaveEditMeeting={commitMeetingEdit}
-              editTargetKey={editTarget ? `${editTarget.type}:${editTarget.index}` : null}
               flushEditRef={flushEditRef}
               onCancelEdit={cancelEditTarget}
               onDeleteEdit={handleDeleteEditForWidget}

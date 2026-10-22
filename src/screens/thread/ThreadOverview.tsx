@@ -27,7 +27,7 @@ import {scopeOwnerOf} from '../../domain/counterparts';
 import {lensLabels} from '../../domain/threadText';
 import {buildThreadOverview, nextMeetingOffers, PastMeeting, ThreadItemRef} from '../../storage/threadAggregate';
 import MiniTabs from '../../ui/MiniTabs';
-import QuickAddWidget from '../../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor} from '../../ui/QuickAddWidget';
 import {MeetingSeed} from '../../ui/quickAdd/useDraftRequests';
 import {usePresetTag} from '../../ui/quickAdd/usePresetTag';
 import {useProvenance} from '../../ui/quickAdd/useProvenance';
@@ -225,9 +225,10 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
               })
             }
             onAddMeeting={(fields, dest) => actions.addMeeting(fields, dest).then(() => setSeedItem(null))}
-            editingTask={editingTask?.task}
-            editingMeeting={editingMeeting?.meeting}
-            editTargetKey={target ? `${target.type}:${target.key}` : null}
+            editTarget={editTargetFor(target ? `${target.type}:${target.key}` : null, {
+              task: editingTask?.task,
+              meeting: editingMeeting?.meeting,
+            })}
             flushEditRef={edit.flushEditRef}
             editingItemPath={editedItem ? (editedItem.kind === 'inbox' ? null : editedItem.path) : undefined}
             linkedFileMissing={linkedFileMissing}

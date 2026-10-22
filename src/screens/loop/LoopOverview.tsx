@@ -25,7 +25,7 @@ import {getCachedData} from '../../storage/dataCache';
 import {buildLoopOverview} from '../../storage/loopAggregate';
 import {setLoopStatus, updateLoop} from '../../storage/loops';
 import {nextMeetingOffers, PastMeeting} from '../../storage/threadAggregate';
-import QuickAddWidget from '../../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor} from '../../ui/QuickAddWidget';
 import {MeetingSeed} from '../../ui/quickAdd/useDraftRequests';
 import {COLORS, FONT, SPACING, useThemeColors} from '../../ui/theme';
 import {requestLoopLink} from '../../ui/loopLinkStore';
@@ -236,10 +236,11 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
             meetingSeed={seed}
             onAddTask={(text, dest) => actions.addTask(withLoopTag(text, loop.tag), dest)}
             onAddMeeting={(fields, dest) => actions.addMeeting({...fields, title: titleWithLoopTag(fields.title, loop.tag)}, dest)}
-            editingTask={loopEditing && line ? loopAsTodo(line) : editingTask?.task}
-            editingLoop={loopEditing}
-            editingMeeting={loopEditing ? undefined : editingMeeting?.meeting}
-            editTargetKey={loopEditing ? LOOP_EDIT_KEY : target ? `${target.type}:${target.key}` : null}
+            editTarget={editTargetFor(loopEditing ? LOOP_EDIT_KEY : target ? `${target.type}:${target.key}` : null, {
+              task: loopEditing && line ? loopAsTodo(line) : editingTask?.task,
+              loop: loopEditing,
+              meeting: loopEditing ? undefined : editingMeeting?.meeting,
+            })}
             flushEditRef={edit.flushEditRef}
             editingItemPath={owner.path}
             linkedFileMissing={loopEditing ? false : linkedFileMissing}

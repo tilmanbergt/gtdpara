@@ -99,7 +99,9 @@ const COACHING = `${AREAS}/Coaching`;
 const texts = (r: TestRenderer.ReactTestRenderer) => r.root.findAllByType(Text).map(t => [t.props.children].flat().join(''));
 const rendered = (r: TestRenderer.ReactTestRenderer) => JSON.stringify(r.toJSON());
 /** The expanded QuickAddWidget, found by its props (its export is wrapped). */
-const quickAdd = (r: TestRenderer.ReactTestRenderer) => r.root.findAll(n => n.props.fixedDestination && typeof n.props.onAddTask === 'function' && n.props.layoutKey === 'engage');
+// Not deep: the memoized widget and the component inside it carry the same props.
+const quickAdd = (r: TestRenderer.ReactTestRenderer) =>
+  r.root.findAll(n => n.props.fixedDestination && typeof n.props.onAddTask === 'function' && n.props.layoutKey === 'engage', {deep: false});
 async function settle() {
   for (let i = 0; i < 8; i++) {
     await act(async () => {

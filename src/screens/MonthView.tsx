@@ -44,7 +44,7 @@ import {MiniTabDef as DayTabDef} from '../ui/MiniTabs';
 import MonthDaysColumn from '../ui/MonthDaysColumn';
 import PeriodFocusPanel from '../ui/PeriodFocusPanel';
 import PeriodGoalsHistoryPanel from '../ui/PeriodGoalsHistoryPanel';
-import QuickAddWidget, {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
+import QuickAddWidget, {editTargetFor, MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
 import {useStableCallback} from '../ui/useStableCallback';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {CachedItem} from '../storage/dataCache';
@@ -213,9 +213,8 @@ export default function MonthView({
                   // A meeting added from the day panel is meant for the month.
                   initialMonthly={selectedDate != null}
                   isMeetingDateVisible={stableIsMeetingDateVisible}
-                  editingMeeting={editingMeetingEntry?.meeting}
+                  editTarget={editTargetFor(editingKey, {meeting: editingMeetingEntry?.meeting})}
                   onSaveEditMeeting={editingMeetingEntry ? stableSaveEditMeeting : undefined}
-                  editTargetKey={editingKey}
                   flushEditRef={planning.flushEditRef}
                   onCancelEdit={planning.cancelEditTarget}
                   onDeleteEdit={stableDeleteEdit}

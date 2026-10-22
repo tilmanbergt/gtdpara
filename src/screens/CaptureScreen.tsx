@@ -11,8 +11,8 @@
  *   go back to): the marks only.
  *
  * Left: ui/capture/MarksColumn.tsx (hidden when there is nothing to list
- * besides the lasso). Right: the picture, then QuickAddWidget
- * variant="capture" (flow, due, Split lines, tags, File to, Save buttons).
+ * besides the lasso). Right: the picture, then the capture panel
+ * ui/quickAdd/CaptureQuickAdd.tsx (flow, due, Split lines, tags, File to, Save buttons).
  *
  * Saving a mark removes its `## Marks` line, turns the bookmark into the
  * check icon and deletes its private data (storage/marks.ts finishMark).
@@ -52,7 +52,8 @@ import MarksColumn, {LASSO_KEY} from '../ui/capture/MarksColumn';
 import {MarksReturnTo} from '../ui/marksNav';
 import {useRecognitionQueue} from '../ui/capture/useRecognitionQueue';
 import {useProvenance} from '../ui/quickAdd/useProvenance';
-import QuickAddWidget, {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields} from '../ui/QuickAddWidget';
+import CaptureQuickAdd from '../ui/quickAdd/CaptureQuickAdd';
+import {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields} from '../ui/QuickAddWidget';
 import {useErrorStatus, useStatus} from '../ui/status/StatusProvider';
 import {COLORS, FONT, useThemeColors} from '../ui/theme';
 import {useCachedInbox} from '../ui/useCachedInbox';
@@ -578,8 +579,7 @@ export default function CaptureScreen({request, onOpenItem, onOpenDaily, onExit}
                   {recognizing ? <Text style={styles.pictureNote}>recognizing…</Text> : null}
                 </View>
               )}
-              <QuickAddWidget
-                variant="capture"
+              <CaptureQuickAdd
                 captureSeed={seed}
                 fixedDestination={destination}
                 onCaptureDestinationChange={setDestination}
