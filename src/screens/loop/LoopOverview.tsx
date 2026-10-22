@@ -39,7 +39,7 @@ import {log} from '../../utils/log';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {useLinkedFileMissing} from '../usePlanningScreen';
 import AheadSection, {NextOffer} from '../thread/AheadSection';
-import {useMeetingToolbar} from '../../ui/useMeetingToolbar';
+import {useMeetingCard} from '../../ui/itemCard/useMeetingCard';
 import LookingBackSection, {SINCE_KEY} from '../thread/LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from '../thread/PastMeetingPanel';
 import EngageButton from '../../ui/EngageButton';
@@ -106,8 +106,8 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
     getCachedData()?.paths ?? null,
   );
 
-  // The meeting toolbar in Ahead while one of its meetings is edited (docs/dev/history/technical-design-meeting-reflection.md §2.6).
-  const meetingToolbar = useMeetingToolbar(actions.toolbarOptions(editingMeeting, {textColor, borderColor}));
+  // The selected Ahead meeting's card in Quick Add's place (docs/dev/history/technical-design-item-card.md §6).
+  const meetingCard = useMeetingCard(actions.cardOptions(loopEditing ? null : editingMeeting));
 
   if (!overview || !lists) {
     return (
@@ -213,7 +213,6 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
             actions={actions}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
-            toolbar={editingMeeting ? meetingToolbar : undefined}
             sectionLabels={{owe: 'Agreed in its meetings', relevant: 'Todos'}}
             onOpenSomeday={entries => requestReviewStep('somedayMaybe', somedayFilterOf(`#${loop.tag}`, entries))}
             textColor={textColor}
@@ -240,7 +239,8 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
               task: loopEditing && line ? loopAsTodo(line) : editingTask?.task,
               loop: loopEditing,
               meeting: loopEditing ? undefined : editingMeeting?.meeting,
-            })}
+            }, loopEditing ? 'edit' : edit.mode)}
+            meetingCard={meetingCard}
             flushEditRef={edit.flushEditRef}
             editingItemPath={owner.path}
             linkedFileMissing={loopEditing ? false : linkedFileMissing}

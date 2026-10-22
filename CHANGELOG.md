@@ -11,36 +11,39 @@ or your project/area files are stored.
 ## [Unreleased]
 
 ### New
-- **Reflection page for meetings**: once a meeting is over, **Reflect ›** adds one page to its note
+- **Reflection page for meetings**: once a meeting is over, **Reflect** adds one page to its note
   for reflecting in your own handwriting - after the meeting's page and the pages you added to
-  it, filled from the setup's Reflection page. It asks once; afterwards **Reflection ›** opens it.
-  It never ticks the meeting reviewed. Reach it from the meeting list's toolbar, the Review step
+  it, filled from the setup's Reflection page. It asks once; afterwards it opens the page.
+  It never ticks the meeting reviewed. Reach it from the meeting's card, the Review step
   **Meetings to close out**, a past meeting in a thread or loop overview, and Engage on the
   meeting's page ("Reflect on this meeting ›"). On the reflection page, Engage and lasso capture
   treat it as the meeting's page. See the help page "Meetings".
 - **Reflection page in Note setups**: Thread and Loop setups and the Default have a new page row,
   **Reflection page**. It starts with Date & title; add your guiding questions as your own texts.
   See the help page "Note setups".
-- **Meeting toolbar**: every meeting list with Quick Add (Daily, Week and Month day panels, a
-  project's or area's Meetings, the Inbox, the Review's Inbox step, a thread or loop overview's
-  Ahead) has one toolbar row for the selected meeting: **☐ Prepped** / **☐ Reviewed**,
-  **Reflect ›** and, where a Files pane is there, **Link file**.
+- **Meeting card**: tapping a meeting in a list with Quick Add (Daily, Week and Month day
+  panels, a project's or area's Meetings, the Inbox, the Review's Inbox step, a thread or loop
+  overview's Ahead) shows its card in Quick Add's place: the prep or review tick, **M**, its
+  note, **Reflect** once it is over, its linked file (open, unlink) or linking one, where it
+  lives (open, move), **New from this** and **Cancel meeting**. **Edit** - or a second tap on
+  the row - opens the edit form; **Save** returns to the card, ✕ brings back Quick Add with your
+  draft. See the help page "Meetings".
 
 ### Changed
 - **Quick Add keeps one height**: the box has four rows and stays the same height whatever it
   shows, so the lists below it no longer move. **+ Add** and, while editing, **Cancel** and
   **Save** moved to the top row; recently used tags fill the third and fourth row, with **‹ ›**
-  at the end of the fourth; the grey "↳ from …" line takes the fourth row. While editing, the
-  bottom row holds delete, **Refile**, **New from this**, the clip's ✕ and **M**. See the help
-  page "Quick Add and capture".
+  at the end of the fourth; the grey "↳ from …" line takes the fourth row. While editing a todo,
+  the bottom row holds delete, **Refile** and the clip's ✕; a meeting's edit form holds its
+  fields only (the rest is on its card). See the help page "Quick Add and capture".
 - **Save to <Name>**: with a project's or area's abbreviation tag in the text, **Save** saves
   the edit and moves the item there in one step (it replaces **File: <Name>**).
 - **The next item keeps the abbreviation tag**: after **+ Add to <Name>**, the field starts with
   that tag again, so a run of items for one project needs it once.
 - **A quieter meeting row**: the prep/review mark on a row only shows the state - tapping it
-  selects the meeting, the tick is in the toolbar. The **+clip** moved to the toolbar's
-  **Link file**; the clip shows only when a file is linked. The **M** box left the Week and Month
-  day panels: switch a monthly highlight in Quick Add's edit form (2-line rows still show the M).
+  selects the meeting, the tick is on its card. The **+clip** moved to the card; the clip shows
+  only when a file is linked. The **M** box left the Week and Month day panels: switch a monthly
+  highlight on the card (2-line rows still show the M).
 
 ### Fixed
 - **A meeting's prep or review tick is no longer lost when you save an edit**: Quick Add's edit

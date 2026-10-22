@@ -14,7 +14,6 @@ import {StyleSheet, Text, View} from 'react-native';
 import {somedayLinkText} from '../../domain/threadText';
 import {ThreadMeetingEntry, ThreadOverview, ThreadTaskEntry} from '../../storage/threadAggregate';
 import MeetingRow, {MEETING_ROW_HEIGHT} from '../../ui/MeetingRow';
-import {MEETING_TOOLBAR_HEIGHT} from '../../ui/MeetingToolbar';
 import PagedSection from '../../ui/PagedSection';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../ui/TaskRow';
 import {TASK_COLUMN_WIDTH_PX} from '../../ui/taskRowLayout';
@@ -41,8 +40,6 @@ interface Props {
   viewportHeight: number;
   /** The quiet "n someday ›" row: Review's Someday / Maybe step for these todos. */
   onOpenSomeday?: (entries: ThreadTaskEntry[]) => void;
-  /** The meeting toolbar while one of its meetings is edited (ui/useMeetingToolbar.ts); the list box shrinks by its height. */
-  toolbar?: React.ReactNode;
   /** Other sub-head labels (the loop overview's); the thread's by default. */
   sectionLabels?: Partial<Record<TaskSectionKey, string>>;
   textColor: string;
@@ -76,7 +73,7 @@ function rowsOf(overview: ThreadOverview, labels: Partial<Record<TaskSectionKey,
 }
 
 export default function AheadSection(props: Props): React.JSX.Element {
-  const {overview, actions, nextOffers, viewportHeight, onOpenSomeday, sectionLabels = {}, toolbar, textColor, borderColor} = props;
+  const {overview, actions, nextOffers, viewportHeight, onOpenSomeday, sectionLabels = {}, textColor, borderColor} = props;
   const {edit} = actions;
   const rows = rowsOf(overview, sectionLabels);
   const header = (
@@ -93,8 +90,7 @@ export default function AheadSection(props: Props): React.JSX.Element {
     <PagedSection<AheadRow>
       header={header}
       rows={rows}
-      subHeader={toolbar}
-      viewportHeight={toolbar ? viewportHeight - MEETING_TOOLBAR_HEIGHT : viewportHeight}
+      viewportHeight={viewportHeight}
       resetKey={`${overview.thread.tag}|${overview.lens}`}
       isCountableRow={row => row.kind !== 'head'}
       rowHeight={row => {
@@ -136,8 +132,14 @@ export default function AheadSection(props: Props): React.JSX.Element {
               tracking={actions.tracking()}
               note={{onOpen: () => actions.meetingNote(entry), onCreate: () => actions.meetingNote(entry)}}
               file={{linkedFile: entry.meeting.linkedFile, onOpen: actions.openFile}}
-              onPress={() => edit.start({type: 'meeting', key: meetingEntryKey(entry)})}
-              state={edit.target?.type === 'meeting' && edit.target.key === meetingEntryKey(entry) ? 'editing' : undefined}
+              onPress={() => edit.select({type: 'meeting', key: meetingEntryKey(entry)})}
+              state={
+                edit.target?.type === 'meeting' && edit.target.key === meetingEntryKey(entry)
+                  ? edit.mode === 'card'
+                    ? 'selected'
+                    : 'editing'
+                  : undefined
+              }
               ownerPath={entry.item.path}
               textColor={textColor}
               borderColor={borderColor}

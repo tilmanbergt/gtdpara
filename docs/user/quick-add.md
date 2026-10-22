@@ -44,9 +44,9 @@ To empty the Inbox, open each item and either finish it, cancel it, or move it w
 
 ## Editing
 
-Tap a todo or meeting in any list to open it in Quick Add. Change what you need, then **Save** - or **Cancel** - at the top right. Only one item is edited at a time. With an abbreviation tag in the text, **Save** reads **Save to** followed by that project's name: it saves your changes and moves the item there in one step.
+Tap a todo in any list to open it in Quick Add. A meeting first shows its card in Quick Add's place; **Edit** on the card, or a second tap on the row, opens it in Quick Add (see [Meetings](meetings.md)). Change what you need, then **Save** - or **Cancel** - at the top right. Only one item is edited at a time. With an abbreviation tag in the text, **Save** reads **Save to** followed by that project's name: it saves your changes and moves the item there in one step.
 
-The buttons that act at once are in the bottom row:
+For a todo, the buttons that act at once are in the bottom row (for a meeting they are on its card):
 
 - The trash icon removes the item from your lists. It stays in the file, marked as cancelled.
 - **Refile** moves it to another project or area; pick the target in the Files pane. If the item has a note, gtdpara asks first: its own note moves along into the new project's `Todos` or `Meetings` folder. A page in a shared note stays in that note, and the item keeps its link to that page.
@@ -58,7 +58,7 @@ The buttons that act at once are in the bottom row:
 Every todo and meeting can have its own handwritten note - one of gtdpara's most useful features. One tap creates it, already filled in: title, date and time, related open todos, a background from your templates. Next time the same tap opens it again.
 
 - The note icon (+ with a notebook) creates a note for the todo or meeting and opens it, after you confirm what will be created in the status line; the notebook icon opens it later. How the note looks and where it goes is set by [Note setups](note-setups.md).
-- The clip icon links an existing file (for example a PDF from Resources). On a todo, tap the `+` clip, then tap the file in the Files pane; on a meeting, select it and tap **Link file** in the list's toolbar (see [Meetings](meetings.md)). A filled clip opens the linked file. To remove a link, edit the item and tap ✕ next to the clip in the bottom row.
+- The clip icon links an existing file (for example a PDF from Resources). On a todo, tap the `+` clip, then tap the file in the Files pane; on a meeting, select it and tap **+** and the clip on its card (see [Meetings](meetings.md)). A filled clip opens the linked file. To remove a link, tap ✕ next to the file on a meeting's card, or edit a todo and tap ✕ next to the clip in the bottom row.
 
 ## Capturing handwriting with the lasso
 

@@ -38,7 +38,7 @@ import {FolderEntry} from '../supernote/fileSystem';
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import MiniTabs, {MiniTabDef} from '../ui/MiniTabs';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
-import {useMeetingToolbar} from '../ui/useMeetingToolbar';
+import {useMeetingCard} from '../ui/itemCard/useMeetingCard';
 import MeetingRow from '../ui/MeetingRow';
 import {MiniTabDef as DayTabDef} from '../ui/MiniTabs';
 import MonthDaysColumn from '../ui/MonthDaysColumn';
@@ -121,7 +121,9 @@ export default function MonthView({
   const editingMeetingEntry: WeeklyMeetingEntry | null =
     editingKey != null ? dayRows.find(e => meetingKey(e) === editingKey) ?? null : null;
   const linkedFileMissing = useLinkedFileMissing(editingMeetingEntry?.meeting.linkedFile, paths);
-  const dayToolbar = useMeetingToolbar(planning.toolbarOptions(editingMeetingEntry, {textColor, borderColor}));
+  const openSource = (item: WeeklyMeetingEntry['item']) =>
+    item.kind !== 'inbox' && onOpenItem(item.kind, {name: item.name, path: item.path, isFolder: true});
+  const meetingCard = useMeetingCard(planning.cardOptions(editingMeetingEntry, {onOpenSource: openSource}));
 
   const dayTabs: DayTabDef<DayTab>[] = [
     {key: 'meetings', label: `Meetings (${dayRows.length})`},
@@ -213,7 +215,8 @@ export default function MonthView({
                   // A meeting added from the day panel is meant for the month.
                   initialMonthly={selectedDate != null}
                   isMeetingDateVisible={stableIsMeetingDateVisible}
-                  editTarget={editTargetFor(editingKey, {meeting: editingMeetingEntry?.meeting})}
+                  editTarget={editTargetFor(editingKey, {meeting: editingMeetingEntry?.meeting}, planning.editMode)}
+                  meetingCard={meetingCard}
                   onSaveEditMeeting={editingMeetingEntry ? stableSaveEditMeeting : undefined}
                   flushEditRef={planning.flushEditRef}
                   onCancelEdit={planning.cancelEditTarget}
@@ -237,13 +240,11 @@ export default function MonthView({
                     activeTab={dayTab}
                     onTabChange={setDayTab}
                     onClose={() => planning.closeDayPanel()}
-                    toolbar={dayToolbar}
                     renderRow={(entry, layout) => (
                       <MeetingRow
                         key={dayEntryKey(entry)}
                         {...planning.dayRowProps(entry, layout, {
-                          onOpenSource: item =>
-                            item.kind !== 'inbox' && onOpenItem(item.kind, {name: item.name, path: item.path, isFolder: true}),
+                          onOpenSource: openSource,
                           textColor,
                           borderColor,
                         })}

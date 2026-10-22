@@ -1,7 +1,7 @@
 import {isoDateOffset} from '../../src/domain/meetingTime';
 import {meetingKey} from '../../src/domain/provenance';
 import {device} from '../../test-helpers/fakeDevice/device';
-import {expectNotShows, expectShows, fieldValue, openApp, openEngage, tap, tapTab, type} from '../../test-helpers/scenario/app';
+import {expectNotShows, expectShows, fieldValue, labelled, openApp, openEngage, tap, tapLabel, tapTab, type} from '../../test-helpers/scenario/app';
 import {areaDir, areaFile, dataFile, fileText, pageKeywords, pageTexts, putFile, sectionLines} from '../../test-helpers/scenario/files';
 import {and, given, scenario, then, when} from '../../test-helpers/scenario/scenario';
 import {sparringSettings} from '../../test-helpers/scenario/setups';
@@ -51,12 +51,13 @@ scenario('Reflect on a sparring session: the page comes after the meeting\'s pag
     await openCoaching();
     await tap(/^Sparring Mieke/);
   });
-  then('the toolbar acts on it and offers "Reflect ›" and "☐ Reviewed"', () => {
-    expectShows('Reflect ›');
-    expectShows('☐ Reviewed');
+  then('its card offers Reflect and R (not reviewed yet)', () => {
+    expectShows('Meeting · over');
+    expect(labelled('Reflect')).toEqual({on: false, disabled: false});
+    expect(labelled('Reviewed')).toEqual({on: false, disabled: false});
   });
-  when('I tap "Reflect ›" and confirm the new page', async () => {
-    await tap('Reflect ›');
+  when('I tap Reflect and confirm the new page', async () => {
+    await tapLabel('Reflect');
     expectShows(new RegExp(`^Sparring: reflection page in Meetings/sparring mieke ${year}\\.note, after the meeting's page`));
     await tap('Add page');
   });
@@ -75,9 +76,9 @@ scenario('Reflect on a sparring session: the page comes after the meeting\'s pag
   and('it carries the setup\'s heading and guiding question', () => {
     expect(pageTexts(NOTEBOOK, 3)).toEqual(expect.arrayContaining([expect.stringContaining('Sparring Mieke'), 'What did I notice?']));
   });
-  and('it was opened, and the toolbar now says "Reflection ›"', () => {
+  and('it was opened, and the card\'s Reflect is filled now', () => {
     expect(device().sdk.opened.at(-1)).toEqual({path: NOTEBOOK, page: 3});
-    expectShows('Reflection ›');
+    expect(labelled('Reflection')?.on).toBe(true);
   });
   and('the meeting is not ticked reviewed and its line is unchanged', () => {
     expect(sectionLines(areaFile('Coaching'), 'Meetings')).toEqual([sparringLine(), checkinLine]);
@@ -88,10 +89,10 @@ scenario('Reflect on a meeting that has no page yet: one question, then meeting 
   given('area "Coaching" has a sparring session three days ago without a note, and no sparring notebook exists', () => {
     coaching([sparringLine('', false)]);
   });
-  when('I tap the session, tap "Reflect ›" and confirm', async () => {
+  when('I tap the session, tap Reflect on its card and confirm', async () => {
     await openCoaching();
     await tap(/^Sparring Mieke/);
-    await tap('Reflect ›');
+    await tapLabel('Reflect');
     expectShows(new RegExp(`^Sparring: pages for the meeting and its reflection in Meetings/sparring mieke ${year}\\.note`));
     await tap('Add pages');
   });
@@ -120,8 +121,8 @@ scenario('A renamed meeting finds its reflection again', {feature: 'Meetings', d
     await openCoaching();
     await tap(/^Sparring Mieke roles/);
   });
-  then('the toolbar says "Reflection ›"', () => expectShows('Reflection ›'));
-  when('I tap it', () => tap('Reflection ›'));
+  then('the card\'s Reflect is filled: the page exists', () => expect(labelled('Reflection')?.on).toBe(true));
+  when('I tap it', () => tapLabel('Reflection'));
   then('the same page opens, now with the keyword of the new title', () => {
     expect(device().sdk.opened.at(-1)).toEqual({path: NOTEBOOK, page: 1});
     expect(pageKeywords(NOTEBOOK, 1)).toEqual([`reflection ${d1} Sparring Mieke roles`]);
@@ -129,48 +130,58 @@ scenario('A renamed meeting finds its reflection again', {feature: 'Meetings', d
   });
 });
 
-scenario('The toolbar follows the selected meeting', {feature: 'Meetings', design: 'technical-design-meeting-reflection.md'}, () => {
+scenario('The card follows the selected meeting', {feature: 'Meetings', design: 'technical-design-item-card.md'}, () => {
   given('area "Coaching" has a sparring session three days ago and one in two days, both tracked by the Sparring setup', () => {
     coaching([sparringLine(), `- ${ahead} 10:00-11:00 Next sparring Mieke #sparring/mieke`]);
     sparringNotebook();
   });
   when('I open Coaching without tapping a meeting', openCoaching);
-  then('the toolbar is there but says "Tap a meeting"', () => expectShows('Tap a meeting'));
+  then('Quick Add shows, no card', () => {
+    expectShows('+ Add');
+    expectNotShows(/^Meeting · /);
+  });
   when('I tap the session in two days', () => tap(/^Next sparring Mieke/));
-  then('it offers "☐ Prepped" and "Link file", but no reflection yet', () => {
-    expectShows('☐ Prepped');
-    expectShows('Link file');
-    expectNotShows('Reflect ›');
-    expectNotShows('☐ Reviewed');
+  then('its card offers P and +clip, but no reflection yet', () => {
+    expectShows('Meeting · ahead');
+    expect(labelled('Prepped')).toEqual({on: false, disabled: false});
+    expect(labelled('Link file')).not.toBeNull();
+    expect(labelled('Reflect')).toBeNull();
+    expect(labelled('Reviewed')).toBeNull();
   });
   when('I tap the session three days ago', () => tap(/^Sparring Mieke/));
-  then('it offers "☐ Reviewed", "Reflect ›" and "Link file"', () => {
-    expectShows('☐ Reviewed');
-    expectShows('Reflect ›');
-    expectShows('Link file');
-    expectNotShows('☐ Prepped');
+  then('the card switches to it: R, Reflect and +clip', () => {
+    expectShows('Meeting · over');
+    expect(labelled('Reviewed')).not.toBeNull();
+    expect(labelled('Reflect')).not.toBeNull();
+    expect(labelled('Link file')).not.toBeNull();
+    expect(labelled('Prepped')).toBeNull();
   });
 });
 
-scenario('Tick reviewed in the toolbar while editing the meeting: Save keeps the tick', {feature: 'Meetings', design: 'technical-design-meeting-reflection.md'}, () => {
+scenario('Edit and save from the card, then tick reviewed on it: the title changes and both ticks stay', {feature: 'Meetings', design: 'technical-design-item-card.md'}, () => {
   given('the sparring session three days ago was ticked prepped before it took place', () => {
     coaching([sparringLine(' #prepped')]);
     sparringNotebook();
   });
-  when('I tap the session to edit it', async () => {
+  when('I tap the session and then Edit on its card', async () => {
     await openCoaching();
     await tap(/^Sparring Mieke/);
+    await tap('Edit');
   });
   then('the title field shows the title without #prepped', () => {
     expect(fieldValue('New meeting title')).toBe('Sparring Mieke #sparring/mieke');
   });
-  when('I change the title, tick "☐ Reviewed" in the toolbar and then tap Save', async () => {
+  when('I change the title and tap Save', async () => {
     await type('New meeting title', 'Sparring Mieke roles #sparring/mieke');
-    await tap('☐ Reviewed');
-    expectShows('✓ Reviewed');
     await tap('Save');
   });
-  then('the meeting has the new title and keeps both #prepped and #reviewed', () => {
+  then('the card shows the meeting again', () => {
+    expectShows('Meeting · over');
+    expectShows('Sparring Mieke roles #sparring/mieke');
+  });
+  when('I tick R on the card', () => tapLabel('Reviewed'));
+  then('R is filled', () => expect(labelled('Reviewed')?.on).toBe(true));
+  and('the meeting has the new title and keeps both #prepped and #reviewed', () => {
     const [line] = sectionLines(areaFile('Coaching'), 'Meetings');
     expect(line).toMatch(new RegExp(`^- ${d1} 10:00-11:00 Sparring Mieke roles #sparring/mieke`));
     expect(line).toContain('#prepped');
@@ -178,7 +189,7 @@ scenario('Tick reviewed in the toolbar while editing the meeting: Save keeps the
   });
 });
 
-scenario('Daily: tomorrow\'s tracked meeting offers Prepped, and Daily has no Link file', {feature: 'Daily', design: 'technical-design-meeting-reflection.md'}, () => {
+scenario('Daily: tomorrow\'s tracked meeting offers Prepped, and Daily has no Link file', {feature: 'Daily', design: 'technical-design-item-card.md'}, () => {
   given('area "Coaching" has a sparring session tomorrow', () => {
     coaching([`- ${isoDateOffset(1)} 10:00-11:00 Sparring Mieke #sparring/mieke`]);
   });
@@ -188,10 +199,10 @@ scenario('Daily: tomorrow\'s tracked meeting offers Prepped, and Daily has no Li
     await tap('Tomorrow');
     await tap(/^Sparring Mieke/);
   });
-  then('the toolbar offers "☐ Prepped" and nothing else', () => {
-    expectShows('☐ Prepped');
-    expectNotShows('Link file');
-    expectNotShows('Reflect ›');
+  then('its card offers P, no +clip and no Reflect', () => {
+    expect(labelled('Prepped')).toEqual({on: false, disabled: false});
+    expect(labelled('Link file')).toBeNull();
+    expect(labelled('Reflect')).toBeNull();
   });
 });
 

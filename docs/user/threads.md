@@ -55,9 +55,9 @@ The upper list on the left:
 - **Relevant**: open todos with the thread's tag or `#alpha` that are neither of the above
 - a last, quiet row such as **1 someday ›**: the thread's Someday and Maybe todos are not listed, only counted. Tap it to open the Weekly Review's step **Someday / Maybe** with just these todos, see [Weekly Review](review.md).
 
-A list with nothing in it is left out. [Engage](engage.md) for the thread holds the same todos. While you edit one of its meetings, the toolbar for that meeting shows at the top of the list: its prep or review tick and **Reflect ›** (see [Meetings](meetings.md)).
+A list with nothing in it is left out. [Engage](engage.md) for the thread holds the same todos. Tapping one of its meetings shows the meeting's card in Quick Add's place: its prep or review tick and **Reflect** (see [Meetings](meetings.md)).
 
-Tap a row to edit it in Quick Add; tick, note and file icons work as on every list.
+Tap a todo row to edit it in Quick Add, a meeting row to see its card; tick, note and file icons work as on every list.
 
 ## Looking back
 

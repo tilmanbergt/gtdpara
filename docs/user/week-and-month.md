@@ -12,7 +12,7 @@ The right side shows Quick Add and the **weekly focus** panel: pick the projects
 
 The left side lists every day of the month. It shows meetings you marked as **monthly highlights** - big things like a trip, an offsite or a birthday. Use ‹ and › to move between months, and tap a day to see all its meetings on the right.
 
-The day's meetings on the right have the same toolbar as every meeting list (see [Meetings](meetings.md)): tap a meeting, and it offers the prep or review tick and, once the meeting is over, **Reflect ›**.
+Tap one of the day's meetings on the right, and its card takes Quick Add's place, as on every meeting list (see [Meetings](meetings.md)): the prep or review tick, **M** and, once the meeting is over, **Reflect**.
 
 To make a meeting a monthly highlight, switch on the small **M** in Quick Add when adding or editing it. Highlighted meetings show the same M in 2-line rows. A short name in brackets at the end of the title, for example "Art of Transformation Session (AoT)", is used as the short form in the month list.
 

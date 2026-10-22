@@ -1,7 +1,8 @@
 import {isoDateOffset} from '../../src/domain/meetingTime';
-import {expectNotShows, expectShows, fieldValue, openApp, tap, tapTab, type} from '../../test-helpers/scenario/app';
-import {areaFile, dataFile, INBOX_FILE, loggedErrors, projectFile, putFile, sectionLines} from '../../test-helpers/scenario/files';
-import {given, scenario, then, when} from '../../test-helpers/scenario/scenario';
+import {expectNotShows, expectShows, fieldValue, labelled, openApp, tap, tapLabel, tapTab, texts, type} from '../../test-helpers/scenario/app';
+import {areaDir, areaFile, dataFile, INBOX_FILE, loggedErrors, projectFile, putFile, sectionLines} from '../../test-helpers/scenario/files';
+import {and, given, scenario, then, when} from '../../test-helpers/scenario/scenario';
+import {sparringSettings} from '../../test-helpers/scenario/setups';
 
 const today = isoDateOffset(0);
 
@@ -10,9 +11,10 @@ scenario('Save to <Name>: an abbreviation tag typed while editing saves the meet
     putFile(projectFile('Garden renovation'), dataFile('project', {Scope: [], Tasks: [], Meetings: []}, ['abbrev: GR']));
     putFile(INBOX_FILE, dataFile('inbox', {Tasks: [], Meetings: [`- ${today} 14:00 Site visit`]}));
   });
-  when('I open Daily, tap the meeting, add "#GR" to its title', async () => {
+  when('I open Daily, tap the meeting twice (card, then edit), add "#GR" to its title', async () => {
     await openApp();
     await tapTab('Daily');
+    await tap(/^Site visit/);
     await tap(/^Site visit/);
     await type('New meeting title', 'Site visit with Tom #GR');
   });
@@ -90,5 +92,171 @@ scenario('In a thread overview, Quick Add adds the thread tag it shows in Row 4'
       '- [ ] Draft agenda #retro/alpha',
       expect.stringMatching(/^- \[ \] Book room #retro\/alpha/),
     ]);
+  });
+});
+
+const nextWeek = isoDateOffset(7);
+const lastWeek = isoDateOffset(-7);
+
+scenario('Tap a meeting shows its card; ✕ brings back the half-typed todo', {feature: 'Quick Add', design: 'technical-design-item-card.md'}, () => {
+  given('the Inbox meeting "Team sync" next week', () => {
+    putFile(INBOX_FILE, dataFile('inbox', {Tasks: [], Meetings: [`- ${nextWeek} 10:00 Team sync`]}));
+  });
+  when('I start the todo "Call Anna" in the Inbox and tap the meeting', async () => {
+    await openApp();
+    await tapTab('Inbox');
+    await type('New task', 'Call Anna');
+    await tap(/^Team sync/);
+  });
+  then('the card names the meeting in Quick Add\'s place', () => {
+    expectShows('Meeting · ahead');
+    expectShows('Edit');
+    expectNotShows('+ Add');
+  });
+  when('I tap ✕ on the card', () => tapLabel('Close'));
+  then('Quick Add is back with "Call Anna" still in the field', () => {
+    expectShows('+ Add');
+    expectNotShows('Meeting · ahead');
+    expect(fieldValue('New task')).toBe('Call Anna');
+  });
+});
+
+scenario('A second tap edits; Save writes it and shows the card again', {feature: 'Quick Add', design: 'technical-design-item-card.md'}, () => {
+  given('the Inbox meeting "Team sync" next week', () => {
+    putFile(INBOX_FILE, dataFile('inbox', {Tasks: [], Meetings: [`- ${nextWeek} 10:00 Team sync`]}));
+  });
+  when('I tap the meeting, tap Edit, rename it and Save', async () => {
+    await openApp();
+    await tapTab('Inbox');
+    await tap(/^Team sync/);
+    await tap('Edit');
+    await type('New meeting title', 'Team sync and planning');
+    await tap('Save');
+  });
+  then('Inbox.txt has the new title', () => {
+    expect(sectionLines(INBOX_FILE, 'Meetings')).toEqual([`- ${nextWeek} 10:00 Team sync and planning`]);
+  });
+  and('the card shows the meeting again, not the edit form', () => {
+    expectShows('Meeting · ahead');
+    expectShows('Team sync and planning');
+    expectNotShows('Save');
+  });
+});
+
+scenario('Tick R and M on the card: only the tags change', {feature: 'Meetings', design: 'technical-design-item-card.md'}, () => {
+  const line = `- ${lastWeek} 10:00-11:00 Sparring Mieke #sparring/mieke`;
+  given('area "Coaching" has a sparring session last week, tracked for review', () => {
+    putFile(areaFile('Coaching'), dataFile('area', {Scope: [], Tasks: [], Meetings: [line]}, ['abbrev: Co']));
+  });
+  when('I tap the session on Coaching and tap R and M on its card', async () => {
+    await openApp({settings: sparringSettings()});
+    await tapTab('Areas');
+    await tap(/^Coaching/);
+    await tap(/^Sparring Mieke/);
+    await tapLabel('Reviewed');
+    await tapLabel('Month highlight');
+  });
+  then('the line gains #reviewed and #monthly and nothing else', () => {
+    expect(sectionLines(areaFile('Coaching'), 'Meetings')).toEqual([`${line} #reviewed #monthly`]);
+  });
+  and('both show filled on the card', () => {
+    expect(labelled('Reviewed')?.on).toBe(true);
+    expect(labelled('Month highlight')?.on).toBe(true);
+  });
+});
+
+scenario('Refile a meeting from the card\'s area chip', {feature: 'Inbox', design: 'technical-design-item-card.md'}, () => {
+  given('the Inbox meeting "Kick-off" next week and project "Website"', () => {
+    putFile(INBOX_FILE, dataFile('inbox', {Tasks: [], Meetings: [`- ${nextWeek} 10:00 Kick-off`]}));
+    putFile(projectFile('Website'), dataFile('project', {Scope: [], Tasks: [], Meetings: []}));
+  });
+  when('I tap the meeting, tap the refile arrow and pick Website in the Files pane', async () => {
+    await openApp();
+    await tapTab('Inbox');
+    await tap(/^Kick-off/);
+    await tapLabel('Refile');
+    await tap('📁 Projects ›');
+    await tap(/Website/);
+  });
+  then('the meeting is in Website and no longer in the Inbox', () => {
+    expect(sectionLines(projectFile('Website'), 'Meetings')).toEqual([`- ${nextWeek} 10:00 Kick-off`]);
+    expect(sectionLines(INBOX_FILE, 'Meetings')).toEqual([]);
+  });
+});
+
+scenario('New from this and Cancel meeting from the card', {feature: 'Meetings', design: 'technical-design-item-card.md'}, () => {
+  given('the Inbox meeting "Retro" next week', () => {
+    putFile(INBOX_FILE, dataFile('inbox', {Tasks: [], Meetings: [`- ${nextWeek} 15:00-16:00 Retro`]}));
+  });
+  when('I tap the meeting and New from this on its card', async () => {
+    await openApp();
+    await tapTab('Inbox');
+    await tap(/^Retro/);
+    await tapLabel('New from this');
+  });
+  then('Create · Meeting holds the title, date and time; the card is closed', () => {
+    expect(fieldValue('New meeting title')).toBe('Retro');
+    expect(fieldValue('15 · 15-16.30 · 2d')).toBe('15:00-16:00');
+    expectShows('+ Add');
+  });
+  when('I tap the meeting again, Cancel meeting, and confirm', async () => {
+    await tap(/^Retro/);
+    await tapLabel('Cancel meeting');
+    expectShows(/^Cancel "Retro"\?/);
+    await tap('Cancel meeting');
+  });
+  then('the meeting is marked cancelled in Inbox.txt, and the card says so', () => {
+    expect(sectionLines(INBOX_FILE, 'Meetings')).toEqual([`- [-] ${nextWeek} 15:00-16:00 Retro`]);
+    expectShows('Meeting · cancelled');
+    expect(labelled('Cancel meeting')).toBeNull();
+  });
+});
+
+scenario('Switching to another meeting while editing saves first and shows the other\'s card', {feature: 'Quick Add', design: 'technical-design-item-card.md'}, () => {
+  given('the Inbox meetings "Team sync" and "Retro" next week', () => {
+    putFile(INBOX_FILE, dataFile('inbox', {Tasks: [], Meetings: [`- ${nextWeek} 10:00 Team sync`, `- ${nextWeek} 15:00 Retro`]}));
+  });
+  when('I edit "Team sync", rename it, and tap "Retro"', async () => {
+    await openApp();
+    await tapTab('Inbox');
+    await tap(/^Team sync/);
+    await tap('Edit');
+    await type('New meeting title', 'Team sync moved');
+    await tap(/^Retro/);
+  });
+  then('the rename is saved', () => {
+    expect(sectionLines(INBOX_FILE, 'Meetings')).toEqual([`- ${nextWeek} 10:00 Team sync moved`, `- ${nextWeek} 15:00 Retro`]);
+  });
+  and('"Retro" shows as card', () => {
+    expectShows('Meeting · ahead');
+    expectShows('Edit');
+    // The card's title follows its R1 (… ✕ Edit).
+    const shown = texts();
+    expect(shown[shown.indexOf('Edit') + 1]).toBe('Retro');
+  });
+});
+
+scenario('Link a file from the card on an Area page, and unlink it', {feature: 'Meetings', design: 'technical-design-item-card.md'}, () => {
+  given('area "Coaching" has the meeting "Sparring" next week and the file "brief.pdf" in its folder', () => {
+    putFile(areaFile('Coaching'), dataFile('area', {Scope: [], Tasks: [], Meetings: [`- ${nextWeek} 10:00 Sparring`]}));
+    putFile(`${areaDir('Coaching')}/brief.pdf`, '%PDF');
+  });
+  when('I tap the meeting, tap +clip on its card and pick the file in the Files pane', async () => {
+    await openApp();
+    await tapTab('Areas');
+    await tap(/^Coaching/);
+    await tap(/^Sparring/);
+    await tapLabel('Link file');
+    expectShows(/^Select attachment/);
+    await tap('📄 brief.pdf');
+  });
+  then('the meeting links the file, and the card shows its name', () => {
+    expect(sectionLines(areaFile('Coaching'), 'Meetings')[0]).toMatch(/brief\.pdf/);
+    expectShows('brief.pdf');
+  });
+  when('I tap ✕ next to the file on the card', () => tapLabel('Unlink'));
+  then('the line has no link any more, and the card offers +clip again', () => {
+    expect(sectionLines(areaFile('Coaching'), 'Meetings')).toEqual([`- ${nextWeek} 10:00 Sparring`]);
+    expect(labelled('Link file')).not.toBeNull();
   });
 });

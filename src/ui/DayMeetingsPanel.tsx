@@ -38,8 +38,6 @@ interface Props<T, K extends string> {
   googlePanel: React.ReactNode | null;
   renderRow: (entry: T, layout: MeetingRowLayout) => React.ReactNode;
   emptyHint?: string;
-  /** The meeting-list toolbar for the selected meeting (ui/useMeetingToolbar.ts). */
-  toolbar?: React.ReactNode;
   /** Extra reset signal for the list (Daily: the active context filter) - combined with `date`. */
   listResetKey?: string;
   textColor: string;
@@ -56,7 +54,6 @@ export default function DayMeetingsPanel<T, K extends string>({
   googlePanel,
   renderRow,
   emptyHint,
-  toolbar,
   listResetKey,
   textColor,
   borderColor,
@@ -91,7 +88,6 @@ export default function DayMeetingsPanel<T, K extends string>({
             renderRow={renderRow}
             resetKey={`${date}|${listResetKey ?? ''}`}
             emptyHint={emptyHint ?? 'No meetings on this day.'}
-            toolbar={toolbar}
             textColor={textColor}
             borderColor={borderColor}
           />

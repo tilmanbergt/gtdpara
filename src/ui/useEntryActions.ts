@@ -17,7 +17,6 @@ import {Destination, destinationLabel} from '../domain/destination';
 import {EngageFlowChoice, engageFlowText} from '../domain/engageOptions';
 import {UndoRecord} from '../domain/engageFlow';
 import {ENGAGE_NOTICE} from '../domain/engageText';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {todayIso} from '../domain/meetingTime';
 import {GtdParaSettings} from '../domain/settings';
 import {withTaskCancelled, withTaskDone, withTaskText} from '../domain/taskEdit';
@@ -48,7 +47,7 @@ import {useEditTarget} from './useEditTarget';
 import {useEngagePrompt} from './useEngagePrompt';
 import {useEntryMoveUi} from './useEntryMoveUi';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
-import {MeetingToolbarOptions} from './useMeetingToolbar';
+import {MeetingCardOptions} from './itemCard/useMeetingCard';
 import {openOrCreateReflectionPage} from '../storage/reflectionPage';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
@@ -173,7 +172,7 @@ export function useEntryActions(name = 'ThreadOverview') {
         meetings[entry.meetingIndex] = applyMeetingEdit(meetings[entry.meetingIndex], fields, linkedFile);
         return meetings;
       });
-      edit.cancel();
+      edit.saved(); // back to the meeting's card
     });
 
   /** Quick Add's Delete in edit mode: cancels (soft-deletes) the edited row. */
@@ -278,22 +277,21 @@ export function useEntryActions(name = 'ThreadOverview') {
 
   const tracking = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
 
-  /** The meeting toolbar (ui/useMeetingToolbar.ts) for the edited meeting: its tick and its reflection; no Files pane here. */
-  const toolbarOptions = (entry: ThreadMeetingEntry | null, colors: {textColor: string; borderColor: string}): MeetingToolbarOptions => ({
+  /** The selected meeting's card (ui/itemCard/useMeetingCard.ts); no Files pane here: no +clip, refile only by abbreviation tag. */
+  const cardOptions = (entry: ThreadMeetingEntry | null): MeetingCardOptions => ({
     name: LOG,
-    selection: entry && {meeting: entry.meeting, itemPath: entry.item.path, forceOwn: entry.item.kind === 'inbox'},
+    selection: entry && {meeting: entry.meeting, itemPath: entry.item.path, ownerName: entry.item.name, inbox: entry.item.kind === 'inbox'},
     settings,
     inbox: inbox ? {tasks: inbox.tasks} : null,
-    onToggle: (kind: MeetingTrackingKind) =>
-      entry &&
-      rowAction.run(async () => {
-        await saveMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));
-        requestEinkRefresh();
-      }),
-    persistMeeting: async updated => {
-      if (entry) await saveMeetings(entry, meetings => meetings.map((m, i) => (i === entry.meetingIndex ? updated : m)));
+    updateMeeting: async change => {
+      if (entry) await saveMeetings(entry, meetings => meetings.map((m, i) => (i === entry.meetingIndex ? change(m) : m)));
     },
-    ...colors,
+    onNote: () => {
+      if (entry) meetingNote(entry);
+    },
+    onOpenFile: linkedFile => openFile(linkedFile),
+    onEdit: edit.edit,
+    onClose: edit.cancel,
   });
 
   const openFile = (linkedFile: string) => {
@@ -319,7 +317,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     meetingNote,
     tracking,
     reflection,
-    toolbarOptions,
+    cardOptions,
     openFile,
     openTaskFile,
   };

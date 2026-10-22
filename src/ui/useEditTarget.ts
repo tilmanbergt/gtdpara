@@ -67,7 +67,8 @@ export function useEditTarget<T, A = never>() {
     setSelection({target: null, mode: 'edit'});
     setArm(null);
   }, []);
-  const set = useCallback((next: T | null) => setSelection(s => ({target: next, mode: s.mode})), []);
+  /** Sets the target without saving (inside `afterSave`); the mode stays unless given. */
+  const set = useCallback((next: T | null, mode?: EditMode) => setSelection(s => ({target: next, mode: mode ?? s.mode})), []);
   const armFor = useCallback((next: A) => setArm(next), []);
   const cancelArm = useCallback(() => setArm(null), []);
   return {

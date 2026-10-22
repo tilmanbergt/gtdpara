@@ -89,9 +89,8 @@ import {Destination} from '../domain/destination';
 import {groupTasksByFlowState} from '../domain/flowState';
 import {withTaskCancelled, withTaskDone} from '../domain/taskEdit';
 import {splitAndSortMeetings, todayIso} from '../domain/meetingTime';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../domain/noteSetups';
-import {useMeetingToolbar} from '../ui/useMeetingToolbar';
+import {useMeetingCard} from '../ui/itemCard/useMeetingCard';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting, Task} from '../domain/types';
 import {findCachedItem, getCachedData, rebuildCache, setCachedInbox} from '../storage/dataCache';
@@ -107,7 +106,7 @@ import {loadProjectFile, saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings, saveSettings} from '../storage/settingsStorage';
 import {FolderEntry} from '../supernote/fileSystem';
 import {log, logError} from '../utils/log';
-import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
+import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../ui/FileBrowserPane';
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import MeetingRow, {MeetingTrackingConfig} from '../ui/MeetingRow';
@@ -214,8 +213,12 @@ export default function InboxScreen({
 
   const {
     target: editTarget,
+    mode: editMode,
     arm: armTarget,
     start: startEdit,
+    select: selectEdit,
+    edit: editSelected,
+    saved: savedEditTarget,
     cancel: cancelEditTarget,
     armFor,
     cancelArm: cancelArming,
@@ -417,7 +420,7 @@ export default function InboxScreen({
         meetings[meetingIndex] = applyMeetingEdit(meetings[meetingIndex], fields, nextLinkedFile);
         return meetings;
       });
-      cancelEditTarget();
+      savedEditTarget(); // back to the meeting's card
     });
   };
 
@@ -494,13 +497,6 @@ export default function InboxScreen({
     });
   };
 
-  /** The toolbar's prep/review tick (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag on the current copy via saveInboxMeetings, then an explicit e-ink flush for the direct tap. */
-  const handleToggleMeetingTracking = (meetingIndex: number, kind: MeetingTrackingKind) => {
-    runMeetingAction(async () => {
-      await saveInboxMeetings(meetings => toggleMeetingTrackingAt(meetings, meetingIndex, kind));
-      requestEinkRefresh();
-    });
-  };
   const trackingFor = (): MeetingTrackingConfig => ({setups: noteSetups});
 
   const handleFileMeeting = (meetingIndex: number, target: InboxFilingTarget) => {
@@ -718,19 +714,20 @@ export default function InboxScreen({
     ...past.map(({meeting, index}): MeetingEntryRow => ({rowKey: `meeting-${index}`, meeting, index})),
   ];
   const editingMeeting = editingMeetingIndex !== null ? meetings[editingMeetingIndex] ?? null : null;
-  // The meeting toolbar acts on the edited (or armed) meeting; Inbox meetings always get their own note.
-  const toolbarIndex = editingMeetingIndex ?? armingMeetingIndex;
-  const toolbarMeeting = toolbarIndex !== null ? meetings[toolbarIndex] : undefined;
-  const meetingToolbar = useMeetingToolbar({
+  // The selected meeting's card; Inbox meetings always get their own note.
+  const cardMeeting = editingMeetingIndex !== null ? meetings[editingMeetingIndex] : undefined;
+  const meetingCard = useMeetingCard({
     name: 'InboxScreen',
-    selection: toolbarMeeting && inboxPath ? {meeting: toolbarMeeting, itemPath: inboxPath, forceOwn: true} : null,
+    selection: cardMeeting && inboxPath ? {meeting: cardMeeting, itemPath: inboxPath, ownerName: 'Inbox', inbox: true} : null,
     settings: screenSettings,
     inbox: {tasks},
-    onToggle: kind => toolbarIndex !== null && handleToggleMeetingTracking(toolbarIndex, kind),
-    onArmLink: () => toolbarIndex !== null && armLinkTarget('meeting', toolbarIndex),
-    persistMeeting: updated => saveInboxMeetings(ms => ms.map((m, i) => (i === toolbarIndex ? updated : m))),
-    textColor,
-    borderColor,
+    updateMeeting: change => saveInboxMeetings(ms => ms.map((m, i) => (i === editingMeetingIndex ? change(m) : m))),
+    onNote: () => editingMeetingIndex !== null && handleMeetingNote(editingMeetingIndex),
+    onOpenFile: onOpenLinkedFile,
+    onArmLink: () => editingMeetingIndex !== null && armLinkTarget('meeting', editingMeetingIndex),
+    onArmRefile: () => editingMeetingIndex !== null && armFileTarget('meeting', editingMeetingIndex),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
   });
 
   return (
@@ -766,10 +763,12 @@ export default function InboxScreen({
               fixedDestination={FIXED_INBOX_DESTINATION}
               onAddTask={handleAddTask}
               onAddMeeting={handleAddMeeting}
-              editTarget={editTargetFor(editTarget ? `${editTarget.type}:${editTarget.index}` : null, {
-                task: editingTask ? {...editingTask, text: displayTaskText(editingTask, 'grouped')} : null,
-                meeting: editingMeeting,
-              })}
+              editTarget={editTargetFor(
+                editTarget ? `${editTarget.type}:${editTarget.index}` : null,
+                {task: editingTask ? {...editingTask, text: displayTaskText(editingTask, 'grouped')} : null, meeting: editingMeeting},
+                editMode,
+              )}
+              meetingCard={meetingCard}
               onSaveEditTask={commitTaskEdit}
               onSaveEditMeeting={commitMeetingEdit}
               flushEditRef={flushEditRef}
@@ -880,17 +879,22 @@ export default function InboxScreen({
                         tracking={trackingFor()}
                         note={{onOpen: () => handleMeetingNote(row.index), onCreate: () => handleMeetingNote(row.index)}}
                         file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile}}
-                        onPress={() => startEditTarget('meeting', row.index)}
+                        onPress={() => selectEdit({type: 'meeting', index: row.index})}
                         ownerPath={inboxPath}
                         state={
-                          editingMeetingIndex === row.index ? 'editing' : armingMeetingIndex === row.index ? 'arming' : undefined
+                          armingMeetingIndex === row.index
+                            ? 'arming'
+                            : editingMeetingIndex === row.index
+                              ? editMode === 'card'
+                                ? 'selected'
+                                : 'editing'
+                              : undefined
                         }
                         textColor={textColor}
                         borderColor={borderColor}
                       />
                     )}
                     emptyHint="No meetings yet."
-                    toolbar={meetingToolbar}
                     textColor={textColor}
                     borderColor={borderColor}
                   />

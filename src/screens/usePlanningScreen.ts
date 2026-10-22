@@ -15,7 +15,6 @@
 import {useCallback, useEffect, useState} from 'react';
 import {AbbrevFileMatch} from '../domain/abbrev';
 import {Destination, destinationLabel} from '../domain/destination';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {PeriodScope} from '../domain/period';
 import {GtdParaSettings, ResolvedParaPaths} from '../domain/settings';
 import {Meeting} from '../domain/types';
@@ -40,7 +39,7 @@ import {loadProjectFile} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
 import {WeeklyMeetingEntry} from '../storage/weeklyAggregate';
 import {log, logError} from '../utils/log';
-import {requestEinkRefresh, useEinkRefreshOnLoad} from '../utils/screenRefresh';
+import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
 import {MeetingRowLayout, MeetingRowProps, MeetingTrackingConfig, trackingSetups} from '../ui/MeetingRow';
 import {entryDate} from '../domain/meetingSpan';
 import {MeetingQuickAddFields, QuickFilePayload} from '../ui/QuickAddWidget';
@@ -53,7 +52,7 @@ import {todayIso} from '../domain/meetingTime';
 import {useActionError} from '../ui/useActionError';
 import {errorMessage} from '../utils/errorMessage';
 import {useCachedInbox} from '../ui/useCachedInbox';
-import {MeetingToolbarOptions} from '../ui/useMeetingToolbar';
+import {MeetingCardOptions} from '../ui/itemCard/useMeetingCard';
 
 /** Stable identity of one listed meeting (source file + index) - what `editingKey` holds. */
 export const meetingKey = (entry: WeeklyMeetingEntry) => `${entry.item.path}#${entry.meetingIndex}`;
@@ -79,7 +78,17 @@ export function usePlanningScreen({logTag}: Options) {
   useEinkRefreshOnLoad(loading);
   const [error, setError] = useState<string | null>(null);
   // The meeting open in Quick Add's edit mode, by meetingKey (ui/useEditTarget.ts).
-  const {target: editingKey, start: startEdit, cancel: cancelEditTarget, set: setEditingKey, flushEditRef, afterSave} = useEditTarget<string>();
+  const {
+    target: editingKey,
+    mode: editMode,
+    select: selectEdit,
+    edit: editSelected,
+    saved: savedEditTarget,
+    cancel: cancelEditTarget,
+    set: setEditingKey,
+    flushEditRef,
+    afterSave,
+  } = useEditTarget<string>();
   // Both go to the central status slot (docs/dev/history/technical-design-status-slot.md §7.4),
   // not inline on the Week/Month screens.
   const widgetAction = useActionError('planning.widgetError', `${logTag}: widget action failed`);
@@ -173,10 +182,12 @@ export function usePlanningScreen({logTag}: Options) {
     log(`${logTag}: added meeting`, destinationLabel(destination));
   };
 
-  // Save-then-switch: every change of the edit target first saves the
+  // Save-then-switch: every change of the selection first saves the
   // current meeting's pending changes; a failed save keeps the edit where it
-  // is. The screen passes `flushEditRef` and `editingKey` to its QuickAddWidget.
-  const startMeetingEdit = (entry: WeeklyMeetingEntry) => startEdit(meetingKey(entry));
+  // is. The first tap shows the meeting's card, a second tap edits
+  // (ui/useEditTarget.ts). The screen passes `flushEditRef`, `editingKey` and
+  // `editMode` to its QuickAddWidget.
+  const selectMeeting = (entry: WeeklyMeetingEntry) => selectEdit(meetingKey(entry));
 
   const commitMeetingEdit = (entry: WeeklyMeetingEntry, fields: MeetingQuickAddFields, nextLinkedFile: string): Promise<boolean> =>
     runWidgetSave(async () => {
@@ -184,7 +195,7 @@ export function usePlanningScreen({logTag}: Options) {
         meetings[entry.meetingIndex] = applyMeetingEdit(meetings[entry.meetingIndex], fields, nextLinkedFile);
         return meetings;
       });
-      cancelEditTarget();
+      savedEditTarget(); // back to the meeting's card
     });
 
   const handleCancelMeeting = (entry: WeeklyMeetingEntry) =>
@@ -212,13 +223,6 @@ export function usePlanningScreen({logTag}: Options) {
     const moved = await moveMeeting(entry.item, entry.meetingIndex, updated, itemTarget(target), moveUi);
     if (moved) cancelEditTarget(); // cancelled in the note confirm: stay in edit mode
   };
-
-  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md). */
-  const handleToggleMeetingTracking = (entry: WeeklyMeetingEntry, kind: MeetingTrackingKind) =>
-    runMeetingAction(async () => {
-      await saveEntryMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));
-      requestEinkRefresh();
-    });
 
   /** Create-or-open the meeting's note (storage/meetingNoteContent.ts) and persist a changed notePath. */
   const handleMeetingNote = (entry: WeeklyMeetingEntry) =>
@@ -264,23 +268,26 @@ export function usePlanningScreen({logTag}: Options) {
   const trackingFor = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
 
   /**
-   * The day panel's toolbar (docs/dev/history/technical-design-meeting-reflection.md
-   * §2.6) for the meeting in Quick Add's edit mode - pass to ui/useMeetingToolbar.ts.
-   * No Files pane here, so no Link file.
+   * The selected meeting's card (docs/dev/history/technical-design-item-card.md
+   * §6) - pass to ui/itemCard/useMeetingCard.ts. No Files pane here: no
+   * +clip, refile only by abbreviation tag.
    */
-  const toolbarOptions = (
-    editing: WeeklyMeetingEntry | null,
-    colors: {textColor: string; borderColor: string},
-  ): MeetingToolbarOptions => ({
+  const cardOptions = (
+    selected: WeeklyMeetingEntry | null,
+    opts: {onOpenSource: (item: WeeklyMeetingEntry['item']) => void},
+  ): MeetingCardOptions => ({
     name: logTag,
-    selection: editing && {meeting: editing.meeting, itemPath: editing.item.path, forceOwn: editing.item.kind === 'inbox'},
+    selection: selected && {meeting: selected.meeting, itemPath: selected.item.path, ownerName: selected.item.name, inbox: selected.item.kind === 'inbox'},
     settings,
     inbox: inbox ? {tasks: inbox.tasks} : null,
-    onToggle: kind => editing && handleToggleMeetingTracking(editing, kind),
-    persistMeeting: async updated => {
-      if (editing) await saveEntryMeetings(editing, ms => ms.map((m, i) => (i === editing.meetingIndex ? updated : m)));
+    updateMeeting: async change => {
+      if (selected) await saveEntryMeetings(selected, ms => ms.map((m, i) => (i === selected.meetingIndex ? change(m) : m)));
     },
-    ...colors,
+    onNote: () => selected && handleMeetingNote(selected),
+    onOpenFile: onOpenLinkedFile,
+    onOpenOwner: () => selected && opts.onOpenSource(selected.item),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
   });
 
   // --- Day panel (docs/dev/history/technical-design-meeting-lists.md §2.8) -------------
@@ -293,11 +300,11 @@ export function usePlanningScreen({logTag}: Options) {
       setSelectedDate(prev => (prev === date ? null : date));
       setEditingKey(null);
     });
-  /** Week chip tapped: opens that meeting's day and puts the meeting into Quick Add's edit mode. */
+  /** Week chip tapped: opens that meeting's day and shows its card in Quick Add's place. */
   const openMeetingFromGrid = (entry: WeeklyMeetingEntry) =>
     afterSave(() => {
       setSelectedDate(entryDate(entry));
-      setEditingKey(meetingKey(entry));
+      setEditingKey(meetingKey(entry), 'card');
     });
   /** Closes the day panel (Close, or changing week/month - `then` runs after the pending edit was saved). */
   const closeDayPanel = (then?: () => void) =>
@@ -309,8 +316,8 @@ export function usePlanningScreen({logTag}: Options) {
 
   /**
    * The planning day panel's row (2-line by default): read-only M and
-   * tracking, note, open linked file, source. The M is set in Quick Add's
-   * edit form, the tick in the toolbar (`toolbarOptions`).
+   * tracking, note, open linked file, source. The M and the tick are set on
+   * the meeting's card (`cardOptions`).
    * Spread onto <MeetingRow key=... {...dayRowProps(...)} />.
    */
   const dayRowProps = (
@@ -327,8 +334,8 @@ export function usePlanningScreen({logTag}: Options) {
     tracking: trackingFor(),
     note: {onOpen: () => handleMeetingNote(entry), onCreate: () => handleMeetingNote(entry)},
     file: {linkedFile: entry.meeting.linkedFile, onOpen: onOpenLinkedFile},
-    onPress: () => startMeetingEdit(entry),
-    state: editingKey === meetingKey(entry) ? 'editing' : undefined,
+    onPress: () => selectMeeting(entry),
+    state: editingKey === meetingKey(entry) ? (editMode === 'card' ? 'selected' : 'editing') : undefined,
     ownerPath: entry.item.path,
     textColor: opts.textColor,
     borderColor: opts.borderColor,
@@ -351,6 +358,7 @@ export function usePlanningScreen({logTag}: Options) {
     error,
     load,
     editingKey,
+    editMode,
     widgetError,
     meetingsActionError,
     // Stable identities (docs/dev/history/technical-design-render-perf-ab.md §3 B2) -
@@ -358,7 +366,7 @@ export function usePlanningScreen({logTag}: Options) {
     // only ever called from event handlers; each call runs the latest version.
     handleAddTask: stableAddTask,
     handleAddMeeting: stableAddMeeting,
-    startMeetingEdit,
+    selectMeeting,
     cancelEditTarget: stableCancelEditTarget,
     commitMeetingEdit: stableCommitMeetingEdit,
     handleCancelMeeting: stableCancelMeeting,
@@ -368,7 +376,7 @@ export function usePlanningScreen({logTag}: Options) {
     toggleFocus,
     saveGoal,
     trackingFor,
-    toolbarOptions,
+    cardOptions,
     selectedDate,
     selectDay,
     openMeetingFromGrid,

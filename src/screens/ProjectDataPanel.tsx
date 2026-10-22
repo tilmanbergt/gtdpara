@@ -83,6 +83,10 @@ import {addMeetingToDestination, addTaskToDestination, applyMeetingEdit, applyTa
 import {linkedFileStatus, linkRootPath, locateLinkedFile, openLinkedFile, toLinkedFile} from '../storage/linkedFiles';
 import {saveMeetings, saveTasks} from '../storage/projectFile';
 import {loadSettings} from '../storage/settingsStorage';
+import {GtdParaSettings} from '../domain/settings';
+import {openOrCreateMeetingNote} from '../storage/meetingNoteContent';
+import {useMeetingCard} from '../ui/itemCard/useMeetingCard';
+import {useNoteCreateConfirm} from '../ui/useNoteCreateConfirm';
 import {createStandaloneNote} from '../storage/standaloneNotes';
 import {log, logError} from '../utils/log';
 import {useEinkRefreshOnLoad} from '../utils/screenRefresh';
@@ -204,8 +208,12 @@ export default function ProjectDataPanel({
   // the EditTarget doc comment above.
   const {
     target: editTarget,
+    mode: editMode,
     arm: armTarget,
     start: startEdit,
+    select: selectEdit,
+    edit: editSelected,
+    saved: savedEditTarget,
     cancel: cancelEditTarget,
     armFor,
     cancelArm: cancelArming,
@@ -217,15 +225,20 @@ export default function ProjectDataPanel({
   // MeetingsSection keep for their own row-level actions (toggle done,
   // create/open note), lifted here since the widget itself is lifted too.
   const widgetAction = useActionError('ProjectDataPanel.widgetError', 'ProjectDataPanel: widget action failed');
+  const confirmNoteCreate = useNoteCreateConfirm('ProjectDataPanel.cardNoteCreateConfirm');
   // Loaded once on mount, same self-contained "load your own settings"
   // pattern hideDone/icsUrl below already use - needed to resolve linkedFile
   // (base-root-relative) to/from an absolute path and to know where the
   // Resources root actually is.
   const [paths, setPaths] = useState<ResolvedParaPaths | null>(null);
+  // The meeting card's setups and reflection page need the settings too.
+  const [settings, setSettings] = useState<GtdParaSettings | null>(null);
   useEffect(() => {
     let cancelled = false;
     loadSettings().then(s => {
-      if (!cancelled) setPaths(resolvePaths(s));
+      if (cancelled) return;
+      setPaths(resolvePaths(s));
+      setSettings(s);
     });
     return () => {
       cancelled = true;
@@ -486,7 +499,7 @@ export default function ProjectDataPanel({
    * succeeded.
    */
   const handleAddNote = (title: string, tags: string[], folderPath: string): Promise<void> =>
-    loadSettings().then(settings => createStandaloneNote(folderPath, title, tags, settings));
+    loadSettings().then(loaded => createStandaloneNote(folderPath, title, tags, loaded));
 
   const commitTaskEdit = (nextText: string, nextLinkedFile: string): Promise<boolean> => {
     if (editTarget?.type !== 'task') return Promise.resolve(false);
@@ -508,7 +521,7 @@ export default function ProjectDataPanel({
       const next = state.meetings.slice();
       next[index] = applyMeetingEdit(next[index], fields, nextLinkedFile);
       await withMeetings(next);
-      cancelEditTarget();
+      savedEditTarget(); // back to the meeting's card
     });
   };
 
@@ -590,6 +603,33 @@ export default function ProjectDataPanel({
     if (editTarget) armRefileTarget(editTarget.type, editTarget.index);
   });
 
+  // The selected meeting's card (docs/dev/history/technical-design-item-card.md §6):
+  // writes go through withMeetings on the meeting's current stored copy.
+  const cardIndex = editTarget?.type === 'meeting' ? editTarget.index : null;
+  const cardMeeting = cardIndex !== null ? state?.meetings[cardIndex] : undefined;
+  const meetingCard = useMeetingCard({
+    name: 'ProjectDataPanel',
+    selection: cardMeeting ? {meeting: cardMeeting, itemPath: path, ownerName: name} : null,
+    settings,
+    inbox: null,
+    updateMeeting: async change => {
+      if (!state || cardIndex === null) return;
+      await withMeetings(state.meetings.map((m, i) => (i === cardIndex ? change(m) : m)));
+    },
+    onNote: () => {
+      if (cardIndex === null || !cardMeeting || !settings) return;
+      runWidgetAction(async () => {
+        const {meeting, changed} = await openOrCreateMeetingNote(cardMeeting, path, settings, null, {confirmCreate: confirmNoteCreate});
+        if (changed && state) await withMeetings(state.meetings.map((m, i) => (i === cardIndex ? {...m, notePath: meeting.notePath} : m)));
+      });
+    },
+    onOpenFile: onOpenLinkedFile,
+    onArmLink: () => cardIndex !== null && armLinkTarget('meeting', cardIndex),
+    onArmRefile: () => cardIndex !== null && armRefileTarget('meeting', cardIndex),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
+  });
+
   if (loading) {
     return (
       <View style={styles.root}>
@@ -628,10 +668,12 @@ export default function ProjectDataPanel({
         meetingSeed={meetingSeed}
         onAddTask={stableAddTask}
         onAddMeeting={stableAddMeeting}
-        editTarget={editTargetFor(editTarget ? `${editTarget.type}:${editTarget.index}` : null, {
-          task: editingTaskForWidget,
-          meeting: editingMeetingForWidget,
-        })}
+        editTarget={editTargetFor(
+          editTarget ? `${editTarget.type}:${editTarget.index}` : null,
+          {task: editingTaskForWidget, meeting: editingMeetingForWidget},
+          editMode,
+        )}
+        meetingCard={meetingCard}
         onSaveEditTask={stableCommitTaskEdit}
         onSaveEditMeeting={stableCommitMeetingEdit}
         flushEditRef={flushEditRef}
@@ -682,9 +724,9 @@ export default function ProjectDataPanel({
             onSave={withMeetings}
             onOpenCalendarSettings={onOpenCalendarSettings}
             editingIndex={editTarget?.type === 'meeting' ? editTarget.index : null}
+            editMode={editMode}
             armingIndex={armTarget?.type === 'meeting' ? armTarget.index : null}
-            onStartEdit={index => startEditTarget('meeting', index)}
-            onArmLink={index => armLinkTarget('meeting', index)}
+            onSelect={index => selectEdit({type: 'meeting', index})}
             onOpenLinkedFile={onOpenLinkedFile}
             filter={predicates?.meeting}
             textColor={textColor}

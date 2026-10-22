@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-27 scenarios.
+34 scenarios.
 
 ## Close-out
 
@@ -37,9 +37,9 @@ Test: `__tests__/scenarios/daily.test.tsx` · design: `docs/dev/history/technica
 
 - **Given** area "Coaching" has a sparring session tomorrow
 - **When** I open Daily, switch to Tomorrow and tap the session
-- **Then** the toolbar offers "☐ Prepped" and nothing else
+- **Then** its card offers P, no +clip and no Reflect
 
-Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
 ## Engage
 
@@ -68,6 +68,14 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 
 Test: `__tests__/scenarios/inbox.test.tsx` · design: `docs/dev/history/technical-design-filing-unification.md`
 
+### Refile a meeting from the card's area chip
+
+- **Given** the Inbox meeting "Kick-off" next week and project "Website"
+- **When** I tap the meeting, tap the refile arrow and pick Website in the Files pane
+- **Then** the meeting is in Website and no longer in the Inbox
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
 ## Interruptions
 
 ### A refile with its note, stopped after any write, loses nothing and is repairable
@@ -84,16 +92,45 @@ Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/
 
 ## Meetings
 
+### Tick R and M on the card: only the tags change
+
+- **Given** area "Coaching" has a sparring session last week, tracked for review
+- **When** I tap the session on Coaching and tap R and M on its card
+- **Then** the line gains #reviewed and #monthly and nothing else
+- **And** both show filled on the card
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### New from this and Cancel meeting from the card
+
+- **Given** the Inbox meeting "Retro" next week
+- **When** I tap the meeting and New from this on its card
+- **Then** Create · Meeting holds the title, date and time; the card is closed
+- **When** I tap the meeting again, Cancel meeting, and confirm
+- **Then** the meeting is marked cancelled in Inbox.txt, and the card says so
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Link a file from the card on an Area page, and unlink it
+
+- **Given** area "Coaching" has the meeting "Sparring" next week and the file "brief.pdf" in its folder
+- **When** I tap the meeting, tap +clip on its card and pick the file in the Files pane
+- **Then** the meeting links the file, and the card shows its name
+- **When** I tap ✕ next to the file on the card
+- **Then** the line has no link any more, and the card offers +clip again
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
 ### Reflect on a sparring session: the page comes after the meeting's page and the pages added to it by hand
 
 - **Given** area "Coaching" has a sparring session three days ago and a check-in since; in "sparring mieke <year>.note" the session's page is followed by two pages added by hand, then the check-in's page
 - **When** I open Coaching and tap the sparring session
-- **Then** the toolbar acts on it and offers "Reflect ›" and "☐ Reviewed"
-- **When** I tap "Reflect ›" and confirm the new page
+- **Then** its card offers Reflect and R (not reviewed yet)
+- **When** I tap Reflect and confirm the new page
 - **Then** the reflection page comes after both hand-added pages, not straight after the session's page, and before the check-in's page
 - **And** the reflection page has no date keyword of its own, so it stays part of the meeting
 - **And** it carries the setup's heading and guiding question
-- **And** it was opened, and the toolbar now says "Reflection ›"
+- **And** it was opened, and the card's Reflect is filled now
 - **And** the meeting is not ticked reviewed and its line is unchanged
 
 Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
@@ -101,7 +138,7 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 ### Reflect on a meeting that has no page yet: one question, then meeting page and reflection in order
 
 - **Given** area "Coaching" has a sparring session three days ago without a note, and no sparring notebook exists
-- **When** I tap the session, tap "Reflect ›" and confirm
+- **When** I tap the session, tap Reflect on its card and confirm
 - **Then** the notebook exists with the meeting's page first and the reflection second
 - **And** the meeting links its page, and the reflection is what opened
 
@@ -111,33 +148,36 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 
 - **Given** the sparring session has a reflection page, and its title was changed to "Sparring Mieke roles" since
 - **When** I tap the session
-- **Then** the toolbar says "Reflection ›"
+- **Then** the card's Reflect is filled: the page exists
 - **When** I tap it
 - **Then** the same page opens, now with the keyword of the new title
 
 Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
 
-### The toolbar follows the selected meeting
+### The card follows the selected meeting
 
 - **Given** area "Coaching" has a sparring session three days ago and one in two days, both tracked by the Sparring setup
 - **When** I open Coaching without tapping a meeting
-- **Then** the toolbar is there but says "Tap a meeting"
+- **Then** Quick Add shows, no card
 - **When** I tap the session in two days
-- **Then** it offers "☐ Prepped" and "Link file", but no reflection yet
+- **Then** its card offers P and +clip, but no reflection yet
 - **When** I tap the session three days ago
-- **Then** it offers "☐ Reviewed", "Reflect ›" and "Link file"
+- **Then** the card switches to it: R, Reflect and +clip
 
-Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
-### Tick reviewed in the toolbar while editing the meeting: Save keeps the tick
+### Edit and save from the card, then tick reviewed on it: the title changes and both ticks stay
 
 - **Given** the sparring session three days ago was ticked prepped before it took place
-- **When** I tap the session to edit it
+- **When** I tap the session and then Edit on its card
 - **Then** the title field shows the title without #prepped
-- **When** I change the title, tick "☐ Reviewed" in the toolbar and then tap Save
-- **Then** the meeting has the new title and keeps both #prepped and #reviewed
+- **When** I change the title and tap Save
+- **Then** the card shows the meeting again
+- **When** I tick R on the card
+- **Then** R is filled
+- **And** the meeting has the new title and keeps both #prepped and #reviewed
 
-Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
 ## Profiles and demo space
 
@@ -159,7 +199,7 @@ Test: `__tests__/scenarios/profiles.test.tsx` · design: `docs/dev/history/techn
 ### Save to <Name>: an abbreviation tag typed while editing saves the meeting and moves it there
 
 - **Given** project "Garden renovation" (#GR) and the Inbox meeting "Site visit" today
-- **When** I open Daily, tap the meeting, add "#GR" to its title
+- **When** I open Daily, tap the meeting twice (card, then edit), add "#GR" to its title
 - **Then** the main button offers "Save to Garden renovat…" instead of Save
 - **When** I tap it
 - **Then** the meeting, renamed and without the tag, is in the project and no longer in the Inbox
@@ -186,6 +226,34 @@ Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/techn
 - **When** I open the thread overview from the tag and add the todo "Book room"
 - **When** I add the todo "Book room" there
 - **Then** the area has the new todo with the thread tag
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Tap a meeting shows its card; ✕ brings back the half-typed todo
+
+- **Given** the Inbox meeting "Team sync" next week
+- **When** I start the todo "Call Anna" in the Inbox and tap the meeting
+- **Then** the card names the meeting in Quick Add's place
+- **When** I tap ✕ on the card
+- **Then** Quick Add is back with "Call Anna" still in the field
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### A second tap edits; Save writes it and shows the card again
+
+- **Given** the Inbox meeting "Team sync" next week
+- **When** I tap the meeting, tap Edit, rename it and Save
+- **Then** Inbox.txt has the new title
+- **And** the card shows the meeting again, not the edit form
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Switching to another meeting while editing saves first and shows the other's card
+
+- **Given** the Inbox meetings "Team sync" and "Retro" next week
+- **When** I edit "Team sync", rename it, and tap "Retro"
+- **Then** the rename is saved
+- **And** "Retro" shows as card
 
 Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 

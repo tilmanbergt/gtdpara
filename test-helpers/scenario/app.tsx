@@ -134,6 +134,22 @@ export async function type(placeholder: string, text: string, nth = 0): Promise<
   await settle(2);
 }
 
+/** Taps the `nth` icon-only button announcing `label` to screen readers (the item card's P, Reflect, Refile, ...). */
+export async function tapLabel(label: string, nth = 0): Promise<void> {
+  const found = screen.queryAllByLabelText(label);
+  if (found.length <= nth) throw new Error(`no button labelled "${label}"; the screen shows: ${describeScreen()}`);
+  fireEvent.press(found[nth]);
+  await settle();
+}
+
+/** Whether a button labelled `label` is on screen, and whether it is on (filled) - null when there is none. */
+export function labelled(label: string): {on: boolean; disabled: boolean} | null {
+  const found = screen.queryAllByLabelText(label)[0];
+  if (!found) return null;
+  const state = (found.props.accessibilityState ?? {}) as {selected?: boolean; disabled?: boolean};
+  return {on: !!state.selected, disabled: !!state.disabled};
+}
+
 /** Whether `text` is on screen (exact text, or a pattern). */
 export function shows(text: string | RegExp): boolean {
   return screen.queryAllByText(text).length > 0;

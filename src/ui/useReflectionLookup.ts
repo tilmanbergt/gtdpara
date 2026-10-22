@@ -5,7 +5,7 @@
  * that offers "Reflect ›" / "Reflection ›" reads it from here.
  */
 import {useCallback, useEffect, useState} from 'react';
-import {ReflectionLookup} from '../domain/meetingToolbar';
+import {ReflectionLookup} from '../domain/itemCard';
 import {Meeting} from '../domain/types';
 import {findReflectionPage, ReflectionState} from '../storage/reflectionPage';
 import {errorMessage} from '../utils/errorMessage';

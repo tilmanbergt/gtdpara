@@ -41,7 +41,7 @@ import {useLinkedFileMissing} from '../usePlanningScreen';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {log} from '../../utils/log';
 import AheadSection, {NextOffer} from './AheadSection';
-import {useMeetingToolbar} from '../../ui/useMeetingToolbar';
+import {useMeetingCard} from '../../ui/itemCard/useMeetingCard';
 import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
 import {meetingEntryKey, taskEntryKey, useEntryActions} from '../../ui/useEntryActions';
@@ -124,8 +124,8 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
     getCachedData()?.paths ?? null,
   );
 
-  // The meeting toolbar in Ahead while one of its meetings is edited (docs/dev/history/technical-design-meeting-reflection.md §2.6).
-  const meetingToolbar = useMeetingToolbar(actions.toolbarOptions(editingMeeting, {textColor, borderColor}));
+  // The selected Ahead meeting's card in Quick Add's place (docs/dev/history/technical-design-item-card.md §6).
+  const meetingCard = useMeetingCard(actions.cardOptions(editingMeeting));
 
   if (!overview) {
     return (
@@ -197,7 +197,6 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             actions={actions}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
-            toolbar={editingMeeting ? meetingToolbar : undefined}
             onOpenSomeday={entries => requestReviewStep('somedayMaybe', somedayFilterOf(lens === 'thread' && !counterpartOnly ? `#${overview.thread.tag}` : labels.counterpart, entries))}
             textColor={textColor}
             borderColor={borderColor}
@@ -225,10 +224,8 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
               })
             }
             onAddMeeting={(fields, dest) => actions.addMeeting(fields, dest).then(() => setSeedItem(null))}
-            editTarget={editTargetFor(target ? `${target.type}:${target.key}` : null, {
-              task: editingTask?.task,
-              meeting: editingMeeting?.meeting,
-            })}
+            editTarget={editTargetFor(target ? `${target.type}:${target.key}` : null, {task: editingTask?.task, meeting: editingMeeting?.meeting}, edit.mode)}
+            meetingCard={meetingCard}
             flushEditRef={edit.flushEditRef}
             editingItemPath={editedItem ? (editedItem.kind === 'inbox' ? null : editedItem.path) : undefined}
             linkedFileMissing={linkedFileMissing}

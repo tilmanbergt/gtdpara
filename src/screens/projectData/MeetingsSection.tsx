@@ -9,9 +9,7 @@ import React, {useEffect, useState} from 'react';
 import {Keyboard, View} from 'react-native';
 import {Meeting} from '../../domain/types';
 import {splitAndSortMeetings} from '../../domain/meetingTime';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../domain/meetingTracking';
 import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../../domain/noteSetups';
-import {GtdParaSettings} from '../../domain/settings';
 import {CachedItem, getCachedData} from '../../storage/dataCache';
 import {openOrCreateMeetingNote} from '../../storage/meetingNoteContent';
 import {loadSettings} from '../../storage/settingsStorage';
@@ -21,10 +19,8 @@ import MeetingRow, {MeetingTrackingConfig} from '../../ui/MeetingRow';
 import MeetingList, {MeetingListHeaderRow} from '../../ui/MeetingList';
 import MiniTabs, {MiniTabDef} from '../../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../../ui/featureStore';
-import {useMeetingToolbar} from '../../ui/useMeetingToolbar';
 import {useErrorStatus} from '../../ui/status/StatusProvider';
 import {log, logError} from '../../utils/log';
-import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {errorMessage} from '../../utils/errorMessage';
 import {PaneColors, sectionStyles as styles} from './panelLayout';
 
@@ -42,9 +38,9 @@ export default function MeetingsSection({
   onSave,
   onOpenCalendarSettings,
   editingIndex,
+  editMode,
   armingIndex,
-  onStartEdit,
-  onArmLink,
+  onSelect,
   onOpenLinkedFile,
   filter,
   textColor,
@@ -59,9 +55,11 @@ export default function MeetingsSection({
   onOpenCalendarSettings?: () => void;
   /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment and TodosSection's identical props. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/history/technical-design-unified-quickadd.md §8) - see TodosSection's identical note. */
   editingIndex: number | null;
+  /** Whether the selected meeting shows as card or edit form (ui/useEditTarget.ts). */
+  editMode: 'card' | 'edit';
   armingIndex: number | null;
-  onStartEdit: (index: number) => void;
-  onArmLink: (index: number) => void;
+  /** Row tap: the meeting's card in Quick Add's place, a second tap edits. */
+  onSelect: (index: number) => void;
   onOpenLinkedFile: (linkedFile: string) => void;
   /** The counterpart filter (counterpartFilter.tsx): only meetings it accepts show. */
   filter?: ((meeting: Meeting) => boolean) | null;
@@ -84,14 +82,12 @@ export default function MeetingsSection({
   const [icsUrl, setIcsUrl] = useState('');
   // Note setups for the rows' prep/review checkpoint icon - same one-shot load.
   const [noteSetups, setNoteSetups] = useState<NoteSetupConfig>(EMPTY_NOTE_SETUP_CONFIG);
-  const [screenSettings, setScreenSettings] = useState<GtdParaSettings | null>(null);
   useEffect(() => {
     let cancelled = false;
     loadSettings().then(s => {
       if (cancelled) return;
       setIcsUrl(s.googleCalendarIcsUrl);
       setNoteSetups(noteSetupConfig(s));
-      setScreenSettings(s);
     });
     return () => {
       cancelled = true;
@@ -133,34 +129,8 @@ export default function MeetingsSection({
     });
   };
 
-  /** The toolbar's prep/review tick (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
-  const handleToggleTracking = (index: number, trackingKind: MeetingTrackingKind) => {
-    runAction(async () => {
-      await onSave(toggleMeetingTrackingAt(meetings, index, trackingKind));
-      requestEinkRefresh();
-    });
-  };
+  // The row's read-only prep/review mark; the tick is on the meeting's card.
   const trackingFor = (): MeetingTrackingConfig => ({setups: noteSetups});
-
-  // The toolbar acts on the edited (or armed) meeting (docs/dev/history/technical-design-meeting-reflection.md §2.6).
-  const selectedIndex = editingIndex ?? armingIndex;
-  const selectedMeeting = selectedIndex !== null ? meetings[selectedIndex] : undefined;
-  const toolbar = useMeetingToolbar({
-    name: 'MeetingsSection',
-    selection: selectedMeeting && selectedIndex !== null ? {meeting: selectedMeeting, itemPath} : null,
-    settings: screenSettings,
-    inbox: null,
-    onToggle: trackingKind => selectedIndex !== null && handleToggleTracking(selectedIndex, trackingKind),
-    onArmLink: () => selectedIndex !== null && onArmLink(selectedIndex),
-    persistMeeting: async updated => {
-      if (selectedIndex === null) return;
-      const next = meetings.slice();
-      next[selectedIndex] = updated;
-      await onSave(next);
-    },
-    textColor,
-    borderColor,
-  });
 
   // Flattened into one paginated sequence (docs/dev/technical-design-pagination-
   // edit-reuse.md §2/§4) - "Upcoming"/"Past" become header rows counted as
@@ -208,15 +178,16 @@ export default function MeetingsSection({
                 tracking={trackingFor()}
                 note={{onOpen: () => handleNote(row.index), onCreate: () => handleNote(row.index)}}
                 file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile}}
-                onPress={() => onStartEdit(row.index)}
-                state={editingIndex === row.index ? 'editing' : armingIndex === row.index ? 'arming' : undefined}
+                onPress={() => onSelect(row.index)}
+                state={
+                  armingIndex === row.index ? 'arming' : editingIndex === row.index ? (editMode === 'card' ? 'selected' : 'editing') : undefined
+                }
                 ownerPath={itemPath}
                 textColor={textColor}
                 borderColor={borderColor}
               />
             )}
             emptyHint={filter ? 'No meetings for this counterpart here.' : 'No meetings yet.'}
-            toolbar={toolbar}
             textColor={textColor}
             borderColor={borderColor}
           />

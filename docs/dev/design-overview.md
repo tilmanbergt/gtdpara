@@ -459,15 +459,19 @@ switch remembered per list for the session (`ui/listLayout.ts`). Every action (n
 review, highlight, source) is an optional prop, so a list enables features by props, never by
 its own row. A meeting row is quiet: its own targets are the title's tags, the note icon and the
 clip of a linked file; the prep/review icon and the read-only M (2-line rows) sit inside its main
-tap target, which selects the meeting. Everything else acts on the selected meeting through the
-**meeting toolbar**: every meeting list with Quick Add passes one (`MeetingList`'s /
-`DayMeetingsPanel`'s `toolbar`, PagedSection's `subHeader`), built by `ui/useMeetingToolbar.ts`
-from the screen's selection and callbacks and laid out by `ui/MeetingToolbar.tsx` (fixed
-`MEETING_TOOLBAR_HEIGHT` 44 dp); which slots show (Prepped/Reviewed tick, Reflect/Reflection,
-Link file where a Files pane exists) is `domain/meetingToolbar.ts`'s `meetingToolbarSlots`. The
-M is switched in Quick Add's edit form. Detail: `docs/dev/history/technical-design-unified-quickadd.md`,
+tap target, which selects the meeting. Everything else acts on the selected meeting through its
+**item card** in Quick Add's place: `ui/useEditTarget.ts` holds the selection in mode `card`
+(first tap) or `edit` (the card's Edit or a second tap; Save returns to `card`); every screen
+with Quick Add builds the card with `ui/itemCard/useMeetingCard.ts` from its selection and its
+own write path (`updateMeeting` changes the current stored copy) and passes it as
+`QuickAddWidget`'s `meetingCard`. `ui/itemCard/MeetingCard.tsx` lays it out in the box's four
+rows; what shows (phase, thread link, P/R, M, note, Reflect, file or +clip where a Files pane
+exists, area chip with refile arrow, New from this, Cancel meeting) is `domain/itemCard.ts`'s
+`meetingCardModel`. A meeting's edit form holds its fields only. Detail:
+`docs/dev/history/technical-design-unified-quickadd.md`,
 `docs/dev/history/technical-design-meeting-lists.md`,
-`docs/dev/history/technical-design-meeting-reflection.md`.
+`docs/dev/history/technical-design-meeting-reflection.md`,
+`docs/dev/history/technical-design-item-card.md`.
 
 ### 2.5 Moving and filing
 
@@ -634,8 +638,8 @@ Reflection page gets the standard one once); 0.14's Tag Rules are migrated once
   after*; a meeting is tracked when any setup it matches asks for it, or, matching none, when the
   Default does (`resolveMeetingTracking`).
   State is `#prepped`/`#reviewed` on the meeting line; every meeting row shows one small P/R
-  icon (check when done), read-only; the list toolbar's tick toggles it through
-  `domain/meetingTracking.ts`'s `toggleMeetingTrackingAt`. Quick Add's edit form leaves the
+  icon (check when done), read-only; the meeting card's P/R toggles it through
+  `domain/meetingTracking.ts`'s `toggleMeetingTracking`. Quick Add's edit form leaves the
   state tags out of the title (`stripTrackingTags`) and `applyMeetingEdit` puts back the stored
   copy's state (`withTrackingTagsOf`), so Save never undoes a tick. The phase switches at the real end of the meeting (`meetingEndMs`).
   Review's "Meetings to close out" lists outstanding reviews of the last
@@ -651,7 +655,7 @@ Reflection page gets the standard one once); 0.14's Tag Rules are migrated once
   `storage/reflectionPage.ts` finds, creates (one confirm, plan kind `new-reflection`; a meeting
   without a page gets it first through `ensureMeetingNote`, the planning half of
   `openOrCreateMeetingNote`) and opens it; `ui/useReflectionLookup.ts` gives the label. Entry
-  points: the meeting toolbar, Review's close-out pill, the thread/loop overview's Looking back,
+  points: the meeting card, Review's close-out pill, the thread/loop overview's Looking back,
   and Engage's `ReflectLine` on the meeting's page. Writing it never ticks `#reviewed`.
 - **Since last time.** A Meeting page can place the `sinceLast` piece (never in a page's
   defaults): `storage/sinceLast.ts`'s `buildSinceLast` takes the meeting's first thread tag, the
@@ -1065,8 +1069,8 @@ and `useThemeColors()` for light/dark pairs; `ui/commonStyles.ts` holds shared s
 carries meaning: weight, underline, borders and icons (`ui/icons.tsx`, SVG) do.
 
 **Pagination.** No list scrolls. `ui/PagedSection.tsx` is the fixed-height list box (header,
-`‹`/`›` only when there is somewhere to go, a `+N` hidden count, an optional `subHeader` such as
-the meeting toolbar) and measures its own viewport;
+`‹`/`›` only when there is somewhere to go, a `+N` hidden count, an optional `subHeader`) and
+measures its own viewport;
 `ui/pagination.ts`'s `usePagedByHeight` fills a page greedily by each row's real height, keeps the
 current page across data changes, and supports `resetKey` and `jumpTo`. `PAGE_SIZE` anchors are
 tuned on the device. Sizes and the element budget: `design-device-rendering.md`.
