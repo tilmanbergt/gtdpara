@@ -22,6 +22,7 @@
  *   native-view-torn-out-from-under-the-gesture race (blur fires on
  *   touch-down; the already-claimed touch responder keeps receiving the rest
  *   of the gesture only as long as the view instance itself survives).
+ * - a ✕ at its end hides it until the field gains focus again (useStripHide).
  * The two strips' styles are deliberately duplicated rather than shared, so
  * the device-verified clipboard code stays untouched (tracked in
  * docs/dev/history/technical-design-meeting-date-nudge-and-new-from-this.md's
@@ -39,6 +40,7 @@ import {Pressable, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, View
 import {DATE_NUDGES, nudgeIsoDate} from '../domain/dateNudge';
 import {FONT} from './theme';
 import {common} from './commonStyles';
+import {StripHideButton, useStripHide} from './ClipboardStrip';
 
 export interface DateInputHandle {
   focus: () => void;
@@ -133,8 +135,9 @@ interface StripProps {
 
 /** The -1/Today/+1/+7 strip; stays mounted, hidden while not `visible` (see the module doc comment). */
 export function DateNudgeStrip({visible, value, onChangeText, placement = 'above-right', textColor, borderColor}: StripProps): React.JSX.Element {
+  const {shown, hide} = useStripHide(visible);
   return (
-    <View style={[common.floatingStrip, placement === 'above-left' && common.floatingStripLeft, {borderColor}, !visible && styles.hidden]}>
+    <View style={[common.floatingStrip, placement === 'above-left' && common.floatingStripLeft, {borderColor}, !shown && styles.hidden]}>
       {DATE_NUDGES.map(({kind, label}) => (
         <Pressable
           key={kind}
@@ -144,6 +147,7 @@ export function DateNudgeStrip({visible, value, onChangeText, placement = 'above
           <Text style={[common.floatingStripButtonText, {color: textColor}]}>{label}</Text>
         </Pressable>
       ))}
+      <StripHideButton onPress={hide} textColor={textColor} />
     </View>
   );
 }

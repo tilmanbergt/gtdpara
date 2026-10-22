@@ -9,6 +9,8 @@ The box has four rows and always keeps the same height, so the lists below it ne
 - Row 3: flow chips or the meeting's time, then tags.
 - Row 4: more tags - or the grey line (see below), or the edit buttons.
 
+While you write in the text or date field, a small strip hovers over the tabs: **All**, **Copy**, **Cut** and **Paste** for the text, -1, **Today**, +1 and +7 for the date. Tap **✕** at its end to put it away, for example to switch tabs. It comes back the next time you tap into a field.
+
 ## Adding a todo
 
 1. Choose the **Todo** tab and write the text. Handwriting is recognized as you write.

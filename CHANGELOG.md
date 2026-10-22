@@ -38,6 +38,9 @@ or your project/area files are stored.
   fields only (the rest is on its card). See the help page "Quick Add and capture".
 - **Save to <Name>**: with a project's or area's abbreviation tag in the text, **Save** saves
   the edit and moves the item there in one step (it replaces **File: <Name>**).
+- **Hide the editing strips**: the All/Copy/Cut/Paste and date strips that hover over Quick Add's
+  tabs while you write end in a **✕** that puts them away until you tap into a field again, so
+  **Todo** and **Meeting** stay reachable. See the help page "Quick Add and capture".
 - **Meeting and todo rows are easier to tap**: a tap anywhere in a row's height selects it, not
   only on the text line - one-line meeting rows (Daily, the Inbox) ignored most taps before.
 - **The next item keeps the abbreviation tag**: after **+ Add to <Name>**, the field starts with

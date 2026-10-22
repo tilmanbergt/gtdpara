@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-36 scenarios.
+37 scenarios.
 
 ## Close-out
 
@@ -308,6 +308,22 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 - **Then** project.txt has it done, with today's date as completion field
 
 Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-tags.md`
+
+### The ✕ puts a hovering strip away until the field gains focus again
+
+- **Given** project "Website"
+- **When** I open "Website" and put the cursor into the todo field
+- **Then** All/Copy/Cut/Paste hovers over the tabs
+- **When** I tap its ✕
+- **Then** it is gone while the field still has the cursor
+- **When** the field loses the cursor and gets it back
+- **Then** the strip is back
+- **When** I hide it again and tap the Meeting tab
+- **Then** the meeting form shows
+- **When** I open the due date and put the cursor into it
+- **Then** the date strip hovers there with its own ✕, which puts it away
+
+Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
 ## Settings
 

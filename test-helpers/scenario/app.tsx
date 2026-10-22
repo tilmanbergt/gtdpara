@@ -134,6 +134,14 @@ export async function type(placeholder: string, text: string, nth = 0): Promise<
   await settle(2);
 }
 
+/** Puts the cursor into (`true`) or takes it out of (`false`) the `nth` field showing `placeholder`. */
+export async function focus(placeholder: string, focused = true, nth = 0): Promise<void> {
+  const field = screen.queryAllByPlaceholderText(placeholder)[nth];
+  if (!field) throw new Error(`no field "${placeholder}"; the screen shows: ${describeScreen()}`);
+  fireEvent(field, focused ? 'focus' : 'blur');
+  await settle(2);
+}
+
 /** Taps the `nth` icon-only button announcing `label` to screen readers (the item card's P, Reflect, Refile, ...). */
 export async function tapLabel(label: string, nth = 0): Promise<void> {
   const found = screen.queryAllByLabelText(label);

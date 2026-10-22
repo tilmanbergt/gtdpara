@@ -1,4 +1,4 @@
-import {expectShows, firstCheckboxOf, openApp, tap, tapTab, type} from '../../test-helpers/scenario/app';
+import {expectNotShows, expectShows, fieldValue, firstCheckboxOf, focus, openApp, tap, tapLabel, tapTab, type} from '../../test-helpers/scenario/app';
 import {dataFile, expectFileContains, INBOX_FILE, loggedErrors, projectFile, putFile, sectionLines} from '../../test-helpers/scenario/files';
 import {given, scenario, then, when} from '../../test-helpers/scenario/scenario';
 
@@ -87,5 +87,50 @@ scenario('Ticking a todo off writes its completion date', {feature: 'Quick Add',
   });
   then('project.txt has it done, with today\'s date as completion field', () => {
     expect(sectionLines(projectFile('Website'), 'Tasks')).toEqual([expect.stringMatching(/^- \[x\] Write copy #next .*\[completion:: \d{4}-\d{2}-\d{2}\]$/)]);
+  });
+});
+
+scenario('The ✕ puts a hovering strip away until the field gains focus again', {feature: 'Quick Add', design: 'technical-design-item-card.md'}, () => {
+  given('project "Website"', () => {
+    putFile(projectFile('Website'), dataFile('project', {Scope: [], Tasks: [], Meetings: []}));
+  });
+  when('I open "Website" and put the cursor into the todo field', async () => {
+    await openApp();
+    await tapTab('Projects');
+    await tap(/^Website/);
+    await focus('New task');
+  });
+  then('All/Copy/Cut/Paste hovers over the tabs', () => {
+    expectShows('Paste');
+  });
+  when('I tap its ✕', async () => {
+    await tapLabel('Hide');
+  });
+  then('it is gone while the field still has the cursor', () => {
+    expectNotShows('Paste');
+  });
+  when('the field loses the cursor and gets it back', async () => {
+    await focus('New task', false);
+    await focus('New task');
+  });
+  then('the strip is back', () => {
+    expectShows('Paste');
+  });
+  when('I hide it again and tap the Meeting tab', async () => {
+    await tapLabel('Hide');
+    await tap('Meeting');
+  });
+  then('the meeting form shows', () => {
+    expect(fieldValue('New meeting title')).toBe('');
+  });
+  when('I open the due date and put the cursor into it', async () => {
+    await tap('Todo');
+    await tap('📅');
+    await focus('Due YYYY-MM-DD');
+  });
+  then('the date strip hovers there with its own ✕, which puts it away', async () => {
+    expectShows('+7');
+    await tapLabel('Hide');
+    expectNotShows('+7');
   });
 });

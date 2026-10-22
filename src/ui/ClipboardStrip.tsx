@@ -7,8 +7,12 @@
  * The strip stays mounted and only hides (`display: 'none'`) while the field
  * is not focused: blur fires on touch-down, and a strip torn out of the tree
  * then would lose the tap on its button.
+ *
+ * Both hovering strips (this one and ui/DateInput.tsx's date strip) end in a
+ * small ✕: it hides the strip until a field gains focus again, so a strip
+ * that covers something (Quick Add's tabs) can be put away while typing.
  */
-import React from 'react';
+import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {copyCutRange, Selection, spliceAtSelection} from '../domain/clipboardText';
@@ -77,18 +81,51 @@ const BUTTONS: Array<{label: string; action: keyof ClipboardActions}> = [
   {label: 'Paste', action: 'paste'},
 ];
 
-export default function ClipboardStrip({visible, actions, placement = 'above-right', textColor, borderColor}: Props): React.JSX.Element {
+/**
+ * A hovering strip's ✕: `shown` is `visible` unless the ✕ was tapped since
+ * the field last gained focus - a new focus (visible going false, then true)
+ * shows the strip again.
+ */
+export function useStripHide(visible: boolean): {shown: boolean; hide: () => void} {
+  const [hidden, setHidden] = useState(false);
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) setHidden(false);
+  }
+  return {shown: visible && !hidden, hide: () => setHidden(true)};
+}
+
+/** The ✕ at a hovering strip's end. */
+export function StripHideButton({onPress, textColor}: {onPress: () => void; textColor: string}): React.JSX.Element {
   return (
-    <View style={[common.floatingStrip, placement === 'above-left' && common.floatingStripLeft, {borderColor}, !visible && styles.hidden]}>
+    <Pressable style={styles.hideButton} onPress={onPress} hitSlop={6} accessibilityLabel="Hide">
+      <Text style={[common.floatingStripButtonText, {color: textColor}]}>✕</Text>
+    </Pressable>
+  );
+}
+
+export default function ClipboardStrip({visible, actions, placement = 'above-right', textColor, borderColor}: Props): React.JSX.Element {
+  const {shown, hide} = useStripHide(visible);
+  return (
+    <View style={[common.floatingStrip, placement === 'above-left' && common.floatingStripLeft, {borderColor}, !shown && styles.hidden]}>
       {BUTTONS.map(({label, action}) => (
         <Pressable key={label} style={[common.floatingStripButton, {borderColor}]} onPress={() => actions[action]()} hitSlop={6}>
           <Text style={[common.floatingStripButtonText, {color: textColor}]}>{label}</Text>
         </Pressable>
       ))}
+      <StripHideButton onPress={hide} textColor={textColor} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   hidden: {display: 'none'},
+  // No border: it reads as closing the strip, not as one of its actions.
+  hideButton: {
+    justifyContent: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    marginLeft: 3,
+  },
 });
