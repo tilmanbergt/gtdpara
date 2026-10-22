@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-24 scenarios.
+27 scenarios.
 
 ## Close-out
 
@@ -156,6 +156,39 @@ Test: `__tests__/scenarios/profiles.test.tsx` · design: `docs/dev/history/techn
 
 ## Quick Add
 
+### Save to <Name>: an abbreviation tag typed while editing saves the meeting and moves it there
+
+- **Given** project "Garden renovation" (#GR) and the Inbox meeting "Site visit" today
+- **When** I open Daily, tap the meeting, add "#GR" to its title
+- **Then** the main button offers "Save to Garden renovat…" instead of Save
+- **When** I tap it
+- **Then** the meeting, renamed and without the tag, is in the project and no longer in the Inbox
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### After + Add with an abbreviation tag, the next todo starts with that tag
+
+- **Given** project "Website" (#WEB) and an empty Inbox
+- **When** I add "Call the designer #web" from the Inbox
+- **Then** the field starts the next todo with "#WEB ", and the button still files to Website
+- **When** I tap + Add with nothing but the tag
+- **Then** nothing is added
+- **When** I write the next todo after the tag and add it
+- **Then** both todos are in Website without the tag, none in the Inbox
+- **When** I delete the tag from the field and add a todo
+- **Then** it goes to the Inbox, and the next draft starts empty
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### In a thread overview, Quick Add adds the thread tag it shows in Row 4
+
+- **Given** area "Coaching" has the todo "Draft agenda #retro/alpha"
+- **When** I open the thread overview from the tag and add the todo "Book room"
+- **When** I add the todo "Book room" there
+- **Then** the area has the new todo with the thread tag
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
 ### Quick Add a todo in a project
 
 - **Given** project "Website" has the todo "Write copy" and a hand-written Scope
@@ -178,7 +211,7 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 ### An abbreviation tag files a todo into its project while editing
 
 - **Given** project "Website" (#WEB) and the Inbox todo "Ask about hosting"
-- **When** I edit the Inbox todo, add "#WEB" and tap "File: Website"
+- **When** I edit the Inbox todo, add "#WEB" and tap "Save to Website"
 - **Then** the todo is in Website's project.txt, without the #WEB tag
 - **Then** Inbox.txt no longer has it
 

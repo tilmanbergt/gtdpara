@@ -59,9 +59,13 @@ export function clipboardActions(
   };
 }
 
+/** Where the strip hovers: above the field at its right (default) or left end. */
+export type StripPlacement = 'above-right' | 'above-left';
+
 interface Props {
   visible: boolean;
   actions: ClipboardActions;
+  placement?: StripPlacement;
   textColor: string;
   borderColor: string;
 }
@@ -73,9 +77,9 @@ const BUTTONS: Array<{label: string; action: keyof ClipboardActions}> = [
   {label: 'Paste', action: 'paste'},
 ];
 
-export default function ClipboardStrip({visible, actions, textColor, borderColor}: Props): React.JSX.Element {
+export default function ClipboardStrip({visible, actions, placement = 'above-right', textColor, borderColor}: Props): React.JSX.Element {
   return (
-    <View style={[common.floatingStrip, {borderColor}, !visible && styles.hidden]}>
+    <View style={[common.floatingStrip, placement === 'above-left' && common.floatingStripLeft, {borderColor}, !visible && styles.hidden]}>
       {BUTTONS.map(({label, action}) => (
         <Pressable key={label} style={[common.floatingStripButton, {borderColor}]} onPress={() => actions[action]()} hitSlop={6}>
           <Text style={[common.floatingStripButtonText, {color: textColor}]}>{label}</Text>

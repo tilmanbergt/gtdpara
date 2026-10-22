@@ -58,12 +58,12 @@ scenario('An abbreviation tag files a todo into its project while editing', {fea
     putFile(projectFile('Website'), dataFile('project', {Scope: [], Tasks: [], Meetings: []}, ['abbrev: WEB']));
     putFile(INBOX_FILE, dataFile('inbox', {Tasks: ['- [ ] Ask about hosting'], Meetings: []}));
   });
-  when('I edit the Inbox todo, add "#WEB" and tap "File: Website"', async () => {
+  when('I edit the Inbox todo, add "#WEB" and tap "Save to Website"', async () => {
     await openApp();
     await tapTab('Inbox');
     await tap('Ask about hosting');
     await type('New task', 'Ask about hosting #WEB');
-    await tap(/^File: Website/);
+    await tap(/^Save to Website/);
   });
   then('the todo is in Website\'s project.txt, without the #WEB tag', () => {
     expect(sectionLines(projectFile('Website'), 'Tasks')).toEqual([expect.stringMatching(/^- \[ \] Ask about hosting$|^- \[ \] Ask about hosting \[/)]);

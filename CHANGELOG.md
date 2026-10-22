@@ -27,6 +27,16 @@ or your project/area files are stored.
   **Reflect ›** and, where a Files pane is there, **Link file**.
 
 ### Changed
+- **Quick Add keeps one height**: the box has four rows and stays the same height whatever it
+  shows, so the lists below it no longer move. **+ Add** and, while editing, **Cancel** and
+  **Save** moved to the top row; recently used tags fill the third and fourth row, with **‹ ›**
+  at the end of the fourth; the grey "↳ from …" line takes the fourth row. While editing, the
+  bottom row holds delete, **Refile**, **New from this**, the clip's ✕ and **M**. See the help
+  page "Quick Add and capture".
+- **Save to <Name>**: with a project's or area's abbreviation tag in the text, **Save** saves
+  the edit and moves the item there in one step (it replaces **File: <Name>**).
+- **The next item keeps the abbreviation tag**: after **+ Add to <Name>**, the field starts with
+  that tag again, so a run of items for one project needs it once.
 - **A quieter meeting row**: the prep/review mark on a row only shows the state - tapping it
   selects the meeting, the tick is in the toolbar. The **+clip** moved to the toolbar's
   **Link file**; the clip shows only when a file is linked. The **M** box left the Week and Month

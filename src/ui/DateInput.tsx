@@ -57,6 +57,8 @@ interface Props {
   editable?: boolean;
   /** Input width in px. Default 140 (QuickAddWidget's due/meeting date field). */
   width?: number;
+  /** The -1/Today/+1/+7 strip below the field instead of above it (Quick Add: R1's buttons stay free). */
+  stripBelow?: boolean;
   /** Margins/flex for the wrapper around the input - not the input itself. */
   containerStyle?: StyleProp<ViewStyle>;
   /** Extra input styling (e.g. ReviewScreen's pill-shaped corners) applied over the defaults. */
@@ -74,6 +76,7 @@ const DateInput = forwardRef<DateInputHandle, Props>(function DateInput(
     borderColor,
     editable = true,
     width = 140,
+    stripBelow = false,
     containerStyle,
     inputStyle,
   },
@@ -99,7 +102,7 @@ const DateInput = forwardRef<DateInputHandle, Props>(function DateInput(
         autoCapitalize="none"
         editable={editable}
       />
-      <View style={[common.floatingStrip, {borderColor}, !focused && styles.hidden]}>
+      <View style={[common.floatingStrip, stripBelow && common.floatingStripBelow, {borderColor}, !focused && styles.hidden]}>
         {DATE_NUDGES.map(({kind, label}) => (
           <Pressable
             key={kind}

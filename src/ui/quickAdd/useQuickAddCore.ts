@@ -10,6 +10,7 @@
  * Add/Save button.
  */
 import {useCallback, useEffect, useState} from 'react';
+import {AbbrevFileMatch} from '../../domain/abbrev';
 import {Destination} from '../../domain/destination';
 import {getRecentTags, getRecentTagsSync, recordTagsUsed} from '../../storage/tagUsage';
 import {useAbbrevItems} from '../useAbbrevItems';
@@ -96,6 +97,19 @@ export function useQuickAddCore({fixedDestination, editingItemPath}: Input) {
   const fixedExcludePath = fixedDestination.type === 'item' ? fixedDestination.path : null;
   const abbrevExcludePath = isEditing && editingItemPath !== undefined ? editingItemPath : fixedExcludePath;
 
+  /**
+   * The text a new draft starts with after an item was added to `target`
+   * through its abbreviation tag (technical-design-item-card.md K12): that
+   * tag again, as the Project/Area spells it, so a run of items for one
+   * place needs it typed once. Tag first with a space after it - a tap into
+   * the field puts the cursor at the end, where the next words then go.
+   */
+  const abbrevPrefill = (target: AbbrevFileMatch | null): string => {
+    if (!target) return '';
+    const item = abbrevItems.find(i => i.path === target.path);
+    return `#${item?.abbrev ?? target.tag} `;
+  };
+
   // Any typing/chip change clears the widget's own slot messages: the ✓
   // goes as soon as the next item is started (§8 Q13), and an error (with
   // its ⚠ mark) as soon as the user starts fixing it.
@@ -125,6 +139,7 @@ export function useQuickAddCore({fixedDestination, editingItemPath}: Input) {
     recognizedAbbrevTags,
     fixedExcludePath,
     abbrevExcludePath,
+    abbrevPrefill,
   };
 }
 

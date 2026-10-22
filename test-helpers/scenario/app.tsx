@@ -123,9 +123,12 @@ export async function tapTab(label: string): Promise<void> {
   await tap(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`));
 }
 
-/** Types into the field showing `placeholder` (replaces its text, like handwriting into it). */
-export async function type(placeholder: string, text: string): Promise<void> {
-  const field = screen.queryAllByPlaceholderText(placeholder)[0];
+/**
+ * Types into the `nth` field showing `placeholder` (replaces its text, like handwriting into it).
+ * An overlay (thread overview) draws over the screen below it, so its fields come after that screen's.
+ */
+export async function type(placeholder: string, text: string, nth = 0): Promise<void> {
+  const field = screen.queryAllByPlaceholderText(placeholder)[nth];
   if (!field) throw new Error(`no field "${placeholder}"; the screen shows: ${describeScreen()}`);
   fireEvent.changeText(field, text);
   await settle(2);

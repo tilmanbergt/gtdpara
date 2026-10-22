@@ -1,17 +1,21 @@
 /**
  * The unified Todo/Meeting/Note add-and-edit widget
  * (docs/dev/history/technical-design-unified-quickadd.md). Every screen has exactly
- * one add/edit surface: a box of four fixed rows (ui/quickAdd/QuickAddFrame.tsx)
+ * one add/edit surface: a box of four rows, 170 dp in every state
+ * (ui/quickAdd/QuickAddFrame.tsx, docs/dev/history/technical-design-item-card.md),
  * whose contents follow the tab and whether an item is being edited:
- *   R1 Tabs      - Todo/Meeting(/Note) (ui/quickAdd/TabsRow.tsx).
+ *   R1 Tabs + main button - Todo/Meeting(/Note) on the left; create: [M] + Add
+ *                  ("+ Add to <Name>" when a recognized abbreviation #tag
+ *                  files it elsewhere, technical-design-abbrev-quick-file.md);
+ *                  edit: Cancel · Save ("Save to <Name>" with such a tag:
+ *                  saved and moved in one step).
  *   R2 Input     - todo text + due date, or meeting title + date, or note title.
  *   R3 Metadata  - flow chips + tag chips (or "Waiting on"), or meeting time +
- *                  tag chips, or note tag chips; the linked file while editing.
- *   R4 Actions   - create: "+ Add" (relabelled "+ Add to <Name>" when a
- *                  recognized abbreviation #tag files it elsewhere,
- *                  docs/dev/history/technical-design-abbrev-quick-file.md);
- *                  edit: delete, Refile or "File: <Name>", New from this,
- *                  Cancel, Save (ui/quickAdd/ActionRow.tsx).
+ *                  tag chips, or note tag chips.
+ *   R4           - more tag chips (one page spans R3 and R4); the provenance
+ *                  line while a screen adds one; while editing, the commands
+ *                  that act at once (delete, New from this, Refile, the linked
+ *                  file's ✕, M - ui/quickAdd/ActionRow.tsx).
  *
  * The parts: one hook per draft (ui/quickAdd/useTaskDraft.ts,
  * useMeetingDraft.ts, useNoteDraft.ts) over the shared state of
@@ -49,13 +53,13 @@ import {Destination} from '../domain/destination';
 import {usePerfRender} from '../utils/perf';
 import {errorMessage} from '../utils/errorMessage';
 import HighlightMark from './HighlightMark';
-import {CreateActionRow, EditActionRow} from './quickAdd/ActionRow';
-import {MeetingInputRow, MeetingMetaRow} from './quickAdd/MeetingRows';
-import {NoteInputRow, NoteTagRow} from './quickAdd/NoteRows';
+import {CreateActions, EditActions, EditCommands} from './quickAdd/ActionRow';
+import {MeetingInputRow, MeetingMetaRows} from './quickAdd/MeetingRows';
+import {NoteInputRow, NoteTagRows} from './quickAdd/NoteRows';
 import ProvenanceLine, {QuickAddAdds} from './quickAdd/ProvenanceLine';
 import QuickAddFrame from './quickAdd/QuickAddFrame';
 import TabsRow from './quickAdd/TabsRow';
-import {TaskInputRow, TaskMetaRow} from './quickAdd/TaskRows';
+import {AttachmentCluster, TaskInputRow, TaskMetaRows} from './quickAdd/TaskRows';
 import {MeetingQuickAddFields, QuickAddEditTarget, QuickFilePayload, sameEditTarget, truncateItemName} from './quickAdd/types';
 import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
 import {useEditSession} from './quickAdd/useEditSession';
@@ -302,43 +306,28 @@ function QuickAddWidget(props: Props): React.JSX.Element {
 
   const buttonMark = useQuickAddStatus(core, task, meeting, note);
 
-  // The "M" box left of + Add / Save (meeting tab only) - see ui/HighlightMark.tsx.
+  // The "M" box left of + Add (meeting tab only) - see ui/HighlightMark.tsx.
   const monthlyToggle =
     displayType === 'meeting' ? (
       <HighlightMark on={meeting.fields.monthly} variant="toggle" onPress={meeting.toggleMonthly} disabled={pending} textColor={textColor} />
     ) : null;
   const loopMode = task.loopMode;
-  const row4 = isEditing ? (
-    <EditActionRow
+  // A recognized abbreviation tag while editing: Save files the item there
+  // in the same step (technical-design-item-card.md K3).
+  const saveTo = onQuickFile && abbrevTarget && loopMode.kind !== 'make' && loopMode.kind !== 'loop' ? abbrevTarget : null;
+  const actions = isEditing ? (
+    <EditActions
       pending={pending}
-      onDelete={
-        loopMode.kind === 'loop'
-          ? undefined
-          : () => {
-              Keyboard.dismiss();
-              onDeleteEdit?.();
-            }
-      }
-      onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
-      onRefile={
-        onRefile
-          ? () => {
-              Keyboard.dismiss();
-              onRefile();
-            }
-          : undefined
-      }
-      quickFile={onQuickFile && abbrevTarget ? {name: truncateItemName(abbrevTarget.name), onPress: handleQuickFile} : null}
       onCancel={onCancelEdit}
-      saveLabel={loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : 'Save'}
-      onSave={editFields?.kind === 'meeting' ? meeting.submitEdit : task.submitEdit}
+      saveLabel={
+        loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : saveTo ? `Save to ${truncateItemName(saveTo.name)}` : 'Save'
+      }
+      onSave={saveTo ? handleQuickFile : editFields?.kind === 'meeting' ? meeting.submitEdit : task.submitEdit}
       errorOnSave={!!core.errorState && core.errorState.field === null}
-      monthlyToggle={monthlyToggle}
       textColor={textColor}
-      borderColor={borderColor}
     />
   ) : (
-    <CreateActionRow
+    <CreateActions
       label={loopMode.kind === 'add' ? '+ Add loop' : abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
       onPress={displayType === 'meeting' ? meeting.submitCreate : displayType === 'note' ? note.submitCreate : task.submitCreate}
       disabled={pending || loopMode.kind === 'exists'}
@@ -348,9 +337,50 @@ function QuickAddWidget(props: Props): React.JSX.Element {
     />
   );
 
+  const editKind = editFields?.kind ?? null;
+  const editCommands = editKind ? (
+    <EditCommands
+      pending={pending}
+      onDelete={
+        loopMode.kind === 'loop'
+          ? undefined
+          : () => {
+              Keyboard.dismiss();
+              onDeleteEdit?.();
+            }
+      }
+      onNewFromThis={editKind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
+      onRefile={
+        onRefile && !saveTo
+          ? () => {
+              Keyboard.dismiss();
+              onRefile();
+            }
+          : undefined
+      }
+      attachment={
+        <AttachmentCluster
+          linkedFile={editKind === 'task' ? task.linkedFile : meeting.linkedFile}
+          missing={linkedFileMissing}
+          onClear={editKind === 'task' ? task.clearLinkedFile : meeting.clearLinkedFile}
+          textColor={textColor}
+        />
+      }
+      monthlyToggle={editKind === 'meeting' ? monthlyToggle : null}
+      textColor={textColor}
+      borderColor={borderColor}
+    />
+  ) : null;
+  // R4 of the Todo tab: the provenance line while creating (K6), the
+  // commands while editing, else the second tag row.
+  const taskRow4 =
+    editKind === 'task' ? editCommands : provenance && provenance.length > 0 && !isEditing ? <ProvenanceLine parts={provenance} textColor={textColor} /> : undefined;
+
   return (
     <QuickAddFrame
-      row1={<TabsRow core={core} taskOnly={taskOnly} hasNoteTab={!!onAddNote} noteFolderPath={noteFolderPath} textColor={textColor} />}
+      row1={
+        <TabsRow core={core} taskOnly={taskOnly} hasNoteTab={!!onAddNote} noteFolderPath={noteFolderPath} actions={actions} textColor={textColor} />
+      }
       row2={
         <>
           <TaskInputRow core={core} task={task} placeholder={props.placeholder ?? 'New task'} {...colors} />
@@ -358,19 +388,13 @@ function QuickAddWidget(props: Props): React.JSX.Element {
           <NoteInputRow core={core} note={note} {...colors} />
         </>
       }
-      row3={
+      rows34={
         <>
-          <TaskMetaRow core={core} task={task} layoutKey={layoutKey} showTags linkedFileMissing={linkedFileMissing} {...colors} />
-          <MeetingMetaRow core={core} meeting={meeting} layoutKey={layoutKey} showTags linkedFileMissing={linkedFileMissing} {...colors} />
-          <NoteTagRow core={core} note={note} layoutKey={layoutKey} textColor={textColor} borderColor={borderColor} />
+          <TaskMetaRows core={core} task={task} layoutKey={layoutKey} row4={taskRow4} {...colors} />
+          <MeetingMetaRows core={core} meeting={meeting} layoutKey={layoutKey} row4={editKind === 'meeting' ? editCommands : undefined} {...colors} />
+          <NoteTagRows core={core} note={note} layoutKey={layoutKey} textColor={textColor} borderColor={borderColor} />
         </>
       }
-      beforeActions={
-        provenance && provenance.length > 0 && displayType === 'task' && !isEditing ? (
-          <ProvenanceLine parts={provenance} textColor={textColor} />
-        ) : null
-      }
-      row4={row4}
       borderColor={borderColor}
     />
   );

@@ -41,10 +41,13 @@ export function useMeetingDraft(core: QuickAddCore, input: Input) {
   const [draft, setDraft] = useState<MeetingDraft>(() => makeMeetingDraft(initialDate, initialMonthly));
   // Follow a changed `initialDate`/`initialMonthly` (the Month view's day
   // panel: tapping another day retargets the draft) - but only while the
-  // draft is still untouched, so a half-typed meeting never jumps dates.
+  // draft is still untouched, so a half-typed meeting never jumps dates. A
+  // title of tags only (the prefilled abbreviation tag) counts as untouched.
   useEffect(() => {
     setDraft(d =>
-      d.title.trim() || d.time.trim() ? d : {...d, date: initialDate ?? d.date, monthly: initialMonthly ?? d.monthly},
+      d.title.replace(/#\S+/g, '').trim() || d.time.trim()
+        ? d
+        : {...d, date: initialDate ?? d.date, monthly: initialMonthly ?? d.monthly},
     );
   }, [initialDate, initialMonthly]);
   const [justAdded, setJustAdded] = useState<string | null>(null);
@@ -147,17 +150,23 @@ export function useMeetingDraft(core: QuickAddCore, input: Input) {
 
   const submitCreate = () => {
     Keyboard.dismiss();
-    const composed = compose(draft, abbrevTarget ? abbrevTarget.tag : null);
+    // The matched abbreviation tag did its job picking the destination; a
+    // title that is only that tag counts as empty.
+    const source = abbrevTarget ? {...draft, title: removeTagFromText(draft.title.trim(), abbrevTarget.tag)} : draft;
+    const composed = compose(source, null);
     if (!composed) return;
     const destination = abbrevTarget ? abbrevDestination(abbrevTarget) : input.fixedDestination;
+    const prefill = core.abbrevPrefill(abbrevTarget);
     const addedDate = draft.date;
     setError(null);
     setPending(true);
     input
       .onAddMeeting(composed.fields, destination)
       .then(() => {
-        setDraft(makeMeetingDraft(initialDate, initialMonthly));
-        lastSelectionRef.current = null;
+        setDraft({...makeMeetingDraft(initialDate, initialMonthly), title: prefill});
+        const end = {start: prefill.length, end: prefill.length};
+        lastSelectionRef.current = prefill ? end : null;
+        if (prefill) setSelectionOverride(end);
         setCopyNote(null);
         setJustAdded(addedText(composed.fields.title, destination));
         const visible = input.isMeetingDateVisible;

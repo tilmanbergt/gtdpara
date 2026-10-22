@@ -5,7 +5,8 @@
  * meeting it was agreed in (`↳ from Retro alpha · Tue 30.9.`) and, in the
  * thread overview, the thread tag (`#retro/alpha`). Each part has its own ✕,
  * which drops it for this one todo. The screen builds the labels and decides
- * what to write; this only shows them. 34 dp high.
+ * what to write; this only shows them. It takes Quick Add's R4
+ * (docs/dev/history/technical-design-item-card.md K6).
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -20,8 +21,6 @@ export interface QuickAddPart {
 
 /** What a screen adds, at most two parts (provenance, preset tag). */
 export type QuickAddAdds = QuickAddPart[];
-
-export const PROVENANCE_LINE_HEIGHT = 34;
 
 export default function ProvenanceLine({parts, textColor}: {parts: QuickAddAdds; textColor: string}): React.JSX.Element {
   return (
@@ -41,7 +40,7 @@ export default function ProvenanceLine({parts, textColor}: {parts: QuickAddAdds;
 }
 
 const styles = StyleSheet.create({
-  line: {flexDirection: 'row', alignItems: 'center', height: PROVENANCE_LINE_HEIGHT},
+  line: {flexDirection: 'row', alignItems: 'center', flexShrink: 1},
   part: {flexDirection: 'row', alignItems: 'center', flexShrink: 1},
   label: {flexShrink: 1, fontSize: FONT.small, opacity: 0.6},
   clear: {fontSize: FONT.small, fontWeight: '700', paddingHorizontal: 8, opacity: 0.6},

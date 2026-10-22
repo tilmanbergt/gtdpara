@@ -184,18 +184,20 @@ See §3. Other single-line rows:
 
 ### 5.4 The QuickAdd card
 
-`ui/QuickAddWidget.tsx`'s card (Project panel, Inbox, Week, Review) is the largest recurring
-block outside lists. Budget it as one block:
+`ui/QuickAddWidget.tsx`'s box (Project panel, Inbox, Daily, Week, Month, Review, thread and
+loop overviews) is the largest recurring block outside lists. It has one fixed height in every
+state (`ui/quickAdd/QuickAddFrame.tsx`, `QUICK_ADD_HEIGHT`); budget it as one block:
 
-| Internal row | minHeight (dp) | Purpose |
+| Row | height (dp) | Holds |
 |---|---|---|
-| Row 1 | 22 | Todo / Meeting / Note tabs |
-| Row 2 | 36 | Main text input |
-| Row 3 | 32 | Flow-state and tag chips |
-| Row 4 | 32 | Attach cluster, date, Add button |
+| Row 1 | 30 | Todo / Meeting / Note tabs; + Add, or Cancel · Save |
+| Row 2 | 36 | Main text input and date |
+| Row 3 | 32 | Flow chips or time, tag chips |
+| Row 4 | 32 | More tag chips, the provenance line, or the edit commands |
 
-Card total ≈ `padding 10 + 22 + 6 + 36 + 6 + 32 + 6 + 32 + padding 10 + border 2` ≈ **162 dp**
-(minimum; the capture screen's variant adds more rows).
+Box total = `border 1 + padding 10 + 30 + 6 + 36 + 6 + 32 + 6 + 32 + padding 10 + border 1` =
+**170 dp**, whatever it shows. The capture screen's panel (`ui/quickAdd/CaptureQuickAdd.tsx`) is
+the exception: it grows with its multi-line text and adds rows below.
 
 ### 5.5 Section headings and labels
 

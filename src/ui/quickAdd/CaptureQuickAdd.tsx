@@ -17,12 +17,12 @@ import MarkWrap from '../status/StatusMark';
 import TagChipGrid from '../TagChipGrid';
 import {COLORS, FONT} from '../theme';
 import {quickAddButtons} from './ActionRow';
-import {MeetingInputRow, MeetingMetaRow} from './MeetingRows';
+import {MeetingInputRow, MeetingMetaRows} from './MeetingRows';
 import ProvenanceLine, {QuickAddAdds} from './ProvenanceLine';
 import QuickAddFrame from './QuickAddFrame';
 import {rowStyles} from './styles';
 import TabsRow from './TabsRow';
-import {TaskDueControl, TaskInputRow, TaskMetaRow} from './TaskRows';
+import {TaskDueControl, TaskInputRow, TaskMetaRows} from './TaskRows';
 import {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields, truncateItemName} from './types';
 import {CaptureState, FILE_TO_PAGE, SPLIT_ROWS_PER_PAGE, useCapture} from './useCapture';
 import {useMeetingDraft} from './useMeetingDraft';
@@ -146,24 +146,27 @@ function CaptureQuickAdd(props: Props): React.JSX.Element {
 
   return (
     <QuickAddFrame
+      free
       row1={<TabsRow core={core} taskOnly={false} hasNoteTab={false} noteFolderPath={null} textColor={textColor} />}
       row2={
         <>
           <TaskInputRow core={core} task={task} placeholder={placeholder} capture={{splitBlock: capture.splitRows ? <SplitRows capture={capture} {...colors} /> : null}} {...colors} />
           {optionsRow}
-          <MeetingInputRow core={core} meeting={meeting} {...colors} />
+          <MeetingInputRow core={core} meeting={meeting} capture {...colors} />
         </>
       }
-      row3={
+      rows34={
         <>
-          <TaskMetaRow core={core} task={task} showTags={false} {...colors} />
-          <MeetingMetaRow core={core} meeting={meeting} showTags={false} {...colors} />
+          <TaskMetaRows core={core} task={task} capture {...colors} />
+          <MeetingMetaRows core={core} meeting={meeting} capture {...colors} />
+          {provenance && provenance.length > 0 && core.displayType === 'task' ? (
+            <View style={styles.provenance}>
+              <ProvenanceLine parts={provenance} textColor={textColor} />
+            </View>
+          ) : null}
+          {row4}
         </>
       }
-      beforeActions={
-        provenance && provenance.length > 0 && core.displayType === 'task' ? <ProvenanceLine parts={provenance} textColor={textColor} /> : null
-      }
-      row4={row4}
       below={below}
       borderColor={borderColor}
     />
@@ -235,6 +238,7 @@ const styles = StyleSheet.create({
   captureDest: {flex: 1, fontSize: FONT.small, fontWeight: '600', marginRight: 8},
   captureBelow: {borderTopWidth: 1, borderTopColor: COLORS.borderLight, marginTop: 10, paddingTop: 8},
   captureLabel: {fontSize: FONT.small, fontWeight: '700', marginBottom: 6, marginTop: 4},
+  provenance: {height: 34, flexDirection: 'row', alignItems: 'center'},
 });
 
 export default React.memo(CaptureQuickAdd);

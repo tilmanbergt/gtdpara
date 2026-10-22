@@ -36,7 +36,7 @@
 import React, {useImperativeHandle, useRef, useState} from 'react';
 import {StyleSheet, TextInput, View} from 'react-native';
 import {Selection, spliceWordAtSelection} from '../domain/clipboardText';
-import ClipboardStrip, {clipboardActions} from './ClipboardStrip';
+import ClipboardStrip, {clipboardActions, StripPlacement} from './ClipboardStrip';
 import {FONT} from './theme';
 
 interface Props {
@@ -53,6 +53,8 @@ interface Props {
   multiline?: boolean;
   /** Optional handle for inserting text from outside the field - see the module doc comment. */
   handleRef?: React.Ref<ClipboardTextInputHandle>;
+  /** Where the All/Copy/Cut/Paste strip hovers (default above, right-aligned). */
+  stripPlacement?: StripPlacement;
 }
 
 export interface ClipboardTextInputHandle {
@@ -71,6 +73,7 @@ export default function ClipboardTextInput({
   editable = true,
   multiline = false,
   handleRef,
+  stripPlacement,
 }: Props): React.JSX.Element {
   const inputRef = useRef<TextInput>(null);
   const lastSelectionRef = useRef<Selection>(null);
@@ -116,7 +119,7 @@ export default function ClipboardTextInput({
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
       />
-      <ClipboardStrip visible={focused} actions={actions} textColor={textColor} borderColor={borderColor} />
+      <ClipboardStrip visible={focused} actions={actions} placement={stripPlacement} textColor={textColor} borderColor={borderColor} />
     </View>
   );
 }

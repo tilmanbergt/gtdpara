@@ -1,17 +1,17 @@
 /**
- * Quick Add's Todo rows: R2 (text + due date) and R3 (flow chips + tag
- * chips, or the "Waiting on" field). Both stay mounted while another tab
- * shows (`hidden`), so the TextInputs are created once - see
- * ui/quickAdd/styles.ts.
+ * Quick Add's Todo rows: R2 (text + due date), R3 (flow chips + tag chips,
+ * or the "Waiting on" field) and R4 (more tags, or what the widget puts
+ * there). All stay mounted while another tab shows (`hidden`), so the
+ * TextInputs are created once - see ui/quickAdd/styles.ts.
  */
 import React from 'react';
-import {LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import ClipboardStrip from '../ClipboardStrip';
 import DateInput from '../DateInput';
 import FlowStateChips from '../FlowStateChips';
 import {ClipIcon, WarningIcon} from '../icons';
 import MarkWrap from '../status/StatusMark';
-import TagChips from '../TagChips';
+import TagChips, {useTwoRowTagChips} from '../TagChips';
 import {useTagRowBudget} from '../tagChipLayout';
 import {FONT} from '../theme';
 import {rowStyles} from './styles';
@@ -25,7 +25,8 @@ interface Colors {
 }
 
 /** The due date: a 📅 button that unfolds into an inline date field (never folds back). */
-export function TaskDueControl({task, textColor, borderColor, placeholderColor}: {task: TaskDraftState} & Colors) {
+/** `stripBelow`: the date strip below the field (Quick Add's box, so R1's buttons stay free). */
+export function TaskDueControl({task, stripBelow = false, textColor, borderColor, placeholderColor}: {task: TaskDraftState; stripBelow?: boolean} & Colors) {
   const {fields, loopMode} = task;
   if (!fields.dueDateOpen) {
     return (
@@ -38,6 +39,7 @@ export function TaskDueControl({task, textColor, borderColor, placeholderColor}:
     <View style={styles.dateInline}>
       <DateInput
         ref={task.dueInputRef}
+        stripBelow={stripBelow}
         value={fields.dueDate}
         onChangeText={task.setDueDate}
         placeholder={loopMode.kind === 'none' || loopMode.kind === 'exists' ? 'Due YYYY-MM-DD' : 'Main date YYYY-MM-DD'}
@@ -69,7 +71,7 @@ interface InputRowProps extends Colors {
 export function TaskInputRow({core, task, placeholder, capture, ...colors}: InputRowProps) {
   const {textColor, borderColor, placeholderColor} = colors;
   return (
-    <View style={[rowStyles.row2, core.displayType !== 'task' && rowStyles.hidden]}>
+    <View style={[rowStyles.row2, !!capture && rowStyles.row2Free, core.displayType !== 'task' && rowStyles.hidden]}>
       {capture?.splitBlock ?? null}
       <View style={[rowStyles.row2Wrap, !!capture?.splitBlock && rowStyles.hidden]}>
         <MarkWrap mark={core.fieldMark('text')} textColor={textColor} flex>
@@ -90,33 +92,38 @@ export function TaskInputRow({core, task, placeholder, capture, ...colors}: Inpu
             autoCapitalize="none"
           />
         </MarkWrap>
-        {capture ? null : <TaskDueControl task={task} {...colors} />}
+        {capture ? null : <TaskDueControl task={task} stripBelow {...colors} />}
       </View>
-      {/* Select All/Copy/Cut/Paste, hovering above the field and right-aligned
-          so it clears row 1's tabs. Stays mounted (display toggles on focus)
-          so a tap on it isn't lost when the field blurs on touch-down. */}
-      <ClipboardStrip visible={task.inputFocused} actions={task.clipboard} textColor={textColor} borderColor={borderColor} />
+      {/* Select All/Copy/Cut/Paste, hovering above the field - left-aligned in
+          the box, over the tabs, so R1's main button stays reachable while
+          typing. Stays mounted (display toggles on focus) so a tap on it isn't
+          lost when the field blurs on touch-down. */}
+      <ClipboardStrip
+        visible={task.inputFocused}
+        actions={task.clipboard}
+        placement={capture ? 'above-right' : 'above-left'}
+        textColor={textColor}
+        borderColor={borderColor}
+      />
     </View>
   );
 }
 
-/** The edited item's linked-file mark with its ✕ (unlink). `onLayout` feeds the row's tag budget. */
+/** The edited item's linked-file mark with its ✕ (unlink). */
 export function AttachmentCluster({
   linkedFile,
   missing,
   onClear,
-  onLayout,
   textColor,
 }: {
   linkedFile: string | null;
   missing?: boolean;
   onClear: () => void;
-  onLayout?: (e: LayoutChangeEvent) => void;
   textColor: string;
 }) {
   if (!linkedFile) return null;
   return (
-    <View style={styles.attachCluster} onLayout={onLayout}>
+    <View style={styles.attachCluster}>
       <ClipIcon color={textColor} />
       {missing && <WarningIcon color={textColor} />}
       <Pressable onPress={onClear} hitSlop={8}>
@@ -126,90 +133,101 @@ export function AttachmentCluster({
   );
 }
 
-interface MetaRowProps extends Colors {
+interface MetaRowsProps extends Colors {
   core: QuickAddCore;
   task: TaskDraftState;
   /** Remembers the tag row's widths per screen slot (render-perf-ab §3 A2). */
   layoutKey?: string;
-  /** False in the capture panel: its tags are a chip grid below the box. */
-  showTags: boolean;
-  linkedFileMissing?: boolean;
+  /** The capture panel: R3 only, flow chips without tags (its tags are a chip grid below), free height. */
+  capture?: boolean;
+  /** What R4 holds instead of the second tag row (the provenance line, the edit commands); the tags then page in R3 alone. */
+  row4?: React.ReactNode;
 }
 
 /**
- * R3, page 0 vs page 1+ (technical-design-context-tags.md §8): past page 0
- * the tag chips take the whole row at their wide capacity and the flow
- * chips (or the "Waiting on" layout, also flow-state UI) drop out - "‹" on
- * the chip row is the way back. Page 0 has narrow tag chips next to the
- * flow chips; the "Waiting on" field fills the row on its own. The tag
- * budget is measured (ui/tagChipLayout.ts), not a fixed chip count.
+ * R3 and R4. Two-row tags (docs/dev/history/technical-design-item-card.md
+ * §5): page 0 puts the flow chips first in R3, then tags, and continues in
+ * R4; past page 0 the flow chips drop out and the tags take R3's whole
+ * width; with w/f, R3 holds the "Waiting on" field and R4 the tags.
+ *
+ * One-row tags while R4 holds something else (context-tags §8): past page 0
+ * the tags take the whole R3 - "‹" is the way back to the flow chips; the
+ * "Waiting on" field fills R3 on its own.
  */
-export function TaskMetaRow({core, task, layoutKey, showTags, linkedFileMissing, ...colors}: MetaRowProps) {
+export function TaskMetaRows({core, task, layoutKey, capture = false, row4, ...colors}: MetaRowsProps) {
   const {textColor, borderColor, placeholderColor} = colors;
-  const budget = useTagRowBudget(!!task.linkedFile, layoutKey ? `${layoutKey}:task` : undefined);
+  const budget = useTagRowBudget(layoutKey ? `${layoutKey}:task` : undefined);
   const hidden = core.displayType !== 'task' && rowStyles.hidden;
-  const tagChips = (
-    <TagChips
-      text={task.fields.text}
-      recentTags={core.recentTags}
-      recognizedTags={core.recognizedAbbrevTags}
-      page={task.tagPage}
-      onPageChange={task.setTagPage}
-      page0Width={budget.page0Width}
-      laterWidth={budget.laterWidth}
-      onInsertTag={task.insertTag}
-      onRemoveTag={task.removeTag}
-      textColor={textColor}
-      borderColor={borderColor}
-    />
+  const waiting = task.fields.flowState === 'waiting-for';
+  const common = {
+    text: task.fields.text,
+    recentTags: core.recentTags,
+    recognizedTags: core.recognizedAbbrevTags,
+    page: task.tagPage,
+    onPageChange: task.setTagPage,
+    onInsertTag: task.insertTag,
+    onRemoveTag: task.removeTag,
+    textColor,
+    borderColor,
+  };
+  const twoRows = useTwoRowTagChips({
+    ...common,
+    widths: {
+      row3First: waiting ? 0 : budget.page0Width,
+      row3Later: waiting ? 0 : budget.laterWidth,
+      row4: budget.laterWidth,
+    },
+  });
+  const oneRow = row4 != null;
+  const row3Style = [rowStyles.row3, capture && rowStyles.row3Free, hidden];
+
+  const waitingRow = (
+    <View style={row3Style} onLayout={budget.onRowLayout}>
+      <Pressable style={[rowStyles.chip, rowStyles.chipSelected]} onPress={() => task.setFlowState(null)} hitSlop={8}>
+        <Text style={rowStyles.chipTextSelected}>w/f</Text>
+      </Pressable>
+      <TextInput
+        style={[rowStyles.input, styles.waitingInput, {color: textColor, borderColor}]}
+        value={task.fields.waitingOnText}
+        onChangeText={task.setWaitingOn}
+        placeholder="Waiting on (who/what)"
+        placeholderTextColor={placeholderColor}
+        autoCapitalize="none"
+      />
+    </View>
   );
-  const attachment = (
-    <AttachmentCluster
-      linkedFile={task.linkedFile}
-      missing={linkedFileMissing}
-      onClear={task.clearLinkedFile}
-      onLayout={budget.onAttachLayout}
-      textColor={textColor}
-    />
-  );
-  if (task.tagPage > 0) {
-    return (
-      <View style={[rowStyles.row3, hidden]} onLayout={budget.onRowLayout}>
-        {tagChips}
-        {attachment}
-      </View>
-    );
-  }
-  if (task.fields.flowState === 'waiting-for') {
-    return (
-      <View style={[rowStyles.row3, hidden]}>
-        <Pressable style={[rowStyles.chip, rowStyles.chipSelected]} onPress={() => task.setFlowState(null)} hitSlop={8}>
-          <Text style={rowStyles.chipTextSelected}>w/f</Text>
-        </Pressable>
-        <TextInput
-          style={[rowStyles.input, styles.waitingInput, {color: textColor, borderColor}]}
-          value={task.fields.waitingOnText}
-          onChangeText={task.setWaitingOn}
-          placeholder="Waiting on (who/what)"
-          placeholderTextColor={placeholderColor}
-          autoCapitalize="none"
-        />
-        {attachment}
-      </View>
-    );
-  }
-  return (
-    <View style={[rowStyles.row3, hidden]} onLayout={budget.onRowLayout}>
+  const flowRow = (tags: React.ReactNode) => (
+    <View style={row3Style} onLayout={budget.onRowLayout}>
       <View style={rowStyles.row3ChipsGroup}>
         <View style={rowStyles.row3Lead} onLayout={budget.onLeadLayout}>
           {task.loopMode.kind !== 'loop' && (
             <FlowStateChips value={task.fields.flowState} onChange={task.setFlowState} textColor={textColor} borderColor={borderColor} />
           )}
         </View>
-        {showTags && tagChips}
+        {tags}
       </View>
-      {attachment}
     </View>
+  );
+  const tagsOnlyRow = (tags: React.ReactNode) => (
+    <View style={row3Style} onLayout={budget.onRowLayout}>
+      {tags}
+    </View>
+  );
+
+  if (capture) return waiting ? waitingRow : flowRow(null);
+
+  let row3: React.ReactNode;
+  if (oneRow) {
+    const tags = <TagChips {...common} page0Width={budget.page0Width} laterWidth={budget.laterWidth} />;
+    row3 = task.tagPage > 0 ? tagsOnlyRow(tags) : waiting ? waitingRow : flowRow(tags);
+  } else {
+    row3 = waiting ? waitingRow : task.tagPage > 0 ? tagsOnlyRow(twoRows.row3) : flowRow(twoRows.row3);
+  }
+  return (
+    <>
+      {row3}
+      <View style={[rowStyles.row4, hidden]}>{oneRow ? row4 : twoRows.row4}</View>
+    </>
   );
 }
 
@@ -241,8 +259,6 @@ const styles = StyleSheet.create({
   attachCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    // Never squeezed by the tags; the padding keeps a visible gap to the
-    // last chip and is included in the measured width.
     flexShrink: 0,
     paddingLeft: 8,
   },
