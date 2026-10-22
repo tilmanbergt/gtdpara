@@ -3,7 +3,7 @@
 Requirements (Part A), technical design (Part B) and test scenarios (Part C) for replacing the
 meeting-list toolbar of `docs/dev/history/technical-design-meeting-reflection.md` (M3-M6) with an
 item card in Quick Add's place, and for the Quick Add box that holds create, card and edit in one
-fixed frame. Status: **draft for review** (Tilman). UI draft: canvas "Meeting item card – UI
+fixed frame. Status: **approved** (Tilman); open points decided below. UI draft: canvas "Meeting item card – UI
 draft" (sheet "Quick Add box – every state", boards C1-C3, the Reflect icon sheet).
 
 An "As built" section is added when the branch is finished (DEVELOPMENT-POLICY §8).
@@ -59,6 +59,9 @@ box calm on e-ink.
   +clip, delete (right).
 - **K10 No list toolbar.** The meeting-list toolbar is removed; rows stay quiet (M1-M2 of the
   reflection design). Lists without Quick Add (close-out, Looking back, Engage) are unchanged.
+- **K12 After saving.** Save of an edited item returns to its card; + Add returns to an empty
+  Quick Add with the previous item's Project/Area abbreviation tag pre-filled (when it had one).
+  A double tap on an unselected row goes straight to edit.
 - **K11 Out of scope:** the lasso capture variant (its own taller layout), loop editing in the
   loop overview (it goes straight to edit, as today), Engage's collapsed Quick Add.
 
@@ -268,13 +271,18 @@ updated in the step that changes the tap path, and stay green.
 5. Regression: Quick Add create on Daily, Inbox, Project, Week, Month, thread and loop overview,
    Review steps; capture variant unchanged.
 
-## Open points
+## Decisions on the open points
 
-1. **Todo edit between P1 and P3.** P1 removes delete and Refile from the edit form, P3 brings the
-   todo card. Proposal: P1-P3 are one release, so users never see the gap; on the branch, todo
-   delete/refile stay reachable through the old R4 until P3 replaces it. Alternative: do the todo
-   card in the same step as the meeting card.
-2. **After Save**: back to the card of the saved item (proposal: yes - you see the result and can
-   tick or reflect) or straight to Quick Add (create)?
-3. **Second tap on a selected todo** opens edit like a meeting (proposal), or keeps today's
-   "tap = edit" for todos until P3?
+Decided with Tilman:
+
+1. **P1-P3 together.** The three steps are built together on one branch and ship in one release;
+   users never see the edit form without its commands.
+2. **After Save** of an edited item: back to that item's card. **After + Add** of a new item:
+   back to an empty Quick Add, ready for the next one, with the Project/Area abbreviation tag of
+   the previous item pre-filled when one was used (so a run of items for "#GR" needs the tag
+   once).
+3. **Second tap** on a selected todo or meeting opens its edit form. A **double tap** on a row
+   that is not selected goes straight to edit as well (two taps within the double-tap interval
+   the rows already use for `#next`/`#now`; on the device, check that a slow double tap still
+   reads as "select, then edit", which ends in the same place).
+4. **Order:** Q4 (Quick Add split) first, on its own branch, merged to `main`; then this feature.
