@@ -42,7 +42,8 @@ export function useEditSession(core: QuickAddCore, task: TaskDraftState, meeting
   // Which field to focus once a fresh edit has rendered (see below).
   const [focusRequest, setFocusRequest] = useState<'task' | 'meeting' | null>(null);
   useEffect(() => {
-    const isEditingNow = !!editTarget;
+    // A target shown as card is not edited: no fields, nothing to save.
+    const isEditingNow = !!editTarget && editTarget.mode === 'edit';
     const targetChanged = isEditingNow && editTarget.key !== lastTargetKeyRef.current;
     if (isEditingNow && (!wasEditingRef.current || targetChanged)) {
       // A fresh target: the previous field's cursor position means nothing for it.

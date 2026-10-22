@@ -44,17 +44,22 @@ interface Props {
   rows34: React.ReactNode;
   /** The capture panel's tags, "File to" and extras. */
   below?: React.ReactNode;
+  /** The item card (ui/itemCard/): shown in place of the rows, which stay mounted, hidden. */
+  card?: React.ReactNode;
   free?: boolean;
   borderColor: string;
 }
 
-export default function QuickAddFrame({row1, row2, rows34, below, free = false, borderColor}: Props): React.JSX.Element {
+export default function QuickAddFrame({row1, row2, rows34, below, card, free = false, borderColor}: Props): React.JSX.Element {
   return (
     <View style={[styles.card, !free && styles.fixed, {borderColor}]} testID="quick-add-frame">
-      <View style={[styles.row1, free ? styles.row1Free : styles.row1Fixed]}>{row1}</View>
-      {row2}
-      {rows34}
-      {below}
+      <View style={card ? styles.hidden : undefined} testID="quick-add-rows">
+        <View style={[styles.row1, free ? styles.row1Free : styles.row1Fixed]}>{row1}</View>
+        {row2}
+        {rows34}
+        {below}
+      </View>
+      {card}
     </View>
   );
 }
@@ -78,5 +83,8 @@ const styles = StyleSheet.create({
   },
   row1Free: {
     minHeight: FREE_TABS_HEIGHT,
+  },
+  hidden: {
+    display: 'none',
   },
 });

@@ -17,6 +17,10 @@
  *                  that act at once (delete, New from this, Refile, the linked
  *                  file's ✕, M - ui/quickAdd/ActionRow.tsx).
  *
+ * A meeting selected once shows its item card in the box instead
+ * (`editTarget.mode === 'card'`, ui/itemCard/MeetingCard.tsx, where the
+ * screen passes `meetingCard`); its edit form then holds fields only.
+ *
  * The parts: one hook per draft (ui/quickAdd/useTaskDraft.ts,
  * useMeetingDraft.ts, useNoteDraft.ts) over the shared state of
  * ui/quickAdd/useQuickAddCore.ts; the edit session (loading, focus,
@@ -51,6 +55,8 @@ import {formatMeetingWhen} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {Destination} from '../domain/destination';
 import {usePerfRender} from '../utils/perf';
+import MeetingCard from './itemCard/MeetingCard';
+import {MeetingCardData} from './itemCard/useMeetingCard';
 import {errorMessage} from '../utils/errorMessage';
 import HighlightMark from './HighlightMark';
 import {CreateActions, EditActions, EditCommands} from './quickAdd/ActionRow';
@@ -106,6 +112,12 @@ interface Props {
 
   /** The item being edited, or null/absent (create mode). Build it with `editTargetFor`. */
   editTarget?: QuickAddEditTarget | null;
+  /**
+   * The selected meeting's card (ui/itemCard/useMeetingCard.ts), shown in the
+   * box while `editTarget` is a meeting in 'card' mode. Where a screen passes
+   * it, the meeting's edit form holds fields only: the commands are on the card.
+   */
+  meetingCard?: MeetingCardData | null;
   /** Resolve `false` when the save failed (the screen showed its own error) - the widget then keeps the edit open. */
   onSaveEditTask?: (nextText: string, nextLinkedFile: string) => Promise<void | boolean>;
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
@@ -197,7 +209,7 @@ interface Props {
 function QuickAddWidget(props: Props): React.JSX.Element {
   usePerfRender('QuickAddWidget');
   const {fixedDestination, editTarget, editingItemPath, taskOnly = false, onAddNote, noteFolderPath = null} = props;
-  const {onCancelEdit, onQuickFile, onRefile, onDeleteEdit, provenance, layoutKey, linkedFileMissing} = props;
+  const {onCancelEdit, onQuickFile, onRefile, onDeleteEdit, provenance, layoutKey, linkedFileMissing, meetingCard} = props;
   const {textColor, borderColor, placeholderColor} = props;
   const colors = {textColor, borderColor, placeholderColor};
 
@@ -281,10 +293,9 @@ function QuickAddWidget(props: Props): React.JSX.Element {
    * All state changes happen in one event handler (one batched render), and
    * the draft is set BEFORE the edit ends, so no frame shows an empty draft.
    */
-  const handleNewFromThis = () => {
-    if (editFields?.kind !== 'meeting' || !onCancelEdit) return;
+  const newFromThis = (fields: {title: string; date: string; time: string}) => {
+    if (!onCancelEdit) return;
     Keyboard.dismiss();
-    const fields = editFields.fields;
     const displayTitle = meetingDisplayTitle({title: fields.title});
     let draftTitle = displayTitle;
     const {fixedExcludePath, abbrevItems} = core;
@@ -338,6 +349,8 @@ function QuickAddWidget(props: Props): React.JSX.Element {
   );
 
   const editKind = editFields?.kind ?? null;
+  // The item card in the box's place: a meeting selected once, where the screen passes its card.
+  const cardShown = editTarget?.mode === 'card' && editTarget.kind === 'meeting' && !!meetingCard;
   const editCommands = editKind ? (
     <EditCommands
       pending={pending}
@@ -349,7 +362,7 @@ function QuickAddWidget(props: Props): React.JSX.Element {
               onDeleteEdit?.();
             }
       }
-      onNewFromThis={editKind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
+      onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? () => newFromThis(editFields.fields) : undefined}
       onRefile={
         onRefile && !saveTo
           ? () => {
@@ -391,9 +404,27 @@ function QuickAddWidget(props: Props): React.JSX.Element {
       rows34={
         <>
           <TaskMetaRows core={core} task={task} layoutKey={layoutKey} row4={taskRow4} {...colors} />
-          <MeetingMetaRows core={core} meeting={meeting} layoutKey={layoutKey} row4={editKind === 'meeting' ? editCommands : undefined} {...colors} />
+          <MeetingMetaRows
+            core={core}
+            meeting={meeting}
+            layoutKey={layoutKey}
+            row4={editKind === 'meeting' && !meetingCard ? editCommands : undefined}
+            {...colors}
+          />
           <NoteTagRows core={core} note={note} layoutKey={layoutKey} textColor={textColor} borderColor={borderColor} />
         </>
+      }
+      card={
+        cardShown && meetingCard ? (
+          <MeetingCard
+            card={meetingCard}
+            onNewFromThis={() =>
+              newFromThis({title: meetingCard.meeting.title, date: meetingCard.meeting.date, time: formatMeetingWhen(meetingCard.meeting)})
+            }
+            textColor={textColor}
+            borderColor={borderColor}
+          />
+        ) : null
       }
       borderColor={borderColor}
     />

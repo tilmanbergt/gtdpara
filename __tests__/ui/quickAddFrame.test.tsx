@@ -32,6 +32,9 @@ import {QuickAddAdds} from '../../src/ui/quickAdd/ProvenanceLine';
 import FlowStateChips from '../../src/ui/FlowStateChips';
 import {StatusProvider} from '../../src/ui/status/StatusProvider';
 import {Meeting, Task} from '../../src/domain/types';
+import {meetingCardModel} from '../../src/domain/itemCard';
+import {EMPTY_NOTE_SETUP_CONFIG} from '../../src/domain/noteSetups';
+import {MeetingCardData} from '../../src/ui/itemCard/useMeetingCard';
 
 const task = {text: 'Call Tom #tag1', done: false, cancelled: false, tags: [], dueDate: null, flowState: null, waitingOn: null, now: false, notePath: '', linkedFile: 'Docs/plan.pdf'} as unknown as Task;
 const meeting: Meeting = {title: 'Sync', date: '2026-10-22', time: '10:00', endTime: '', days: 1, tags: [], cancelled: false, notePath: '', linkedFile: 'Docs/a.pdf'};
@@ -39,9 +42,20 @@ const meeting: Meeting = {title: 'Sync', date: '2026-10-22', time: '10:00', endT
 interface Setup {
   editTarget?: QuickAddEditTarget | null;
   provenance?: QuickAddAdds;
+  meetingCard?: MeetingCardData | null;
 }
 
-function render({editTarget = null, provenance}: Setup = {}) {
+/** Card data for `m` as useMeetingCard builds it, every handler a mock. */
+function cardFor(m: Meeting, extra: Partial<Parameters<typeof meetingCardModel>[0]> = {}): MeetingCardData {
+  const model = meetingCardModel({meeting: m, setups: EMPTY_NOTE_SETUP_CONFIG, nowMs: Date.now(), reflection: 'none', ownerName: 'Coaching', canLink: true, canRefile: true, ...extra});
+  const fn = () => jest.fn();
+  return {
+    meeting: m, model, busy: false, onEdit: fn(), onClose: fn(), onCheckpoint: fn(), onMonthly: fn(), onNote: fn(), onReflect: fn(),
+    onOpenFile: fn(), onUnlink: fn(), onLink: fn(), onOpenOwner: fn(), onRefile: fn(), onCancelMeeting: fn(), onOpenThread: fn(),
+  };
+}
+
+function render({editTarget = null, provenance, meetingCard}: Setup = {}) {
   let r!: TestRenderer.ReactTestRenderer;
   act(() => {
     r = TestRenderer.create(
@@ -60,6 +74,7 @@ function render({editTarget = null, provenance}: Setup = {}) {
           onRefile={() => undefined}
           onQuickFile={async () => undefined}
           provenance={provenance}
+          meetingCard={meetingCard}
           textColor="#000"
           borderColor="#000"
           placeholderColor="#888"
@@ -79,7 +94,10 @@ function heights(r: TestRenderer.ReactTestRenderer): {frame: unknown; rows: unkn
   // The row Views directly under the frame, through the row components that render them.
   const rowViews = (node: TestRenderer.ReactTestInstance): TestRenderer.ReactTestInstance[] =>
     node.children.flatMap(c => (typeof c === 'string' ? [] : c.type === View ? [c] : rowViews(c)));
-  const rows = rowViews(box)
+  // The rows sit in one wrapper, hidden while the item card shows in their place.
+  const wrapper = box.findAll(n => n.type === View && n.props.testID === 'quick-add-rows')[0];
+  const container = visible(wrapper.props.style) ? wrapper : rowViews(box).filter(v => v !== wrapper)[0];
+  const rows = rowViews(container)
     .filter(v => visible(v.props.style))
     .map(v => StyleSheet.flatten(v.props.style).height);
   return {frame: StyleSheet.flatten(box.props.style).height, rows};
@@ -142,6 +160,17 @@ describe('Quick Add box height', () => {
       return r;
     }],
     ['edit meeting', () => render({editTarget: editTargetFor('meeting:1', {meeting})})],
+    ['edit meeting where the screen has a card', () => render({editTarget: editTargetFor('meeting:1', {meeting}), meetingCard: cardFor(meeting)})],
+    ['meeting card, ahead', () => {
+      const ahead = {...meeting, date: '2999-01-01'};
+      return render({editTarget: editTargetFor('meeting:1', {meeting: ahead}, 'card'), meetingCard: cardFor(ahead)});
+    }],
+    ['meeting card, over, with a linked file', () =>
+      render({editTarget: editTargetFor('meeting:1', {meeting}, 'card'), meetingCard: cardFor(meeting, {reflection: 'exists'})})],
+    ['meeting card, cancelled', () => {
+      const cancelled = {...meeting, cancelled: true};
+      return render({editTarget: editTargetFor('meeting:1', {meeting: cancelled}, 'card'), meetingCard: cardFor(cancelled)});
+    }],
   ];
 
   it.each(cases)('%s: the frame and its four rows keep their heights', (_name, make) => {
