@@ -28,14 +28,19 @@ or your project/area files are stored.
   lives (open, move), **New from this** and **Cancel meeting**. **Edit** - or a second tap on
   the row - opens the edit form; **Save** returns to the card, ✕ brings back Quick Add with your
   draft. See the help page "Meetings".
+- **Todo card**: tapping a todo (Daily, a project's or area's Todos, the Inbox, the Review's
+  Inbox step, the thread and loop overviews) shows its card the same way: its state (due,
+  waiting, someday, done), the meeting it was agreed in (opens that thread), done, the flow chips
+  and **Now**, all acting at once, its note, where it lives (open, move), its linked file or
+  linking one, and delete. **Edit** or a second tap opens the edit form. See the help page
+  "Quick Add and capture".
 
 ### Changed
 - **Quick Add keeps one height**: the box has four rows and stays the same height whatever it
   shows, so the lists below it no longer move. **+ Add** and, while editing, **Cancel** and
   **Save** moved to the top row; recently used tags fill the third and fourth row, with **‹ ›**
-  at the end of the fourth; the grey "↳ from …" line takes the fourth row. While editing a todo,
-  the bottom row holds delete, **Refile** and the clip's ✕; a meeting's edit form holds its
-  fields only (the rest is on its card). See the help page "Quick Add and capture".
+  at the end of the fourth; the grey "↳ from …" line takes the fourth row. The edit form holds the fields only: delete,
+  **Refile**, unlinking a file and **New from this** are on the item's card. See the help page "Quick Add and capture".
 - **Save to <Name>**: with a project's or area's abbreviation tag in the text, **Save** saves
   the edit and moves the item there in one step (it replaces **File: <Name>**).
 - **Hide the editing strips**: the All/Copy/Cut/Paste and date strips that hover over Quick Add's

@@ -653,6 +653,10 @@ scenario('Engage on the meeting\'s page offers the reflection; on the reflection
 
 ## As built
 
+The list toolbar of S5 (M3-M6) was replaced before any release by the item card in Quick Add's
+place: see "As built" in `docs/dev/history/technical-design-item-card.md`. What S5 and the
+deviations below say about the toolbar describes that intermediate state.
+
 Built on `feature/meeting-reflection` in the steps of Part B §4 (S0-S7), each its own commit with
 `npm run check` green. All eight scenarios of Part C are in
 `__tests__/scenarios/meetingReflection.test.tsx`. The device test (Part B §5, items 1-9) is the

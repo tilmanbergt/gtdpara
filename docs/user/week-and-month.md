@@ -4,7 +4,7 @@ The Week and Month tabs are for planning. Both work the same way: meetings on th
 
 ## Week
 
-The left side shows the week as a grid of meeting chips, one box per day. Use ‹ and › to move between weeks. Tap a chip to edit the meeting; tap a day's header to open that day's meetings on the right.
+The left side shows the week as a grid of meeting chips, one box per day. Use ‹ and › to move between weeks. Tap a chip to open its day on the right with the meeting's card; tap a day's header to open that day's meetings on the right.
 
 The right side shows Quick Add and the **weekly focus** panel: pick the projects and areas for this week and write a short **weekly goal** for each. From Friday to Sunday the focus panel also shows when you move to the coming week, so you can plan it before it starts. Focus itself is one mark per project or area, not one per week; the goals are kept per week. The notebook icon on each focus card opens its home notebook ([Projects and Areas](projects-and-areas.md)).
 
@@ -14,7 +14,7 @@ The left side lists every day of the month. It shows meetings you marked as **mo
 
 Tap one of the day's meetings on the right, and its card takes Quick Add's place, as on every meeting list (see [Meetings](meetings.md)): the prep or review tick, **M** and, once the meeting is over, **Reflect**.
 
-To make a meeting a monthly highlight, switch on the small **M** in Quick Add when adding or editing it. Highlighted meetings show the same M in 2-line rows. A short name in brackets at the end of the title, for example "Art of Transformation Session (AoT)", is used as the short form in the month list.
+To make a meeting a monthly highlight, switch on the small **M** next to **+ Add** when adding it, or **M** on its card later. Highlighted meetings show the same M in 2-line rows. A short name in brackets at the end of the title, for example "Art of Transformation Session (AoT)", is used as the short form in the month list.
 
 The right side has the **monthly focus** panel with a **monthly goal** per project or area, and the notebook icon on each card.
 

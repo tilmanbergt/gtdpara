@@ -6,7 +6,7 @@ item card in Quick Add's place, and for the Quick Add box that holds create, car
 fixed frame. Status: **approved** (Tilman); open points decided below. UI draft: canvas "Meeting item card – UI
 draft" (sheet "Quick Add box – every state", boards C1-C3, the Reflect icon sheet).
 
-An "As built" section is added when the branch is finished (DEVELOPMENT-POLICY §8).
+What was built and where it differs from this design: "As built" at the end.
 
 ## Part A — Requirements as decided
 
@@ -286,3 +286,59 @@ Decided with Tilman:
    the rows already use for `#next`/`#now`; on the device, check that a slow double tap still
    reads as "select, then edit", which ends in the same place).
 4. **Order:** Q4 (Quick Add split) first, on its own branch, merged to `main`; then this feature.
+
+## As built
+
+Built on `feature/meeting-reflection` after Q4 (`feature/quickadd-split`, merged to `main` and
+then into this branch), in the steps of §8, each its own commit with `npm run check` green. The
+scenarios of Part C are in `__tests__/scenarios/itemCard.test.tsx`, the reflection ones (4, 10)
+in `__tests__/scenarios/meetingReflection.test.tsx`, the todo card's refile in
+`__tests__/scenarios/inbox.test.tsx`. Device tests ran after P1, P2 and P3; the full device list
+of Part C runs on the release build.
+
+### What was built, by step
+
+- **P1 Frame and rows.** `QuickAddFrame` with fixed rows and `QUICK_ADD_HEIGHT`, R1 actions
+  (`ui/quickAdd/ActionRow.tsx`, `TabsRow.tsx`), two-row tag paging (`paginateTwoRows`,
+  `useTwoRowTagChips`), the provenance line in R4, "Save to <Name>", the abbreviation tag
+  pre-filled after "+ Add to <Name>" (`abbrevPrefill` in `useQuickAddCore`, used by the
+  drafts). Height test `__tests__/ui/quickAddFrame.test.tsx` over every state.
+- **P2 Meeting card.** `useEditTarget` modes (`select`, `edit`, `start`, `cancel`,
+  `set(next, mode)`), `domain/itemCard.ts` (`meetingCardModel`, `meetingPhase`),
+  `ui/itemCard/MeetingCard.tsx`, `useMeetingCard.ts`, `parts.tsx`, `icons.tsx`; wired on the six
+  screens of §7; `ui/MeetingToolbar.tsx`, `ui/useMeetingToolbar.ts`, `domain/meetingToolbar.ts`
+  and the `toolbar` props removed (`ReflectionLookup` moved to `domain/itemCard.ts`).
+- **P3 Todo card.** `todoCardModel`, `originOfKey`, `ui/itemCard/TodoCard.tsx`,
+  `useTodoCard.ts`; wired on Daily, Project/Area, Inbox, Review's Inbox step and the thread/loop
+  overviews (`useEntryActions.todoCardOptions`). Todo rows select like meeting rows.
+- **After the device tests.** Row tap targets span the whole row height (`MeetingRow`'s
+  `ROW_PAD_DP` on the targets, `TaskRow`'s edit target stretched), and the hovering clipboard and
+  date strips end in a ✕ (`useStripHide` in `ui/ClipboardStrip.tsx`).
+- **P4 Docs.** Help pages (`quick-add.md` with the todo card, `meetings.md`, `daily.md`,
+  `week-and-month.md`, `projects-and-areas.md`, `threads.md`, `review.md`), CHANGELOG,
+  `design-overview.md` §2.4/§2.5, `design-device-rendering.md` §3/§5, the scenario catalog.
+
+### Deviations from the design
+
+1. **174 dp, not 170.** On the device the chip labels draw about 21 dp high, so 32 dp rows clipped
+   them: R3 and R4 are 34 dp and chips use 4 dp vertical padding (`QUICK_ADD_CHIP_PADDING`); a
+   test checks a device-sized chip fits its row.
+2. **The date strip is drawn by row 2** (`DateNudgeStrip`, placement `above-left`), not by the
+   field: the `zIndex` on row 2 that let the field's own strip hover stopped Android from drawing
+   the flow chips of row 3. `overflow: hidden` left the chip group for the same reason.
+3. **No double-tap detection.** A double tap on an unselected row is two taps - select, then
+   edit - which ends in the edit form as decided; no timer was needed.
+4. **Done and Now go through the screen's row handlers** where it has them, so the Engage prompt
+   after a tick and focus mode react as on the row. Tapping the filled flow chip clears it;
+   leaving Next drops `#now`.
+5. **The area chip opens its item only where that is another screen** (Daily, Week/Month);
+   elsewhere it is a plain label.
+6. **A loop's own edit** (the loop overview's Edit) has no card and keeps delete and unlink in
+   R4 (`taskCommands` in `QuickAddWidget`).
+7. **Parts in one file.** `AreaChip`, `FileSlot`, `SquareButton` (P/R/M/Now/note) and `CardRow1`
+   are `ui/itemCard/parts.tsx`; the actions hooks are `useMeetingCard.ts`/`useTodoCard.ts`
+   rather than `useMeetingCardActions.ts`. `close()` is the existing `cancel()`.
+8. **Week chips** open the day panel with the meeting's card (`openMeetingFromGrid`), as a row
+   tap there does.
+9. **Unreachable edit-form paths removed.** Daily's and the Inbox's delete-from-edit-form handlers
+   went with P3, since a todo there is deleted from its card.

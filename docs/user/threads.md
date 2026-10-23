@@ -57,7 +57,7 @@ The upper list on the left:
 
 A list with nothing in it is left out. [Engage](engage.md) for the thread holds the same todos. Tapping one of its meetings shows the meeting's card in Quick Add's place: its prep or review tick and **Reflect** (see [Meetings](meetings.md)).
 
-Tap a todo row to edit it in Quick Add, a meeting row to see its card; tick, note and file icons work as on every list.
+Tap a todo or meeting row to see its card in Quick Add's place, a second time to edit it (see [Quick Add](quick-add.md)); tick, note and file icons work as on every list.
 
 ## Looking back
 

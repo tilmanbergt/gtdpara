@@ -390,10 +390,13 @@ Calendar and Gmail have their own caches (§2.11). Detail:
 **One widget.** `ui/QuickAddWidget.tsx` is every screen's single add-and-edit surface. Mini-tabs
 Todo | Meeting (plus Note where the screen passes `onAddNote`) on row 1; text and date on row 2
 (dates are `ui/DateInput.tsx` with a -1 / Today / +1 / +7 strip, arithmetic in
-`domain/dateNudge.ts`); flow chips, time/length, tag chips and the attachment on row 3; actions on
-row 4. Create mode adds to the screen's `fixedDestination`; edit mode shows Delete (soft cancel),
-Refile (where the screen passes `onRefile`), Cancel and Save, and for meetings "New from this"
-(a new meeting pre-filled from the edited one). The widget is long-lived per screen (no `key`
+`domain/dateNudge.ts`); flow chips or time/length, then tag chips on row 3; more tag chips or the
+provenance line on row 4. The main button sits at row 1's right: "+ Add" in create mode, which
+adds to the screen's `fixedDestination`, and Cancel · Save in edit mode. The edit form holds
+fields only; commands that act at once live on the item card (§2.4 Rows) - only a loop's own edit
+(the loop overview, no card) keeps delete and unlink in row 4. The text and date fields' hovering
+strips (Select All/Copy/Cut/Paste, `ui/ClipboardStrip.tsx`; the date strip) end in a ✕ that hides
+them until a field gains focus again (`useStripHide`). The widget is long-lived per screen (no `key`
 remounts): the todo and meeting drafts survive tab flips and edits elsewhere. A screen names the
 item being edited with one `editTarget` prop (`editTargetFor(key, {task, meeting, loop})`). The
 widget is a composition in `ui/quickAdd/`: the box with its row slots (`QuickAddFrame.tsx`), one
@@ -406,7 +409,8 @@ pane's current folder (`storage/standaloneNotes.ts`), its `#tags` becoming page 
 **Tags in the widget.** `ui/TagChips.tsx` shows recently used tags (`storage/tagUsage.ts`,
 per profile) as a paged, controlled chip row; a tag naming an Active/On Hold item's abbreviation
 shows uppercase. Typing a recognized abbreviation tag turns "+ Add" into "+ Add to `<Name>`" and
-Refile into "File: `<Name>`" (§2.5). When a just-added meeting is not visible on the current
+Save into "Save to `<Name>`", which saves and moves in one step (§2.5); after "+ Add to", the next
+draft starts with that tag again. When a just-added meeting is not visible on the current
 screen, the status message says where it went (`domain/dateLabel.ts`'s `describeAddedDate`, via
 the `isMeetingDateVisible` prop).
 
@@ -414,7 +418,7 @@ the `isMeetingDateVisible` prop).
 `meetingSeed` replaces the meeting draft ("+ Next <type>", `domain/nextMeeting.ts`'s
 `nextMeetingSeed`; it waits until an open edit has closed); both act once per nonce
 (`useDraftRequests.ts`). `provenance` (`QuickAddAdds`, at most two parts) shows one grey line
-above the actions in create mode on the Todo tab (`ProvenanceLine.tsx`, each part with its own ✕
+in row 4 in create mode on the Todo tab (`ProvenanceLine.tsx`, each part with its own ✕
 that drops it for one todo). The widget only shows it; the screen writes it: `useProvenance.ts`
 applies `domain/provenance.ts`'s `applyProvenance` to the composed line (`[meeting:: <key>]` set,
 the text left as typed) before `buildTask` - Review's "Meetings to close out", the thread
@@ -423,12 +427,15 @@ overview and capture from a meeting's note page use it - and `usePresetTag.ts` a
 
 **One edit and one arm per screen.** `ui/useEditTarget.ts` holds a screen's edit target (the
 row open in the widget) and, where the screen has a Files pane, its arm (a row waiting for a
-Files-pane pick: link a file, refile). `start(t)` first runs **save-then-switch**
+Files-pane pick: link a file, refile), and its mode: `card` after `select(t)` (a first tap),
+`edit` after the card's Edit or a second `select` of the same target; `start(t)` is select + edit.
+Every switch first runs **save-then-switch**
 (`ui/useEditFlush.ts`): the widget saves the open row's changes if anything changed, and only a
 successful save switches; a failed save keeps the edit open with its error. `cancel()` ends the
 edit and any arm started from it; `armFor`/`cancelArm` leave the edit open. Leaving the tab saves
 too; drafts of new items are never saved implicitly. Inbox, Current, Daily, Week/Month
-(`screens/usePlanningScreen.ts`) and Review's Inbox step use this hook.
+(`screens/usePlanningScreen.ts`), Review's Inbox step and the thread/loop overviews
+(`ui/useEntryActions.ts`) use this hook.
 `ui/useActionError.ts` gives a screen one error slot for its actions (`run`, and `runSave`, which
 resolves `false` on failure for save-then-switch).
 
@@ -459,15 +466,21 @@ switch remembered per list for the session (`ui/listLayout.ts`). Every action (n
 review, highlight, source) is an optional prop, so a list enables features by props, never by
 its own row. A meeting row is quiet: its own targets are the title's tags, the note icon and the
 clip of a linked file; the prep/review icon and the read-only M (2-line rows) sit inside its main
-tap target, which selects the meeting. Everything else acts on the selected meeting through its
-**item card** in Quick Add's place: `ui/useEditTarget.ts` holds the selection in mode `card`
+tap target, which selects the meeting. A row's tap targets carry its vertical padding, so they
+span the row's full height (the row itself has none). Everything else acts on the selected item
+through its **item card** in Quick Add's place: `ui/useEditTarget.ts` holds the selection in mode `card`
 (first tap) or `edit` (the card's Edit or a second tap; Save returns to `card`); every screen
 with Quick Add builds the card with `ui/itemCard/useMeetingCard.ts` from its selection and its
 own write path (`updateMeeting` changes the current stored copy) and passes it as
 `QuickAddWidget`'s `meetingCard`. `ui/itemCard/MeetingCard.tsx` lays it out in the box's four
 rows; what shows (phase, thread link, P/R, M, note, Reflect, file or +clip where a Files pane
 exists, area chip with refile arrow, New from this, Cancel meeting) is `domain/itemCard.ts`'s
-`meetingCardModel`. A meeting's edit form holds its fields only. Detail:
+`meetingCardModel`. Todos work the same way: `ui/itemCard/useTodoCard.ts` (`updateTask` changes
+the current stored copy; done and Now go through the screen's own row handlers so the Engage
+prompt and focus mode react as on the row), `TodoCard.tsx`, `todoCardModel` (state heading, the
+meeting it was agreed in with its thread link, done, flow chips, Now with Next only, note, area
+chip with refile arrow, file or +clip, delete) - passed as `QuickAddWidget`'s `todoCard`. Shared
+parts (`SquareButton`, `CardRow1`, `AreaChip`, `FileSlot`) are `ui/itemCard/parts.tsx`. Detail:
 `docs/dev/history/technical-design-unified-quickadd.md`,
 `docs/dev/history/technical-design-meeting-lists.md`,
 `docs/dev/history/technical-design-meeting-reflection.md`,
@@ -495,13 +508,13 @@ Done/Cancel) goes through `storage/itemMove.ts`.
 
 **Where moving starts.**
 
-- **Refile** — in Quick Add's edit mode on screens with a Files pane: Inbox, Current and Review's
-  Inbox step. It arms the pane's **Browse** root; picking a Project or Area moves the row.
+- **Refile** — the arrow on the item card's area chip, on screens with a Files pane: Inbox,
+  Current and Review's Inbox step. It arms the pane's **Browse** root; picking a Project or Area moves the row.
   `storage/inboxFiling.ts`'s `resolveFilingPick` turns the pick into a target. Refile never
   offers the Inbox, only Active items; picking the item's own location does nothing.
 - **Quick-file** — typing a recognized abbreviation tag (`domain/abbrev.ts`'s
   `resolveAbbrevFileTarget`, Active or On Hold items, the first matching tag in the text, never the
-  item's own location) shows "File: `<Name>`" in edit mode (Daily, Week, Month, Inbox, Current,
+  item's own location) shows "Save to `<Name>`" in edit mode (save, then move) (Daily, Week, Month, Inbox, Current,
   Review's Inbox step) and "+ Add to `<Name>`" in create mode. The tag is removed from the saved
   text. Daily, Week and Month pass `editingItemPath`, because their `fixedDestination` is always
   the Inbox while the edited row can live anywhere.
