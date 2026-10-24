@@ -9,7 +9,7 @@ scenario('Quick Add a todo in a project', {feature: 'Quick Add', design: 'techni
       dataFile('project', {Scope: ['Relaunch the site.', 'A second paragraph, by hand.'], Tasks: ['- [ ] Write copy #next'], Meetings: []}),
     );
   });
-  when('I open gtdpara, go to Projects, open "Website" and add the todo "Call the designer"', async () => {
+  when('I open Kept GTD, go to Projects, open "Website" and add the todo "Call the designer"', async () => {
     await openApp();
     await tapTab('Projects');
     await tap(/^Website/);

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to gtdpara are listed here, newest first.
+All notable changes to Kept GTD (formerly gtdpara) are listed here, newest first.
 Versions follow [Semantic Versioning](https://semver.org/) (`0.MINOR.PATCH` until 1.0):
 MINOR = new features or behavior changes, PATCH = bug fixes only.
 
@@ -9,6 +9,19 @@ Each release has up to six sections: **New**, **Changed**, **Fixed**, **Experime
 or your project/area files are stored.
 
 ## [Unreleased]
+
+### Changed
+- **gtdpara is now Kept GTD** – for those who write, where they write. New name in the sidebar
+  and the plugin list, new icons for the plugin, **Engage** and **Mark for later**, and the
+  wordmark on Settings → About.
+
+### Upgrade notes
+- Install Kept GTD over your current version. Your settings, notes and PARA folders stay as they
+  are.
+- Debug files and the demo space now live in `EXPORT/kept-gtd` and `Note/kept-gtd-demo`. Your
+  saved profiles are copied there once, on the first start; the status line says how many.
+  Afterwards you can delete `EXPORT/gtdpara` and `Note/gtdpara-demo`.
+- If the demo space is on while you upgrade, switch to your own profile and back.
 
 ## [0.19.0] — 2026-10-24
 

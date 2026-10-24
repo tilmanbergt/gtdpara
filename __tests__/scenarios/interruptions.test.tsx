@@ -35,7 +35,7 @@ function annaLines(): Array<{where: string; noteFound: boolean}> {
 const REFILE_WRITES = 6;
 
 scenario('A refile with its note, stopped after any write, loses nothing and is repairable', {feature: 'Interruptions', design: 'technical-design-quality-hardening.md'}, () => {
-  then('for every point where gtdpara can be stopped: the todo and its note still exist, and a broken link is named with the note\'s new place', async () => {
+  then('for every point where Kept GTD can be stopped: the todo and its note still exist, and a broken link is named with the note\'s new place', async () => {
     for (let n = 0; n <= REFILE_WRITES; n++) {
       await freshDevice();
       putFile(INBOX_FILE, dataFile('inbox', {Tasks: ['- [ ] Call Anna #next → [[Todos/Call Anna.note]]'], Meetings: []}));
@@ -75,7 +75,7 @@ async function prepareCloseOut(): Promise<void> {
 }
 
 scenario('A close-out stopped during "Archive now" can be finished, or is fully archived', {feature: 'Interruptions', design: 'technical-design-quality-hardening.md'}, () => {
-  then('for every point where gtdpara can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left', async () => {
+  then('for every point where Kept GTD can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left', async () => {
     for (let n = 0; n <= ARCHIVE_WRITES; n++) {
       await freshDevice();
       putFile(projectFile('Website'), dataFile('project', {Scope: ['Relaunch'], Tasks: ['- [x] Write copy'], Meetings: []}, ['abbrev: WEB']));

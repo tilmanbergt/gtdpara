@@ -8,7 +8,7 @@ the form on the device.
 
 ## Title*
 
-gtdpara
+Kept GTD
 
 ## Description (Keyboard tab)
 
@@ -16,6 +16,10 @@ Plain text, no markdown (the field doesn't render it). Keep it this short - the 
 unknown.
 
 ```
+GTD for the Supernote: todos, meetings and next actions, joined to the notes you write.
+Your promises, kept · your todos, kept safe · your files, kept yours.
+Formerly gtdpara.
+
 A calm GTD + PARA workspace for the Supernote. Every Project and Area is a folder in Note; its todos and meetings live in a small plain-text file inside it. You can read and edit everything without the plugin - no lock-in, no internal database.
 
 - Threads: what you agreed, owe and wait for per person or meeting series, tended in the Weekly Review
@@ -29,7 +33,7 @@ A calm GTD + PARA workspace for the Supernote. Every Project and Area is a folde
 - Built-in help (? in the tab bar)
 - Experimental, off by default: Google Calendar and Gmail
 
-Permissions: file read/write for your PARA folders and EXPORT/gtdpara. File delete only after you confirm it, and the prompt names what will be deleted (e.g. an empty folder left after archiving). Internet only for the optional Calendar/Gmail integrations, when you tap Load. No telemetry.
+Permissions: file read/write for your PARA folders and EXPORT/kept-gtd. File delete only after you confirm it, and the prompt names what will be deleted (e.g. an empty folder left after archiving). Internet only for the optional Calendar/Gmail integrations, when you tap Load. No telemetry.
 
 Hobby project, open source (MIT). Docs, issues, privacy and notes for reviewers:
 github.com/tilmanbergt/gtdpara
@@ -51,8 +55,8 @@ MIT License - the same as the repository's `LICENSE`.
 
 ## Package*
 
-`gtdpara-x.y.z.snplg` from the GitHub release (`build\outputs\` after `release.ps1`). Copy it to the
-Supernote first, e.g. to `EXPORT/gtdpara/inkhub/`.
+`kept-gtd-x.y.z.snplg` from the GitHub release (`build\outputs\` after `release.ps1`). Copy it to the
+Supernote first, e.g. to `EXPORT/kept-gtd/inkhub/`.
 
 ## Thumbnail (up to 6)
 
@@ -65,8 +69,11 @@ From `docs/user/images/` (demo space, A5 X portrait), in this order:
 5. `20260930_Review.png`
 6. `20260930_Help Settings.png`
 
+To do for Tilman with the first Kept GTD release: new thumbnails that show the new name and icons
+(at least About with the wordmark, and a screen with the sidebar).
+
 Refresh any screenshot whose screen changed noticeably (see backlog: Settings Folders). Copy them to
-`EXPORT/gtdpara/inkhub/` on the device for the upload.
+`EXPORT/kept-gtd/inkhub/` on the device for the upload.
 
 ## Open Source
 

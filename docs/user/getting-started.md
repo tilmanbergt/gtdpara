@@ -2,15 +2,15 @@
 
 ## Install
 
-1. Download the newest `gtdpara-x.y.z.snplg` from the Releases page on GitHub (github.com/tilmanbergt/gtdpara).
-2. Copy it to your Supernote and install it as a plugin. gtdpara needs the plugin firmware: A5 X and A6 X Chauvet 2.27.42 or later, Manta and Nomad Chauvet 3.30.45 or later.
-3. Open any note, open the plugin sidebar and tap the gtdpara icon.
+1. Download the newest `kept-gtd-x.y.z.snplg` from the Releases page on GitHub (github.com/tilmanbergt/gtdpara).
+2. Copy it to your Supernote and install it as a plugin. Kept GTD needs the plugin firmware: A5 X and A6 X Chauvet 2.27.42 or later, Manta and Nomad Chauvet 3.30.45 or later.
+3. Open any note, open the plugin sidebar and tap the Kept GTD icon.
 
 To update later, install the newer file over the old one. Read the **Upgrade notes** in "What's new" (Settings → About) first.
 
 ## First setup
 
-gtdpara works with four folders inside your `Note` folder:
+Kept works with four folders inside your `Note` folder:
 
 - `1 Projects`: one folder per project
 - `2 Areas`: one folder per area of responsibility, plus `0 Inbox` for the Inbox
@@ -31,13 +31,13 @@ Want to look around first without touching your own files? Go to **Settings → 
 - **Review**: the Weekly Review, one step at a time
 - **Settings**: folders, focus counts, Note setups, advanced options, About
 
-**?** opens this help, starting at the page for the tab you are on. **✕ Close** in the help closes it again; the tab behind it stays exactly as it was. ✕ closes the plugin. When you open gtdpara, it reads the files you changed outside it again. To read all files again, use **Reload all files** in Settings → Advanced.
+**?** opens this help, starting at the page for the tab you are on. **✕ Close** in the help closes it again; the tab behind it stays exactly as it was. ✕ closes the plugin. When you open Kept, it reads the files you changed outside it again. To read all files again, use **Reload all files** in Settings → Advanced.
 
-## Opening gtdpara from a note
+## Opening Kept GTD from a note
 
-When you open gtdpara from a note that belongs to a project or area, it opens that project on the **Current** tab. From any other note it opens **Daily**. If you opened a note from inside gtdpara and come back from that same note, gtdpara returns to the screen you left.
+When you open Kept from a note that belongs to a project or area, it opens that project on the **Current** tab. From any other note it opens **Daily**. If you opened a note from inside Kept and come back from that same note, Kept returns to the screen you left.
 
-## A first day with gtdpara
+## A first day with Kept GTD
 
 1. Create one or two projects on the **Projects** tab.
 2. Open a project and add a few todos with Quick Add. Mark the next step with the **Next** chip.
@@ -46,4 +46,4 @@ When you open gtdpara from a note that belongs to a project or area, it opens th
 
 ## Keeping your word with people
 
-Much of what you promise, you promise to someone. Give a meeting series a nested tag, for example `#101/mieke` for your 1:1s with Mieke, and gtdpara keeps the thread: when you meet next, what you agreed, what you owe and what you are waiting for. A project or area opens on its **Threads** tab, and the Weekly Review asks which people and series you still tend. See [Threads](threads.md).
+Much of what you promise, you promise to someone. Give a meeting series a nested tag, for example `#101/mieke` for your 1:1s with Mieke, and Kept keeps the thread: when you meet next, what you agreed, what you owe and what you are waiting for. A project or area opens on its **Threads** tab, and the Weekly Review asks which people and series you still tend. See [Threads](threads.md).

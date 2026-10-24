@@ -1,6 +1,6 @@
 # Device rendering reference
 
-> **About this document.** This is a living document. It describes how gtdpara renders on the
+> **About this document.** This is a living document. It describes how Kept GTD renders on the
 > Supernote A5 X *today*: screen facts, typography, row heights, how lists are paged, a
 > per-element space budget, and how to budget a new screen. It describes the current code only,
 > in present tense; design history stays in `docs/dev/history/` and in git. It is the reference

@@ -1,6 +1,6 @@
 // docs/dev/history/technical-design-engage.md §3.8: the Engage sidebar button opens the
 // panel (mode 'engage'), a landing still in flight doesn't replace it, Close hides the
-// plugin view and the gtdpara button goes back to the tabs.
+// plugin view and the Open Kept GTD button goes back to the tabs.
 jest.mock('react-native-svg', () => {
   const ReactLib = require('react');
   const stub = (props: object) => ReactLib.createElement('Svg', props);
@@ -102,7 +102,7 @@ describe('App with the Engage button', () => {
     act(() => r.unmount());
   });
 
-  it('opens for an owner through the store ("Engage ›") and Open gtdpara goes to the tabs', async () => {
+  it('opens for an owner through the store ("Engage ›") and Open Kept GTD goes to the tabs', async () => {
     let r!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       r = TestRenderer.create(<App />);
@@ -111,10 +111,10 @@ describe('App with the Engage button', () => {
     expect(texts(r)).toContain('Daily');
     await act(async () => engageOwner({kind: 'item', itemPath: '/storage/emulated/0/Note/1 Projects/Website'}));
     await settle();
-    expect(texts(r)).toContain('Open gtdpara');
+    expect(texts(r)).toContain('Open Kept GTD');
     expect(texts(r)).not.toContain('Daily');
     expect(log).toHaveBeenCalledWith('EngageOverlay: opened', 'owner=item', 'via=ownerPage', 'current=no', 'back=no', 'pageMeeting=no');
-    const open = r.root.findAll(n => n.props.label === 'Open gtdpara' && typeof n.props.onPress === 'function')[0];
+    const open = r.root.findAll(n => n.props.label === 'Open Kept GTD' && typeof n.props.onPress === 'function')[0];
     await act(async () => open.props.onPress());
     await settle();
     expect(texts(r)).toContain('Daily');

@@ -1,10 +1,11 @@
 /**
  * Settings → About (docs/dev/history/technical-design-about-debug-experimental.md §3.5):
- * left - version/build/device, Debug logging switch, Export debug bundle;
+ * left - wordmark, name and slogan (docs/dev/history/technical-design-kept-gtd.md §3.2),
+ * version/build/device, Debug logging switch, Export debug bundle;
  * right - "What's new" from the bundled CHANGELOG, paged, no scrolling.
  */
 import React, {useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {GtdParaSettings} from '../../domain/settings';
 import {buildVersionText} from '../../domain/buildVersionText';
 import {BUILD_INFO} from '../../generated/buildInfo';
@@ -28,7 +29,11 @@ import {logError} from '../../utils/log';
 import {errorMessage} from '../../utils/errorMessage';
 import {formatDate} from '../../domain/dateFormat';
 
-const PROJECT_URL = 'github.com/tilmanbergt/gtdpara';
+const PROJECT_URL = 'github.com/tilmanbergt/kept-gtd';
+const SLOGAN = 'Kept GTD – for those who write, where they write.';
+/** Shown for a few releases after the rename (R9). */
+const FORMERLY = 'Formerly gtdpara';
+const WORDMARK = require('../../../assets/wordmark.png');
 
 interface Props {
   debugLogging: boolean;
@@ -86,7 +91,10 @@ export default function AboutTab({debugLogging, onToggleDebugLogging, textColor,
   return (
     <View style={styles.row}>
       <View style={[styles.column, styles.columnLeft]}>
-        <Text style={[styles.title, {color: textColor}]}>gtdpara {buildVersionText(b)}</Text>
+        <Image source={WORDMARK} style={[styles.wordmark, {tintColor: textColor}]} resizeMode="contain" accessibilityLabel="Kept GTD" />
+        <Text style={[styles.title, {color: textColor}]}>Kept GTD {buildVersionText(b)}</Text>
+        <Text style={[styles.line, {color: textColor}]}>{SLOGAN}</Text>
+        <Text style={[styles.line, styles.muted, {color: textColor}]}>{FORMERLY}</Text>
         <Text style={[styles.line, {color: textColor}]}>
           build {b.versionCode || 'dev'} · {builtDate}
         </Text>
@@ -174,6 +182,7 @@ const styles = StyleSheet.create({
   columnLeft: {marginRight: SPACING.base},
   vr: {width: 1, marginRight: SPACING.base},
   hr: {height: 1, marginVertical: SPACING.md},
+  wordmark: {width: 280, height: 70, marginBottom: SPACING.sm},
   title: {fontSize: FONT.large, fontWeight: '700', marginBottom: SPACING.xs},
   heading: {fontSize: FONT.medium, fontWeight: '700', marginBottom: SPACING.sm},
   line: {fontSize: FONT.small, marginBottom: 2},

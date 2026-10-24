@@ -19,7 +19,7 @@ PluginManager.init();
 
 PluginManager.registerButton(1, ['NOTE', 'DOC'], {
   id: SIDEBAR_BUTTON_ID,
-  name: 'gtdpara',
+  name: 'Kept GTD',
   icon: Image.resolveAssetSource(
     require('./assets/icon.png'),
   ).uri,

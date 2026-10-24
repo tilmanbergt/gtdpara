@@ -58,7 +58,7 @@ it('without a UI to ask, keeps the outside version, reloads it and throws', asyn
   setDataFileReloadListener((_kind, path, content) => reloaded.push(`${path}|${content}`));
   const error = await writeDataFile('project', DIR, FILE, BASE, addTask('Two')).catch(e => e);
   expect(error).toBeInstanceOf(FileConflictError);
-  expect(error.message).toBe('Not saved: "Website" keeps the version changed outside gtdpara.');
+  expect(error.message).toBe('Not saved: "Website" keeps the version changed outside Kept GTD.');
   expect(mockWrites).toEqual([]);
   expect(mockFiles.get(FILE)).toBe(outside);
   expect(reloaded).toEqual([`${DIR}|${outside}`]);
@@ -119,7 +119,7 @@ describe('with the question shown', () => {
 it('a file deleted outside is not recreated', async () => {
   const error = await writeDataFile('project', DIR, FILE, BASE, addTask('Two')).catch(e => e);
   expect(error).toBeInstanceOf(FileConflictError);
-  expect(error.message).toContain('was deleted or moved outside gtdpara');
+  expect(error.message).toContain('was deleted or moved outside Kept GTD');
   expect(mockWrites).toEqual([]);
 });
 

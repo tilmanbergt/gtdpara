@@ -174,7 +174,7 @@ export function evaluateReadiness(input: ReadinessInput): Finding[] {
 
   if (input.launchPath && input.launchPath.startsWith(`${input.projectPath.replace(/\/+$/, '')}/`)) {
     const name = input.launchPath.slice(input.projectPath.replace(/\/+$/, '').length + 1);
-    out.push({id: 'openFromHere', severity: 'notice', label: `You opened gtdpara from ${name}`, caption: 'it will close when archiving', items: []});
+    out.push({id: 'openFromHere', severity: 'notice', label: `You opened Kept GTD from ${name}`, caption: 'it will close when archiving', items: []});
   }
 
   return out;

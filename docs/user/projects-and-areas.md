@@ -1,12 +1,12 @@
 # Projects and Areas
 
-In PARA, a **project** is something with a clear end ("Garden renovation", "Team offsite"). An **area** is a responsibility without an end ("Health", "Home", "Team"). gtdpara gives each its own folder.
+In PARA, a **project** is something with a clear end ("Garden renovation", "Team offsite"). An **area** is a responsibility without an end ("Health", "Home", "Team"). Kept GTD gives each its own folder.
 
 ## Creating one
 
-On the **Projects** or **Areas** tab, write a name into the field at the top and tap **Create Project** or **Create Area**. gtdpara creates the folder and its file. A name can't contain `\ / : * ? " < > |` or `# [ ] ^` (see [Your files and folders](files-and-folders.md)); the message says which character to remove.
+On the **Projects** or **Areas** tab, write a name into the field at the top and tap **Create Project** or **Create Area**. Kept creates the folder and its file. A name can't contain `\ / : * ? " < > |` or `# [ ] ^` (see [Your files and folders](files-and-folders.md)); the message says which character to remove.
 
-You can also simply create a folder yourself - in the Supernote's file manager or on your computer - inside `1 Projects` or `2 Areas`. Every folder there is a project or area. The next time you open gtdpara it picks it up, gives it an abbreviation and creates its file.
+You can also simply create a folder yourself - in the Supernote's file manager or on your computer - inside `1 Projects` or `2 Areas`. Every folder there is a project or area. The next time you open Kept it picks it up, gives it an abbreviation and creates its file.
 
 ## The Current tab
 
@@ -76,7 +76,7 @@ While a counterpart is filtered, its row offers **Set inactive**. With open todo
 
 ## Home notebooks
 
-Every project and area has one obvious place to write: its **home notebook**. It is the notebook of the **Default** note setup, made for that project or area - with the standard name `{name} {year}`, "Garden renovation 2026.note" in the project's own folder. One tap takes you there; then gtdpara gets out of the way.
+Every project and area has one obvious place to write: its **home notebook**. It is the notebook of the **Default** note setup, made for that project or area - with the standard name `{name} {year}`, "Garden renovation 2026.note" in the project's own folder. One tap takes you there; then Kept gets out of the way.
 
 The home notebook exists only while the Default uses **One notebook** (Settings → Note setups → Default → Notes). With **Own note per item** there are no notebook icons, no Notebook tab and no "Go to" line. The Inbox has no home notebook.
 
@@ -88,7 +88,7 @@ A small notebook icon sits at the end of every row on the **Projects** and **Are
 - **Notebook with +**: it doesn't exist yet. A tap asks first - "new file Garden renovation 2026.note" with **Create** - then creates it and opens its first page. Afterwards the status line names the new file and its folder.
 - **A new year**: with `{year}` in the name, this year's notebook may be missing while last year's is there. Then the status line offers **Create 2027** and **Open 2026**.
 
-Creating a note only works when gtdpara was opened from a note (a limit of the Supernote).
+Creating a note only works when Kept was opened from a note (a limit of the Supernote).
 
 ### The Home page
 
@@ -109,7 +109,7 @@ A project's or area's page has a **Notebook** tab next to Threads and Loops (Pro
 
 ### Contents (experimental)
 
-The pages gtdpara made are listed by what they belong to: the Home page by the project's name, a todo's or meeting's page by the todo or meeting. Other headings show the typed text under them; a heading on handwriting shows as **Handwritten heading**. The list is read again when the notebook changed, for example after you wrote in it and came back.
+The pages Kept made are listed by what they belong to: the Home page by the project's name, a todo's or meeting's page by the todo or meeting. Other headings show the typed text under them; a heading on handwriting shows as **Handwritten heading**. The list is read again when the notebook changed, for example after you wrote in it and came back.
 
 Contents can be switched off in Settings → Advanced → **Notebook contents**. Then the tab shows the name, the years and Open.
 
@@ -119,11 +119,11 @@ In [Engage](engage.md), when you work in another note of a project or area - a t
 
 ### When you rename a project or area
 
-gtdpara keeps the name of each project and area in its file (`name:` at the top). When you rename the folder elsewhere - in the file manager or on your computer - this year's notebook still has the old name. When you open the project's or area's page, the status line asks:
+Kept keeps the name of each project and area in its file (`name:` at the top). When you rename the folder elsewhere - in the file manager or on your computer - this year's notebook still has the old name. When you open the project's or area's page, the status line asks:
 
 "Leadership is now People Leadership. Rename Leadership 2026.note to People Leadership 2026.note?" **Rename** · **Not now**
 
-**Rename** renames this year's notebook and updates every link into it: the notes of todos and meetings, page links and marks. Notebooks of earlier years keep their names. **Not now** asks again the next time gtdpara starts. **Run Integrity Check** (Settings → Advanced) also lists such renamed folders.
+**Rename** renames this year's notebook and updates every link into it: the notes of todos and meetings, page links and marks. Notebooks of earlier years keep their names. **Not now** asks again the next time Kept starts. **Run Integrity Check** (Settings → Advanced) also lists such renamed folders.
 
 ## Closing out and archiving
 

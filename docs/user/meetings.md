@@ -26,7 +26,7 @@ The card shows:
 
 ## Meeting notes
 
-Tap the note icon on a meeting to create its note; the status line first says which file or page will be created (see [Note setups](note-setups.md)). gtdpara fills it according to the Meeting page of the matching [Note setup](note-setups.md), or the Default's: for example title, date, time and the open todos that share a tag with the meeting. Until the end of the meeting (for a meeting without a time: the end of its day), this information is refreshed each time you open the note from gtdpara. After that the note is left as it is.
+Tap the note icon on a meeting to create its note; the status line first says which file or page will be created (see [Note setups](note-setups.md)). Kept GTD fills it according to the Meeting page of the matching [Note setup](note-setups.md), or the Default's: for example title, date, time and the open todos that share a tag with the meeting. Until the end of the meeting (for a meeting without a time: the end of its day), this information is refreshed each time you open the note from Kept. After that the note is left as it is.
 
 Instead of one note per meeting, a Note setup can put all its meetings and todos as pages into one notebook per project, for example one "Team sync" note with a page per meeting.
 
@@ -50,15 +50,15 @@ Tap the **Reflect** icon on the selected meeting's card. The first time, the sta
 
 - **Where it goes**: in the meeting's note, after the meeting's page and every page you added to it by hand, before the next meeting's or todo's page. In a meeting's own note it is the last page.
 - **What is on it**: the Reflection page of the meeting's Note setup, or the Default's - at first just the date and title as a heading. Add your guiding questions as texts of your own, see [Note setups](note-setups.md).
-- **Finding it**: its keyword is `reflection` with the meeting's date and title (for example `reflection 2026-10-14 Sparring Mieke`), plus the meeting's tags. When you rename the meeting, the keyword follows the next time you open the page from gtdpara.
+- **Finding it**: its keyword is `reflection` with the meeting's date and title (for example `reflection 2026-10-14 Sparring Mieke`), plus the meeting's tags. When you rename the meeting, the keyword follows the next time you open the page from Kept.
 - **Part of the meeting**: on the reflection page, Engage and lasso capture treat it as the meeting's page - todos you capture there were agreed in that meeting, and Engage opens on **Agreed** (see [Engage](engage.md)).
 
 You also reach it from the Review step **Meetings to close out**, from a past meeting in a thread overview, and from Engage on the meeting's page ("Reflect on this meeting ›").
 
 ## Cancelling and repeating
 
-**Cancel meeting** on the meeting's card cancels it after asking; it stays in the file, marked as cancelled. gtdpara has no repeating meetings: for a series, use **New from this** to create the next one with the same title, and give the series its own tag (for example `#team-sync`). With a nested tag such as `#retro/alpha`, the series becomes a thread: its overview offers **+ Next retro**, which picks the next date for you, see [Threads](threads.md).
+**Cancel meeting** on the meeting's card cancels it after asking; it stays in the file, marked as cancelled. Kept has no repeating meetings: for a series, use **New from this** to create the next one with the same title, and give the series its own tag (for example `#team-sync`). With a nested tag such as `#retro/alpha`, the series becomes a thread: its overview offers **+ Next retro**, which picks the next date for you, see [Threads](threads.md).
 
 ## From Google Calendar
 
-With the experimental Google Calendar integration you can copy calendar events into gtdpara meetings. See [Google Calendar and Gmail](integrations.md).
+With the experimental Google Calendar integration you can copy calendar events into Kept meetings. See [Google Calendar and Gmail](integrations.md).

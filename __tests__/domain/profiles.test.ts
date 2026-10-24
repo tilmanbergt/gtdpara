@@ -46,7 +46,7 @@ describe('profile files', () => {
   });
   it('rejects non-profiles and newer formats', () => {
     expect(() => parseProfile('nope', 'x')).toThrow('JSON');
-    expect(() => parseProfile('{"a":1}', 'x')).toThrow('not a gtdpara profile');
+    expect(() => parseProfile('{"a":1}', 'x')).toThrow('not a Kept GTD profile');
     expect(() => parseProfile('{"format":"gtdpara-profile","formatVersion":99}', 'x')).toThrow('newer');
   });
   it('ignores unknown keys, wrong types and smuggled device-wide/secret keys', () => {
@@ -60,9 +60,9 @@ describe('profile files', () => {
 
 describe('buildActiveSettings', () => {
   it('takes profile fields and secrets, keeps device-wide fields', () => {
-    const demo = {...profileSettingsOf(DEFAULT_SETTINGS), baseRoot: '/storage/emulated/0/Note/gtdpara-demo'};
+    const demo = {...profileSettingsOf(DEFAULT_SETTINGS), baseRoot: '/storage/emulated/0/Note/kept-gtd-demo'};
     const next = buildActiveSettings('demo', demo, {}, real);
-    expect(next.baseRoot).toBe('/storage/emulated/0/Note/gtdpara-demo');
+    expect(next.baseRoot).toBe('/storage/emulated/0/Note/kept-gtd-demo');
     expect(next.projectsFolder).toBe(DEFAULT_SETTINGS.projectsFolder);
     expect(next.gmailAppPassword).toBe('');
     expect(next.googleCalendarIcsUrl).toBe('');

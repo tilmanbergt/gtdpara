@@ -45,12 +45,12 @@ export const MYSTYLE_FOLDER = '/storage/emulated/0/MyStyle';
  * so this still works even if settings/base resolution is itself what's
  * broken, and entries land here whatever baseRoot is.
  *
- * Everything gtdpara exports lives under the device's EXPORT folder, not
+ * Everything Kept GTD exports lives under the device's EXPORT folder, not
  * under Note, so it doesn't fill the space used for working material:
- * EXPORT/gtdpara/debug (logs, bundles, reports, perf traces) and
- * EXPORT/gtdpara/profiles (docs/dev/history/technical-design-profiles-demo-space.md).
+ * EXPORT/kept-gtd/debug (logs, bundles, reports, perf traces) and
+ * EXPORT/kept-gtd/profiles (docs/dev/history/technical-design-profiles-demo-space.md).
  */
-export const GTDPARA_EXPORT_ROOT = '/storage/emulated/0/EXPORT/gtdpara';
+export const GTDPARA_EXPORT_ROOT = '/storage/emulated/0/EXPORT/kept-gtd';
 const DEBUG_LOG_FOLDER = `${GTDPARA_EXPORT_ROOT}/debug`;
 
 /** Same folder, for UI text and the debug tools (docs/dev/history/technical-design-about-debug-experimental.md). */
@@ -59,7 +59,7 @@ export const DEBUG_LOG_FOLDER_PATH = DEBUG_LOG_FOLDER;
 /** Profile files (docs/dev/history/technical-design-profiles-demo-space.md §3.1). */
 export const PROFILES_FOLDER_PATH = `${GTDPARA_EXPORT_ROOT}/profiles`;
 
-/** "EXPORT/gtdpara/debug" - the part of a path a user sees in the Supernote file manager. */
+/** "EXPORT/kept-gtd/debug" - the part of a path a user sees in the Supernote file manager. */
 export function displayPath(path: string): string {
   return path.replace(/^\/storage\/emulated\/0\//, '');
 }

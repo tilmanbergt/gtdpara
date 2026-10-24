@@ -5,7 +5,7 @@
  *    the debug bundle (storage/debugBundle.ts). Cheap: one formatted string
  *    per log call.
  * 2. Only while "Debug logging" is on: the same lines are queued and
- *    appended to `EXPORT/gtdpara/debug/gtdpara-log.txt` every few seconds
+ *    appended to `EXPORT/kept-gtd/debug/kept-gtd-log.txt` every few seconds
  *    (rotated natively at LOG_FILE_MAX_BYTES), so they survive a crash.
  *
  * No imports from storage/ or supernote/ (utils/log.ts imports this module,
@@ -16,7 +16,7 @@
 export type LogLevel = 'E' | 'W' | 'I';
 
 export const MAX_LINES = 1000;
-export const LOG_FILE_NAME = 'gtdpara-log.txt';
+export const LOG_FILE_NAME = 'kept-gtd-log.txt';
 export const LOG_FILE_MAX_BYTES = 1_000_000;
 const MAX_LINE_CHARS = 1000;
 const MAX_ARG_CHARS = 300;
@@ -122,7 +122,7 @@ export function setFileLogging(on: boolean): void {
   }
   if (!headerWritten) {
     headerWritten = true;
-    queue = [sessionHeader || `=== gtdpara session ${new Date().toISOString()} ===`, ...getRecentLogLines(), ...queue];
+    queue = [sessionHeader || `=== Kept GTD session ${new Date().toISOString()} ===`, ...getRecentLogLines(), ...queue];
   }
   schedule();
 }

@@ -1,6 +1,6 @@
-# gtdpara — Design Philosophy: Word, Wholeness, and Intention
+# Kept GTD — Design Philosophy: Word, Wholeness, and Intention
 
-> **About this document.** The values behind gtdpara and how they show up in its design - the
+> **About this document.** The values behind Kept GTD and how they show up in its design - the
 > lens for deciding what gets built and how it should feel. It describes the philosophy as it
 > holds now, in present tense. It is not a plan, a backlog or a history: open questions and ideas
 > go to the internal backlog, and the reasons for individual features live in their technical
@@ -21,7 +21,8 @@ owning that it did.
 Read this way, GTD's real offer isn't organization, it's clarity of word. A task list without a
 real "next" is a list of things you might get to; nothing there is your word about anything.
 "What's next" is the discipline of making your word clear enough that it can be kept, or
-knowingly renegotiated, rather than just accumulated.
+knowingly renegotiated, rather than just accumulated. The name says the same: Kept is about
+promises kept, todos kept safe and files kept yours.
 
 The distinction worth watching for is what a piece of work is done *from*: wholeness and real
 choice, or obligation, shame, blame, justification. Joy is one legible signal of the first. None
@@ -30,7 +31,7 @@ have, and willing to own it.
 
 **Two further factors, held as inquiry rather than structure.** The model names two more
 elements: being cause in the matter (authoring your relationship to a piece of work, even when it
-arrived from outside) and a larger game or purpose. gtdpara's structure reaches up to GTD's
+arrived from outside) and a larger game or purpose. Kept's structure reaches up to GTD's
 Horizon 2 (Areas); goals, vision and purpose are not data in the app. These two factors are
 questions to ask - in a review, in a note - not something the app tracks.
 
@@ -50,7 +51,7 @@ the hook for right now".
 
 ## 3. Every entry is a conscious choice
 
-Nothing in gtdpara creates commitments on its own. There are no recurring meetings and no
+Nothing in Kept creates commitments on its own. There are no recurring meetings and no
 repeating todos: every meeting and every todo exists because someone entered it, deliberately,
 for that one occasion. A series that just continues by itself is exactly the kind of word that
 nobody is actually keeping - it stays on the list whether or not it is still meant. Making each
@@ -121,19 +122,19 @@ Closing out a project carries the same idea to its end: one consolidated, readab
 
 ## 7. The files are the interface
 
-Everything gtdpara knows lives in plain files in your own folders, and those files are a real
+Everything Kept knows lives in plain files in your own folders, and those files are a real
 interface, not an internal format. They are read and edited elsewhere - on the computer, or in
 Obsidian through a folder sync - and that is a normal case, not an exception:
 
-- Lines gtdpara doesn't understand are kept exactly as they are.
-- The files are the truth; gtdpara's cache only remembers what it read and checks the files again
+- Lines Kept doesn't understand are kept exactly as they are.
+- The files are the truth; Kept's cache only remembers what it read and checks the files again
   when it is reopened.
-- File names gtdpara creates avoid characters that break links elsewhere (`#`, `[`, `]`, `^`,
+- File names Kept creates avoid characters that break links elsewhere (`#`, `[`, `]`, `^`,
   and the ones file systems forbid).
-- The folder layout stays readable without gtdpara: one folder per project or area, its data file
+- The folder layout stays readable without Kept: one folder per project or area, its data file
   and its notes next to it.
 
-When gtdpara changes a file on its own - moving a note with its todo, renaming an old file name -
+When Kept changes a file on its own - moving a note with its todo, renaming an old file name -
 it says so first.
 
 ## 8. Embodied interaction

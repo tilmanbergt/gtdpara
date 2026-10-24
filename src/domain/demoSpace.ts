@@ -14,7 +14,7 @@ import {isoWeekKey} from './weekDate';
 
 export const DEMO_PROFILE_ID = 'demo';
 export const DEMO_PROFILE_NAME = 'Demo';
-export const DEMO_BASE_ROOT = '/storage/emulated/0/Note/gtdpara-demo';
+export const DEMO_BASE_ROOT = '/storage/emulated/0/Note/kept-gtd-demo';
 
 export interface DemoFile {
   /** Relative to DEMO_BASE_ROOT, "/"-separated. */

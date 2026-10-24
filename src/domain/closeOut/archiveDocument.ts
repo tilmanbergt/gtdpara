@@ -81,7 +81,7 @@ export function buildArchiveDocument(input: ArchiveDocumentInput): PdfDocument {
       {kind: 'paragraph', text: `${input.meetings.length} meetings · ${contents.includedEntries} notes and files · ${contents.includedNotePages} note pages`},
       {kind: 'spacer', height: 24},
       {kind: 'paragraph', style: 'small', text: `Archive folder: ${input.archiveFolderLabel}`},
-      {kind: 'paragraph', style: 'small', text: `Created by gtdpara on ${input.today}. Handwritten pages are images.`},
+      {kind: 'paragraph', style: 'small', text: `Created by Kept GTD on ${input.today}. Handwritten pages are images.`},
     ],
   });
 

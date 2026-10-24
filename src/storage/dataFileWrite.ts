@@ -101,7 +101,7 @@ export function writeDataFile(
       throw new FileConflictError(filePath, dataFileGoneText(name));
     }
     if (decision.kind === 'conflict') {
-      logWarn('dataFileWrite: changed outside gtdpara in the same part, asking', filePath, decision.parts.join(', '));
+      logWarn('dataFileWrite: changed outside Kept GTD in the same part, asking', filePath, decision.parts.join(', '));
       reloadListener?.(fileKind, itemPath, current);
       const choice = await askWriteConflict(name, decision.parts);
       log('dataFileWrite: conflict answered', filePath, choice);
@@ -116,7 +116,7 @@ export function writeDataFile(
     }
     await writeTextFile(filePath, decision.content);
     if (decision.merged) {
-      log('dataFileWrite: changed outside gtdpara in other parts, both kept', filePath);
+      log('dataFileWrite: changed outside Kept GTD in other parts, both kept', filePath);
       rememberMerged(decision.content);
     }
     return decision.content;

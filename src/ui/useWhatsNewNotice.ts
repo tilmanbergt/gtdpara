@@ -34,7 +34,7 @@ export function useWhatsNewNotice(
       ? {
           kind: 'info',
           scope: 'global',
-          text: `Updated to gtdpara ${BUILD_INFO.version}.`,
+          text: `Updated to Kept GTD ${BUILD_INFO.version}.`,
           actions: [
             {
               label: "What's new",

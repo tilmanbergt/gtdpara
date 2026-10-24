@@ -20,7 +20,7 @@ While you write in the text or date field, a small strip hovers over the tabs: *
 3. Optionally set a due date. While the date field is active, a strip offers -1, Today, +1 and +7.
 4. Tap **+ Add** at the top right.
 
-gtdpara writes the due date as `[due:: …]` at the end of the line and records the day you added the todo as `[created:: …]`, see [Tags](tags.md). When you edit a todo, its created and done dates stay; clearing the due date in Quick Add removes it.
+Kept GTD writes the due date as `[due:: …]` at the end of the line and records the day you added the todo as `[created:: …]`, see [Tags](tags.md). When you edit a todo, its created and done dates stay; clearing the due date in Quick Add removes it.
 
 Recently used tags fill rows 3 and 4: tap one to insert it into the text, tap a filled one to remove it. **›** and **‹** at the end of row 4 page through more. A space typed right after `#` is removed automatically, so handwritten tags are recognized.
 
@@ -67,11 +67,11 @@ The meeting card is described in [Meetings](meetings.md). Cards exist wherever a
 
 ## Notes and files on a todo or meeting
 
-Every todo and meeting can have its own handwritten note - one of gtdpara's most useful features. One tap creates it, already filled in: title, date and time, related open todos, a background from your templates. Next time the same tap opens it again.
+Every todo and meeting can have its own handwritten note - one of Kept's most useful features. One tap creates it, already filled in: title, date and time, related open todos, a background from your templates. Next time the same tap opens it again.
 
 - The note icon (+ with a notebook) creates a note for the todo or meeting and opens it, after you confirm what will be created in the status line; the notebook icon opens it later. How the note looks and where it goes is set by [Note setups](note-setups.md).
 - The clip icon links an existing file (for example a PDF from Resources). On a todo row, tap the `+` clip, then tap the file in the Files pane; or select the todo or meeting and tap **+** and the clip on its card. A filled clip opens the linked file. To remove a link, tap ✕ next to the file's name on the card.
 
 ## Capturing handwriting with the lasso
 
-Select handwriting in any note and tap **Capture Todo/Meeting** in the lasso toolbar: gtdpara recognizes it and opens the same form, with **Save & next**, **Save & view** and **Save & close**. **Mark for later** saves a selection for later without opening gtdpara. Open marks show as a card **n marks to process** on the Inbox tab. Both are explained in [Lasso: capture and mark for later](lasso.md).
+Select handwriting in any note and tap **Capture Todo/Meeting** in the lasso toolbar: Kept recognizes it and opens the same form, with **Save & next**, **Save & view** and **Save & close**. **Mark for later** saves a selection for later without opening Kept. Open marks show as a card **n marks to process** on the Inbox tab. Both are explained in [Lasso: capture and mark for later](lasso.md).

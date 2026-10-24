@@ -301,7 +301,7 @@ describe('EngageOverlay screens', () => {
     // The line sits at the bottom, after the lists and Quick Add, right above the footer.
     const all = texts(first.r);
     expect(all.indexOf('Continue with Book room')).toBeGreaterThan(all.indexOf('+ Quick Add'));
-    expect(all.indexOf('Continue with Book room')).toBeLessThan(all.indexOf('Open gtdpara'));
+    expect(all.indexOf('Continue with Book room')).toBeLessThan(all.indexOf('Open Kept GTD'));
     expect(mockSettings.current.engageCurrent).toMatchObject({taskText: 'Outline #next', owner: {kind: 'item', itemPath: `${AREAS}/Writing`}});
     act(() => first.r.unmount());
 
@@ -346,7 +346,7 @@ describe('EngageOverlay screens', () => {
     expect(texts(r)).toContain('Coaching');
     await press(r, 'Select new focus ›');
     expect(texts(r)).toContain("This week's focus");
-    expect(texts(r)).toContain("Anything beyond this week's focus: Open gtdpara.");
+    expect(texts(r)).toContain("Anything beyond this week's focus: Open Kept GTD.");
     act(() => r.unmount());
   });
 

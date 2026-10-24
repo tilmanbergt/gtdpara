@@ -204,7 +204,7 @@ describe('App with a loop overview', () => {
     await pressText(r, 'Engage ›');
     await settle();
     expect(texts(r)).toContain('Loop');
-    expect(texts(r)).toContain('Open gtdpara');
+    expect(texts(r)).toContain('Open Kept GTD');
     act(() => r.unmount());
   });
 });

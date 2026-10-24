@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-39 scenarios.
+46 scenarios.
 
 ## Close-out
 
@@ -21,6 +21,14 @@
 - **And** its project.txt says archived, and the screen says so
 
 Test: `__tests__/scenarios/closeOut.test.tsx` · design: `docs/dev/history/technical-design-project-close-out.md`
+
+### A close-out PDF says it was created by Kept GTD
+
+- **Given** project "Website" has only done todos
+- **When** I close it out up to the PDF and tap "Create PDF"
+- **Then** the PDF's footer line says "Created by Kept GTD"
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
 
 ## Daily
 
@@ -80,13 +88,13 @@ Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/techn
 
 ### A refile with its note, stopped after any write, loses nothing and is repairable
 
-- **Then** for every point where gtdpara can be stopped: the todo and its note still exist, and a broken link is named with the note's new place
+- **Then** for every point where Kept GTD can be stopped: the todo and its note still exist, and a broken link is named with the note's new place
 
 Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
 ### A close-out stopped during "Archive now" can be finished, or is fully archived
 
-- **Then** for every point where gtdpara can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left
+- **Then** for every point where Kept GTD can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left
 
 Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
@@ -181,6 +189,41 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 
 ## Profiles and demo space
 
+### Saved profiles are copied once into the new export folder
+
+- **Given** EXPORT/gtdpara/profiles holds work.json, home.json and the demo profile, and EXPORT/kept-gtd/profiles does not exist
+- **When** Kept GTD starts
+- **Then** work.json and home.json are in EXPORT/kept-gtd/profiles with the same content, the demo profile is not
+- **And** the old folder is unchanged, and the status line says what was copied
+- **When** Kept GTD starts again
+- **Then** no file is written to the profiles folder and no copy message appears
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### Profiles are not copied when the new export folder is already in use
+
+- **Given** EXPORT/kept-gtd/profiles holds work.json and the old folder holds home.json
+- **When** Kept GTD starts
+- **Then** nothing is copied and no copy message appears
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### A fresh install copies no profiles
+
+- **Given** neither export folder exists
+- **When** Kept GTD starts
+- **Then** nothing is copied, no copy message appears and nothing is written under EXPORT/gtdpara
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### The demo space lives in Note/kept-gtd-demo
+
+- **Given** an empty PARA folder
+- **When** I create the demo space in Settings → Advanced and switch to it
+- **Then** its folders are under Note/kept-gtd-demo and nothing is written under Note/gtdpara-demo
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
 ### Try things in the demo space without touching the real files, then switch back
 
 - **Given** my real PARA folder has project "Website" and an empty Inbox
@@ -190,7 +233,7 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 - **Then** it is in the demo space's Inbox.txt, and my real Inbox.txt is untouched
 - **When** I tap DEMO in the tab bar and switch back to Production
 - **Then** "Website" is back, and the demo todo is not in my Inbox
-- **And** both profiles are saved as files in EXPORT/gtdpara/profiles
+- **And** both profiles are saved as files in EXPORT/kept-gtd/profiles
 
 Test: `__tests__/scenarios/profiles.test.tsx` · design: `docs/dev/history/technical-design-profiles-demo-space.md`
 
@@ -276,7 +319,7 @@ Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/techn
 ### Quick Add a todo in a project
 
 - **Given** project "Website" has the todo "Write copy" and a hand-written Scope
-- **When** I open gtdpara, go to Projects, open "Website" and add the todo "Call the designer"
+- **When** I open Kept GTD, go to Projects, open "Website" and add the todo "Call the designer"
 - **Then** project.txt lists both todos
 - **Then** the Scope and the rest of the file are unchanged
 - **Then** the status line confirms it and nothing was logged as an error
@@ -330,12 +373,28 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 ### Unreadable settings are never replaced by the defaults unasked
 
 - **Given** the stored settings are broken and the Inbox has a done todo
-- **When** I open gtdpara
+- **When** I open Kept GTD
 - **Then** the status line says the settings could not be read
 - **And** a setting changed on the way (Inbox: Hide done tasks) leaves the stored settings as they were
 - **And** "Start over" stores the defaults and the message goes away
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+### Settings → About shows the name Kept GTD, its slogan and where it came from
+
+- **Given** an empty PARA folder
+- **When** I open Settings → About
+- **Then** it shows "Kept GTD" with the version, the slogan, "Formerly gtdpara" and the project link
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### Export debug bundle writes a file named after Kept GTD
+
+- **Given** an empty PARA folder
+- **When** I tap Export debug bundle on Settings → About
+- **Then** one kept-gtd-debug file is in EXPORT/kept-gtd/debug, it says Kept GTD, and the status line names it
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
 
 ### Record taps in the touch test without changing anything
 
@@ -345,7 +404,7 @@ Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/tec
 - **When** I tap the title of row 1, then a spot where nothing reacts
 - **Then** the first tap counts as handled on the title, the second as no target
 - **When** I tap the checkbox of row 1 and then Save log
-- **Then** a CSV with the three touches is in EXPORT/gtdpara/debug, and the status line says so
+- **Then** a CSV with the three touches is in EXPORT/kept-gtd/debug, and the status line says so
 - **And** the Inbox is untouched: the tapped checkbox ticked nothing
 - **When** I tap Close
 - **Then** Settings → Advanced shows again
@@ -398,7 +457,7 @@ Test: `__tests__/scenarios/review.test.tsx` · design: `docs/dev/history/technic
 
 ## Your files
 
-### A hand-edited project file keeps everything gtdpara does not own when a todo is added
+### A hand-edited project file keeps everything Kept GTD does not own when a todo is added
 
 - **Given** project "Website" has a frontmatter line, a paragraph, a stray line, an old-style due date and a section of its own, all by hand
 - **When** I add the todo "Call the designer" on its page
@@ -407,21 +466,21 @@ Test: `__tests__/scenarios/review.test.tsx` · design: `docs/dev/history/technic
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-tags.md`
 
-### An outside edit to another part of the file is kept when gtdpara saves
+### An outside edit to another part of the file is kept when Kept GTD saves
 
-- **Given** project "Website" is open in gtdpara
-- **When** its Scope is changed in Obsidian, and I then add a todo in gtdpara
+- **Given** project "Website" is open in Kept GTD
+- **When** its Scope is changed in Obsidian, and I then add a todo in Kept GTD
 - **Then** project.txt has both: the new Scope and the new todo, and nobody was asked
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
-### When gtdpara and another app changed the same list, the user decides which wins
+### When Kept GTD and another app changed the same list, the user decides which wins
 
-- **Given** project "Website" is open in gtdpara
-- **When** its todo is changed in Obsidian, and I then add a todo in gtdpara
-- **Then** gtdpara asks which version wins and has written nothing yet
+- **Given** project "Website" is open in Kept GTD
+- **When** its todo is changed in Obsidian, and I then add a todo in Kept GTD
+- **Then** Kept GTD asks which version wins and has written nothing yet
 - **And** "Use the file" keeps the Obsidian version, says nothing was saved and keeps what I typed
-- **And** after another change in Obsidian, + Add asks again, and "Use mine" saves the list as gtdpara shows it, with the new todo
+- **And** after another change in Obsidian, + Add asks again, and "Use mine" saves the list as Kept GTD shows it, with the new todo
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 

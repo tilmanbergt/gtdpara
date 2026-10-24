@@ -1,7 +1,7 @@
 /**
  * "Create demo space" (Settings → Advanced → Profiles,
  * docs/dev/history/technical-design-profiles-demo-space.md §3.5): writes the demo
- * folders under Note/gtdpara-demo and the demo profile file. Never
+ * folders under Note/kept-gtd-demo and the demo profile file. Never
  * overwrites: an existing file (e.g. demo data you changed) is left alone.
  */
 import {buildDemoFiles, DEMO_BASE_ROOT, DEMO_PROFILE_ID, DEMO_PROFILE_NAME, demoProfileSettings} from '../domain/demoSpace';

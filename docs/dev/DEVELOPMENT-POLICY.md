@@ -1,4 +1,4 @@
-# gtdpara development policy
+# Kept GTD development policy
 
 This is the one document that says **what has to be true after every change and before every
 release**. It applies to everyone who changes the code - in practice mostly Claude, working with
@@ -56,7 +56,7 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
   `src/screens/`.
 - **Files are the source of truth.** `project.txt` / `area.txt` / `Inbox.txt` hold content;
   AsyncStorage holds configuration only. The cache must be rebuildable from the files at any time.
-- **File format.** Typed meanings are `#tags`; data gtdpara records about an entry are trailing
+- **File format.** Typed meanings are `#tags`; data Kept records about an entry are trailing
   `[key:: value]` fields; never a second syntax for the same meaning (design-overview §3).
   Changes are span-scoped (`getSpan`/`setSpan` in `domain/markdown.ts`) - never regenerate a
   whole file. Lines the parser doesn't understand survive. A format change needs
@@ -72,8 +72,9 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
   or secret. The profiles test fails if one is missing.
 - **Secrets** (passwords, private calendar links) are never written to a file, a log, a debug
   bundle or a profile file.
-- **Everything gtdpara exports** goes under `EXPORT/gtdpara/` (`debug/`, `profiles/`), never
-  under `Note/`. Diagnostics are written to a file only when the user asked for it (Debug
+- **Everything Kept exports** goes under `EXPORT/kept-gtd/` (`debug/`, `profiles/`), never
+  under `Note/`. The export folder of gtdpara 0.19 and older, `EXPORT/gtdpara/`, is only read,
+  by the one-time profile copy (`storage/profiles.ts`). Diagnostics are written to a file only when the user asked for it (Debug
   logging, Export debug bundle, Integrity Check, perf tracing) - never silently.
 - **File changes are visible** (`technical-design-inkhub-submission.md` §3.8): the user's own
   edits need nothing extra; created files are named with their folder in the status slot; moves,
@@ -84,7 +85,7 @@ The full rules are in `docs/dev/design-overview.md` §3. They are binding; the m
   deletes empty folders). "No" leaves things as they are and says so. Temporary files live only
   in the plugin's private folder (`getPrivateTempDir`, `deleteTempTree`); the one exception is
   the hidden `.<name>.gtdpara-tmp` the atomic text write renames over its target, which must sit
-  on the same file system as the target. gtdpara's own data that
+  on the same file system as the target. Kept's own data that
   must survive a restart (the pictures and strokes of open marks) lives in the private data folder
   (`getPrivateDataDir`, `deletePrivateDataTree`); both deletes are refused natively outside their
   folder. No other native delete.

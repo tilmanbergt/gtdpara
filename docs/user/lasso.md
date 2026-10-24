@@ -1,11 +1,11 @@
 # Lasso: capture and mark for later
 
-Select handwriting with the lasso in any note or PDF, and gtdpara turns it into todos or a meeting - right away, or later.
+Select handwriting with the lasso in any note or PDF, and Kept GTD turns it into todos or a meeting - right away, or later.
 
-The lasso toolbar has two gtdpara buttons:
+The lasso toolbar has two Kept GTD buttons:
 
-- **Capture Todo/Meeting** opens gtdpara with the selection recognized, ready to save.
-- **Mark for later** saves the selection as a mark in one tap, without opening gtdpara. Use it when there is no time to sort, for example in a meeting.
+- **Capture Todo/Meeting** opens Kept with the selection recognized, ready to save.
+- **Mark for later** saves the selection as a mark in one tap, without opening Kept. Use it when there is no time to sort, for example in a meeting.
 
 ## Capturing right away
 
@@ -17,7 +17,7 @@ The lasso toolbar has two gtdpara buttons:
 
 - **Save & next** saves and goes on: to the next open mark, if there is one, otherwise to an empty form for another item.
 - **Save & view** saves and opens the project or area.
-- **Save & close** saves and closes gtdpara.
+- **Save & close** saves and closes Kept.
 
 **Link to this page** (on by default) gives the new item a link to the page you captured from: its clip opens the note at that page. The item's own note icon still creates its own note.
 
@@ -75,4 +75,4 @@ Date and time, the note, the page and an id. Deleting the line by hand discards 
 
 If a picture is missing (for example after the plugin was removed and installed again), the mark still works: type the text yourself.
 
-Marks made with gtdpara 0.14 or older (or an early 0.15 beta) and not processed yet are not recognized: the marks screen says "Marked with an older gtdpara - type the text from the picture." Type the text from the picture and save as usual.
+Marks made with version 0.14 or older (or an early 0.15 beta) and not processed yet are not recognized: the marks screen says "Marked with an older Kept GTD - type the text from the picture." Type the text from the picture and save as usual.

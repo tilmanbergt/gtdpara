@@ -10,7 +10,7 @@ A nested tag such as `#retro/alpha` ties todos and meetings together. Its first 
 - `#owe/alpha` means you promised alpha something outside a meeting.
 - A plain `#retro` does not include the retro threads.
 
-Nothing is written into your lines for this: gtdpara reads the tags you typed.
+Nothing is written into your lines for this: Kept GTD reads the tags you typed.
 
 ## How a todo relates to a thread
 
@@ -61,7 +61,7 @@ Tap a todo or meeting row to see its card in Quick Add's place, a second time to
 
 ## Looking back
 
-The lower list on the left starts with a row such as `Since Wed 30.9. · 4 done`: the todos of this thread you ticked since its latest past meeting, whichever way they relate to it. Tap it to see them on the right, by the day they were done. Only todos ticked with gtdpara 0.10 or later carry the day they were done, so older ones don't show here. Without a past meeting there is no such row.
+The lower list on the left starts with a row such as `Since Wed 30.9. · 4 done`: the todos of this thread you ticked since its latest past meeting, whichever way they relate to it. Tap it to see them on the right, by the day they were done. Only todos ticked with version 0.10 or later carry the day they were done, so older ones don't show here. Without a past meeting there is no such row.
 
 Below it is one row per past meeting, newest first. Its second line says what came out of it, for example `3 agreed · 1 done · 2 open, oldest 12 d`: how many todos were agreed in the meeting, how many are done, how many are still open, and how many days the oldest open one has waited.
 
@@ -85,19 +85,19 @@ The header of **Ahead** offers **+ Next retro**: it copies the thread's latest m
 
 ## Where a todo was agreed
 
-A todo agreed in a meeting carries the meeting at the end of its line, for example `[meeting:: 2026-09-30 Retro alpha retro/alpha]`: the meeting's date and title, written without `#` so Obsidian doesn't count the meeting's tags as tags of the todo. gtdpara writes it, always with the grey line in Quick Add first, from:
+A todo agreed in a meeting carries the meeting at the end of its line, for example `[meeting:: 2026-09-30 Retro alpha retro/alpha]`: the meeting's date and title, written without `#` so Obsidian doesn't count the meeting's tags as tags of the todo. Kept writes it, always with the grey line in Quick Add first, from:
 
 - Quick Add in the thread overview
 - the Review step **Meetings to close out**, see [Weekly Review](review.md)
 - the lasso, when you capture from a page of a meeting's note or process a mark made there: the meeting's own note, a page linked to the meeting, or its page in a shared note, see [Lasso](lasso.md)
 
-When you rename a meeting later, gtdpara still finds its todos by the meeting's date and its thread tag, which the line names (`retro/alpha` above). Lines in other files are never rewritten.
+When you rename a meeting later, Kept still finds its todos by the meeting's date and its thread tag, which the line names (`retro/alpha` above). Lines in other files are never rewritten.
 
 ## Tending counterparts
 
 The counterparts you work with belong to an area together with its projects, or to a project without an area. `#101/mieke` in the Atruvia area and in one of its projects is one counterpart; the same name in another area is a different one. Only nested tags whose type is a tag of one of your Thread setups (see [Note setups](note-setups.md)), and `#wf/name` and `#owe/name`, make counterparts; other nested tags such as `#tax/2026` don't.
 
-A counterpart you use for the first time is **new**: gtdpara asks you, in the Weekly Review's **Tending threads** and on the Current page's **Threads** tab, whether to **Tend** it (it stays active) or **Not** (it is set aside, inactive). Nothing is decided for you. Your answer is one line in the area's file (`area.txt`), or in the project's file for a project without an area:
+A counterpart you use for the first time is **new**: Kept asks you, in the Weekly Review's **Tending threads** and on the Current page's **Threads** tab, whether to **Tend** it (it stays active) or **Not** (it is set aside, inactive). Nothing is decided for you. Your answer is one line in the area's file (`area.txt`), or in the project's file for a project without an area:
 
 `## Threads`
 `- mieke: active`
