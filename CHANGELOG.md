@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-10-24
+
 ### Changed
 - **gtdpara is now Kept GTD** – for those who write, where they write. New name in the sidebar
   and the plugin list, new icons for the plugin, **Engage** and **Mark for later**, and the
