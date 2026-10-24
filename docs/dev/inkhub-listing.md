@@ -36,7 +36,7 @@ A calm GTD + PARA workspace for the Supernote. Every Project and Area is a folde
 Permissions: file read/write for your PARA folders and EXPORT/kept-gtd. File delete only after you confirm it, and the prompt names what will be deleted (e.g. an empty folder left after archiving). Internet only for the optional Calendar/Gmail integrations, when you tap Load. No telemetry.
 
 Hobby project, open source (MIT). Docs, issues, privacy and notes for reviewers:
-github.com/tilmanbergt/gtdpara
+github.com/tilmanbergt/kept-gtd
 ```
 
 ## Category*
@@ -84,7 +84,7 @@ Checked.
 The form has no field for this. The full note is public in `docs/inkhub-review.md` and linked
 from the description via the repository. Summary:
 
-- Source: github.com/tilmanbergt/gtdpara, tag `vX.Y.Z` = this build.
+- Source: github.com/tilmanbergt/kept-gtd, tag `vX.Y.Z` = this build.
 - Native modules (Kotlin): `GtdParaFile` (folder listing, plain-text/binary read/write, moves -
   sn-plugin-lib has no API for these), `Pdf` (close-out PDF), `GmailImap` (IMAP, only when Gmail
   is switched on), `TextboxMetrics` (text measurement). All of it runs under the host's

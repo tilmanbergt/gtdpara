@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in gtdpara doesn't work as expected
+description: Something in Kept GTD doesn't work as expected
 labels: ["bug"]
 body:
   - type: markdown
@@ -10,7 +10,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: gtdpara version
+      label: Kept GTD version
       description: Shown in Settings → About, e.g. "0.1.0 (build 42, a1b2c3d)"
       placeholder: 0.1.0 (build 42, a1b2c3d)
     validations:
@@ -68,9 +68,9 @@ body:
     id: debuginfo
     attributes:
       label: Debug bundle
-      description: Settings → About → "Export debug bundle" saves a .txt to Note/_gtdpara_debug_log. Please look through it, then drag it here (or paste its first lines).
+      description: Settings → About → "Export debug bundle" saves a .txt to EXPORT/kept-gtd/debug. Please look through it, then drag it here (or paste its first lines).
   - type: textarea
     id: logs
     attributes:
       label: Other attachments
-      description: Photos of the screen, or gtdpara-log.txt from Note/_gtdpara_debug_log if Debug logging was on.
+      description: Photos of the screen, or kept-gtd-log.txt from EXPORT/kept-gtd/debug if Debug logging was on.

@@ -1,11 +1,11 @@
 name: Feature request
-description: An idea or a problem gtdpara could solve better
+description: An idea or a problem Kept GTD could solve better
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Ideas are welcome. gtdpara is a hobby project with a clear philosophy (plain files, calm on e-ink,
+        Ideas are welcome. Kept GTD is a hobby project with a clear philosophy (plain files, calm on e-ink,
         keeping your word clean), so not every idea will be built, but every one is read.
   - type: textarea
     id: problem
