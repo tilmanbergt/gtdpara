@@ -1,6 +1,6 @@
 // docs/dev/history/technical-design-engage-in-context.md §2.4, §2.5, §5: Engage holds what the overviews hold,
 // "I owe" first, the Agreed tab, "Also here", and the meeting lines.
-import {EngageSource, MeetingRef, ownerMeetings, ownerOfTodo, ownerTodos, threadOfTodo} from '../../src/domain/engageOwner';
+import {EngageSource, ownerMeetings, ownerOfTodo, ownerTodos, threadOfTodo} from '../../src/domain/engageOwner';
 import {focusOwnerLines, optionsOf, todayNextMeeting} from '../../src/domain/engageOptions';
 import {LoopLine} from '../../src/domain/loopsSection';
 import {deriveMeetingFields} from '../../src/domain/markdown';
@@ -116,39 +116,10 @@ describe('optionsOf - order (E5)', () => {
   });
 });
 
-describe('optionsOf - Agreed (E6)', () => {
-  const spar2Ref: MeetingRef = {itemPath: coaching.path, meetingIndex: 1};
-
-  it('the page meeting with rows: its rows, waiting included, someday left out', () => {
-    const withWaiting = {...source, items: [{...coaching, tasks: [...coaching.tasks, agreedIn('Her slides #wf', spar2)]}, website]};
-    const a = optionsOf(mieke, withWaiting, NOW, null, spar2Ref).agreed!;
-    expect(a.meeting.meeting).toBe(spar2);
-    expect(texts(a.rows)).toEqual(['Book follow-up #next', 'Draft feedback', 'Her slides #wf']);
-  });
-
-  it('leaves out the current todo', () => {
-    const current = {itemPath: coaching.path, taskText: 'Draft feedback', taskIndex: 3};
-    expect(texts(optionsOf(mieke, source, NOW, current, spar2Ref).agreed!.rows)).toEqual(['Book follow-up #next']);
-  });
-
-  it('a page meeting without rows: the latest meeting that is over', () => {
-    const a = optionsOf(mieke, source, NOW, null, {itemPath: coaching.path, meetingIndex: 2}).agreed!;
-    expect(a.meeting.meeting).toBe(spar2);
-    // Without a page meeting too.
-    expect(optionsOf(mieke, source, NOW).agreed!.meeting.meeting).toBe(spar2);
-  });
-
-  it('none: null; an Area without a page meeting never falls back', () => {
-    const quiet = {...source, items: [{...coaching, tasks: coaching.tasks.filter(t => !t.fields.meeting)}, website]};
-    expect(optionsOf(mieke, quiet, NOW).agreed).toBeNull();
-    expect(optionsOf(area, source, NOW).agreed).toBeNull();
-    expect(texts(optionsOf(area, source, NOW, null, spar2Ref).agreed!.rows)).toEqual(['Book follow-up #next', 'Draft feedback']);
-  });
-});
-
 describe('optionsOf - Also here (E7) and Next here (E8)', () => {
-  it('counts waiting, and someday + maybe together', () => {
-    expect(optionsOf(mieke, source, NOW).alsoHere).toEqual({waiting: 1, someday: 2});
+  it('counts someday + maybe together; waiting has its own tab', () => {
+    expect(optionsOf(mieke, source, NOW).alsoHere).toEqual({someday: 2});
+    expect(texts(optionsOf(mieke, source, NOW).waiting)).toEqual(['Org chart #wf/mieke']);
   });
 
   it('the owner\'s next meeting that is not over, any date; a running one counts until its end', () => {

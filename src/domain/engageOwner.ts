@@ -238,6 +238,42 @@ export function ownerTodos(owner: EngageOwner, source: EngageSource): OwnerTodoR
   }
 }
 
+const inRefs = (refs: readonly MeetingRef[], match: ProvenanceMatch | null) =>
+  match !== null && refs.some(r => r.itemPath === match.path && r.meetingIndex === match.meetingIndex);
+
+/**
+ * The owner's todos agreed in one of `meetings` (open and done, not
+ * cancelled), in item and file order - Engage's From tab
+ * (docs/dev/history/technical-design-meetings-0.21.md §4.1). A thread reads
+ * its scope through the lens's provenance; a loop or item its own file.
+ * Done todos keep the relation they would have open ("owe" when nothing
+ * else applies).
+ */
+export function ownerAgreedTodos(owner: EngageOwner, source: EngageSource, meetings: readonly MeetingRef[]): OwnerTodoRef[] {
+  if (meetings.length === 0) return [];
+  const out: OwnerTodoRef[] = [];
+  if (owner.kind === 'thread') {
+    const ctx = threadLensOf(owner, source);
+    for (const s of ctx?.inScope ?? []) {
+      s.tasks.forEach((task, taskIndex) => {
+        if (task.cancelled) return;
+        const match = ctx!.provenanceOf(task);
+        if (!inRefs(meetings, match)) return;
+        out.push({item: s.ref, taskIndex, task, relation: ctx!.relationOf(task, match) ?? 'owe', agreedIn: refOfMatch(match)});
+      });
+    }
+    return out;
+  }
+  const item = itemAt(source, owner.itemPath);
+  if (!item) return out;
+  item.tasks.forEach((task, taskIndex) => {
+    if (task.cancelled) return;
+    const match = agreedInItem(item, task);
+    if (inRefs(meetings, match)) out.push({item: itemRefOf(item), taskIndex, task, relation: 'owe', agreedIn: refOfMatch(match)});
+  });
+  return out;
+}
+
 /** The owner's meetings that are not cancelled: a thread's lens (leaf-tagged ones too), a loop's, an item's outside its active loops. */
 export function ownerMeetings(owner: EngageOwner, source: EngageSource): MeetingEntryRef[] {
   const out: MeetingEntryRef[] = [];

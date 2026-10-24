@@ -441,28 +441,29 @@ describe('EngageOverlay in context (docs/dev/history/technical-design-engage-in-
   });
   afterEach(() => spy.mockRestore());
 
-  it('opens on Agreed from the meeting page, with Next here, Also here and Today next', async () => {
+  it('opens on From Thread from the meeting page, with Next here, Also here and Today next', async () => {
     const {r} = await open({via: 'button'});
     expect(texts(r)).toContain('Thread');
     // An agreed plan todo is also in Plan (D6: the overlap is accepted).
-    expect(texts(r)).toEqual(expect.arrayContaining(['Agreed 3', 'Next 2', 'Plan 1']));
-    expect(texts(r).some(t => t.startsWith('Agreed in Sparring Mieke · '))).toBe(true);
+    expect(texts(r)).toEqual(expect.arrayContaining(['From Thread 3', 'Next 2', 'Plan 1']));
+    expect(texts(r).some(t => t.endsWith(' · Sparring Mieke'))).toBe(true);
     expect(rendered(r)).toContain('Draft feedback');
     expect(rendered(r)).toContain('· waiting');
     expect(rendered(r)).not.toContain('Parked');
     expect(texts(r).some(t => t.startsWith('Next here: ') && t.endsWith('Sparring Mieke ›'))).toBe(true);
     expect(texts(r).filter(t => t.startsWith('Today next'))).toEqual(['Today next: 10:00 Retro demand · in 1 h']);
     expect(rendered(r)).toContain('Also here: ');
-    expect(rendered(r)).toContain('1 waiting');
+    // Waiting has its own tab (docs/dev/history/technical-design-meetings-0.21.md R11).
+    expect(rendered(r)).not.toContain('1 waiting');
     expect(rendered(r)).toContain('1 someday');
     act(() => r.unmount());
   });
 
-  it('Next lists "I owe" first; #next on an Agreed plan row moves it to Next as well', async () => {
+  it('Next lists "I owe" first; #next on a From plan row moves it to Next as well', async () => {
     const {r} = await open({via: 'button'});
     await press(r, '#next');
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [ ] Draft feedback #next');
-    expect(texts(r)).toEqual(expect.arrayContaining(['Agreed 3', 'Next 3']));
+    expect(texts(r)).toEqual(expect.arrayContaining(['From Thread 3', 'Next 3']));
     await press(r, 'Next 3');
     const rows = r.root.findAll(n => n.props.header === '' && Array.isArray(n.props.rows))[0].props.rows.map((t: {task: {text: string}}) => t.task.text);
     expect(rows).toEqual(['Draft feedback #next', 'Book follow-up #next', 'Read article #mieke #next']);
@@ -492,7 +493,7 @@ describe('EngageOverlay in context (docs/dev/history/technical-design-engage-in-
     const {r} = await open({via: 'ownerPage', owner: {kind: 'thread', scopeOwnerPath: COACHING, tag: 'sparring/mieke'}});
     expect(texts(r).some(t => t.startsWith('Next here: ') && t.endsWith('· next today ›'))).toBe(true);
     expect(texts(r).some(t => t.startsWith('Today next:'))).toBe(false);
-    expect(texts(r).some(t => t.startsWith('Agreed '))).toBe(false);
+    expect(texts(r).some(t => t.startsWith('From Thread'))).toBe(false);
     act(() => r.unmount());
   });
 });

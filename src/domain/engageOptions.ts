@@ -6,10 +6,17 @@
  *   once no `#next` is left (D16). `#now` counts as `#next`. For threads and
  *   loops "I owe" comes first, file order inside
  *   (docs/dev/history/technical-design-engage-in-context.md E5).
- * - Waiting For, Someday and Maybe are never offered: not choosable now; the
- *   "Also here" counts name them (E7).
- * - The Agreed tab lists what was agreed in the page's meeting, else in a
- *   thread's or loop's latest meeting that is over (E6).
+ * - Waiting For, Someday and Maybe are never offered to work on: Waiting
+ *   For has its own tab (Done only), Someday/Maybe is counted in "Also here".
+ * - From (docs/dev/history/technical-design-meetings-0.21.md R10): what
+ *   came out of the owner's meetings that have started, newest first, one
+ *   group per meeting - open todos agreed in it (not Someday/Maybe), active
+ *   agreements made in it, and done todos only for the reference meetings
+ *   (Before: the previous meeting; During: the previous one and this one;
+ *   After: this one; off a meeting page: the latest that is over). A
+ *   Project/Area owner gets it only on a meeting's page.
+ * - Waiting (R11): the owner's open Waiting For todos (a thread's by the
+ *   lens's rule), file order. Agreements (R12): its active agreements.
  * - The current todo is in the Now box, never in a list.
  * - An owner is empty with no open todo (any flow state) and no meeting ahead,
  *   the rule `closeBlockers` uses for loops.
@@ -25,6 +32,7 @@ import {
   itemRefOf,
   MeetingEntryRef,
   MeetingRef,
+  ownerAgreedTodos,
   ownerHomePath,
   ownerKey,
   ownerMeetings,
@@ -37,7 +45,9 @@ import {
   threadOfTodo,
   todoKeyOf,
 } from './engageOwner';
+import {agreementMadeIn, AgreementRef, ownerAgreements} from './agreementOwner';
 import {isLoopMember} from './loops';
+import {MeetingMoment, momentByTime, previousMeeting} from './meetingMoment';
 import {isSomedayMaybe, setFlowStateTag, setNowTag} from './flowState';
 import {meetingEndMs, meetingStartMs, todayIso} from './meetingTime';
 import {scopeOf, threadOf} from './threads';
@@ -55,10 +65,19 @@ export function engageFlowText(text: string, flow: EngageFlowChoice): string {
   return flow === 'next' ? withFlow : setNowTag(withFlow, false);
 }
 
-/** The todos agreed in one meeting (E6). */
-export interface AgreedList {
+/** One From row: a todo agreed in the meeting (open, or done for a reference meeting) or an agreement made in it. */
+export type FromRow = {kind: 'todo'; todo: OwnerTodoRef} | {kind: 'agreement'; agreement: AgreementRef};
+
+/** What came out of one meeting (R10). */
+export interface FromGroup {
   meeting: MeetingEntryRef;
-  rows: OwnerTodoRef[];
+  rows: FromRow[];
+}
+
+/** The meeting whose page Engage is open on, and the moment chosen for it (R1-R3). */
+export interface EngagePage {
+  meeting: MeetingRef;
+  moment: MeetingMoment;
 }
 
 export interface EngageOptions {
@@ -66,14 +85,23 @@ export interface EngageOptions {
   next: OwnerTodoRef[];
   /** Open todos without a flow state, the same order. */
   plan: OwnerTodoRef[];
-  /** The Agreed tab (E6); null = no tab. */
-  agreed: AgreedList | null;
-  /** What the panel leaves out (E7): Waiting For, and Someday + Maybe. */
-  alsoHere: {waiting: number; someday: number};
+  /** The From tab (R10), newest meeting first; [] = no tab. */
+  from: FromGroup[];
+  /** The Waiting tab (R11): open Waiting For todos, file order; [] = no tab. */
+  waiting: OwnerTodoRef[];
+  /** The Agreements tab (R12): active agreements, file order; [] = no tab. */
+  agreements: AgreementRef[];
+  /** What the panel leaves out: Someday + Maybe (E7). */
+  alsoHere: {someday: number};
   /** The owner's next meeting that is not over, any date (E8). */
   nextMeeting: MeetingEntryRef | null;
   /** No open todo and no meeting ahead. */
   ownerEmpty: boolean;
+}
+
+/** How many rows the From tab lists (captions not counted). */
+export function fromRowCount(groups: readonly FromGroup[]): number {
+  return groups.reduce((n, g) => n + g.rows.length, 0);
 }
 
 export function isNextTask(task: Task): boolean {
@@ -99,27 +127,73 @@ function meetingEntryAt(ref: MeetingRef, source: EngageSource): MeetingEntryRef 
   return item && meeting ? {item: itemRefOf(item), meetingIndex: ref.meetingIndex, meeting} : null;
 }
 
-/**
- * The Agreed tab (E6, D8): the open todos agreed in the reference meeting,
- * file order, without Someday/Maybe and the current todo. Reference = the
- * page's meeting when it has rows; else, for a thread or loop, its latest
- * meeting that is over, when that has rows.
- */
-function agreedOf(owner: EngageOwner, todos: OwnerTodoRef[], meetings: MeetingEntryRef[], source: EngageSource, nowMs: number, current: EngageTodoKey | null, pageMeeting: MeetingRef | null): AgreedList | null {
-  const candidates = todos.filter(t => !isSomedayMaybe(t.task) && !sameTodo(todoKeyOf(t), current));
-  const rowsOf = (ref: MeetingRef) => candidates.filter(t => sameMeeting(t.agreedIn, ref));
-  if (pageMeeting) {
-    const rows = rowsOf(pageMeeting);
-    const meeting = meetingEntryAt(pageMeeting, source);
-    if (rows.length > 0 && meeting) return {meeting, rows};
+const refOf = (m: MeetingEntryRef): MeetingRef => ({itemPath: m.item.path, meetingIndex: m.meetingIndex});
+const startDesc = (a: MeetingEntryRef, b: MeetingEntryRef) => meetingStartMs(b.meeting) - meetingStartMs(a.meeting);
+
+/** The meetings whose done todos show (R10): by the page's moment, else the latest meeting that is over. */
+function referenceMeetings(meetings: MeetingEntryRef[], page: {entry: MeetingEntryRef; moment: MeetingMoment} | null, nowMs: number): MeetingRef[] {
+  if (page) {
+    const prev = previousMeeting(meetings, page.entry);
+    const prevRef = prev ? [refOf(prev)] : [];
+    if (page.moment === 'before') return prevRef;
+    if (page.moment === 'during') return [...prevRef, refOf(page.entry)];
+    return [refOf(page.entry)];
   }
-  if (owner.kind === 'item') return null;
-  const latest = meetings
-    .filter(m => meetingEndMs(m.meeting) <= nowMs)
-    .reduce<MeetingEntryRef | null>((best, m) => (!best || meetingStartMs(m.meeting) > meetingStartMs(best.meeting) ? m : best), null);
-  if (!latest) return null;
-  const rows = rowsOf({itemPath: latest.item.path, meetingIndex: latest.meetingIndex});
-  return rows.length > 0 ? {meeting: latest, rows} : null;
+  const over = meetings.filter(m => meetingEndMs(m.meeting) <= nowMs).sort(startDesc);
+  return over.length > 0 ? [refOf(over[0])] : [];
+}
+
+/** The From tab (R10) - see the module doc comment. */
+function fromGroupsOf(
+  owner: EngageOwner,
+  source: EngageSource,
+  meetings: MeetingEntryRef[],
+  nowMs: number,
+  current: EngageTodoKey | null,
+  page: EngagePage | null,
+): FromGroup[] {
+  const pageEntry = page ? meetings.find(m => sameMeeting(refOf(m), page.meeting)) ?? meetingEntryAt(page.meeting, source) : null;
+  const pageOf = page && pageEntry ? {entry: pageEntry, moment: page.moment} : null;
+  const reference = referenceMeetings(meetings, pageOf, nowMs);
+  const isReference = (m: MeetingEntryRef) => reference.some(r => sameMeeting(r, refOf(m)));
+  // A Project/Area: only on a meeting's page - its group, and the previous meeting's done todos.
+  let shown: MeetingEntryRef[];
+  if (owner.kind === 'item') {
+    if (!pageEntry) return [];
+    const prev = previousMeeting(meetings, pageEntry);
+    shown = [pageEntry, ...(prev && isReference(prev) ? [prev] : [])];
+  } else {
+    shown = meetings.filter(m => meetingStartMs(m.meeting) <= nowMs);
+  }
+  shown = [...shown].sort(startDesc);
+  const todos = ownerAgreedTodos(owner, source, shown.map(refOf));
+  const agreements = ownerAgreements(owner, source).map(ref => ({ref, madeIn: agreementMadeIn(ref, source)}));
+  const groups: FromGroup[] = [];
+  for (const m of shown) {
+    const ref = refOf(m);
+    const doneOnly = owner.kind === 'item' && pageEntry !== null && !sameMeeting(ref, refOf(pageEntry));
+    const agreed = todos.filter(t => sameMeeting(t.agreedIn, ref));
+    const open = doneOnly ? [] : agreed.filter(t => !t.task.done && !isSomedayMaybe(t.task) && !sameTodo(todoKeyOf(t), current));
+    const made = doneOnly ? [] : agreements.filter(a => sameMeeting(a.madeIn, ref));
+    const done = isReference(m) ? agreed.filter(t => t.task.done) : [];
+    const rows: FromRow[] = [
+      ...open.map(todo => ({kind: 'todo' as const, todo})),
+      ...made.map(a => ({kind: 'agreement' as const, agreement: a.ref})),
+      ...done.map(todo => ({kind: 'todo' as const, todo})),
+    ];
+    if (rows.length > 0) groups.push({meeting: m, rows});
+  }
+  return groups;
+}
+
+/** The page meeting with its moment: `chosen` when set, else by time (R2, R3); null without a page meeting or a moment. */
+export function engagePageOf(pageMeeting: MeetingRef | null, source: EngageSource, nowMs: number, chosen: MeetingMoment | null = null): EngagePage | null {
+  if (!pageMeeting) return null;
+  const entry = meetingEntryAt(pageMeeting, source);
+  if (!entry) return null;
+  const byTime = momentByTime(entry.meeting, nowMs);
+  if (!byTime) return null;
+  return {meeting: pageMeeting, moment: chosen ?? byTime};
 }
 
 /** The earliest-starting entry, or null. */
@@ -132,7 +206,7 @@ export function optionsOf(
   source: EngageSource,
   nowMs: number,
   current: EngageTodoKey | null = null,
-  pageMeeting: MeetingRef | null = null,
+  page: EngagePage | null = null,
 ): EngageOptions {
   const todos = ownerTodos(owner, source);
   const meetings = ownerMeetings(owner, source);
@@ -141,11 +215,11 @@ export function optionsOf(
   return {
     next: listed.filter(ref => isNextTask(ref.task)),
     plan: listed.filter(ref => isPlanTask(ref.task)),
-    agreed: agreedOf(owner, todos, meetings, source, nowMs, current, pageMeeting),
-    alsoHere: {
-      waiting: todos.filter(t => t.task.flowState === 'waiting-for').length,
-      someday: todos.filter(t => isSomedayMaybe(t.task)).length,
-    },
+    from: fromGroupsOf(owner, source, meetings, nowMs, current, page),
+    // A thread's by the lens's rule (#wf/<counterpart>, or a bare #wf agreed or tagged in it), file order.
+    waiting: todos.filter(t => t.task.flowState === 'waiting-for' && (owner.kind !== 'thread' || t.relation === 'waiting') && !sameTodo(todoKeyOf(t), current)),
+    agreements: ownerAgreements(owner, source),
+    alsoHere: {someday: todos.filter(t => isSomedayMaybe(t.task)).length},
     nextMeeting: earliest(ahead),
     ownerEmpty: todos.length === 0 && ahead.length === 0,
   };

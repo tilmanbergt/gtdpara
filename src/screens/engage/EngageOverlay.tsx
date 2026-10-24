@@ -243,7 +243,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
                 onRemoveNext={todo => act(todo, 'unnext', false)}
                 onMakeNext={todo => act(todo, 'next', false)}
                 onSomeday={todo => act(todo, 'someday', false)}
-                agreed={view.options?.agreed ?? null}
+                from={view.options?.from ?? []}
                 onDone={todo => act(todo, 'done', false)}
                 textColor={textColor}
                 borderColor={borderColor}
@@ -251,7 +251,6 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
             ) : null}
             {screen.kind === 'options' && view.options ? (
               <AlsoHereLine
-                waiting={view.options.alsoHere.waiting}
                 someday={view.options.alsoHere.someday}
                 onSomeday={exits.openSomeday}
                 onOverview={exits.openOverview}

@@ -8,7 +8,7 @@
  */
 import {useEffect, useMemo, useReducer, useState} from 'react';
 import {decideOpening, EngageOpening, EngageSource, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
-import {effectiveFocus, engageListsOf, optionsOf, ownersLeft} from '../../domain/engageOptions';
+import {effectiveFocus, engageListsOf, engagePageOf, fromRowCount, optionsOf, ownersLeft} from '../../domain/engageOptions';
 import {engageFlow, EngageRequest, EngageState, INITIAL_ENGAGE_STATE} from '../../domain/engageFlow';
 import {GtdParaSettings, resolvePaths} from '../../domain/settings';
 import {getCachedData, getCachedInbox, rebuildCache} from '../../storage/dataCache';
@@ -98,7 +98,7 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
     const currentRef = current ? resolveTodoKey(current, source) : null;
     const currentKey = currentRef ? todoKeyOf(currentRef) : null;
     if (current && !currentRef) setEngageCurrent(null, null).catch(e => logError('EngageOverlay: forgetting the current todo failed', errorMessage(e)));
-    const options = owner ? optionsOf(owner, source, nowMs, currentKey, pageMeeting) : null;
+    const options = owner ? optionsOf(owner, source, nowMs, currentKey, engagePageOf(pageMeeting, source, nowMs)) : null;
     dispatch({
       type: 'dataChanged',
       options,
@@ -106,7 +106,9 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
       dailyLeft: ownersLeft('daily', source, nowMs),
       current: currentKey,
       nextRows: options ? engageListsOf(options, currentRef).next.length : 0,
-      agreedRows: options?.agreed?.rows.length ?? 0,
+      fromRows: options ? fromRowCount(options.from) : 0,
+      waitingRows: options?.waiting.length ?? 0,
+      agreementRows: options?.agreements.length ?? 0,
     });
   }, [source, owner, current, pageMeeting]);
 

@@ -64,11 +64,25 @@ export function resolveMeetingTracking(
   now: Date = new Date(),
 ): MeetingTrackingState | null {
   if (meeting.cancelled) return null;
-  const matching = matchingTracking(meeting.tags, config);
   const kind: MeetingTrackingKind = now.getTime() > meetingAutoUpdateCutoffMs(meeting) ? 'review' : 'prep';
-  const tracked = matching.some(t => (kind === 'prep' ? t.trackPrep : t.trackReview));
-  if (!tracked) return null;
-  return {kind, done: hasBareTag(meeting.tags, TRACKING_TAG[kind])};
+  if (!tracksCheckpoint(meeting, config, kind)) return null;
+  return {kind, done: isCheckpointTicked(meeting, kind)};
+}
+
+/**
+ * Whether a matching setup (or the Default) tracks checkpoint `kind` for
+ * `meeting`, whatever time it is - the Engage strip asks per moment
+ * (docs/dev/history/technical-design-meetings-0.21.md §3.1). False for a
+ * cancelled meeting.
+ */
+export function tracksCheckpoint(meeting: Pick<Meeting, 'tags' | 'cancelled'>, config: NoteSetupConfig, kind: MeetingTrackingKind): boolean {
+  if (meeting.cancelled) return false;
+  return matchingTracking(meeting.tags, config).some(t => (kind === 'prep' ? t.trackPrep : t.trackReview));
+}
+
+/** Whether checkpoint `kind` is ticked on `meeting` (`#prepped` / `#reviewed`). */
+export function isCheckpointTicked(meeting: Pick<Meeting, 'tags'>, kind: MeetingTrackingKind): boolean {
+  return hasBareTag(meeting.tags, TRACKING_TAG[kind]);
 }
 
 /**

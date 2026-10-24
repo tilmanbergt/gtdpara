@@ -113,7 +113,7 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 
 ## Engage
 
-### Engage on the meeting's page offers the reflection; on the reflection page it opens on what was agreed
+### Engage on the meeting's page offers the reflection; on the reflection page it opens on what came out of the thread's meetings
 
 - **Given** the todo "Send Mieke the role canvas" was agreed in the sparring session three days ago; in the notebook the session's page is followed by a page added by hand, then the page of the todo "Prepare the workshop"
 - **When** I open Engage on the meeting's page
@@ -121,7 +121,7 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 - **When** I tap it and confirm
 - **Then** the reflection page comes after the hand-added page and before the todo's page, and opens
 - **When** I open Engage on the reflection page
-- **Then** it opens on "Agreed 1" from the sparring session, with the agreed todo
+- **Then** it opens on "From Thread 1" with the sparring session's group and the agreed todo
 - **And** it doesn't offer to reflect again
 
 Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`

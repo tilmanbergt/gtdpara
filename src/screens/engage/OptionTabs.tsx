@@ -10,9 +10,9 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 import {EngageTab} from '../../domain/engageFlow';
-import {AgreedList, isNextTask} from '../../domain/engageOptions';
+import {FromGroup, isNextTask} from '../../domain/engageOptions';
 import {EngageOwner, EngageTodoRef, ownerKey} from '../../domain/engageOwner';
-import {agreedCaption, ENGAGE_TEXT, tabLabel} from '../../domain/engageText';
+import {ENGAGE_TEXT, fromCaption, tabLabel} from '../../domain/engageText';
 import {todayIso} from '../../domain/meetingTime';
 import MiniTabs from '../../ui/MiniTabs';
 import PagedSection from '../../ui/PagedSection';
@@ -24,8 +24,8 @@ interface Props {
   tab: EngageTab;
   next: EngageTodoRef[];
   plan: EngageTodoRef[];
-  /** The Agreed tab's meeting and rows; null hides the tab. */
-  agreed: AgreedList | null;
+  /** The From tab's groups; [] hides the tab. */
+  from: FromGroup[];
   onTab: (tab: EngageTab) => void;
   onPick: (todo: EngageTodoRef) => void;
   onRemoveNext: (todo: EngageTodoRef) => void;
@@ -39,12 +39,13 @@ interface Props {
 const rowKey = (todo: EngageTodoRef) => `${todo.item.path}#${todo.taskIndex}`;
 
 export default function OptionTabs(props: Props): React.JSX.Element {
-  const {owner, next, plan, agreed, onTab, onPick, onRemoveNext, onMakeNext, onSomeday, onDone, textColor, borderColor} = props;
-  // Agreed only while it lists something; the reducer moves off it then.
-  const tab: EngageTab = props.tab === 'agreed' && !agreed ? 'next' : props.tab;
-  const rows = tab === 'agreed' ? agreed?.rows ?? [] : tab === 'next' ? next : plan;
+  const {owner, next, plan, from, onTab, onPick, onRemoveNext, onMakeNext, onSomeday, onDone, textColor, borderColor} = props;
+  const fromTodos = from.flatMap(g => g.rows.flatMap(r => (r.kind === 'todo' ? [r.todo] : [])));
+  // From only while it lists something; the reducer moves off it then.
+  const tab: EngageTab = props.tab === 'from' && fromTodos.length === 0 ? 'next' : props.tab;
+  const rows = tab === 'from' ? fromTodos : tab === 'next' ? next : plan;
   const tabs: Array<{key: EngageTab; label: string}> = [
-    ...(agreed ? [{key: 'agreed' as const, label: tabLabel('agreed', agreed.rows.length)}] : []),
+    ...(fromTodos.length > 0 ? [{key: 'from' as const, label: tabLabel('from', fromTodos.length, owner.kind)}] : []),
     {key: 'next', label: tabLabel('next', next.length)},
     {key: 'plan', label: tabLabel('plan', plan.length)},
   ];
@@ -80,9 +81,9 @@ export default function OptionTabs(props: Props): React.JSX.Element {
         // The tabs name the list; the header line only carries the page arrows.
         header=""
         subHeader={
-          tab === 'agreed' && agreed ? (
+          tab === 'from' && from.length > 0 ? (
             <Text style={[styles.caption, {color: textColor}]} numberOfLines={1}>
-              {agreedCaption(agreed.meeting.meeting, todayIso())}
+              {fromCaption(from[0].meeting.meeting, todayIso())}
             </Text>
           ) : undefined
         }
@@ -94,7 +95,7 @@ export default function OptionTabs(props: Props): React.JSX.Element {
         textColor={textColor}
         borderColor={borderColor}
         renderRow={todo =>
-          tab === 'agreed'
+          tab === 'from'
             ? agreedRow(todo)
             : tab === 'next'
               ? nextRow(todo, [{label: ENGAGE_TEXT.removeNext, onPress: () => onRemoveNext(todo)}])

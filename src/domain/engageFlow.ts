@@ -33,8 +33,16 @@ export interface UndoRecord {
   afterText: string;
 }
 
-/** The options screen's tabs; Agreed only while it has rows (docs/dev/history/technical-design-engage-in-context.md E6). */
-export type EngageTab = 'agreed' | 'next' | 'plan';
+/**
+ * The options screen's tabs (docs/dev/history/technical-design-meetings-0.21.md
+ * R9): From (a thread's "From Thread", a loop's "From Loop", a
+ * Project/Area's "From meetings"), Next, Plan, Waiting, Agreements. From,
+ * Waiting and Agreements show only while they have rows.
+ */
+export type EngageTab = 'from' | 'next' | 'plan' | 'waiting' | 'agreements';
+
+/** The tabs that give way to Next/Plan once they list nothing (R14). */
+const VANISHING_TABS: readonly EngageTab[] = ['from', 'waiting', 'agreements'];
 
 /**
  * Leaving the panel to a place in gtdpara (docs/dev/history/technical-design-engage-in-context.md
@@ -91,8 +99,8 @@ export type EngageEvent =
   /**
    * The cache changed: the owner's options, the effective ring, how many
    * owners today's focus still has, the current todo found again
-   * (`resolveTodoKey`; null when it is gone, D7), how many rows the Next
-   * tab lists (`engageListsOf`) and how many the Agreed tab lists.
+   * (`resolveTodoKey`; null when it is gone, D7), and how many rows the
+   * Next (`engageListsOf`), From, Waiting and Agreements tabs list.
    */
   | {
       type: 'dataChanged';
@@ -101,7 +109,9 @@ export type EngageEvent =
       dailyLeft: number;
       current: EngageTodoKey | null;
       nextRows: number;
-      agreedRows: number;
+      fromRows: number;
+      waitingRows: number;
+      agreementRows: number;
     };
 
 export const INITIAL_ENGAGE_STATE: EngageState = {
@@ -182,13 +192,14 @@ function onDataChanged(state: EngageState, event: Extract<EngageEvent, {type: 'd
   const current = sameKey(state.current, event.current) ? state.current : event.current;
   // Next when it lists anything, else Plan; an empty Next always gives way to Plan. Adding #next from Plan doesn't switch.
   const nextOrPlan: EngageTab = event.nextRows > 0 ? 'next' : 'plan';
-  // Opened on a meeting page with agreed rows: Agreed first (E6); an emptied Agreed gives way like an empty Next.
+  const rowsOf: Record<EngageTab, number> = {from: event.fromRows, next: event.nextRows, plan: 0, waiting: event.waitingRows, agreements: event.agreementRows};
+  // Opened on a meeting page with From rows: From first (R14); an emptied From, Waiting or Agreements gives way like an empty Next.
   const tab: EngageTab =
     state.tab === null
-      ? state.pageMeeting && event.agreedRows > 0
-        ? 'agreed'
+      ? state.pageMeeting && event.fromRows > 0
+        ? 'from'
         : nextOrPlan
-      : state.tab === 'next' || (state.tab === 'agreed' && event.agreedRows === 0)
+      : state.tab === 'next' || (VANISHING_TABS.includes(state.tab) && rowsOf[state.tab] === 0)
         ? nextOrPlan
         : state.tab;
   const next = {...state, ownerEmpty, ring: event.ring, current, tab};

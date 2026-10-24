@@ -21,6 +21,9 @@ or your project/area files are stored.
 
 ### Changed
 - The project now lives at github.com/tilmanbergt/kept-gtd. Old gtdpara links lead there too.
+- Engage: the **Agreed** tab is now **From Thread** (**From Loop**, **From meetings** for a project
+  or area): what came out of the owner's meetings, newest meeting first, with the todos done since
+  struck through. "Also here" counts only Someday and Maybe.
 
 ### Upgrade notes
 - The first time you add an agreement to a Project or Area, its file gets a new `## Agreements`

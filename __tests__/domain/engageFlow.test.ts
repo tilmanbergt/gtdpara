@@ -13,8 +13,18 @@ const ack = (wasCurrent: boolean): EngageAck => ({
   wasCurrent,
   undo: {itemPath: '/a', taskIndex: 1, before: task('Brief #next'), afterText: 'Brief #next'},
 });
-const options = (ownerEmpty: boolean): EngageOptions => ({next: [], plan: [], agreed: null, alsoHere: {waiting: 0, someday: 0}, nextMeeting: null, ownerEmpty});
-const data = (ownerEmpty: boolean, dailyLeft = 2, ring: 'daily' | 'weekly' = 'daily'): EngageEvent => ({type: 'dataChanged', options: options(ownerEmpty), ring, dailyLeft, current: KEY, nextRows: 1, agreedRows: 0});
+const options = (ownerEmpty: boolean): EngageOptions => ({next: [], plan: [], from: [], waiting: [], agreements: [], alsoHere: {someday: 0}, nextMeeting: null, ownerEmpty});
+const data = (ownerEmpty: boolean, dailyLeft = 2, ring: 'daily' | 'weekly' = 'daily'): EngageEvent => ({
+  type: 'dataChanged',
+  options: options(ownerEmpty),
+  ring,
+  dailyLeft,
+  current: KEY,
+  nextRows: 1,
+  fromRows: 0,
+  waitingRows: 0,
+  agreementRows: 0,
+});
 
 const S = {
   options: {kind: 'options'},
@@ -132,21 +142,42 @@ describe('engageFlow state', () => {
     expect(engageFlow(state(S.daily, {back, current: null}), {type: 'ownerChosen', owner: {kind: 'item', itemPath: '/c'}}).back).toEqual(back);
     expect(engageFlow(state(S.options), {type: 'goBack'})).toEqual(state(S.options));
   });
-  it('Agreed: first on a meeting page with agreed rows; an emptied Agreed gives way to Next/Plan', () => {
+  describe('tab rule (docs/dev/history/technical-design-meetings-0.21.md R14)', () => {
     const page = {itemPath: '/a', meetingIndex: 2};
-    const changed = (from: EngageState, agreedRows: number, nextRows = 1) =>
-      engageFlow(from, {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), nextRows, agreedRows}).tab;
-    const opened = engageFlow(state(S.daily), {type: 'open', owner: OWNER, current: null, ring: 'daily', pageMeeting: page});
-    expect(opened.pageMeeting).toEqual(page);
-    expect(changed(opened, 2)).toBe('agreed');
-    expect(changed(opened, 0)).toBe('next');
-    expect(changed(opened, 0, 0)).toBe('plan');
-    // Without a page meeting the Next/Plan rule decides, even with agreed rows (the latest meeting's).
+    type Rows = {nextRows?: number; fromRows?: number; waitingRows?: number; agreementRows?: number};
+    const changed = (from: EngageState, counts: Rows) => engageFlow(from, {...(data(false) as Extract<EngageEvent, {type: 'dataChanged'}>), ...counts}).tab;
+    const onPage = engageFlow(state(S.daily), {type: 'open', owner: OWNER, current: null, ring: 'daily', pageMeeting: page});
     const elsewhere = engageFlow(state(S.daily), {type: 'open', owner: OWNER, current: null, ring: 'daily'});
-    expect(changed(elsewhere, 2)).toBe('next');
-    expect(changed(state(S.options, {tab: 'agreed'}), 0, 0)).toBe('plan');
-    expect(changed(state(S.options, {tab: 'agreed'}), 1)).toBe('agreed');
-    expect(engageFlow(state(S.options, {tab: 'next'}), {type: 'selectTab', tab: 'agreed'}).tab).toBe('agreed');
+
+    it.each([
+      ['on a meeting page with From rows', onPage, {fromRows: 2}, 'from'],
+      ['on a meeting page without From rows, Next has rows', onPage, {fromRows: 0, nextRows: 1}, 'next'],
+      ['on a meeting page, nothing in From or Next', onPage, {fromRows: 0, nextRows: 0}, 'plan'],
+      ['off a meeting page, even with From rows', elsewhere, {fromRows: 2, nextRows: 1}, 'next'],
+      ['off a meeting page, From rows, no Next', elsewhere, {fromRows: 2, nextRows: 0}, 'plan'],
+    ] as const)('first data %s → %s', (_label, from, counts, tab) => {
+      expect(changed(from, counts)).toBe(tab);
+    });
+
+    it.each([
+      ['from', {fromRows: 0, nextRows: 1}, 'next'],
+      ['from', {fromRows: 0, nextRows: 0}, 'plan'],
+      ['from', {fromRows: 1}, 'from'],
+      ['waiting', {waitingRows: 0, nextRows: 1}, 'next'],
+      ['waiting', {waitingRows: 2}, 'waiting'],
+      ['agreements', {agreementRows: 0, nextRows: 0}, 'plan'],
+      ['agreements', {agreementRows: 1}, 'agreements'],
+      ['next', {nextRows: 0}, 'plan'],
+      ['plan', {nextRows: 3}, 'plan'],
+    ] as const)('selected %s with %j → %s', (selected, counts, tab) => {
+      expect(changed(state(S.options, {tab: selected}), counts)).toBe(tab);
+    });
+
+    it('a tab is selected by tapping it', () => {
+      for (const tab of ['from', 'waiting', 'agreements'] as const) {
+        expect(engageFlow(state(S.options, {tab: 'next'}), {type: 'selectTab', tab}).tab).toBe(tab);
+      }
+    });
   });
   it('the page meeting belongs to the note owner: ownerChosen and goBack clear it; no owner, no page meeting', () => {
     const page = {itemPath: '/a', meetingIndex: 2};

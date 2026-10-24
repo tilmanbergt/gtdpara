@@ -75,9 +75,16 @@ export function backLineText(todoTitle: string): string {
   return `Continue with ${todoTitle}`;
 }
 
-/** The options screen's tab labels, with the rows each lists. */
-export function tabLabel(tab: 'agreed' | 'next' | 'plan', rows: number): string {
-  return `${tab === 'agreed' ? 'Agreed' : tab === 'next' ? 'Next' : 'Plan'} ${rows}`;
+/** The From tab's name by owner (docs/dev/history/technical-design-meetings-0.21.md R9). */
+export function fromTabName(ownerKind: 'item' | 'loop' | 'thread'): string {
+  return ownerKind === 'thread' ? 'From Thread' : ownerKind === 'loop' ? 'From Loop' : 'From meetings';
+}
+
+const TAB_NAMES = {next: 'Next', plan: 'Plan', waiting: 'Waiting', agreements: 'Agreements'} as const;
+
+/** The options screen's tab labels, with the rows each lists ("From Thread 3", "Next 2"). */
+export function tabLabel(tab: 'from' | 'next' | 'plan' | 'waiting' | 'agreements', rows: number, ownerKind: 'item' | 'loop' | 'thread' = 'item'): string {
+  return `${tab === 'from' ? fromTabName(ownerKind) : TAB_NAMES[tab]} ${rows}`;
 }
 
 /** A meeting's title without tags ("Sparring Mieke"). */
@@ -86,14 +93,19 @@ function plainMeetingTitle(meeting: Pick<Meeting, 'title'>): string {
   return stripAllTags(display) || display;
 }
 
-/** The Agreed tab's first line (docs/dev/history/technical-design-engage-in-context.md E6): "Agreed in Sparring Mieke · Tue 14.10.". */
-export function agreedCaption(meeting: Pick<Meeting, 'title' | 'date'>, today: string): string {
-  return `Agreed in ${plainMeetingTitle(meeting)} · ${formatDayHeader(meeting.date, today)}`;
+/** A From group's caption (R10): "Tue 14.10. · Sparring Mieke", "today · Sparring Mieke". */
+export function fromCaption(meeting: Pick<Meeting, 'title' | 'date'>, today: string): string {
+  return `${meeting.date === today ? 'today' : formatDayHeader(meeting.date, today)} · ${plainMeetingTitle(meeting)}`;
 }
 
-/** The "Also here" counts (E7): each part only when it isn't zero; both null hides the line. */
-export function alsoHereParts(waiting: number, someday: number): {waiting: string | null; someday: string | null} {
-  return {waiting: waiting > 0 ? `${waiting} waiting` : null, someday: someday > 0 ? `${someday} someday` : null};
+/** A Waiting row's origin (R11): "from 14.10." for one agreed in a meeting. */
+export function fromMeetingText(meeting: Pick<Meeting, 'date'>, today: string): string {
+  return `from ${formatDate(meeting.date, today)}`;
+}
+
+/** The "Also here" count (E7): Someday and Maybe; null hides the line. */
+export function alsoHereParts(someday: number): {someday: string | null} {
+  return {someday: someday > 0 ? `${someday} someday` : null};
 }
 
 /** "Next here: Thu 23.10. 10:00 Sparring Mieke ›" (E8), with "· next today" when it is also today's next meeting. */

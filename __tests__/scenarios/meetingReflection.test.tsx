@@ -230,7 +230,7 @@ scenario('Reflect from Review\'s "Meetings to close out" without ticking it revi
   });
 });
 
-scenario('Engage on the meeting\'s page offers the reflection; on the reflection page it opens on what was agreed', {feature: 'Engage', design: 'technical-design-meeting-reflection.md'}, () => {
+scenario('Engage on the meeting\'s page offers the reflection; on the reflection page it opens on what came out of the thread\'s meetings', {feature: 'Engage', design: 'technical-design-meeting-reflection.md'}, () => {
   given('the todo "Send Mieke the role canvas" was agreed in the sparring session three days ago; in the notebook the session\'s page is followed by a page added by hand, then the page of the todo "Prepare the workshop"', () => {
     const key = meetingKey({date: d1, title: 'Sparring Mieke #sparring/mieke'});
     coaching(
@@ -251,9 +251,9 @@ scenario('Engage on the meeting\'s page offers the reflection; on the reflection
     expect(device().sdk.opened.at(-1)).toEqual({path: NOTEBOOK, page: 2});
   });
   when('I open Engage on the reflection page', () => openEngage({fromNote: NOTEBOOK, page: 2}));
-  then('it opens on "Agreed 1" from the sparring session, with the agreed todo', () => {
-    expectShows('Agreed 1');
-    expectShows(/^Agreed in Sparring Mieke · /);
+  then('it opens on "From Thread 1" with the sparring session\'s group and the agreed todo', () => {
+    expectShows('From Thread 1');
+    expectShows(/ · Sparring Mieke$/);
     // The row draws the title and its #next label as one text: match the title at its start.
     expectShows(/^Send Mieke the role canvas/);
   });

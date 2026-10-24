@@ -51,7 +51,7 @@ Tap the **Reflect** icon on the selected meeting's card. The first time, the sta
 - **Where it goes**: in the meeting's note, after the meeting's page and every page you added to it by hand, before the next meeting's or todo's page. In a meeting's own note it is the last page.
 - **What is on it**: the Reflection page of the meeting's Note setup, or the Default's - at first just the date and title as a heading. Add your guiding questions as texts of your own, see [Note setups](note-setups.md).
 - **Finding it**: its keyword is `reflection` with the meeting's date and title (for example `reflection 2026-10-14 Sparring Mieke`), plus the meeting's tags. When you rename the meeting, the keyword follows the next time you open the page from Kept.
-- **Part of the meeting**: on the reflection page, Engage and lasso capture treat it as the meeting's page - todos you capture there were agreed in that meeting, and Engage opens on **Agreed** (see [Engage](engage.md)).
+- **Part of the meeting**: on the reflection page, Engage and lasso capture treat it as the meeting's page - todos you capture there were agreed in that meeting, and Engage opens on **From Thread** (see [Engage](engage.md)).
 
 You also reach it from the Review step **Meetings to close out**, from a past meeting in a thread overview, and from Engage on the meeting's page ("Reflect on this meeting ›").
 

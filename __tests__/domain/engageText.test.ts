@@ -1,7 +1,8 @@
 // docs/dev/history/technical-design-engage.md §3.12: the panel's texts.
 import {
   ackLabel,
-  agreedCaption,
+  fromCaption,
+  fromMeetingText,
   alsoHereParts,
   linkedFileButtonText,
   marksLineText,
@@ -57,11 +58,17 @@ describe('engageText', () => {
 describe('Engage in context labels (docs/dev/history/technical-design-engage-in-context.md)', () => {
   const at = (h: number, m = 0) => new Date(2026, 9, 8, h, m).getTime();
 
-  it('tabs, the Agreed caption and Also here parts', () => {
-    expect(tabLabel('agreed', 3)).toBe('Agreed 3');
-    expect(agreedCaption({title: 'Sparring Mieke #sparring/mieke', date: '2026-10-14'}, '2026-10-08')).toBe('Agreed in Sparring Mieke · Wed 14.10.');
-    expect(alsoHereParts(2, 1)).toEqual({waiting: '2 waiting', someday: '1 someday'});
-    expect(alsoHereParts(0, 0)).toEqual({waiting: null, someday: null});
+  it('tabs, the From caption, the Waiting origin and Also here (docs/dev/history/technical-design-meetings-0.21.md R9-R11)', () => {
+    expect(tabLabel('from', 3, 'thread')).toBe('From Thread 3');
+    expect(tabLabel('from', 1, 'loop')).toBe('From Loop 1');
+    expect(tabLabel('from', 2, 'item')).toBe('From meetings 2');
+    expect(tabLabel('waiting', 2)).toBe('Waiting 2');
+    expect(tabLabel('agreements', 1)).toBe('Agreements 1');
+    expect(fromCaption({title: 'Sparring Mieke #sparring/mieke', date: '2026-10-14'}, '2026-10-08')).toBe('Wed 14.10. · Sparring Mieke');
+    expect(fromCaption({title: 'Sparring Mieke', date: '2026-10-08'}, '2026-10-08')).toBe('today · Sparring Mieke');
+    expect(fromMeetingText({date: '2026-10-14'}, '2026-10-24')).toBe('from 14.10.');
+    expect(alsoHereParts(1)).toEqual({someday: '1 someday'});
+    expect(alsoHereParts(0)).toEqual({someday: null});
   });
 
   it('Next here: day, time, title; "· next today" when merged', () => {

@@ -7,7 +7,17 @@
  */
 import {useMemo} from 'react';
 import {EngageSource, EngageTodoRef, MeetingEntryRef, ownerTitle, OwnerTitle, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
-import {EngageLists, EngageOptions, engageListsOf, focusItems, focusOwnerLines, optionsOf, OwnerLine, todayNextMeeting} from '../../domain/engageOptions';
+import {
+  EngageLists,
+  EngageOptions,
+  engageListsOf,
+  engagePageOf,
+  focusItems,
+  focusOwnerLines,
+  optionsOf,
+  OwnerLine,
+  todayNextMeeting,
+} from '../../domain/engageOptions';
 import {EngageState} from '../../domain/engageFlow';
 
 export interface EngageView {
@@ -33,7 +43,7 @@ export function useEngageView(state: EngageState, source: EngageSource | null): 
     const nowMs = Date.now();
     const currentTodo = state.current ? resolveTodoKey(state.current, source) : null;
     const {owner, screen} = state;
-    const options = owner ? optionsOf(owner, source, nowMs, currentTodo ? todoKeyOf(currentTodo) : null, state.pageMeeting) : null;
+    const options = owner ? optionsOf(owner, source, nowMs, currentTodo ? todoKeyOf(currentTodo) : null, engagePageOf(state.pageMeeting, source, nowMs)) : null;
     const backTodo = state.back ? resolveTodoKey(state.back.key, source) : null;
     return {
       back: state.back && backTodo ? {todo: backTodo} : null,
