@@ -1,10 +1,13 @@
 /**
  * The current todo (S4, docs/dev/history/technical-design-engage.md §3.7):
  * "Working on" - or "Next action" for the owner's only `#next` shown without
- * being chosen (Addendum "Next and Plan tabs") - its title, a details line (due date or Waiting For with its
- * follow-up, the meeting it was agreed in), a large check box on the right
- * that marks it done, and - with `#next` - Remove
- * #next, without it Someday (D11), then its note (Note › / + Note through
+ * being chosen (Addendum "Next and Plan tabs") - its title, a details line
+ * (due date or Waiting For with its follow-up) and the meeting it was agreed
+ * in as a link to that meeting's note ("From Sparring Mieke · 14.10. ›"), a
+ * large check box on the right that marks it done, and the buttons
+ * (docs/dev/history/technical-design-meetings-0.21.md R15): w/f <Counterpart>
+ * (Waiting For on the owner thread's counterpart, "w/f" without one), Do
+ * someday, Remove #next (with `#next`), its note (Note › / + Note through
  * the one note flow) and its linked file ("File: <name> ›").
  */
 import React from 'react';
@@ -16,6 +19,8 @@ import {
   ENGAGE_TEXT,
   linkedFileButtonText,
   nowDetailsText,
+  nowMeetingText,
+  waitingForButtonText,
 } from '../../domain/engageText';
 import PillButton from '../../ui/PillButton';
 import TaskLabels from '../../ui/TaskLabels';
@@ -28,6 +33,11 @@ interface Props {
   onDone: () => void;
   onRemoveNext: () => void;
   onSomeday: () => void;
+  /** The owner thread's counterpart for w/f; null: a bare w/f. */
+  counterpart: string | null;
+  onWaiting: () => void;
+  /** Opens the note of the meeting the todo was agreed in; absent: the meeting is not shown as a link. */
+  onOpenMeeting?: () => void;
   onNote: () => void;
   onFile: (linkedFile: string) => void;
   textColor: string;
@@ -40,6 +50,9 @@ export default function NowBox({
   onDone,
   onRemoveNext,
   onSomeday,
+  counterpart,
+  onWaiting,
+  onOpenMeeting,
   onNote,
   onFile,
   textColor,
@@ -58,7 +71,9 @@ export default function NowBox({
     l => l.kind === 'next' || l.kind === 'now',
   );
   const details = nowDetailsText(todo.task, today);
+  const meetingKey = todo.task.fields.meeting;
   const next = isNextTask(todo.task);
+  const waiting = todo.task.flowState === 'waiting-for';
   const file = todo.task.linkedFile;
   return (
     <View style={[styles.nowBox, {borderColor: textColor}]}>
@@ -76,6 +91,15 @@ export default function NowBox({
               {details}
             </Text>
           ) : null}
+          {meetingKey ? (
+            <Text
+              style={[styles.nowDetails, {color: textColor}, onOpenMeeting ? styles.nowLink : null]}
+              numberOfLines={1}
+              onPress={onOpenMeeting}
+              suppressHighlighting>
+              {nowMeetingText(meetingKey, today)}
+            </Text>
+          ) : null}
         </View>
         <Pressable
           onPress={onDone}
@@ -87,6 +111,20 @@ export default function NowBox({
         </Pressable>
       </View>
       <View style={styles.buttonRow}>
+        {waiting ? null : (
+          <PillButton
+            label={waitingForButtonText(counterpart)}
+            onPress={onWaiting}
+            textColor={textColor}
+            borderColor={borderColor}
+          />
+        )}
+        <PillButton
+          label={ENGAGE_TEXT.doSomeday}
+          onPress={onSomeday}
+          textColor={textColor}
+          borderColor={borderColor}
+        />
         {next ? (
           <PillButton
             label={ENGAGE_TEXT.removeNext}
@@ -94,14 +132,7 @@ export default function NowBox({
             textColor={textColor}
             borderColor={borderColor}
           />
-        ) : (
-          <PillButton
-            label={ENGAGE_TEXT.someday}
-            onPress={onSomeday}
-            textColor={textColor}
-            borderColor={borderColor}
-          />
-        )}
+        ) : null}
         <PillButton
           label={
             todo.task.notePath ? ENGAGE_TEXT.openNote : ENGAGE_TEXT.newNote

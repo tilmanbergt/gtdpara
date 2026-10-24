@@ -6,7 +6,7 @@
  * nothing about screens.
  */
 import {useMemo} from 'react';
-import {EngageSource, EngageTodoRef, MeetingEntryRef, ownerTitle, OwnerTitle, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
+import {EngageSource, EngageTodoRef, itemRefOf, MeetingEntryRef, ownerTitle, OwnerTitle, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
 import {
   EngageLists,
   EngageOptions,
@@ -19,6 +19,8 @@ import {
   todayNextMeeting,
 } from '../../domain/engageOptions';
 import {EngageState} from '../../domain/engageFlow';
+import {MeetingMoment, momentByTime} from '../../domain/meetingMoment';
+import {chosenMomentAt, useMomentChoices} from '../../ui/meetingMomentStore';
 
 export interface EngageView {
   options: EngageOptions | null;
@@ -35,15 +37,27 @@ export interface EngageView {
   todayNext: MeetingEntryRef | null;
   /** When `todayNext` was computed, for its "in … min". */
   nowMs: number;
+  /** The page's meeting with its moment (chosen, else by time) while it has one (R1, R2); null otherwise. */
+  page: {entry: MeetingEntryRef; moment: MeetingMoment; byTime: MeetingMoment} | null;
 }
 
 export function useEngageView(state: EngageState, source: EngageSource | null): EngageView {
+  const moments = useMomentChoices();
   return useMemo(() => {
-    if (!source) return {options: null, lists: null, title: null, back: null, lines: [], focusNames: [], todayNext: null, nowMs: 0};
+    if (!source) return {options: null, lists: null, title: null, back: null, lines: [], focusNames: [], todayNext: null, nowMs: 0, page: null};
     const nowMs = Date.now();
     const currentTodo = state.current ? resolveTodoKey(state.current, source) : null;
     const {owner, screen} = state;
-    const options = owner ? optionsOf(owner, source, nowMs, currentTodo ? todoKeyOf(currentTodo) : null, engagePageOf(state.pageMeeting, source, nowMs)) : null;
+    const chosen = chosenMomentAt(state.pageMeeting, source);
+    const pageRef = engagePageOf(state.pageMeeting, source, nowMs, chosen);
+    const pageItem = pageRef ? source.items.find(i => i.path === pageRef.meeting.itemPath) : undefined;
+    const pageMeeting = pageRef && pageItem ? pageItem.meetings[pageRef.meeting.meetingIndex] : undefined;
+    const byTime = pageMeeting ? momentByTime(pageMeeting, nowMs) : null;
+    const page =
+      pageRef && pageItem && pageMeeting && byTime
+        ? {entry: {item: itemRefOf(pageItem), meetingIndex: pageRef.meeting.meetingIndex, meeting: pageMeeting}, moment: pageRef.moment, byTime}
+        : null;
+    const options = owner ? optionsOf(owner, source, nowMs, currentTodo ? todoKeyOf(currentTodo) : null, pageRef) : null;
     const backTodo = state.back ? resolveTodoKey(state.back.key, source) : null;
     return {
       back: state.back && backTodo ? {todo: backTodo} : null,
@@ -54,6 +68,8 @@ export function useEngageView(state: EngageState, source: EngageSource | null): 
       focusNames: screen.kind === 'focusDone' ? focusItems('daily', source).map(item => item.name) : [],
       todayNext: todayNextMeeting(source, nowMs),
       nowMs,
+      page,
     };
-  }, [state, source]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `moments` recomputes when a moment is chosen (the choice is read from the store)
+  }, [state, source, moments]);
 }

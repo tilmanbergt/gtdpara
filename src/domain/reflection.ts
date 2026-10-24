@@ -71,6 +71,3 @@ export function reflectionOffered(meeting: Pick<Meeting, 'date' | 'time' | 'canc
 export function reflectionPillText(state: 'unknown' | 'none' | 'exists'): 'Reflect ›' | 'Reflection ›' {
   return state === 'exists' ? 'Reflection ›' : 'Reflect ›';
 }
-
-/** Engage's quiet line on a meeting's page once it is over (R9). */
-export const REFLECT_ON_MEETING_TEXT = 'Reflect on this meeting ›';

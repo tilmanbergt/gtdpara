@@ -44,7 +44,52 @@ export const ENGAGE_TEXT = {
   alsoHere: 'Also here:',
   overview: 'Overview ›',
   waitingRow: '· waiting',
+  doSomeday: 'Do someday',
+  waitingFor: 'w/f',
+  change: 'Change',
+  end: 'End',
+  markPrepped: 'Mark prepped',
+  markReviewed: 'Mark reviewed',
+  lastNote: 'Note from last meeting ›',
 } as const;
+
+/** The moment switch's labels (docs/dev/history/technical-design-meetings-0.21.md R1). */
+export const MOMENT_LABELS = {before: 'Before', during: 'During', after: 'After'} as const;
+
+/** The meeting line's left part (R1): "Sparring Mieke · today 10:00–11:00", "Offsite · Tue 14.10.". */
+export function momentLineText(meeting: Pick<Meeting, 'title' | 'date' | 'time' | 'endTime'>, today: string): string {
+  const day = meeting.date === today ? 'today' : formatDayHeader(meeting.date, today);
+  const time = meeting.time ? ` ${formatTime(meeting.time)}${meeting.endTime ? `–${formatTime(meeting.endTime)}` : ''}` : '';
+  return `${plainMeetingTitle(meeting)} · ${day}${time}`;
+}
+
+/** "+ Next sparring" (the thread's type, or the loop's kind). */
+export function nextMeetingButtonText(type: string): string {
+  return `+ Next ${type}`;
+}
+
+/** The Now box's Waiting For button (R15): "w/f Mieke", or "w/f" without a counterpart. */
+export function waitingForButtonText(counterpart: string | null): string {
+  return counterpart ? `w/f ${titleCaseSlug(counterpart)}` : ENGAGE_TEXT.waitingFor;
+}
+
+/** The Now box's link to the meeting a todo was agreed in (R15): "From Sparring Mieke · 14.10. ›". */
+export function nowMeetingText(key: string, today: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})\s+(.*)$/.exec(key.trim());
+  if (!m) return `From ${key.trim()} ›`;
+  const words = m[2].split(' ').filter(w => !w.includes('/'));
+  return `From ${words.join(' ') || m[2]} · ${formatDate(m[1], today)} ›`;
+}
+
+/** A loop owner's line (R16): "Loop since 2.10. · 3 open" (without a start date: "3 open"). */
+export function loopLineText(since: string | null, open: number, today: string): string {
+  return `${since ? `Loop since ${formatDate(since, today)} · ` : ''}${open} open`;
+}
+
+/** The loop line's meeting part (R16): "next: Thu 23.10. Workshop ›". */
+export function loopNextText(meeting: Pick<Meeting, 'title' | 'date'>, today: string): string {
+  return `next: ${formatDayHeader(meeting.date, today)} ${plainMeetingTitle(meeting)} ›`;
+}
 
 /** S8's signal. */
 export function nothingLeftText(ownerName: string): string {
@@ -52,8 +97,10 @@ export function nothingLeftText(ownerName: string): string {
 }
 
 /** The ack line's verb for each action (S5). */
-export function ackLabel(kind: 'done' | 'someday' | 'unnext' | 'next'): string {
+export function ackLabel(kind: 'done' | 'someday' | 'unnext' | 'next' | 'waiting'): string {
   switch (kind) {
+    case 'waiting':
+      return 'Waiting for:';
     case 'done':
       return 'Done:';
     case 'someday':
@@ -163,8 +210,9 @@ export function noNextPromptText(ownerName: string): string {
 
 /**
  * The Now box's details line (D11 follow-up): what is set of the due date
- * (or a Waiting For's counterpart and follow-up date) and the meeting the
- * todo was agreed in; empty when none is set. Dates through dateFormat.
+ * (or a Waiting For's counterpart and follow-up date); empty when none is
+ * set. The meeting the todo was agreed in is its own link
+ * (`nowMeetingText`). Dates through dateFormat.
  */
 export function nowDetailsText(task: Pick<Task, 'flowState' | 'waitingOn' | 'dueDate' | 'fields'>, today: string): string {
   const parts: string[] = [];
@@ -173,11 +221,6 @@ export function nowDetailsText(task: Pick<Task, 'flowState' | 'waitingOn' | 'due
     parts.push(`Waiting for${who ? ` ${who}` : ''}${task.dueDate ? ` · follow up ${formatDate(task.dueDate, today)}` : ''}`);
   } else if (task.dueDate) {
     parts.push(`Due ${formatDate(task.dueDate, today)}${task.dueDate < today ? ' - overdue' : ''}`);
-  }
-  const key = task.fields.meeting;
-  if (key) {
-    const m = /^(\d{4}-\d{2}-\d{2})\s+(.*)$/.exec(key.trim());
-    parts.push(m ? `Agreed in ${m[2]} · ${formatDayHeader(m[1], today)}` : `Agreed in ${key.trim()}`);
   }
   return parts.join('   ');
 }

@@ -18,12 +18,24 @@ or your project/area files are stored.
   one added) and **End**; nothing is ever deleted. Overviews list them in **Ahead**, count the
   ended ones in **Looking back** and show the **Agreements made** in a past meeting; a page lists
   its own under **◇ Agreements n ›**. See the help page "Agreements".
+- **Engage in the moment**: on a meeting's page Engage shows the meeting with a switch
+  **Before · During · After**, chosen by the time and changeable with a tap (kept while Kept GTD
+  runs). Under it a row offers what fits: **Mark prepped** and **Note from last meeting ›** before,
+  **+ Next sparring** when no next meeting is planned, **Reflect ›** and **Mark reviewed** after.
+  During and after the meeting, todos and agreements added in Engage record the meeting. New tabs
+  **Waiting** (what you wait for, with where it was agreed and **Done**) and **Agreements**
+  (Change, End). A loop shows since when it runs, its open todos and its next meeting.
 
 ### Changed
 - The project now lives at github.com/tilmanbergt/kept-gtd. Old gtdpara links lead there too.
 - Engage: the **Agreed** tab is now **From Thread** (**From Loop**, **From meetings** for a project
   or area): what came out of the owner's meetings, newest meeting first, with the todos done since
   struck through. "Also here" counts only Someday and Maybe.
+- Engage: "Reflect on this meeting ›" is now **Reflect ›** in the row under the meeting line.
+  "Next here" is hidden while it names the meeting whose page you are on.
+- Engage's Now box offers **w/f Mieke** (Waiting For on the thread's counterpart), **Do someday**
+  and **Remove #next**; the meeting the todo was agreed in opens that meeting's note. The owner's tag
+  that Quick Add adds now shows in its grey line and can be dropped for one entry.
 
 ### Upgrade notes
 - The first time you add an agreement to a Project or Area, its file gets a new `## Agreements`

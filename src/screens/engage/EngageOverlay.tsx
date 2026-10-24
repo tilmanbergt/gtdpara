@@ -1,18 +1,27 @@
 /**
  * The Engage panel over the note (docs/dev/history/technical-design-engage.md
  * §3.7): the frame - backdrop, panel, the body for `state.screen.kind` - and
- * the wiring of the hooks to the parts: "Next here" under the header, "Also
- * here" under the tabs and "Today next" above the footer
- * (docs/dev/history/technical-design-engage-in-context.md §2.8). Which screen follows which action is
- * the reducer's (domain/engageFlow.ts); every write goes through
- * ui/useEntryActions.ts, Close loop… through ui/useCloseLoop.ts.
+ * the wiring of the hooks to the parts: under the header the meeting line
+ * with its moment and the strip on a meeting's page
+ * (docs/dev/history/technical-design-meetings-0.21.md R1-R6), a loop's line
+ * (R16) and "Next here" (hidden while it names the page's meeting, and for a
+ * loop, whose line names it); "Also here" under the tabs and "Today next"
+ * above the footer (docs/dev/history/technical-design-engage-in-context.md
+ * §2.8). Which screen follows which action is the reducer's
+ * (domain/engageFlow.ts); every write goes through ui/useEntryActions.ts,
+ * agreements through ui/useAgreementActions.ts, Close loop… through
+ * ui/useCloseLoop.ts.
  */
 import React, {useEffect, useState} from 'react';
 import {LayoutChangeEvent, Text, View} from 'react-native';
 import {Destination} from '../../domain/destination';
 import {EngageAck, EngageExit, EngageRequest} from '../../domain/engageFlow';
 import {EngageFlowChoice} from '../../domain/engageOptions';
-import {EngageOwner, EngageSource, EngageTodoRef, ownerHomePath, todoKeyOf} from '../../domain/engageOwner';
+import {agreedInMeeting, EngageOwner, EngageSource, EngageTodoRef, MeetingRef, ownerHomePath, ownerMeetings as ownerMeetingsOf, ownerTodos, todoKeyOf} from '../../domain/engageOwner';
+import {loopSince} from '../../domain/loops';
+import {nextMeetingOf} from '../../domain/nextMeeting';
+import {threadOf} from '../../domain/threads';
+import {chooseMoment, momentKey} from '../../ui/meetingMomentStore';
 import {ENGAGE_TEXT, nextHereText, todayNextText} from '../../domain/engageText';
 import {meetingStartMs, todayIso} from '../../domain/meetingTime';
 import {setEngageCurrent} from '../../storage/engageCurrent';
@@ -41,7 +50,10 @@ import NowBox from './NowBox';
 import OptionTabs from './OptionTabs';
 import OwnerEmpty from './OwnerEmpty';
 import OwnerList from './OwnerList';
-import ReflectLine from './ReflectLine';
+import LoopLine from './LoopLine';
+import MomentLine from './MomentLine';
+import MomentStrip from './MomentStrip';
+import {useEngageQuickAdd} from './useEngageQuickAdd';
 import {useEngageFlow} from './useEngageFlow';
 import {useEngageGoTo} from './useEngageGoTo';
 import {useEngageExits} from './useEngageExits';
@@ -100,10 +112,13 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
 
   const titleOf = (todo: EngageTodoRef) => taskRowLayout(todo.task, ENGAGE_TEXT_WIDTH, 'flat').title;
 
+  /** The owner thread's counterpart, for w/f (R15); null for a loop or an item. */
+  const counterpart = owner?.kind === 'thread' ? threadOf(owner.tag)?.counterpart ?? null : null;
+
   const act = async (todo: EngageTodoRef, kind: EngageAck['kind'], wasCurrent: boolean) => {
     log(`${NAME}: action`, kind);
-    const flow: EngageFlowChoice = kind === 'someday' ? 'someday' : kind === 'next' ? 'next' : null;
-    const undo = kind === 'done' ? await actions.completeTask(todo) : await actions.setTaskFlow(todo, flow);
+    const flow: EngageFlowChoice = kind === 'someday' ? 'someday' : kind === 'next' ? 'next' : kind === 'waiting' ? 'waiting' : null;
+    const undo = kind === 'done' ? await actions.completeTask(todo) : await actions.setTaskFlow(todo, flow, counterpart);
     if (!undo) return;
     dispatch({type: 'acted', ack: {kind, text: titleOf(todo), key: todoKeyOf(todo), wasCurrent, undo}});
     if (wasCurrent) forget(owner);
@@ -144,22 +159,26 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
     });
   };
 
-  /** The meeting whose page this is (R10), for "Reflect on this meeting ›". */
-  const pageMeetingItem = state.pageMeeting && source ? source.items.find(i => i.path === state.pageMeeting?.itemPath) : undefined;
-  const pageMeeting = state.pageMeeting && pageMeetingItem ? pageMeetingItem.meetings[state.pageMeeting.meetingIndex] : undefined;
-  const reflectLine =
-    pageMeeting && pageMeetingItem && state.pageMeeting ? (
-      <ReflectLine
-        meeting={pageMeeting}
-        itemPath={pageMeetingItem.path}
-        onPress={() => reflect({item: pageMeetingItem, meetingIndex: state.pageMeeting?.meetingIndex ?? 0, meeting: pageMeeting})}
-        textColor={textColor}
-      />
-    ) : null;
-  /** The reflection comes to the front and the panel goes, like a todo's note. */
-  const reflect = async (entry: Parameters<typeof actions.reflection>[0]) => {
-    log(`${NAME}: action`, 'reflection');
-    if (await actions.reflection(entry)) onClose();
+  const page = view.page;
+  const quickAdd = useEngageQuickAdd({owner, source, options: view.options, page, actions});
+  const meetingAt = (ref: MeetingRef) => source?.items.find(i => i.path === ref.itemPath)?.meetings[ref.meetingIndex] ?? null;
+  /** The Now box's "From <meeting> ›": that meeting's note comes to the front and the panel goes. */
+  const openAgreedMeeting = (todo: EngageTodoRef) => {
+    const entry = source ? agreedInMeeting(todo.item.path, todo.task, source) : null;
+    if (!entry) return undefined;
+    return () => exits.openNextMeeting(entry);
+  };
+  /** The Agreements tab's Change: Quick Add opens prefilled (R22). */
+  const changeAgreement = (ref: Parameters<typeof quickAdd.agreements.change>[0]) => {
+    log(`${NAME}: action`, 'agreementChange');
+    quickAdd.agreements.change(ref);
+    dispatch({type: 'expandQuickAdd'});
+  };
+  /** "+ Next <type>" (strip or loop line): the Meeting tab with the seed. */
+  const seedNextMeeting = (fields: Parameters<typeof quickAdd.seedNextMeeting>[0], itemPath: string) => {
+    log(`${NAME}: action`, 'nextMeeting');
+    quickAdd.seedNextMeeting(fields, itemPath);
+    dispatch({type: 'expandQuickAdd'});
   };
 
   const homeName = (o: EngageOwner) => source?.items.find(i => i.path === ownerHomePath(o))?.name ?? '';
@@ -202,7 +221,6 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
               borderColor={borderColor}
             />
             {owner ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
-            {reflectLine}
           </>
         );
       case 'quickAdd':
@@ -222,6 +240,9 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
                 onDone={() => act(nowTodo, 'done', isCurrent)}
                 onRemoveNext={() => act(nowTodo, 'unnext', isCurrent)}
                 onSomeday={() => act(nowTodo, 'someday', isCurrent)}
+                counterpart={counterpart}
+                onWaiting={() => act(nowTodo, 'waiting', isCurrent)}
+                onOpenMeeting={openAgreedMeeting(nowTodo)}
                 onNote={() => openNote(nowTodo)}
                 onFile={openFile}
                 textColor={textColor}
@@ -244,7 +265,12 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
                 onMakeNext={todo => act(todo, 'next', false)}
                 onSomeday={todo => act(todo, 'someday', false)}
                 from={view.options?.from ?? []}
+                waiting={view.options?.waiting ?? []}
+                agreements={view.options?.agreements ?? []}
+                meetingAt={meetingAt}
                 onDone={todo => act(todo, 'done', false)}
+                onChangeAgreement={changeAgreement}
+                onEndAgreement={ref => quickAdd.agreements.end(ref)}
                 textColor={textColor}
                 borderColor={borderColor}
               />
@@ -258,7 +284,6 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
               />
             ) : null}
             {screen.kind === 'options' && tab === 'plan' ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
-            {screen.kind === 'options' ? reflectLine : null}
             {goTo && screen.kind === 'options' ? <GoToLine fileName={goTo.fileName} onPress={() => openGoTo(goTo.path)} textColor={textColor} /> : null}
             {destination ? (
               <CollapsedQuickAdd
@@ -267,11 +292,13 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
                 expanded={screen.kind === 'quickAdd'}
                 onExpand={() => press('quickAdd', () => dispatch({type: 'expandQuickAdd'}))}
                 onCollapse={() => press('quickAddCancel', () => dispatch({type: 'collapseQuickAdd'}))}
-                destination={destination}
-                ownerTag={owner.kind === 'item' ? null : owner.tag}
+                destination={quickAdd.seedDestination ?? destination}
                 layoutKey="engage"
-                onAddTask={actions.addTask}
-                onAddMeeting={actions.addMeeting}
+                onAddTask={quickAdd.onAddTask}
+                onAddMeeting={quickAdd.onAddMeeting}
+                provenance={quickAdd.provenance}
+                meetingSeed={quickAdd.meetingSeed}
+                agreements={{handlers: quickAdd.agreements.handlers, editTarget: quickAdd.agreements.editTarget, onCancelEdit: actions.edit.cancel}}
                 textColor={textColor}
                 borderColor={borderColor}
                 placeholderColor={placeholderColor}
@@ -294,8 +321,14 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
   const onFocusScreen = screen.kind === 'selectFocus';
   // The meeting lines (E8, E9) on the owner's screens; the two merge when they name the same meeting.
   const ownerScreen = screen.kind === 'options' || screen.kind === 'ownerEmpty';
-  const nextMeeting = ownerScreen ? view.options?.nextMeeting ?? null : null;
+  const pageEntry = ownerScreen && owner ? page?.entry ?? null : null;
+  const optionsNext = ownerScreen ? view.options?.nextMeeting ?? null : null;
+  // Next here hides while it names the page's meeting (R6), and for a loop, whose line names it (R16).
+  const isPageMeeting = !!optionsNext && !!pageEntry && optionsNext.item.path === pageEntry.item.path && optionsNext.meetingIndex === pageEntry.meetingIndex;
+  const nextMeeting = optionsNext && !isPageMeeting && owner?.kind !== 'loop' ? optionsNext : null;
   const todayNext = ownerScreen ? view.todayNext : null;
+  const loopItem = owner?.kind === 'loop' && source ? source.items.find(i => i.path === owner.itemPath) : undefined;
+  const loopNext = owner?.kind === 'loop' && source && loopItem && !optionsNext ? nextMeetingOf(ownerMeetingsOf(owner, source), owner.tag, todayIso()) : null;
   const merged = !!nextMeeting && !!todayNext && nextMeeting.item.path === todayNext.item.path && nextMeeting.meetingIndex === todayNext.meetingIndex;
 
   return (
@@ -309,6 +342,38 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
             onBack={onFocusScreen && owner ? () => dispatch({type: 'back'}) : undefined}
             textColor={textColor}
           />
+          {pageEntry && page && owner && source ? (
+            <>
+              <MomentLine
+                meeting={pageEntry.meeting}
+                moment={page.moment}
+                onChoose={moment => press('moment', () => chooseMoment(momentKey(pageEntry.item.path, pageEntry.meeting), moment, page.byTime))}
+                textColor={textColor}
+              />
+              <MomentStrip
+                owner={owner}
+                source={source}
+                page={pageEntry}
+                moment={page.moment}
+                actions={actions}
+                onNextMeeting={seedNextMeeting}
+                onClose={onClose}
+                textColor={textColor}
+                borderColor={borderColor}
+              />
+            </>
+          ) : null}
+          {ownerScreen && owner?.kind === 'loop' && loopItem && source ? (
+            <LoopLine
+              since={loopSince(loopItem, owner.tag)}
+              open={ownerTodos(owner, source).length}
+              nextMeeting={optionsNext?.meeting ?? null}
+              onOpenNext={() => optionsNext && exits.openNextMeeting(optionsNext)}
+              nextKind={loopNext ? owner.tag.split('/')[0] : null}
+              onAddNext={() => loopNext && seedNextMeeting(loopNext.seed, loopNext.base.item.path)}
+              textColor={textColor}
+            />
+          ) : null}
           {nextMeeting ? (
             <MeetingLine
               variant="next"

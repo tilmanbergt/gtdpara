@@ -53,7 +53,7 @@ Tap the **Reflect** icon on the selected meeting's card. The first time, the sta
 - **Finding it**: its keyword is `reflection` with the meeting's date and title (for example `reflection 2026-10-14 Sparring Mieke`), plus the meeting's tags. When you rename the meeting, the keyword follows the next time you open the page from Kept.
 - **Part of the meeting**: on the reflection page, Engage and lasso capture treat it as the meeting's page - todos you capture there were agreed in that meeting, and Engage opens on **From Thread** (see [Engage](engage.md)).
 
-You also reach it from the Review step **Meetings to close out**, from a past meeting in a thread overview, and from Engage on the meeting's page ("Reflect on this meeting ›").
+You also reach it from the Review step **Meetings to close out**, from a past meeting in a thread overview, and from Engage on the meeting's page: **Reflect ›** after the meeting (see [Engage](engage.md)).
 
 ## Cancelling and repeating
 

@@ -240,9 +240,9 @@ scenario('Engage on the meeting\'s page offers the reflection; on the reflection
     device().sdk.putNote(NOTEBOOK, [{keywords: [d1, MEETING_KW]}, {keywords: []}, {keywords: [d2, 'Prepare the workshop #sparring/mieke']}]);
   });
   when('I open Engage on the meeting\'s page', () => openEngage({fromNote: NOTEBOOK, page: 0, settings: sparringSettings()}));
-  then('it offers "Reflect on this meeting ›"', () => expectShows('Reflect on this meeting ›'));
+  then('the strip offers "Reflect ›" (the meeting is over: After)', () => expectShows('Reflect ›'));
   when('I tap it and confirm', async () => {
-    await tap('Reflect on this meeting ›');
+    await tap('Reflect ›');
     await tap('Add page');
   });
   then('the reflection page comes after the hand-added page and before the todo\'s page, and opens', () => {
@@ -257,5 +257,8 @@ scenario('Engage on the meeting\'s page offers the reflection; on the reflection
     // The row draws the title and its #next label as one text: match the title at its start.
     expectShows(/^Send Mieke the role canvas/);
   });
-  and('it doesn\'t offer to reflect again', () => expectNotShows('Reflect on this meeting ›'));
+  and('it doesn\'t offer to reflect again', () => {
+    expectNotShows('Reflect ›');
+    expectNotShows('Reflection ›');
+  });
 });

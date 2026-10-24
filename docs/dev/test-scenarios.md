@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-52 scenarios.
+62 scenarios.
 
 ## Agreements
 
@@ -113,11 +113,116 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 
 ## Engage
 
+### Engage before the meeting: Before is chosen, the strip offers prep and the last note, From Thread shows the last session
+
+- **Given** it is 09:30 and today's sparring with Mieke is at 10:00; on 14.10. "Draft feedback" and "Org chart from Mieke" were agreed and "Send role canvas" is done
+- **When** I open Engage on today's meeting page
+- **Then** the meeting line shows the meeting with Before chosen
+- **And** the strip offers Mark prepped and Note from last meeting ›
+- **And** From Thread is open with the group of 14.10.: the two agreed todos, the done one struck last
+- **And** "Next here" does not repeat today's meeting
+- **When** I tap Mark prepped
+- **Then** today's meeting line in area.txt carries #prepped and the button is gone
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### During the meeting: a todo and an agreement carry the meeting and the thread tag
+
+- **Given** it is 10:20, during today's sparring
+- **When** I open Engage on the meeting page, open Quick Add and add "Book follow-up with HR"
+- **Then** the todo records the meeting and has the thread tag
+- **And** From Thread shows today's group on top, with it
+- **When** at 10:30 I add on the Agreement tab "Feedback only in our 1:1s", valid till end of year
+- **Then** area.txt has it under ## Agreements with the meeting, today and the end of the year
+- **And** the Agreements tab lists it, and From Thread lists it in today's group
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### Ended early: After is chosen by hand and kept when Engage opens again; after the end it is After by time
+
+- **Given** it is 10:40, during today's sparring
+- **When** I open Engage on the meeting page and tap After
+- **Then** the strip shows Reflect › and Mark reviewed
+- **When** I close Engage and open it again on the page
+- **Then** After is still chosen
+- **When** it is 11:01 and I open Engage again
+- **Then** the moment is After without a tap
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### Done rows follow the moment: Before the last session's, During both, After only today's
+
+- **Given** "Send role canvas" (from 14.10.) is done, and "Book follow-up" was agreed today and is done
+- **When** I open Engage on the meeting page at 09:30
+- **Then** only 14.10.'s done row shows
+- **When** I choose During
+- **Then** both show
+- **When** I choose After
+- **Then** only today's shows
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### The Waiting tab lists what I wait for from Mieke, where it was agreed, with Done
+
+- **Given** "Org chart from Mieke #wf/mieke" was agreed on 14.10. and "Budget numbers #wf/mieke" not in a meeting
+- **When** I open Engage on the meeting page and choose Waiting
+- **Then** it lists both, the first "from 14.10."; "Also here" counts no waiting
+- **When** I tap Done on the first
+- **Then** it is ticked in the file
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### + Next sparring only when no session follows today's
+
+- **Given** it is 10:20 during today's sparring, and no sparring with Mieke is planned after it
+- **When** I open Engage on the meeting page
+- **Then** the strip offers + Next sparring
+- **When** I tap it
+- **Then** Quick Add's Meeting tab holds the next session, ten days on
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### No + Next when the next session is planned already
+
+- **Given** it is 10:20 during today's sparring, and a sparring is planned on 6.11.
+- **When** I open Engage on the meeting page
+- **Then** there is no + Next
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### Change an agreement from the Agreements tab: the old one ends, the new one is added
+
+- **Given** today's sparring made the agreement "Feedback only in our 1:1s"
+- **When** I open Engage on the meeting page, tap the agreement on the Agreements tab and Change, then Cancel
+- **Then** the file is unchanged
+- **When** I change it to "Feedback only in our 1:1s, except urgent" and add it
+- **Then** the old line is ended today and the new one added with today as created
+- **And** the tab lists only the new one
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### On a todo's page, w/f Mieke turns #next into Waiting For, with Undo
+
+- **Given** area "Coaching" has "Send Mieke the role canvas #next #sparring/mieke" with its own note
+- **When** I open Engage on the todo's note and tap w/f Mieke
+- **Then** the line carries #wf/mieke instead of #next
+- **And** the ack offers Undo, and the todo is on the Waiting tab
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### An Inbox meeting's page: no Agreement tab, agreements are never kept in the Inbox
+
+- **Given** the Inbox has a meeting "Call with Sven" today with its own note
+- **When** I open Engage on its page and open Quick Add if offered
+- **Then** Quick Add has no Agreement tab
+
+Test: `__tests__/scenarios/engageMoment.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
 ### Engage on the meeting's page offers the reflection; on the reflection page it opens on what came out of the thread's meetings
 
 - **Given** the todo "Send Mieke the role canvas" was agreed in the sparring session three days ago; in the notebook the session's page is followed by a page added by hand, then the page of the todo "Prepare the workshop"
 - **When** I open Engage on the meeting's page
-- **Then** it offers "Reflect on this meeting ›"
+- **Then** the strip offers "Reflect ›" (the meeting is over: After)
 - **When** I tap it and confirm
 - **Then** the reflection page comes after the hand-added page and before the todo's page, and opens
 - **When** I open Engage on the reflection page

@@ -151,6 +151,18 @@ export function loopMembers(
   };
 }
 
+/**
+ * Since when a loop runs (docs/dev/history/technical-design-meetings-0.21.md
+ * R16): the earliest of its meetings' dates and its todos' created dates
+ * (a `## Loops` line has no date of its own for that); null when none is
+ * known.
+ */
+export function loopSince(item: {tasks: readonly Task[]; meetings: readonly Meeting[]}, loopTag: string): string | null {
+  const {tasks, meetings} = loopMembers(item, loopTag);
+  const dates = [...meetings.map(m => m.date), ...tasks.map(t => t.fields.created).filter((d): d is string => !!d)];
+  return dates.length > 0 ? dates.reduce((a, b) => (b < a ? b : a)) : null;
+}
+
 /** What keeps a loop from being closed (§4.9): its open todos and its meetings that are not over yet. */
 export function closeBlockers(
   item: {tasks: readonly Task[]; meetings: readonly Meeting[]},

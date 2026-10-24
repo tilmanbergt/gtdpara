@@ -36,7 +36,7 @@
 import {AgreementRef, lensAgreements} from '../domain/agreementOwner';
 import {isSomedayMaybe} from '../domain/flowState';
 import {meetingEndMs, todayIso} from '../domain/meetingTime';
-import {daysBetween, MeetingSeedFields, nextMeetingSeed} from '../domain/nextMeeting';
+import {daysBetween, MeetingSeedFields, nextMeetingOf} from '../domain/nextMeeting';
 import {meetingKey} from '../domain/provenance';
 import {
   LensItemRef,
@@ -46,7 +46,7 @@ import {
   ThreadLensContext,
   ThreadRelation,
 } from '../domain/threadLens';
-import {belongsToThread, isCounterpartType, ThreadLens, ThreadRef} from '../domain/threads';
+import {isCounterpartType, ThreadLens, ThreadRef} from '../domain/threads';
 import {Meeting, Task} from '../domain/types';
 import {CachedItem} from './dataCache';
 
@@ -273,14 +273,8 @@ export function nextMeetingOffers(overview: ThreadOverview, today: string): Next
   const entries = [...overview.ahead.meetings, ...overview.past.map(p => p.entry)];
   const out: NextMeetingOffer[] = [];
   for (const type of types) {
-    const tag = `${type}/${overview.thread.counterpart}`;
-    const own = entries.filter(e => belongsToThread(e.meeting.tags, {type, counterpart: overview.thread.counterpart, tag}));
-    const seed = nextMeetingSeed(own.map(e => e.meeting), today);
-    const base = own.reduce<ThreadMeetingEntry | null>(
-      (latest, e) => (!latest || startKey(e.meeting) > startKey(latest.meeting) ? e : latest),
-      null,
-    );
-    if (seed && base) out.push({type, seed, item: base.item});
+    const next = nextMeetingOf(entries, `${type}/${overview.thread.counterpart}`, today);
+    if (next) out.push({type, seed: next.seed, item: next.base.item});
   }
   return out;
 }

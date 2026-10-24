@@ -316,6 +316,20 @@ export function threadOfTodo(itemPath: string, task: Pick<Task, 'tags' | 'fields
   return thread ? {kind: 'thread', scopeOwnerPath, tag: thread.tag} : null;
 }
 
+/**
+ * The meeting a todo was agreed in, searched in its item's scope first
+ * (domain/provenance.ts); null without one or when it doesn't resolve. The
+ * Now box links it (docs/dev/history/technical-design-meetings-0.21.md R15).
+ */
+export function agreedInMeeting(itemPath: string, task: Pick<Task, 'fields'>, source: EngageSource): MeetingEntryRef | null {
+  if (!task.fields.meeting) return null;
+  const scope = scopeOf(itemPath, source.items, source.inbox?.path ?? null);
+  const sources = lensSourcesOf(source);
+  const match = resolveProvenance(task, sources.map(s => ({path: s.ref.path, meetings: s.meetings})), scope);
+  const ref = match ? sources.find(s => s.ref.path === match.path)?.ref : undefined;
+  return match && ref ? {item: ref, meetingIndex: match.meetingIndex, meeting: match.meeting} : null;
+}
+
 /** The owner of a todo (E4): its active loop, else its thread, else its item. */
 export function ownerOfTodo(ref: {itemPath: string; task: Pick<Task, 'tags' | 'fields'>}, source: EngageSource): EngageOwner | null {
   const item = itemAt(source, ref.itemPath);

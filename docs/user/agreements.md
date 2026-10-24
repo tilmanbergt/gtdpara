@@ -16,13 +16,13 @@ It is written into the file that owns this place: for a thread the area's `area.
 
 ## Adding one
 
-Quick Add has a tab **Agreement** wherever it knows who the agreement is with: in a thread or loop overview and on a project's or area's page.
+Quick Add has a tab **Agreement** wherever it knows who the agreement is with: in a thread or loop overview, on a project's or area's page, and in [Engage](engage.md).
 
 1. Choose **Agreement** and write the words. Tags work as for todos.
 2. Optionally tap **valid till**. A strip hovers over the tabs: **none**, **+1 m**, **+3 m**, **end of year**, and **…** to type another day. **✕** puts it away.
 3. Tap **+ Add**. The status line says where it went, for example "Agreement added to Coaching".
 
-In a thread overview the agreement gets the thread's tag and the meeting selected in **Looking back**, the same way a new todo does; the grey line in Quick Add shows both, each with its ✕. In a loop overview it gets the loop's tag.
+In a thread overview the agreement gets the thread's tag and the meeting selected in **Looking back**, the same way a new todo does; the grey line in Quick Add shows both, each with its ✕. In a loop overview it gets the loop's tag. In Engage on a meeting's page, during or after the meeting, it records that meeting.
 
 ## The card
 
@@ -44,6 +44,7 @@ Agreements are never deleted: the old wording stays in your file.
 
 ## Where agreements show
 
+- **Engage**: the tab **Agreements** lists the owner's active ones; a tap shows **Change** and **End** in the row. **From Thread** lists the agreements made in each meeting.
 - **Thread and loop overviews**: a block **Agreements** in **Ahead**, after **Waiting for**. In **Looking back** a row such as **2 agreements ended ›** lists the ended ones on the right, and a past meeting lists the **Agreements made** in it.
 - **A project's or area's page**: when it has agreements of its own, its todo list ends with **◇ Agreements 2 ›**. Tap it to list them in that column; **‹ Todos** goes back.
 

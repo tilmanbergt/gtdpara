@@ -669,7 +669,8 @@ Reflection page gets the standard one once); 0.14's Tag Rules are migrated once
   without a page gets it first through `ensureMeetingNote`, the planning half of
   `openOrCreateMeetingNote`) and opens it; `ui/useReflectionLookup.ts` gives the label. Entry
   points: the meeting card, Review's close-out pill, the thread/loop overview's Looking back,
-  and Engage's `ReflectLine` on the meeting's page. Writing it never ticks `#reviewed`.
+  and Engage's moment strip on the meeting's page (`screens/engage/MomentStrip.tsx`, After).
+  Writing it never ticks `#reviewed`.
 - **Since last time.** A Meeting page can place the `sinceLast` piece (never in a page's
   defaults): `storage/sinceLast.ts`'s `buildSinceLast` takes the meeting's first thread tag, the
   thread lens with the meeting's item as owner, and the previous meeting of the thread, and lists
@@ -767,19 +768,29 @@ a thread (`domain/engageOwner.ts`) - holding what its overview holds: a thread t
 (`domain/threadLens.ts`), a loop `isLoopMember`, a Project/Area everything but its active loops'
 members; each todo carries its relation (owe / waiting / relevant) and the meeting it was agreed
 in. A todo's owner is its active loop, else its thread (`threadOfTodo`: its own thread tag, else
-the thread of the meeting it was agreed in), else its item. The panel shows "Next here" (the
-owner's next meeting, a tap opens its note), the Now box (the current todo, else the owner's only
-`#next`: details, Done, Remove #next or Someday, Note ›/+ Note, File ›), up to three tabs - Agreed
-(the todos agreed in the note page's meeting, else in a thread's or loop's latest meeting that is
-over; only while it has rows), Next (the other `#next` todos) and Plan (no flow state), "I owe"
-first for threads and loops, five rows per page (`domain/engageOptions.ts`) - then "Also here"
-(the waiting and Someday/Maybe counts, links to Review's "Someday / Maybe" and to the overview)
-and, above the footer, "Today next" (the next timed meeting today anywhere, computed with the
-data, never by a timer; merged into Next here when it is the same meeting). One reducer
+the thread of the meeting it was agreed in), else its item. On a meeting's page the panel shows
+the meeting line with its moment - Before / During / After by time (`domain/meetingMoment.ts`'s
+`momentByTime`; After for REVIEW_LOOKBACK_DAYS), or as chosen, kept per meeting while the plugin
+runs (`ui/meetingMomentStore.ts`) - and the strip (`stripActions`: Mark prepped, Note from last
+meeting, + Next, Reflect, Mark reviewed; at most three). A loop shows its line (since, open todos,
+next meeting or + Next). "Next here" names the owner's next meeting (a tap opens its note), hidden
+while it is the page's meeting and for a loop. The Now box (the current todo, else the owner's
+only `#next`: details, the meeting it was agreed in as a link to its note, Done, w/f <counterpart>,
+Do someday, Remove #next, Note ›/+ Note, File ›), then the tabs (`domain/engageOptions.ts`) - From
+(what came out of the owner's meetings that have started, by meeting, newest first: open agreed
+todos, agreements made, done todos of the reference meetings by moment; a Project/Area only on a
+meeting's page), Next (the other `#next` todos), Plan (no flow state), Waiting (open Waiting For,
+a thread's by the lens) and Agreements (`domain/agreementOwner.ts`), "I owe" first for threads and
+loops in Next and Plan, five rows per page - then "Also here" (the Someday/Maybe count, links to
+Review's "Someday / Maybe" and to the overview) and, above the footer, "Today next" (the next
+timed meeting today anywhere, computed with the data, never by a timer; merged into Next here
+when it is the same meeting). Engage's Quick Add records the page's meeting during and after it,
+and shows the owner's tag in its grey line (`screens/engage/useEngageQuickAdd.ts`). One reducer
 (`domain/engageFlow.ts`) decides every screen and tab: options, owner empty, select focus
 (today's or this week's owners in ring order), all done in today's focus, Quick Add; the note
-page's meeting (`pageMeeting`) opens Agreed and belongs to the note's owner only. Writes go
-through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the current todo is
+page's meeting (`pageMeeting`) opens From when it has rows and belongs to the note's owner only.
+Writes go through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`,
+`toggleTracking`), agreements through `ui/useAgreementActions.ts`; the current todo is
 per-profile app state in `settings.engageCurrent` (`storage/engageCurrent.ts`), found again by
 index and text. Opening follows the note (`decideOpening`): "Engage ›" > the note page's todo > the
 note's owner > the stored todo's owner, with "Continue with <todo>" above the footer back to the stored todo of another owner - offered once: that opening stores what the panel shows for the note's owner (its next action, or nothing) in its place. The panel leaves to a place in
@@ -789,7 +800,8 @@ largest height while open, because the A5 X does not reliably redraw the note wh
 shrank. After a Done on Daily, the Current tab or an overview, `ui/useEngagePrompt.ts` offers
 the owner's plan in the status slot when its last `#next` was done. Detail:
 `docs/dev/history/technical-design-engage.md`,
-`docs/dev/history/technical-design-engage-in-context.md`.
+`docs/dev/history/technical-design-engage-in-context.md`,
+`docs/dev/history/technical-design-meetings-0.21.md`.
 
 **Week and Month** share `screens/usePlanningScreen.ts` (loading and every meeting, focus and
 goal action). Both have Quick Add (to the Inbox) on the right, then either the shared day panel

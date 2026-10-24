@@ -152,6 +152,25 @@ beforeEach(() => {
 });
 
 describe('EngageOverlay screens', () => {
+  it('a loop\'s line (docs/dev/history/technical-design-meetings-0.21.md R16): since, open todos, + Next without a meeting ahead', async () => {
+    area('Coaching', [
+      '## Tasks',
+      '- [ ] Book room #workshop/offsite #next [created:: 2026-10-02]',
+      '- [ ] Plan dinner #workshop/offsite [created:: 2026-10-05]',
+      '',
+      '## Meetings',
+      '- 2026-10-09 10:00-11:00 Kickoff #workshop/offsite',
+      '',
+      '## Loops',
+      '- workshop/offsite: active',
+    ]);
+    const {r} = await open({via: 'ownerPage', owner: {kind: 'loop', itemPath: COACHING, tag: 'workshop/offsite'}});
+    expect(texts(r).some(t => /^Loop since 2\.10\.(2026)? · 2 open/.test(t))).toBe(true);
+    expect(texts(r)).toContain('+ Next workshop');
+    expect(texts(r).some(t => t.startsWith('Next here'))).toBe(false);
+    act(() => r.unmount());
+  });
+
   it('S4/S5: the note\'s todo is worked on; the other #next under Next; Done shows the ack line, Undo brings it back', async () => {
     area('Coaching', [
       '## Tasks',
@@ -199,7 +218,9 @@ describe('EngageOverlay screens', () => {
     mockNote.path = `${COACHING}/Todos/Send offer.note`;
     const {r, onClose} = await open({via: 'button'});
     expect(texts(r)).toContain('Working on');
-    expect(texts(r).some(t => t.startsWith('Waiting for Anna Meier · follow up ') && t.includes('Agreed in Retro alpha'))).toBe(true);
+    expect(texts(r).some(t => t.startsWith('Waiting for Anna Meier · follow up '))).toBe(true);
+    // The meeting it was agreed in is its own line (docs/dev/history/technical-design-meetings-0.21.md R15).
+    expect(texts(r).some(t => /^From Retro alpha · 7\.10\.(2026)? ›$/.test(t))).toBe(true);
     expect(texts(r)).toContain('File: Offer v2.pdf ›');
 
     mockNoteOpen.cancelled = true;
@@ -465,7 +486,7 @@ describe('EngageOverlay in context (docs/dev/history/technical-design-engage-in-
     expect(mockFiles[`${COACHING}/area.txt`]).toContain('- [ ] Draft feedback #next');
     expect(texts(r)).toEqual(expect.arrayContaining(['From Thread 3', 'Next 3']));
     await press(r, 'Next 3');
-    const rows = r.root.findAll(n => n.props.header === '' && Array.isArray(n.props.rows))[0].props.rows.map((t: {task: {text: string}}) => t.task.text);
+    const rows = r.root.findAll(n => n.props.header === '' && Array.isArray(n.props.rows))[0].props.rows.map((row: {todo: {task: {text: string}}}) => row.todo.task.text);
     expect(rows).toEqual(['Draft feedback #next', 'Book follow-up #next', 'Read article #mieke #next']);
     act(() => r.unmount());
   });

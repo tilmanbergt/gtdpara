@@ -77,6 +77,10 @@ describe('From Thread (R10)', () => {
     ]);
   });
 
+  it('a page meeting chosen During or After counts as started, before its start', () => {
+    expect(shape(fromAt(at(9, 30), 'during'))[0]).toBe(`${TODAY}: ◇ Feedback only in our 1:1s #sparring/mieke | ✓ Book follow-up with HR`);
+  });
+
   it('the current todo and Someday/Maybe are left out; row count without captions', () => {
     const current = {itemPath: coaching.path, taskText: 'Draft feedback', taskIndex: 0};
     const groups = optionsOf(mieke, source, at(9, 30), current, {meeting: todayRef, moment: 'before'}).from;

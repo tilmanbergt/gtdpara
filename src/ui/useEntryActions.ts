@@ -18,6 +18,7 @@ import {EngageFlowChoice, engageFlowText} from '../domain/engageOptions';
 import {UndoRecord} from '../domain/engageFlow';
 import {ENGAGE_NOTICE} from '../domain/engageText';
 import {todayIso} from '../domain/meetingTime';
+import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {GtdParaSettings} from '../domain/settings';
 import {withTaskCancelled, withTaskDone, withTaskText} from '../domain/taskEdit';
 import {Meeting, Task} from '../domain/types';
@@ -131,9 +132,16 @@ export function useEntryActions(name = 'ThreadOverview') {
     return undo;
   };
 
-  /** Engage's pick, Remove #next and Someday (docs/dev/history/technical-design-engage.md §3.6). */
-  const setTaskFlow = (entry: ThreadTaskEntry, flow: EngageFlowChoice) =>
-    changeTask(entry, task => withTaskText(task, engageFlowText(task.text, flow)));
+  /** Engage's pick, Remove #next, Someday and Waiting For (docs/dev/history/technical-design-engage.md §3.6). */
+  const setTaskFlow = (entry: ThreadTaskEntry, flow: EngageFlowChoice, counterpart: string | null = null) =>
+    changeTask(entry, task => withTaskText(task, engageFlowText(task.text, flow, counterpart)));
+
+  /** Ticks (or unticks) a meeting's prep or review checkpoint - Engage's strip (docs/dev/history/technical-design-meetings-0.21.md R4). */
+  const toggleTracking = (entry: MeetingEntryRef & {meeting: Meeting}, kind: MeetingTrackingKind) =>
+    rowAction.run(async () => {
+      await saveMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));
+      requestEinkRefresh();
+    });
 
   /** Engage's Done: ticks the task done and keeps what Undo needs. */
   const completeTask = (entry: ThreadTaskEntry) => changeTask(entry, task => withTaskDone(task, true, todayIso()));
@@ -326,6 +334,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     addMeeting,
     toggleDone,
     setTaskFlow,
+    toggleTracking,
     completeTask,
     undoTask,
     commitTaskEdit,

@@ -9,7 +9,13 @@ import {
   nextHereText,
   noNextPromptText,
   nothingLeftText,
+  loopLineText,
+  loopNextText,
+  momentLineText,
+  nextMeetingButtonText,
   nowDetailsText,
+  nowMeetingText,
+  waitingForButtonText,
   ownerLineText,
   promptTodoLabel,
   tabLabel,
@@ -30,7 +36,15 @@ describe('engageText', () => {
   it('signals and acks', () => {
     expect(nothingLeftText('launch')).toBe('Nothing left in launch.');
     expect(noNextPromptText('Website')).toBe('Website has no next action. Pick one:');
-    expect(['done', 'someday', 'unnext', 'next'].map(k => ackLabel(k as 'done'))).toEqual(['Done:', 'Someday:', 'No longer #next:', 'Now #next:']);
+    expect(['done', 'someday', 'unnext', 'next', 'waiting'].map(k => ackLabel(k as 'done'))).toEqual(['Done:', 'Someday:', 'No longer #next:', 'Now #next:', 'Waiting for:']);
+    expect(waitingForButtonText('mieke')).toBe('w/f Mieke');
+    expect(waitingForButtonText(null)).toBe('w/f');
+    expect(momentLineText({title: 'Sparring Mieke #sparring/mieke', date: '2026-10-24', time: '10:00', endTime: '11:00'}, '2026-10-24')).toBe('Sparring Mieke · today 10:00–11:00');
+    expect(momentLineText({title: 'Offsite', date: '2026-10-14', time: '', endTime: ''}, '2026-10-24')).toBe('Offsite · Wed 14.10.');
+    expect(loopLineText('2026-10-02', 3, '2026-10-24')).toBe('Loop since 2.10. · 3 open');
+    expect(loopLineText(null, 0, '2026-10-24')).toBe('0 open');
+    expect(loopNextText({title: 'Workshop #workshop/offsite', date: '2026-10-29'}, '2026-10-24')).toBe('next: Thu 29.10. Workshop ›');
+    expect(nextMeetingButtonText('sparring')).toBe('+ Next sparring');
     expect(tabLabel('next', 2)).toBe('Next 2');
     expect(tabLabel('plan', 0)).toBe('Plan 0');
   });
@@ -43,7 +57,9 @@ describe('engageText', () => {
     const wf = task('Offer #wf/anna-meier', {dueDate: '2026-10-19'});
     expect(nowDetailsText(wf, today)).toMatch(/^Waiting for Anna Meier · follow up .*19\.10\./);
     const agreed = task('Send minutes', {fields: {...task('x').fields, meeting: '2026-10-07 Retro alpha'}});
-    expect(nowDetailsText(agreed, today)).toMatch(/^Agreed in Retro alpha · /);
+    expect(nowDetailsText(agreed, today)).toBe('');
+    expect(nowMeetingText('2026-10-07 Retro alpha retro/alpha', today)).toBe('From Retro alpha · 7.10. ›');
+    expect(nowMeetingText('odd', today)).toBe('From odd ›');
   });
   it('linked file button: the file name, without a page link', () => {
     expect(linkedFileButtonText('3 Resources/Garden/Plan v2.pdf')).toBe('File: Plan v2.pdf ›');

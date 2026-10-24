@@ -8,6 +8,7 @@
  */
 import {useEffect, useMemo, useReducer, useState} from 'react';
 import {decideOpening, EngageOpening, EngageSource, resolveTodoKey, todoKeyOf} from '../../domain/engageOwner';
+import {chosenMomentAt, useMomentChoices} from '../../ui/meetingMomentStore';
 import {effectiveFocus, engageListsOf, engagePageOf, fromRowCount, optionsOf, ownersLeft} from '../../domain/engageOptions';
 import {engageFlow, EngageRequest, EngageState, INITIAL_ENGAGE_STATE} from '../../domain/engageFlow';
 import {GtdParaSettings, resolvePaths} from '../../domain/settings';
@@ -92,13 +93,15 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
   }, [opened, settings, items, inbox]);
 
   const {owner, current, pageMeeting} = state;
+  const moments = useMomentChoices();
   useEffect(() => {
     if (!source) return;
     const nowMs = Date.now();
     const currentRef = current ? resolveTodoKey(current, source) : null;
     const currentKey = currentRef ? todoKeyOf(currentRef) : null;
     if (current && !currentRef) setEngageCurrent(null, null).catch(e => logError('EngageOverlay: forgetting the current todo failed', errorMessage(e)));
-    const options = owner ? optionsOf(owner, source, nowMs, currentKey, engagePageOf(pageMeeting, source, nowMs)) : null;
+    const page = engagePageOf(pageMeeting, source, nowMs, chosenMomentAt(pageMeeting, source));
+    const options = owner ? optionsOf(owner, source, nowMs, currentKey, page) : null;
     dispatch({
       type: 'dataChanged',
       options,
@@ -110,7 +113,8 @@ export function useEngageFlow(request: EngageRequest): EngageFlow {
       waitingRows: options?.waiting.length ?? 0,
       agreementRows: options?.agreements.length ?? 0,
     });
-  }, [source, owner, current, pageMeeting]);
+    // `moments` re-runs it when a moment is chosen.
+  }, [source, owner, current, pageMeeting, moments]);
 
   return {state, dispatch, source};
 }

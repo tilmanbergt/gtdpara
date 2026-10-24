@@ -55,8 +55,8 @@ export type EngageExit =
   | {kind: 'someday'; owner: EngageOwner; label: string; keys: string[]};
 
 export interface EngageAck {
-  /** Done, Someday, Remove #next, or #next from the Plan tab. */
-  kind: 'done' | 'someday' | 'unnext' | 'next';
+  /** Done, Someday, Remove #next, #next from the Plan tab, or Waiting For from the Now box. */
+  kind: 'done' | 'someday' | 'unnext' | 'next' | 'waiting';
   /** The todo's title for the ack line. */
   text: string;
   /** The todo acted on. */

@@ -53,15 +53,17 @@ import {meetingEndMs, meetingStartMs, todayIso} from './meetingTime';
 import {scopeOf, threadOf} from './threads';
 import {Meeting, Task} from './types';
 
-/** The flow a todo is set to from the panel: picked (`#next`), Someday, or neither (Remove #next). */
-export type EngageFlowChoice = 'next' | 'someday' | null;
+/** The flow a todo is set to from the panel: picked (`#next`), Someday, Waiting For (R15), or none (Remove #next). */
+export type EngageFlowChoice = 'next' | 'someday' | 'waiting' | null;
 
 /**
- * A todo's text with its flow set to `flow`, through `setFlowStateTag`.
- * Leaving `#next` also drops `#now`, which is only ever layered on top of it.
+ * A todo's text with its flow set to `flow`, through `setFlowStateTag`;
+ * Waiting For on `counterpart` (`#wf/<counterpart>`, a bare `#wf` without
+ * one). Leaving `#next` also drops `#now`, which is only ever layered on
+ * top of it.
  */
-export function engageFlowText(text: string, flow: EngageFlowChoice): string {
-  const withFlow = setFlowStateTag(text, flow);
+export function engageFlowText(text: string, flow: EngageFlowChoice, counterpart: string | null = null): string {
+  const withFlow = flow === 'waiting' ? setFlowStateTag(text, 'waiting-for', counterpart ?? undefined) : setFlowStateTag(text, flow);
   return flow === 'next' ? withFlow : setNowTag(withFlow, false);
 }
 
@@ -163,7 +165,9 @@ function fromGroupsOf(
     const prev = previousMeeting(meetings, pageEntry);
     shown = [pageEntry, ...(prev && isReference(prev) ? [prev] : [])];
   } else {
-    shown = meetings.filter(m => meetingStartMs(m.meeting) <= nowMs);
+    // The page's meeting counts as started once its moment is During or After, chosen or by time.
+    const pageStarted = (m: MeetingEntryRef) => !!pageOf && pageOf.moment !== 'before' && sameMeeting(refOf(m), refOf(pageOf.entry));
+    shown = meetings.filter(m => meetingStartMs(m.meeting) <= nowMs || pageStarted(m));
   }
   shown = [...shown].sort(startDesc);
   const todos = ownerAgreedTodos(owner, source, shown.map(refOf));
