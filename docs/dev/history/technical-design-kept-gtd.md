@@ -1,6 +1,6 @@
 # Technical design: rename gtdpara → Kept GTD (0.20.0)
 
-Status: **design, for review**. Requirements decided 2026-10-18 (transition plan, project doc
+Status: **implemented** on `feature/kept-gtd`, device test passed (§9 As built). Requirements decided 2026-10-18 (transition plan, project doc
 `claude/feature-rename-kept-gtd.md`); retargeted to **0.20.0** after 0.19.0 shipped.
 Branch: `feature/kept-gtd`. No feature changes in this release.
 
@@ -254,3 +254,41 @@ Decided (Tilman): U1, U2, U4, U5 and U6 as proposed. U3: the build artefacts are
 `kept-gtd` - `build/outputs/kept-gtd.snplg` and the labelled copy `kept-gtd-<label>.snplg`.
 The npm package name stays `gtdpara`: `buildPlugin.ps1` also takes the bundle name inside the
 package from it, and it is the `pluginKey` fallback when PluginConfig.json is generated.
+
+## 9. As built
+
+Built in steps S0-S4 on `feature/kept-gtd` (one commit each, `kept-gtd: SN - …`), device test
+(§6, `./buildPlugin.ps1 -Stage beta` installed over 0.19.0) passed with no findings. O1-O3 needed
+no change: one plugin after the install-over, "Kept GTD" fits as the sidebar label, the icons
+read as solid black at 48 px. `nextVersion` is 0.20.0.
+
+As designed (§3), with these differences:
+
+- **`LEGACY_EXPORT_ROOT`** lives in `storage/profiles.ts`, next to `copyLegacyProfiles`, its only
+  user (`supernote/fileSystem.ts` is at its code-health baseline). `GTDPARA_EXPORT_ROOT` keeps its
+  name (TS name, §3.1) and now holds `EXPORT/kept-gtd`.
+- **The copy runs from `ui/useProfileCopyNotice.ts`**, once per App mount after the settings
+  loaded; it publishes the status text itself (`app.profileCopyNotice`). Running it again is
+  harmless: the rule copies nothing once the new folder holds a profile.
+- **`KeptTab` → `KeepAliveTab`** renames the component and file only; `dropKeptTabs` and
+  `getKeptTabsGeneration` name the "Keep tabs in memory" setting and stay.
+- **Artefact name (U3)**: `buildPlugin.ps1` names both packages `kept-gtd` itself; package.json
+  keeps `gtdpara`, which also names the bundle inside the package.
+- **UI wording (U5)**: texts say "Kept GTD" in full; the Engage button is "Open Kept GTD". Texts
+  about old versions say "version 0.x" ("Inbox lived up to version 0.1.0", help on old marks and
+  completion dates) instead of naming either product.
+- **PDF metadata (U4)**: `/Producer (Kept GTD)` in `PdfModule.kt`.
+- **Visible-name check (§3.5)** is the Jest test `__tests__/keptGtdVisibleName.test.ts`: it reads
+  `src/`, `App.tsx` and `index.js` with the TypeScript parser and checks string literals,
+  template parts and JSX text against the allowlist (§3.1 values, `LEGACY_EXPORT_ROOT`,
+  "Formerly gtdpara", native module names, the `[GtdPara]` log prefix, the `openGtdpara` key).
+- **Tests**: `__tests__/keptGtdKeepList.test.ts` (§3.1 values in code and config, K9 at unit
+  level), `__tests__/domain/profileCopy.test.ts`, `profilesCopiedText` in
+  `__tests__/domain/fileChangeText.test.ts`, scenarios K1-K8 in `__tests__/scenarios/keptGtd.test.tsx`
+  (K2 is the second half of K1).
+- **Docs**: help pages follow R1 (full name at the first mention in running text, titles and UI
+  labels, "Kept" after it); `profiles-and-demo.md` describes the profile copy. Repository links
+  keep `github.com/tilmanbergt/gtdpara` until R10 (U6); About's `PROJECT_URL` already names
+  `kept-gtd`. `CLAUDE.md` states the display-only rule. New InkHub thumbnails are a to-do in
+  `docs/dev/inkhub-listing.md`.
+
