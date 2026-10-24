@@ -10,6 +10,9 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### Changed
+- The project now lives at github.com/tilmanbergt/kept-gtd. Old gtdpara links lead there too.
+
 ## [0.20.0] — 2026-10-24
 
 ### Changed

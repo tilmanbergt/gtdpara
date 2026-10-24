@@ -196,7 +196,7 @@ if ($ghOk) {
 } else {
     Write-Host ''
     Write-Host 'Create the GitHub release by hand:' -ForegroundColor Yellow
-    Write-Host "  1. Open https://github.com/tilmanbergt/gtdpara/releases/new?tag=v$newVersion"
+    Write-Host "  1. Open https://github.com/tilmanbergt/kept-gtd/releases/new?tag=v$newVersion"
     Write-Host "  2. Title: Kept GTD $newVersion"
     Write-Host "  3. Description: paste $notes"
     Write-Host "  4. Attach $snplg and publish"

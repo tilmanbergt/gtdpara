@@ -291,4 +291,8 @@ As designed (§3), with these differences:
   keep `github.com/tilmanbergt/gtdpara` until R10 (U6); About's `PROJECT_URL` already names
   `kept-gtd`. `CLAUDE.md` states the display-only rule. New InkHub thumbnails are a to-do in
   `docs/dev/inkhub-listing.md`.
-
+- **After the release (R10)**: with the repository renamed to `tilmanbergt/kept-gtd`, the links
+  kept by U6 (README, getting-started, troubleshooting, inkhub-listing, `release.ps1`) point to
+  it. The S0 search had skipped hidden folders: the issue templates in `.github/ISSUE_TEMPLATE/`
+  get the new name, link and folders (their debug folder `Note/_gtdpara_debug_log` was already
+  out of date) in the same follow-up.

@@ -26,7 +26,7 @@ Kept also tells you whenever it changes files: before a move, an overwrite or a 
 
 ## Reporting a problem
 
-Reports are very welcome - they are the main way Kept gets better. Please report on GitHub: github.com/tilmanbergt/gtdpara, then **Issues → New issue → Bug report**.
+Reports are very welcome - they are the main way Kept gets better. Please report on GitHub: github.com/tilmanbergt/kept-gtd, then **Issues → New issue → Bug report**.
 
 To make it easy to find the cause:
 

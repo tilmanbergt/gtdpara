@@ -93,7 +93,7 @@ for what changed in each version, including which features are still experimenta
 ## Install
 
 1. Download the latest `kept-gtd-x.y.z.snplg` from
-   [Releases](https://github.com/tilmanbergt/gtdpara/releases/latest).
+   [Releases](https://github.com/tilmanbergt/kept-gtd/releases/latest).
 2. Copy it to your Supernote and install it as a plugin. Requires Supernote's plugin firmware:
    **A5 X / A6 X Chauvet 2.27.42** or later, **Manta / Nomad Chauvet 3.30.45** or later.
 3. Open Kept GTD from the plugin sidebar in a note, then check **Settings → Folders**.
@@ -105,8 +105,8 @@ folders stay as they are; debug files and the demo space move to `EXPORT/kept-gt
 
 ## Help and bug reports
 
-- Questions and ideas: [GitHub Discussions](https://github.com/tilmanbergt/gtdpara/discussions)
-- Bugs: [open an issue](https://github.com/tilmanbergt/gtdpara/issues/new/choose) and include
+- Questions and ideas: [GitHub Discussions](https://github.com/tilmanbergt/kept-gtd/discussions)
+- Bugs: [open an issue](https://github.com/tilmanbergt/kept-gtd/issues/new/choose) and include
   the version from Settings → About
 - Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md)
 - Privacy and network access: see [PRIVACY.md](PRIVACY.md)
