@@ -1,13 +1,13 @@
-# Contributing to gtdpara
+# Contributing to Kept GTD
 
-Thanks for your interest! gtdpara is a hobby project, maintained by one person in spare time.
+Thanks for your interest! Kept is a hobby project, maintained by one person in spare time.
 Response times vary, so please be patient.
 
 ## Reporting bugs
 
 Open an issue using the **Bug report** form. The most helpful things to include:
 
-- the gtdpara version (Settings → About)
+- the Kept GTD version (Settings → About)
 - your device model and firmware version
 - exact steps to reproduce, what you expected and what happened
 - the debug info and log file, if you can (see `docs/user/troubleshooting.md`)
@@ -21,7 +21,7 @@ Ideas are welcome. Open a **Feature request** and describe the *problem* you wan
 you work today, not only the solution you have in mind. Questions and general discussion go to
 GitHub Discussions.
 
-Not every idea will be built. gtdpara follows a few principles that act as a filter:
+Not every idea will be built. Kept follows a few principles that act as a filter:
 
 - **Filesystem first.** Your data stays in plain files in your own folders, readable without the
   plugin. No hidden database, no lock-in.

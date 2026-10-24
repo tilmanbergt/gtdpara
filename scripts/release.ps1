@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds and publishes a gtdpara release.
+  Builds and publishes a Kept GTD release.
   Design: docs/dev/history/technical-design-versioning-release.md (3.6); checklist: docs/dev/RELEASING.md
 
 .EXAMPLE
@@ -99,7 +99,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     Write-Host 'GitHub CLI (gh) not found - publishing will be manual. Install: winget install GitHub.cli' -ForegroundColor Yellow
 }
 
-Write-Host "Releasing gtdpara $newVersion" -ForegroundColor Green
+Write-Host "Releasing Kept GTD $newVersion" -ForegroundColor Green
 if ($DryRun) { Write-Host 'DRY RUN - nothing will be changed.' -ForegroundColor Yellow }
 
 # ---------------------------------------------------------------- 2+3. version + changelog
@@ -132,19 +132,19 @@ if ($LASTEXITCODE -ne 0) {
 Write-Step '4. Commit and tag'
 if ($DryRun) {
     Write-Info "[dry run] git commit -am 'Release $newVersion'"
-    Write-Info "[dry run] git tag -a v$newVersion -m 'gtdpara $newVersion'"
+    Write-Info "[dry run] git tag -a v$newVersion -m 'Kept GTD $newVersion'"
 } else {
     git commit -am "Release $newVersion"
     if ($LASTEXITCODE -ne 0) { Stop-Release 'git commit failed' }
     $committed = $true
-    git tag -a "v$newVersion" -m "gtdpara $newVersion"
+    git tag -a "v$newVersion" -m "Kept GTD $newVersion"
     if ($LASTEXITCODE -ne 0) { Stop-Release 'git tag failed' }
     $tagged = $true
 }
 
 # ---------------------------------------------------------------- 6. build
 Write-Step '5. Build'
-$snplg = Join-Path $root "build\outputs\gtdpara-$newVersion.snplg"
+$snplg = Join-Path $root "build\outputs\kept-gtd-$newVersion.snplg"
 if ($DryRun) {
     Write-Info '[dry run] ./buildPlugin.ps1'
 } else {
@@ -171,7 +171,7 @@ if ($DryRun) {
     Write-Host 'Dry run finished. Nothing was changed.' -ForegroundColor Green
     exit 0
 }
-if (-not (Confirm-Yes "Publish gtdpara $newVersion to GitHub?")) {
+if (-not (Confirm-Yes "Publish Kept GTD $newVersion to GitHub?")) {
     Write-Host ''
     Write-Host 'Not published. The release commit and tag exist only locally.' -ForegroundColor Yellow
     Write-Host 'Publish later by running the commands of step 7 by hand, or undo with:' -ForegroundColor Yellow
@@ -189,15 +189,15 @@ $notes = Join-Path $root "build\release-notes-$newVersion.md"
 if ($LASTEXITCODE -ne 0) { Stop-Release 'extracting release notes failed' }
 
 if ($ghOk) {
-    gh release create "v$newVersion" $snplg --title "gtdpara $newVersion" --notes-file $notes
+    gh release create "v$newVersion" $snplg --title "Kept GTD $newVersion" --notes-file $notes
     if ($LASTEXITCODE -ne 0) { Stop-Release 'gh release create failed - create the release by hand (see below)' }
     Write-Host ''
-    Write-Host "Released gtdpara $newVersion." -ForegroundColor Green
+    Write-Host "Released Kept GTD $newVersion." -ForegroundColor Green
 } else {
     Write-Host ''
     Write-Host 'Create the GitHub release by hand:' -ForegroundColor Yellow
     Write-Host "  1. Open https://github.com/tilmanbergt/gtdpara/releases/new?tag=v$newVersion"
-    Write-Host "  2. Title: gtdpara $newVersion"
+    Write-Host "  2. Title: Kept GTD $newVersion"
     Write-Host "  3. Description: paste $notes"
     Write-Host "  4. Attach $snplg and publish"
 }

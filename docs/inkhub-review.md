@@ -1,6 +1,6 @@
 # Notes for InkHub reviewers
 
-gtdpara is an open-source (MIT) GTD + PARA plugin for the Supernote. This page explains what it
+Kept GTD is an open-source (MIT) GTD + PARA plugin for the Supernote. This page explains what it
 does with files, permissions and the network, so the review can check it quickly. Source: this
 repository; the release tag `vX.Y.Z` is exactly the submitted `.snplg`.
 
@@ -9,7 +9,7 @@ repository; the release tag `vX.Y.Z` is exactly the submitted `.snplg`.
 Each permission is requested right before the first action that needs it, never at start-up.
 
 - **FILE:READ / FILE:WRITE** - the user's PARA folders (default `Note/1 Projects`, `2 Areas`,
-  `3 Resources`, `4 Archive`; the Inbox in `2 Areas/0 Inbox`) and `EXPORT/gtdpara` (profiles,
+  `3 Resources`, `4 Archive`; the Inbox in `2 Areas/0 Inbox`) and `EXPORT/kept-gtd` (profiles,
   debug files the user exports). Todos and meetings are plain-text files (`project.txt`,
   `area.txt`, `Inbox.txt`) inside those folders.
 - **FILE:DELETE** - only after a confirmation in the plugin that names what will be deleted. In
@@ -54,7 +54,7 @@ All of them run under the host's permission checks.
 ## Testing quickly
 
 Settings → Advanced → Profiles → **Create demo space**, then switch to the Demo profile. It
-writes a small example PARA tree to `Note/gtdpara-demo` and never touches the user's real folders.
+writes a small example PARA tree to `Note/kept-gtd-demo` and never touches the user's real folders.
 Help is built in (**?** in the tab bar).
 
 More: [PRIVACY.md](../PRIVACY.md), [user guide](user/index.md).

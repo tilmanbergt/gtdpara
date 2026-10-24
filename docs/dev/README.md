@@ -1,4 +1,4 @@
-# gtdpara — developer notes
+# Kept GTD — developer notes
 
 > **About this document.** The entry point for developers: how to build and check the plugin,
 > how to write user docs, a short code tour, and which documents in `docs/dev/` are living and
@@ -16,7 +16,7 @@ Prerequisites (Windows is the tested setup):
 - Node.js 18 or newer, `npm install` in the repo root
 - Android SDK + JDK as required by React Native 0.79 (Android Studio is the easiest way to get both)
 - A Supernote with the plugin firmware to test on (A5 X / A6 X Chauvet 2.27.42, Manta / Nomad Chauvet
-  3.30.45 or later; gtdpara pins `sn-plugin-lib` 0.2.3, which needs it)
+  3.30.45 or later; Kept pins `sn-plugin-lib` 0.2.3, which needs it)
 
 Build the plugin package:
 
@@ -28,8 +28,8 @@ The script first stamps the build info (`scripts/gen-bundled-content.mjs --build
 `nextVersion` from `package.json`, stage (`-Stage alpha|beta`), build number, git commit, changelog →
 `src/generated/`, not committed), then
 bundles the JavaScript (`npx react-native bundle`), compiles the native Android modules
-(`gradlew buildCustomApkDebug`), and packs everything into `build/outputs/gtdpara.snplg`, plus a
-copy named after the build label, e.g. `gtdpara-0.9.0-alpha+a1b2c3d.snplg` (labels:
+(`gradlew buildCustomApkDebug`), and packs everything into `build/outputs/kept-gtd.snplg`, plus a
+copy named after the build label, e.g. `kept-gtd-0.9.0-alpha+a1b2c3d.snplg` (labels:
 `RELEASING.md` §4).
 
 The build number (`versionCode`) is the number of minutes since 2026-01-01 UTC, so every build
@@ -38,7 +38,7 @@ is written only into the packaged copy of `PluginConfig.json`; the root file isn
 builds. Details: `technical-design-versioning-release.md`. `buildPlugin.sh` is not maintained.
 
 Copy the `.snplg` to the device and install it over the existing plugin. Logcat shows the running
-build right at startup: `App: gtdpara <label> build <number>`.
+build right at startup: `App: Kept GTD <label> build <number>`.
 
 `npm install` also generates `src/generated/` (via `postinstall`); after pulling changes to
 `CHANGELOG.md` you can refresh it with `npm run gen`.
@@ -84,7 +84,7 @@ afterwards:
   hidden); every view that asks for its size gets a tall page, so paged lists show their rows.
 - `test-helpers/scenario/files.ts`: `PATHS`, `projectFile`, `dataFile(kind, sections)`,
   `putFile`, `fileText`, `sectionLines`, `loggedErrors()`; for note pages `pageKeywords`,
-  `pageTexts` (what gtdpara wrote on a page) and `pageHeadings`.
+  `pageTexts` (what Kept wrote on a page) and `pageHeadings`.
 - `test-helpers/scenario/setups.ts`: ready-made Note setups for `openApp({settings})`, e.g.
   `sparringSettings()`.
 

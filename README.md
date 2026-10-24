@@ -1,11 +1,17 @@
-# gtdpara
+# <img src="assets/wordmark.png" alt="Kept GTD" width="300">
+
+*Kept GTD – for those who write, where they write.*
+
+Your promises, kept · your todos, kept safe · your files, kept yours.
+
+<sub>Formerly gtdpara.</sub>
 
 **A calm GTD + PARA workspace for the Supernote.** Tasks, meetings and notes are filed as plain
 text in your own Projects / Areas / Resources / Archive folders, so you can read and edit them
 anywhere, with or without the plugin.
 
 **Keep your word with people.** Most of what you promise, you promise to someone: in a 1:1, a
-retro, a coaching session. Give a meeting series a nested tag such as `#101/mieke` and gtdpara
+retro, a coaching session. Give a meeting series a nested tag such as `#101/mieke` and Kept GTD
 keeps its thread: when you meet next, what you agreed last time, what you owe and what you are
 waiting for. A project or area opens on its Threads tab, and the Weekly Review asks once a week
 which people and series you still tend. See [Threads](docs/user/threads.md).
@@ -20,11 +26,11 @@ which people and series you still tend. See [Threads](docs/user/threads.md).
 
 <sub>Screenshots from the built-in demo space on a Supernote A5 X.</sub>
 
-## Why gtdpara
+## Why Kept GTD
 
 - **Your files, no lock-in.** Every Project and Area is a folder. Its todos and meetings live
   in a small plain-text file inside it (`project.txt` / `area.txt`). Any text editor can open it,
-  and if you stop using gtdpara, your folders, notes and lists are still there.
+  and if you stop using Kept, your folders, notes and lists are still there.
 - **Calm and made for e-ink.** Only what matters today on Daily, only your `#now` todos in focus
   mode. Screens are paged instead of scrolled; no notifications, no timers, no streaks.
 - **Built on what the Supernote already does.** Handwritten notes for todos and meetings,
@@ -43,7 +49,7 @@ which people and series you still tend. See [Threads](docs/user/threads.md).
 - **Room for rest.** Nothing auto-suggests the next task. The gap after finishing something is
   yours.
 
-More in [Why gtdpara works this way](docs/user/philosophy.md).
+More in [Why Kept GTD works this way](docs/user/philosophy.md).
 
 ## Features at a glance
 
@@ -86,14 +92,16 @@ for what changed in each version, including which features are still experimenta
 
 ## Install
 
-1. Download the latest `gtdpara-x.y.z.snplg` from
+1. Download the latest `kept-gtd-x.y.z.snplg` from
    [Releases](https://github.com/tilmanbergt/gtdpara/releases/latest).
 2. Copy it to your Supernote and install it as a plugin. Requires Supernote's plugin firmware:
    **A5 X / A6 X Chauvet 2.27.42** or later, **Manta / Nomad Chauvet 3.30.45** or later.
-3. Open gtdpara from the plugin sidebar in a note, then check **Settings → Folders**.
+3. Open Kept GTD from the plugin sidebar in a note, then check **Settings → Folders**.
 
 Updating: install the newer `.snplg` over the existing one. Read the *Upgrade notes* in the
-changelog first.
+changelog first. Coming from gtdpara: install Kept GTD over it. Your settings, notes and PARA
+folders stay as they are; debug files and the demo space move to `EXPORT/kept-gtd` and
+`Note/kept-gtd-demo`, and saved profiles are copied there once.
 
 ## Help and bug reports
 
@@ -110,4 +118,5 @@ Architecture, design documents and build instructions are in [docs/dev/](docs/de
 ## License
 
 [MIT](LICENSE) © 2026 Tilman Bergt. Built with React Native and Ratta's `sn-plugin-lib`.
-gtdpara is an independent project and not affiliated with Ratta or Supernote.
+Kept GTD is an independent project and not affiliated with Ratta or Supernote.
+Wordmark set in Literata, SIL Open Font License 1.1.

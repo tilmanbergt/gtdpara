@@ -158,12 +158,12 @@ function generate({build, stage = 'alpha'}) {
           ' (the package gets ' + version + ').',
       );
     }
-    console.log(`gtdpara ${info.label}  build ${versionCode}${dirty ? '  (uncommitted changes!)' : ''}`);
+    console.log(`Kept GTD ${info.label}  build ${versionCode}${dirty ? '  (uncommitted changes!)' : ''}`);
     if (!release && !target) {
       console.warn(`No next version set - this build is labelled after ${version}. Set it with: npm run next-version -- <x.y.z>`);
     }
   } else {
-    console.log(`src/generated updated: gtdpara ${info.label}`);
+    console.log(`src/generated updated: Kept GTD ${info.label}`);
   }
 }
 

@@ -1,14 +1,14 @@
 # Profiles and the demo space
 
-A **profile** is a complete configuration: which folders gtdpara uses, your focus counts, Note setups, review dates, the calendar and Gmail setup and the experimental switches. You can keep several and switch between them - for example your real setup and a demo setup for trying things out.
+A **profile** is a complete configuration: which folders Kept GTD uses, your focus counts, Note setups, review dates, the calendar and Gmail setup and the experimental switches. You can keep several and switch between them - for example your real setup and a demo setup for trying things out.
 
 ## Profiles
 
 Go to **Settings → Advanced**. The Profiles list shows every profile; the active one has a ●.
 
 - **Save** writes the active profile to its file.
-- **Restore** appears instead of **Save** only when gtdpara could not read its stored settings: it puts the settings from the active profile's file back (see [Troubleshooting](troubleshooting.md)).
-- **Switch** changes to another profile, after you confirm in the status line. gtdpara saves the current profile first, then loads the other one and starts the app fresh with it.
+- **Restore** appears instead of **Save** only when Kept could not read its stored settings: it puts the settings from the active profile's file back (see [Troubleshooting](troubleshooting.md)).
+- **Switch** changes to another profile, after you confirm in the status line. Kept saves the current profile first, then loads the other one and starts the app fresh with it.
 - While a profile other than Production is active, its name (for example `DEMO`) is shown in the tab bar. Tap it to get back to the profile list.
 
 The first time you open the list, your current setup is saved as `production.json`, so you can always switch back to it.
@@ -21,18 +21,20 @@ Stays the same for all profiles: keep tabs in memory, performance tracing, debug
 
 ## Profile files
 
-Profiles are files in `EXPORT/gtdpara/profiles`, one `.json` file per profile. To import a profile, copy its file into that folder and tap **Refresh list**. To share your Note setups or folder setup, share the file.
+Profiles are files in `EXPORT/kept-gtd/profiles`, one `.json` file per profile. To import a profile, copy its file into that folder and tap **Refresh list**. To share your Note setups or folder setup, share the file.
+
+Before Kept GTD 0.20, the plugin was called gtdpara and kept its profiles in `EXPORT/gtdpara/profiles`. On its first start, Kept copies them into `EXPORT/kept-gtd/profiles`, as long as that folder holds no profile yet, and the status line says how many it copied. The demo profile is not copied; it is written again when you create the demo space. The old folder is left as it is; once your profiles are in the new one, you can delete `EXPORT/gtdpara`.
 
 The Gmail app password and the calendar link are never written into these files. They stay inside the plugin, separately for each profile.
 
 ## The demo space
 
-**Create demo space** writes a small fictional setup to `Note/gtdpara-demo`: five projects (one on hold, one done), four areas and an Inbox (in `2 Areas/0 Inbox`), with todos, meetings, tags, focus and goals. Dates are set relative to today, so it always looks current. It also adds the profile "Demo" that points to these folders. In the demo, every note of a project or area goes into its home notebook ([Projects and Areas](projects-and-areas.md)) - create one with the notebook icon on "Garden renovation" to see its Home page. The area "Coaching" has a sparring thread with Mieke (past meetings, agreed todos) and a loop with a meeting today, to try [Engage](engage.md).
+**Create demo space** writes a small fictional setup to `Note/kept-gtd-demo`: five projects (one on hold, one done), four areas and an Inbox (in `2 Areas/0 Inbox`), with todos, meetings, tags, focus and goals. Dates are set relative to today, so it always looks current. It also adds the profile "Demo" that points to these folders. In the demo, every note of a project or area goes into its home notebook ([Projects and Areas](projects-and-areas.md)) - create one with the notebook icon on "Garden renovation" to see its Home page. The area "Coaching" has a sparring thread with Mieke (past meetings, agreed todos) and a loop with a meeting today, to try [Engage](engage.md).
 
-Existing files are never overwritten. To start the demo from scratch, delete the `Note/gtdpara-demo` folder and create it again.
+Existing files are never overwritten. To start the demo from scratch, delete the `Note/kept-gtd-demo` folder and create it again.
 
 The demo space is useful for:
 
-- trying out gtdpara before using it with your own data
+- trying out Kept before using it with your own data
 - testing Note setups or new features without touching your real notes
 - reproducing a problem, so that others can see exactly the same thing

@@ -29,7 +29,7 @@ const HAND_EDITED = [
   '',
 ].join('\n');
 
-scenario('A hand-edited project file keeps everything gtdpara does not own when a todo is added', {feature: 'Your files', design: 'technical-design-tags.md'}, () => {
+scenario('A hand-edited project file keeps everything Kept GTD does not own when a todo is added', {feature: 'Your files', design: 'technical-design-tags.md'}, () => {
   given('project "Website" has a frontmatter line, a paragraph, a stray line, an old-style due date and a section of its own, all by hand', () => {
     putFile(projectFile('Website'), HAND_EDITED);
   });
@@ -50,14 +50,14 @@ scenario('A hand-edited project file keeps everything gtdpara does not own when 
   });
 });
 
-scenario('An outside edit to another part of the file is kept when gtdpara saves', {feature: 'Your files', design: 'technical-design-quality-hardening.md'}, () => {
-  given('project "Website" is open in gtdpara', async () => {
+scenario('An outside edit to another part of the file is kept when Kept GTD saves', {feature: 'Your files', design: 'technical-design-quality-hardening.md'}, () => {
+  given('project "Website" is open in Kept GTD', async () => {
     putFile(projectFile('Website'), dataFile('project', {Scope: ['Old scope'], Tasks: ['- [ ] Write copy'], Meetings: []}));
     await openApp();
     await tapTab('Projects');
     await tap(/^Website/);
   });
-  when('its Scope is changed in Obsidian, and I then add a todo in gtdpara', async () => {
+  when('its Scope is changed in Obsidian, and I then add a todo in Kept GTD', async () => {
     device().fs.editExternally(projectFile('Website'), t => t.replace('Old scope', 'Scope from Obsidian'));
     await type('New task', 'Call the designer');
     await tap('+ Add');
@@ -69,19 +69,19 @@ scenario('An outside edit to another part of the file is kept when gtdpara saves
   });
 });
 
-scenario('When gtdpara and another app changed the same list, the user decides which wins', {feature: 'Your files', design: 'technical-design-quality-hardening.md'}, () => {
-  given('project "Website" is open in gtdpara', async () => {
+scenario('When Kept GTD and another app changed the same list, the user decides which wins', {feature: 'Your files', design: 'technical-design-quality-hardening.md'}, () => {
+  given('project "Website" is open in Kept GTD', async () => {
     putFile(projectFile('Website'), dataFile('project', {Scope: [], Tasks: ['- [ ] Write copy'], Meetings: []}));
     await openApp();
     await tapTab('Projects');
     await tap(/^Website/);
   });
-  when('its todo is changed in Obsidian, and I then add a todo in gtdpara', async () => {
+  when('its todo is changed in Obsidian, and I then add a todo in Kept GTD', async () => {
     device().fs.editExternally(projectFile('Website'), t => t.replace('- [ ] Write copy', '- [ ] Write copy, edited in Obsidian'));
     await type('New task', 'Call the designer');
     await tap('+ Add');
   });
-  then('gtdpara asks which version wins and has written nothing yet', () => {
+  then('Kept GTD asks which version wins and has written nothing yet', () => {
     expectShows('"Website" was also changed outside Kept GTD (Todos). Which version wins?');
     expect(sectionLines(projectFile('Website'), 'Tasks')).toEqual(['- [ ] Write copy, edited in Obsidian']);
   });
@@ -91,7 +91,7 @@ scenario('When gtdpara and another app changed the same list, the user decides w
     expectShows(/Not saved: "Website" keeps the version changed outside Kept GTD\./);
     expect(fieldValue('New task')).toBe('Call the designer');
   });
-  and('after another change in Obsidian, + Add asks again, and "Use mine" saves the list as gtdpara shows it, with the new todo', async () => {
+  and('after another change in Obsidian, + Add asks again, and "Use mine" saves the list as Kept GTD shows it, with the new todo', async () => {
     device().fs.editExternally(projectFile('Website'), t => t.replace('edited in Obsidian', 'edited twice'));
     await tap('+ Add');
     await tap('Use mine');
@@ -107,7 +107,7 @@ scenario('Unreadable settings are never replaced by the defaults unasked', {feat
     await AsyncStorage.setItem('gtdpara:settings:v1', '{"inboxFolder": "0 Inbox", "hideDoneIn');
     putFile(INBOX_FILE, dataFile('inbox', {Tasks: ['- [x] Old todo', '- [ ] Open todo'], Meetings: []}));
   });
-  when('I open gtdpara', () => openApp());
+  when('I open Kept GTD', () => openApp());
   then('the status line says the settings could not be read', () => {
     expectShows('Settings could not be read - Kept GTD uses defaults and saves no settings.');
   });

@@ -1,6 +1,6 @@
 # PowerShell Script: Analyze Android Dependencies and Generate PluginConfig.json
 #
-# gtdpara usage (docs/dev/RELEASING.md section 4):
+# Kept GTD usage (docs/dev/RELEASING.md section 4):
 #   ./buildPlugin.ps1                 test build, labelled for package.json's nextVersion, e.g. 0.9.0-alpha+a1b2c3d
 #   ./buildPlugin.ps1 -Stage beta     same, labelled 0.9.0-beta+a1b2c3d (release is feature-complete, final device test)
 #   ./buildPlugin.ps1 -Check          runs `npm run check` first and stops if it fails
@@ -1317,9 +1317,12 @@ function Main {
     }
     
     # Rename to .snplg file
-    $snplgFileName = "$($packageInfo.Name).snplg"
+    # The package is named after the plugin (kept-gtd), not package.json's name, which stays
+    # gtdpara with pluginKey (docs/dev/history/technical-design-kept-gtd.md §8 U3).
+    $artefactName = 'kept-gtd'
+    $snplgFileName = "$artefactName.snplg"
     $finalSnplgPath = Join-Path $buildOutputsDir $snplgFileName
-    $null = Rename-ToSnplgFile -ZipFilePath $tempZipPath -ProjectName $packageInfo.Name -OutputDir $buildOutputsDir
+    $null = Rename-ToSnplgFile -ZipFilePath $tempZipPath -ProjectName $artefactName -OutputDir $buildOutputsDir
     if (Test-Path $finalSnplgPath) {
         Write-ColorOutput "Plugin package successfully generated: $finalSnplgPath" 'Green'
         
@@ -1328,14 +1331,14 @@ function Main {
         $fileSizeMB = [math]::Round($fileInfo.Length / 1MB, 2)
         Write-ColorOutput "File size: $fileSizeMB MB" 'Blue'
         
-        # gtdpara: keep a copy named after the build label (gtdpara-0.1.0.snplg for a release,
-        # gtdpara-0.1.0+dev.a1b2c3d.snplg otherwise), so earlier builds aren't overwritten.
+        # Kept GTD: keep a copy named after the build label (kept-gtd-0.1.0.snplg for a release,
+        # kept-gtd-0.1.0+dev.a1b2c3d.snplg otherwise), so earlier builds aren't overwritten.
         try {
             $buildInfo = Get-Content (Join-Path $projectRoot 'build\build-info.json') -Raw | ConvertFrom-Json
-            $labeledPath = Join-Path $buildOutputsDir "$($packageInfo.Name)-$($buildInfo.label).snplg"
+            $labeledPath = Join-Path $buildOutputsDir "$artefactName-$($buildInfo.label).snplg"
             Copy-Item -LiteralPath $finalSnplgPath -Destination $labeledPath -Force
             Write-ColorOutput "Also saved as: $labeledPath" 'Green'
-            Write-ColorOutput "gtdpara $($buildInfo.label)  build $($buildInfo.versionCode)" 'Green'
+            Write-ColorOutput "Kept GTD $($buildInfo.label)  build $($buildInfo.versionCode)" 'Green'
         }
         catch {
             Write-ColorOutput "Could not create labeled copy: $_" 'Yellow'

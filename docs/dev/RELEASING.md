@@ -91,8 +91,8 @@ npm run check -- --quick       # the same without Jest, for a fast loop
   `nextVersion` above the current version a build is labelled `0.8.0+dev.a1b2c3d` and the build
   prints a reminder.
 - The build stamps version, stage and changelog into the app, bundles, compiles the native modules
-  and writes `build\outputs\gtdpara.snplg` plus a copy named after the label, e.g.
-  `gtdpara-0.9.0-alpha+a1b2c3d.snplg`. The Supernote's plugin list shows `0.9.0-alpha`.
+  and writes `build\outputs\kept-gtd.snplg` plus a copy named after the label, e.g.
+  `kept-gtd-0.9.0-alpha+a1b2c3d.snplg`. The Supernote's plugin list shows `0.9.0-alpha`.
 - **Commit before building** a build you will test seriously: then the label names the exact
   commit.
 - Install the `.snplg` on the Supernote **over** the existing plugin. If the "old version still
@@ -133,7 +133,7 @@ npm run check -- --quick       # the same without Jest, for a fast loop
    `-Bump` must agree with `nextVersion` when one is set; `-Version x.y.z` overrides both.
    The script runs `npm run check`, sets the version in `package.json`, `package-lock.json` and `PluginConfig.json`, turns `[Unreleased]`
    into `[x.y.z] - date` in the CHANGELOG, commits `Release x.y.z`, tags `vx.y.z` and builds
-   `build\outputs\gtdpara-x.y.z.snplg`. Then it **pauses**.
+   `build\outputs\kept-gtd-x.y.z.snplg`. Then it **pauses**.
 5. **Device check** while the script waits (§6 below), then answer `y` to publish. The script
    pushes `main` with the tag and creates the GitHub release with the `.snplg` and the
    changelog section as text.
@@ -148,7 +148,7 @@ CHANGELOG line under Fixed) followed by `./scripts/release.ps1 -Bump patch`.
 
 ## 6. Device check before publishing
 
-- [ ] Install `build\outputs\gtdpara-x.y.z.snplg` **over the previous release** (not a clean
+- [ ] Install `build\outputs\kept-gtd-x.y.z.snplg` **over the previous release** (not a clean
       install).
 - [ ] Settings → About shows `x.y.z` (no `+dev`); "What's new" shows the new notes.
 - [ ] Settings are still there; Projects and Areas load.
@@ -163,7 +163,7 @@ CHANGELOG line under Fixed) followed by `./scripts/release.ps1 -Bump patch`.
 - If it matters to users: update the InkHub listing with the same `.snplg`, post in the Reddit
   thread (one announcement per minor release; patch releases only if users waited for the fix).
   InkHub runs on the Supernote: copy the `.snplg` (and new screenshots, if screens changed) to
-  `EXPORT/gtdpara/inkhub/`, then InkHub → Upload Item with the values in
+  `EXPORT/kept-gtd/inkhub/`, then InkHub → Upload Item with the values in
   `docs/dev/inkhub-listing.md`. If permissions changed, update the description's permission
   paragraph and `docs/inkhub-review.md` first.
 - The next work starts with an empty `## [Unreleased]` section - the script leaves it ready.

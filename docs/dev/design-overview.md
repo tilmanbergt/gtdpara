@@ -1,6 +1,6 @@
-# gtdpara — Architecture & Design Reference
+# Kept GTD — Architecture & Design Reference
 
-> **About this document.** This is the living architecture document of gtdpara: the vision, how
+> **About this document.** This is the living architecture document of Kept GTD: the vision, how
 > the app is built (§2, one section per subsystem), the binding rules for every change (§3) and
 > the reasons behind the main decisions (§4). It describes the code as it is now, in present
 > tense: no history, no dates, no open work. Open work lives in the maintainers' internal backlog;
@@ -13,7 +13,7 @@
 
 ## 1. Vision
 
-gtdpara is a small Supernote plugin that organizes work with PARA (Projects, Areas, Resources,
+Kept GTD is a small Supernote plugin that organizes work with PARA (Projects, Areas, Resources,
 Archive) for filing and GTD conventions for doing. The **files themselves are the source of
 truth**, not a plugin database: every Project, Area and the Inbox is a folder with one plain-text
 data file that reads well in any text editor or in Obsidian, with or without the plugin. Notes
@@ -21,7 +21,7 @@ stay ordinary Supernote `.note` files next to their data. The plugin is a fast, 
 layer for capturing, filing, planning (day, week, month) and reviewing on top of those files.
 
 Calendar sync (CalDAV) is out of scope because it cannot be file-native. Google Calendar and
-Gmail exist only as optional, read-and-copy integrations (§2.11). gtdpara is built independently
+Gmail exist only as optional, read-and-copy integrations (§2.11). Kept is built independently
 from SNFolio (informed by it, not forked from it).
 
 ---
@@ -145,7 +145,7 @@ incremental cache refresh (§2.3, not awaited) and asks the pure `domain/returnC
 `decideLanding` where to land, in this order:
 
 1. **focus mode** when `settings.focusModeActive` is set;
-2. **resume** when the open note is the one gtdpara itself opened last (recorded by
+2. **resume** when the open note is the one Kept itself opened last (recorded by
    `supernote/fileSystem.ts`'s `openPath` into the memory-only `storage/returnRecord.ts`, valid
    for 12 hours): the tab shell stays exactly as it was; Current is pointed at the note's item
    unless Current is on screen;
@@ -171,7 +171,7 @@ App's listener sets `routedByEngageButtonRef` (the same race guard as the lasso 
 LoopOverview and ThreadOverview (`ui/EngageButton.tsx`) asks the same store with its owner. App
 switches to `mode: 'engage'` and keys `screens/engage/EngageOverlay.tsx` on the store's nonce, so
 every request opens a fresh panel. The Engage button never goes through `reorient()`; the
-gtdpara button switches a hidden Engage panel back to the tabs at once, then reorients. Process
+Kept GTD button switches a hidden Engage panel back to the tabs at once, then reorients. Process
 marks opened from the panel (`MarksReturnTo` `'engage'`) returns to it.
 
 ### 2.2 Data model and file format
@@ -380,7 +380,7 @@ recreated. Saves of one file run one after another. Natively, `writeTextFile` wr
 direct write with a warning when the rename fails; the Integrity Check lists leftovers. Detail:
 `docs/dev/history/technical-design-quality-hardening.md` §3.
 
-What gtdpara does not cache: the Files pane lists folders live on every visit, and Google
+What Kept does not cache: the Files pane lists folders live on every visit, and Google
 Calendar and Gmail have their own caches (§2.11). Detail:
 `docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md`,
 `docs/dev/history/technical-design-files-0.6.md`.
@@ -604,7 +604,7 @@ Reflection page gets the standard one once); 0.14's Tag Rules are migrated once
   `maxWidthPx`. Re-population on reopen stops once the meeting is over or the todo is done or
   cancelled (`isMeetingAutoUpdateFrozen`, `isTodoAutoUpdateFrozen`); creation always populates.
   The delete before the insert is planned by `domain/noteFindability.ts`'s `staleManagedNums`:
-  every element with a gtdpara marker plus titles that cover only those.
+  every element with a Kept marker plus titles that cover only those.
 - **Headings.** A piece's `heading` switch (`pieceIsHeading`: absent = on for `dateTitle`, off
   otherwise, never for `link`) makes `storage/noteFindability.ts`'s `applyPieceHeadings` add a
   title element (type 100, `supernote/noteTitles.ts`) over the piece's textbox after the insert:
@@ -692,7 +692,7 @@ keyword on page 1 and the Default's **Home page** (PageKind `home`: Title, `scop
 latest monthly and weekly goal), written once, from the icon (`storage/homeNotebookCreate.ts`)
 or from a todo's or meeting's first note into that file (`itemNotePlan` → `fillHomePage`); the
 page order pins it first. The Notebook tab lists the years and the experimental **Contents**
-(`domain/notebookContents.ts` / `storage/notebookContents.ts`: gtdpara's pages titled from their
+(`domain/notebookContents.ts` / `storage/notebookContents.ts`: Kept's pages titled from their
 item, other headings from the textbox they cover - by trail, title element or position - cached
 per file and modification time; switch `notebookContentsEnabled`). Engage shows "Go to <notebook>
 ›" in another note of the owner (`screens/engage/useEngageGoTo.ts`). The item's name is kept as
@@ -783,7 +783,7 @@ through `ui/useEntryActions.ts` (`setTaskFlow`, `completeTask`, `undoTask`); the
 per-profile app state in `settings.engageCurrent` (`storage/engageCurrent.ts`), found again by
 index and text. Opening follows the note (`decideOpening`): "Engage ›" > the note page's todo > the
 note's owner > the stored todo's owner, with "Continue with <todo>" above the footer back to the stored todo of another owner - offered once: that opening stores what the panel shows for the note's owner (its next action, or nothing) in its place. The panel leaves to a place in
-gtdpara through an `EngageExit` (`domain/engageFlow.ts`): App's `screens/useEngageExit.ts` opens a
+Kept through an `EngageExit` (`domain/engageFlow.ts`): App's `screens/useEngageExit.ts` opens a
 thread's or loop's overview once the tab shell shows, an item's page, or the filtered Review step. The panel sits on a transparent root, so the note stays visible; it keeps its
 largest height while open, because the A5 X does not reliably redraw the note where a panel
 shrank. After a Done on Daily, the Current tab or an overview, `ui/useEngagePrompt.ts` offers
@@ -1002,20 +1002,24 @@ cache are AsyncStorage entries per profile (`storage/profileKeys.ts`'s `profileS
 content never goes into AsyncStorage.
 
 **Profiles** (`domain/profiles.ts`, `storage/profiles.ts`). A profile is a named configuration;
-its file is `EXPORT/gtdpara/profiles/<id>.json`. Every setting is classified: per profile,
+its file is `EXPORT/kept-gtd/profiles/<id>.json`. Every setting is classified: per profile,
 device-wide (`perfTracing`, `keepTabsAlive`, `debugLogging`, `lastSeenVersion`,
 `activeProfileId`) or secret (`gmailAppPassword`, `googleCalendarIcsUrl` — per profile, but only
 in AsyncStorage, never in a file). Switching writes the profile being left, reads the new one,
 clears the caches and the return record, and remounts the shell. "Create demo space" writes demo
-folders under `Note/gtdpara-demo` and a demo profile, never overwriting (`storage/demoSpace.ts`).
-Detail: `docs/dev/history/technical-design-profiles-demo-space.md`.
+folders under `Note/kept-gtd-demo` and a demo profile, never overwriting (`storage/demoSpace.ts`).
+On start, `ui/useProfileCopyNotice.ts` copies the profile files from the old export folder
+`EXPORT/gtdpara/profiles` (`LEGACY_EXPORT_ROOT`) while the new folder holds none, without the demo
+profile (rule: `domain/profileCopy.ts`; copy: `storage/profiles.ts`'s `copyLegacyProfiles`); the old
+folder is only read. Detail: `docs/dev/history/technical-design-profiles-demo-space.md`,
+`docs/dev/history/technical-design-kept-gtd.md` §3.3.
 
-**Diagnostics.** Everything gtdpara exports lives under `EXPORT/gtdpara/` and is written only
+**Diagnostics.** Everything Kept exports lives under `EXPORT/kept-gtd/` and is written only
 when asked for:
 
 - **Logging** (`utils/log.ts`: `log`, `logWarn`, `logError`) goes to logcat and to an in-memory
   buffer (`utils/logSink.ts`); with Debug logging on, also to a rotating file in
-  `EXPORT/gtdpara/debug/`.
+  `EXPORT/kept-gtd/debug/`.
 - **Debug bundle** (`storage/debugBundle.ts`): version, device, a settings summary as yes/no and
   counts, data counts, recent errors and the recent log, run through `domain/redact.ts` so no
   password, calendar link or e-mail address leaves the device.
@@ -1029,7 +1033,7 @@ when asked for:
   links (`storage/fileNameFix.ts`). Everything else is report-only.
 - **Performance tracing** (`utils/perf.ts`, switch `perfTracing`): one trace per tab tap,
   navigation, reopen and cold start, ending after 1.5 s of quiet (15 s at most), written as JSONL
-  to `EXPORT/gtdpara/debug/perf/` with data-volume stats (`storage/perfStats.ts`). Off costs one
+  to `EXPORT/kept-gtd/debug/perf/` with data-volume stats (`storage/perfStats.ts`). Off costs one
   check per call. Analysis: `node scripts/perf-report.js`.
 - **Touch test** (`screens/settings/TouchTestScreen.tsx`, classification in
   `domain/touchDiag.ts`): real `TaskRow`s and `MeetingRow`s with sample entries down to the
@@ -1037,9 +1041,9 @@ when asked for:
   responder) records every touch, the rows report press events through a context only the test
   provides (`ui/touchDiag/touchProbe.ts`), and each touch is classified handled, cancelled,
   noTarget or swallowed. One numbers-only log line per touch; "Save log" writes CSV to
-  `EXPORT/gtdpara/debug/`. "Log touches everywhere" (`ui/touchDiag/AppTouchObserver.tsx`, not
+  `EXPORT/kept-gtd/debug/`. "Log touches everywhere" (`ui/touchDiag/AppTouchObserver.tsx`, not
   persisted) logs raw touches app-wide. Detail: `docs/dev/history/technical-design-touch-test.md`.
-- **Stale build**: `supernote/pluginRuntime.ts` checks whether an older gtdpara build is still
+- **Stale build**: `supernote/pluginRuntime.ts` checks whether an older Kept build is still
   loaded in the host process. The required plugin firmware unloads it on install, so there is no
   warning: the count goes into the debug bundle and one `pluginRuntime: stale builds` log line per
   start, to catch a regression.
@@ -1068,7 +1072,7 @@ deleted (`ensureFileDeletePermission(description)`). The only deletes are `delet
 (`getPrivateDataDir`).
 
 **Host limits** (all host behavior the SDK documentation doesn't state is collected in
-`docs/dev/supernote-host-facts.md`). A keyword has at most 43 characters; every keyword gtdpara
+`docs/dev/supernote-host-facts.md`). A keyword has at most 43 characters; every keyword Kept
 writes is fitted by `domain/keywordLength.ts`'s `fitKeyword`. Linked and shared notes are created with `PluginFileAPI.createNote` and a fixed
 template name (`style_white`, or a MyStyle file); a template reference from
 `getNoteSystemTemplates()` does not resolve there. Creating notes works only when the plugin was
@@ -1140,7 +1144,7 @@ place it happens.
 - **One tag mechanism, one field mechanism.** Typed meanings are `#tags` in the text: flow
   state, waiting-on, `#now`, meeting tracking, highlights, context and abbreviations. A new typed
   meaning is a new reserved word or a nested `type/…` form (and an entry in `RESERVED_BARE_TAGS`
-  or `isContextTag`). Data gtdpara records about an entry (due, created, completion, provenance)
+  or `isContextTag`). Data Kept records about an entry (due, created, completion, provenance)
   are trailing `[key:: value]` fields, parsed like links. Never a second syntax for the same
   meaning. Derived fields are recomputed from the text and fields (`domain/taskEdit.ts`,
   `deriveMeetingFields`), never edited on their own.
@@ -1158,15 +1162,15 @@ place it happens.
   `domain/profiles.ts`.
 - **File changes are visible.** Moves, overwrites and deletes are confirmed before and reported
   after (`domain/fileChangeText.ts`). A delete needs a confirmation naming it, then FILE:DELETE,
-  then `deleteEmptyFolder`. Temporary files only in the private temp folder. Everything gtdpara
-  exports goes under `EXPORT/gtdpara/`.
+  then `deleteEmptyFolder`. Temporary files only in the private temp folder. Everything Kept
+  exports goes under `EXPORT/kept-gtd/`.
 
 **Cache and write paths**
 
 - The cache must be reproducible from a rebuild: a new `CachedItem` field is derived from the file
   alone.
 - **Data files are written only through `writeDataFile`** (storage/dataFileWrite.ts), never with
-  `writeTextFile` directly, so an edit made outside gtdpara is never overwritten unasked.
+  `writeTextFile` directly, so an edit made outside Kept is never overwritten unasked.
 - **Write-through is not optional.** Write the file first, then the cache, in the same operation,
   so a failed write never leaves the cache claiming a change. Every cache mutation calls
   `notifyCacheChanged()`.
@@ -1286,9 +1290,9 @@ throws on messy input (several flow tags, unknown status values, extra lines), a
 touches only its own section, so a hand-written paragraph or a foreign section survives every
 plugin write.
 
-**You type tags, gtdpara writes fields.** A second syntax for the same meaning would fragment
+**You type tags, Kept writes fields.** A second syntax for the same meaning would fragment
 what users type and what Obsidian shows. What users type or tap is a plain Obsidian tag (nesting
-with `/`); the cost is accepted lossiness (a waiting-on name becomes a slug). What gtdpara records
+with `/`); the cost is accepted lossiness (a waiting-on name becomes a slug). What Kept records
 on its own (dates) is a Dataview field at the end of the line, which the Obsidian Tasks plugin
 (Task Format: Dataview) and Dataview read, and which stays out of the typed text.
 
@@ -1336,18 +1340,18 @@ other place once; the note link then decides for good, so nothing moves.
 
 **Integrations stay optional and one-way.** Google Calendar and Gmail depend on outside
 services, so they sit behind experimental switches, fetch only on request, and copy into
-gtdpara's own format. A copied meeting or email becomes ordinary file content with no link back;
+Kept's own format. A copied meeting or email becomes ordinary file content with no link back;
 deduplication by title, date and time avoids a schema change for event ids.
 
 **Secrets and exports stay contained.** Debug bundles go to public issues, so they carry counts
 and yes/no facts, pass through redaction, and never include secrets. Profiles are shareable files
 for the same reason: secrets stay in the app's own storage.
 
-**Page-size pixels everywhere.** gtdpara is built against `sn-plugin-lib` 0.2.3, pinned
+**Page-size pixels everywhere.** Kept is built against `sn-plugin-lib` 0.2.3, pinned
 exactly, and requires the plugin firmware that goes with it (A5X/A6X Chauvet 2.27.42, Manta/Nomad
 Chauvet 3.30.45 or later). With it every coordinate the SDK reads or takes - stroke points, lasso
 rect, geometry points, text boxes, recognition size - is an Android pixel on the page's real size
-from `PluginFileAPI.getPageSize`. gtdpara uses no EMR coordinates, no `PointUtils`, no
+from `PluginFileAPI.getPageSize`. Kept uses no EMR coordinates, no `PointUtils`, no
 `Element.maxX/maxY`, and `getPageDisplaySize` for nothing but diagnostics. Ratta changes such
 semantics without a major version, so a library upgrade is always a deliberate step with a device
 test.

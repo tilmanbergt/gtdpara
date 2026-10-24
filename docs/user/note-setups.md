@@ -56,7 +56,7 @@ Left, the page as it will look, with its background; tap a piece to select it. R
 
 - **Pieces**: the pieces on the page (**✕** removes one). For the selected piece, the arrows move it (step 5 or 25), and you change its font size and maximum width. **Heading** writes the piece as a Supernote heading too, so it shows in the note's table of contents - on a note of its own and on each page of a notebook. Date & title has it on from the start, and so has the Title of a Todo page; Linked file can't be a heading. In the picture a heading has a grey backing.
 - **Add**: tap a piece to put it on the page (✓); tap it again to take it off. Each piece is on a page once.
-  - **Title** of the item; tags are written as words without `#` (`Retro demand retro/demand`), the tags gtdpara uses itself (`#next`, `#wf/anna` …) are left out
+  - **Title** of the item; tags are written as words without `#` (`Retro demand retro/demand`), the tags Kept GTD uses itself (`#next`, `#wf/anna` …) are left out
   - **Date & title** (Meeting, First and Reflection page): the date with the year and the title, `30.9.2026 · Retro demand retro/demand`; for a loop its main date and name
   - **Date** and **Time** (Meeting and Reflection page)
   - **Related items**: open todos and meetings that share a tag with the item - a tag about what it is about, like `#garden` or `#retro/alpha`; `#next`, `#now`, `#someday`, `#maybe` and Waiting For don't count
@@ -75,9 +75,9 @@ A new install starts with **One notebook** named `{name} {year}` in each project
 
 ## Heading style
 
-At the top of **Settings → Note setups**, **Heading style** sets how gtdpara's headings look in all notes: **Black**, **Light grey**, **Dark grey** (the default) or **Shadow**. It applies to headings written from then on; existing headings keep their style until their page is written again.
+At the top of **Settings → Note setups**, **Heading style** sets how Kept's headings look in all notes: **Black**, **Light grey**, **Dark grey** (the default) or **Shadow**. It applies to headings written from then on; existing headings keep their style until their page is written again.
 
-Like the other pieces, headings are written when the note is created and again when you open the note from gtdpara, until the meeting is over or the todo is done. A heading you make yourself on your own handwriting or text stays; one you put on a piece gtdpara wrote is replaced with that piece.
+Like the other pieces, headings are written when the note is created and again when you open the note from Kept, until the meeting is over or the todo is done. A heading you make yourself on your own handwriting or text stays; one you put on a piece Kept wrote is replaced with that piece.
 
 ## Since last time
 
@@ -130,9 +130,9 @@ A notebook - and a loop note - reads like a timeline. A new page goes where it b
 
 - A note of its own is named after its item, for example `2026-10-04 - Site visit with Marco marco`, so the Supernote's file search finds it. File names leave out `#` and the other characters listed in [Your files and folders](files-and-folders.md).
 - A page in a notebook gets a **keyword**: the meeting's date and title, or the todo's text, including its tags - for example `2026-10-04 Site visit with Marco #marco`. The Supernote's keyword search then finds every page about Marco. A keyword can have at most 43 characters, so a longer title is shortened for the keyword: its tags are left out (they are keywords of their own), and if it is still too long, it is cut with "…". The page is found the same way every time.
-- A note of its own, and a page in a notebook, also gets the item's tags as **keywords** (without `#next`, `#wf` and the other tags gtdpara uses itself), for example `marco`. A note from the **Note** tab in Quick Add gets the tags of its title as keywords the same way.
+- A note of its own, and a page in a notebook, also gets the item's tags as **keywords** (without `#next`, `#wf` and the other tags Kept uses itself), for example `marco`. A note from the **Note** tab in Quick Add gets the tags of its title as keywords the same way.
 - Notes and pages of meetings and todos also get a **date keyword**: the meeting's date, or the day the todo was created (if it has a `created` date), for example `2026-10-04`. The keyword search matches part of a keyword, so searching `2026-10` finds everything from October 2026.
-- These keywords are kept up to date whenever you open the note from gtdpara, while it is still refreshed. A keyword that is only a date on such a page belongs to gtdpara and is replaced; tag keywords are only ever added, never removed, so keywords you add yourself stay.
+- These keywords are kept up to date whenever you open the note from Kept, while it is still refreshed. A keyword that is only a date on such a page belongs to Kept and is replaced; tag keywords are only ever added, never removed, so keywords you add yourself stay.
 - With headings switched on, the note's **table of contents** lists every meeting of a notebook by date and title.
 
 ## Coming from Tag Rules

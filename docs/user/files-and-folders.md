@@ -1,6 +1,6 @@
 # Your files and folders
 
-Everything gtdpara knows lives in ordinary files that you can read and edit yourself.
+Everything Kept GTD knows lives in ordinary files that you can read and edit yourself.
 
 ## The folder layout
 
@@ -12,17 +12,17 @@ With the default settings:
 - `Note/3 Resources/`: your reference material
 - `Note/4 Archive/<year>/`: archived projects and areas, see [Closing out a project](close-out.md)
 
-Notes that gtdpara creates for todos and meetings go into `Todos` and `Meetings` folders inside the project or area, and for the Inbox inside its folder `0 Inbox`.
+Notes that Kept creates for todos and meetings go into `Todos` and `Meetings` folders inside the project or area, and for the Inbox inside its folder `0 Inbox`.
 
 ## File names
 
-The names of files gtdpara creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Project and area names can't contain these characters at all. Files you named yourself are left as they are. Notes created by older versions of gtdpara can still have such names: **Run Integrity Check** in Settings → Advanced lists them, and **Fix file names** renames them all at once and updates their links (see [Settings](settings.md)).
+The names of files Kept creates leave out `\ / : * ? " < > |` (not allowed in file names) and `# [ ] ^`, which break links in Obsidian. They are replaced by a space, so `Plan [v2] #team` becomes `Plan v2 team`. Project and area names can't contain these characters at all. Files you named yourself are left as they are. Notes created by older versions can still have such names: **Run Integrity Check** in Settings → Advanced lists them, and **Fix file names** renames them all at once and updates their links (see [Settings](settings.md)).
 
 ## The Inbox folder
 
-The Inbox has its own folder inside the Areas folder, so the `Note` folder holds only your PARA folders. gtdpara doesn't treat it as an area: it isn't listed on the Areas tab or in focus and refile. You can change its name in Settings, see [Settings](settings.md).
+The Inbox has its own folder inside the Areas folder, so the `Note` folder holds only your PARA folders. Kept doesn't treat it as an area: it isn't listed on the Areas tab or in focus and refile. You can change its name in Settings, see [Settings](settings.md).
 
-Up to version 0.1.0 the Inbox lived directly in `Note` (`Inbox.txt` plus `Todos` and `Meetings` folders). Versions 0.2 to 0.8 moved these into the Inbox folder on their first start; from 0.9.0 on gtdpara no longer does. If you still have them in `Note`, move them into the Inbox folder by hand; **Run Integrity Check** in Settings → Advanced points them out.
+Up to version 0.1.0 the Inbox lived directly in `Note` (`Inbox.txt` plus `Todos` and `Meetings` folders). Versions 0.2 to 0.8 moved these into the Inbox folder on their first start; from 0.9.0 on Kept no longer does. If you still have them in `Note`, move them into the Inbox folder by hand; **Run Integrity Check** in Settings → Advanced points them out.
 
 ## Inside project.txt
 
@@ -62,30 +62,30 @@ Turn the back garden into a vegetable garden before winter.
 - A meeting line is date, then time (`10:00`, `10:00-11:00`) or length (`1d`, `2d`), then the title.
 - On screen, dates are shown as day and month (`4.10.`, with the year when it isn't this year) and times in 24 hours (`9:30`); in the files they stay `2026-10-04` and `09:30`.
 - A linked note appears at the end of a line as `→ [[Meetings/…]]`, a linked file as `+[[…]]`. A link to a page, from a lasso capture, ends in `#page=3`.
-- A todo line ends in fields that gtdpara writes: `[meeting:: …]` (the meeting it was agreed in, see [Threads](threads.md)), `[created:: …]`, `[due:: …]` and `[completion:: …]`, in this order, after the links. A field you add yourself at the end of the line, for example `[priority:: high]`, is kept. In the middle of the text, `[key:: value]` is just text.
+- A todo line ends in fields that Kept writes: `[meeting:: …]` (the meeting it was agreed in, see [Threads](threads.md)), `[created:: …]`, `[due:: …]` and `[completion:: …]`, in this order, after the links. A field you add yourself at the end of the line, for example `[priority:: high]`, is kept. In the middle of the text, `[key:: value]` is just text.
 - Older lines with `#due:2026-10-03` or `#waiting-for:marco` are read as before. A line gets the new form only when you edit that todo; nothing is converted on its own.
 - A `## Marks` section lists open lasso marks, one per line, see [Lasso](lasso.md).
 - A `## Threads` section in `area.txt` (or in `project.txt` of a project without an area) holds the counterparts you confirmed, one per line: `- mieke: active` or `- sven: inactive`. Text after a comma is kept. See [Threads](threads.md).
-- Lines gtdpara doesn't understand are kept as they are.
+- Lines Kept doesn't understand are kept as they are.
 
 ## Editing by hand
 
-You can edit these files in any text editor, on Windows too, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open gtdpara again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`, `## Threads`) as they are.
+You can edit these files in any text editor, on Windows too, for example on your computer via Supernote Cloud, or in Obsidian through the Supernote Cloud Sync plugin's Paired folder. Afterwards, open Kept again: it reads the files that changed. If a change doesn't show up (a sync can keep a file's old time and size), tap **Reload all files** in Settings → Advanced. Keep the section headings (`## Tasks`, `## Meetings`, `## Marks`, `## Threads`) as they are.
 
-If you edit a file while gtdpara is open, gtdpara reads it again before it saves:
+If you edit a file while Kept is open, Kept reads it again before it saves:
 
-- When your edit was in another part of the file (for example the Scope, while you add a todo in gtdpara), both changes are kept.
-- When both changed the same part (for example the todos), the status line asks which version wins. **Use mine** saves gtdpara's change over the edit; **Use the file** keeps the edit and saves nothing. ✕ counts as **Use the file**. Other parts of the file keep your edit either way.
+- When your edit was in another part of the file (for example the Scope, while you add a todo in Kept), both changes are kept.
+- When both changed the same part (for example the todos), the status line asks which version wins. **Use mine** saves Kept's change over the edit; **Use the file** keeps the edit and saves nothing. ✕ counts as **Use the file**. Other parts of the file keep your edit either way.
 - When the file was deleted or moved meanwhile, nothing is saved; tap **Reload all files** in Settings → Advanced to see what is there now.
 
-gtdpara saves a file by writing a hidden copy next to it (for example `.project.txt.gtdpara-tmp`) and putting it in place in one step, so a file is never left half written. If gtdpara is stopped in that moment, the hidden copy stays behind; the next save replaces it, and **Run Integrity Check** lists it.
+Kept saves a file by writing a hidden copy next to it (for example `.project.txt.gtdpara-tmp`) and putting it in place in one step, so a file is never left half written. If Kept is stopped in that moment, the hidden copy stays behind; the next save replaces it, and **Run Integrity Check** lists it.
 
 ## Obsidian
 
-To read and edit your files in Obsidian, with the Tasks and Dataview plugins, see [Using gtdpara with Obsidian](obsidian.md).
+To read and edit your files in Obsidian, with the Tasks and Dataview plugins, see [Using Kept GTD with Obsidian](obsidian.md).
 
-## What gtdpara keeps elsewhere
+## What Kept GTD keeps elsewhere
 
 - **Settings** are stored inside the plugin. Profiles save them as files, see [Profiles](profiles-and-demo.md).
 - **Pictures and handwriting of lasso marks** are kept in the plugin's own storage until the mark is processed, see [Lasso](lasso.md).
-- **Exports** go to `EXPORT/gtdpara`: `profiles` for profile files, `debug` for logs, debug bundles and reports.
+- **Exports** go to `EXPORT/kept-gtd`: `profiles` for profile files, `debug` for logs, debug bundles and reports.

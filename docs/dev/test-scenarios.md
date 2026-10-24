@@ -88,13 +88,13 @@ Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/techn
 
 ### A refile with its note, stopped after any write, loses nothing and is repairable
 
-- **Then** for every point where gtdpara can be stopped: the todo and its note still exist, and a broken link is named with the note's new place
+- **Then** for every point where Kept GTD can be stopped: the todo and its note still exist, and a broken link is named with the note's new place
 
 Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
 ### A close-out stopped during "Archive now" can be finished, or is fully archived
 
-- **Then** for every point where gtdpara can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left
+- **Then** for every point where Kept GTD can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left
 
 Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
@@ -319,7 +319,7 @@ Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/techn
 ### Quick Add a todo in a project
 
 - **Given** project "Website" has the todo "Write copy" and a hand-written Scope
-- **When** I open gtdpara, go to Projects, open "Website" and add the todo "Call the designer"
+- **When** I open Kept GTD, go to Projects, open "Website" and add the todo "Call the designer"
 - **Then** project.txt lists both todos
 - **Then** the Scope and the rest of the file are unchanged
 - **Then** the status line confirms it and nothing was logged as an error
@@ -373,7 +373,7 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 ### Unreadable settings are never replaced by the defaults unasked
 
 - **Given** the stored settings are broken and the Inbox has a done todo
-- **When** I open gtdpara
+- **When** I open Kept GTD
 - **Then** the status line says the settings could not be read
 - **And** a setting changed on the way (Inbox: Hide done tasks) leaves the stored settings as they were
 - **And** "Start over" stores the defaults and the message goes away
@@ -457,7 +457,7 @@ Test: `__tests__/scenarios/review.test.tsx` · design: `docs/dev/history/technic
 
 ## Your files
 
-### A hand-edited project file keeps everything gtdpara does not own when a todo is added
+### A hand-edited project file keeps everything Kept GTD does not own when a todo is added
 
 - **Given** project "Website" has a frontmatter line, a paragraph, a stray line, an old-style due date and a section of its own, all by hand
 - **When** I add the todo "Call the designer" on its page
@@ -466,21 +466,21 @@ Test: `__tests__/scenarios/review.test.tsx` · design: `docs/dev/history/technic
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-tags.md`
 
-### An outside edit to another part of the file is kept when gtdpara saves
+### An outside edit to another part of the file is kept when Kept GTD saves
 
-- **Given** project "Website" is open in gtdpara
-- **When** its Scope is changed in Obsidian, and I then add a todo in gtdpara
+- **Given** project "Website" is open in Kept GTD
+- **When** its Scope is changed in Obsidian, and I then add a todo in Kept GTD
 - **Then** project.txt has both: the new Scope and the new todo, and nobody was asked
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
-### When gtdpara and another app changed the same list, the user decides which wins
+### When Kept GTD and another app changed the same list, the user decides which wins
 
-- **Given** project "Website" is open in gtdpara
-- **When** its todo is changed in Obsidian, and I then add a todo in gtdpara
-- **Then** gtdpara asks which version wins and has written nothing yet
+- **Given** project "Website" is open in Kept GTD
+- **When** its todo is changed in Obsidian, and I then add a todo in Kept GTD
+- **Then** Kept GTD asks which version wins and has written nothing yet
 - **And** "Use the file" keeps the Obsidian version, says nothing was saved and keeps what I typed
-- **And** after another change in Obsidian, + Add asks again, and "Use mine" saves the list as gtdpara shows it, with the new todo
+- **And** after another change in Obsidian, + Add asks again, and "Use mine" saves the list as Kept GTD shows it, with the new todo
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
 
