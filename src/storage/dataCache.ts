@@ -748,6 +748,18 @@ export function updateItemLoops(path: string, rawContent: string, loops: LoopLin
   notifyCacheChanged();
 }
 
+/** Write-through after saving an item's Agreements span (storage/agreements.ts) - see updateItemTasks. */
+export function updateItemAgreements(path: string, rawContent: string, agreements: Agreement[], agreementsExtraLines: string[]): void {
+  const item = cached?.items.find(i => i.path === path);
+  if (!item) return;
+  item.rawContent = rawContent;
+  item.agreements = agreements;
+  item.agreementsExtraLines = agreementsExtraLines;
+  item.loadError = undefined;
+  reparseIfMerged(item);
+  notifyCacheChanged();
+}
+
 /** Write-through after saving an item's Weekly Goals span - see updateItemTasks. */
 export function updateItemWeeklyGoals(
   path: string,

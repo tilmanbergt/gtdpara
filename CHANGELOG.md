@@ -13,6 +13,10 @@ or your project/area files are stored.
 ### Changed
 - The project now lives at github.com/tilmanbergt/kept-gtd. Old gtdpara links lead there too.
 
+### Upgrade notes
+- The first time you add an agreement to a Project or Area, its file gets a new `## Agreements`
+  section of plain bullets. Older versions of Kept GTD keep that section as it is.
+
 ## [0.20.0] — 2026-10-24
 
 ### Changed

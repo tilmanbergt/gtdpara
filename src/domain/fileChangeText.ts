@@ -287,3 +287,15 @@ export function dataFileGoneText(fileName: string): string {
 export function profilesCopiedText(count: number, oldFolderDisplay: string): string {
   return `Copied ${count} ${count === 1 ? 'profile' : 'profiles'} from ${oldFolderDisplay} - you can delete that folder.`;
 }
+
+/** After an agreement was written (docs/dev/history/technical-design-meetings-0.21.md §2.3). */
+export function agreementAddedText(itemName: string): string {
+  return `Agreement added to ${itemName}`;
+}
+
+export const AGREEMENT_CHANGED_TEXT = 'Changed the agreement - the old one is ended';
+export const AGREEMENT_ENDED_TEXT = 'Ended the agreement';
+export const AGREEMENT_SAVED_TEXT = 'Agreement saved';
+export const AGREEMENT_KEPT_TEXT = 'Agreement kept';
+/** A save whose agreement line is gone or was changed in the file since it was read. */
+export const AGREEMENT_VANISHED_TEXT = 'That agreement changed in the file - look again';

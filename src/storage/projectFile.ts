@@ -31,7 +31,7 @@ import {
 } from '../domain/markdown';
 import {CounterpartLine, parseThreadsSpan, THREADS_HEADING, writeThreadsIntoContent} from '../domain/threadsSection';
 import {LoopLine, LOOPS_HEADING, parseLoopsSpan, writeLoopsIntoContent} from '../domain/loopsSection';
-import {Agreement, parseAgreementsSpan} from '../domain/agreements';
+import {Agreement, AGREEMENTS_HEADING, parseAgreementsSpan, writeAgreementsIntoContent} from '../domain/agreements';
 import {
   AREA_FILE_NAME,
   GtdParaKind,
@@ -235,6 +235,20 @@ export async function saveLoops(
   return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
     parts: [LOOPS_HEADING],
     apply: content => writeLoopsIntoContent(content, loops, extraLines),
+  });
+}
+
+/** Saves the Agreements span (docs/dev/history/technical-design-meetings-0.21.md §2.3) - see saveTasks for the shared rawContent/scaffolding behavior. Only storage/agreements.ts calls it. */
+export async function saveAgreements(
+  kind: GtdParaKind,
+  itemPath: string,
+  rawContent: string,
+  agreements: readonly Agreement[],
+  extraLines: readonly string[] = [],
+): Promise<string> {
+  return writeDataFile(kind, itemPath, dataFilePath(kind, itemPath), rawContent, {
+    parts: [AGREEMENTS_HEADING],
+    apply: content => writeAgreementsIntoContent(content, agreements, extraLines),
   });
 }
 

@@ -19,6 +19,7 @@ import {getRuntimeDiagnostics} from '../supernote/pluginRuntime';
 import {getRecentErrors, getRecentLogLines, isFileLoggingOn, LOG_FILE_NAME} from '../utils/logSink';
 import {collectPerfStats} from './perfStats';
 import {counterpartScopes} from '../domain/counterparts';
+import {Agreement, isActiveAgreement} from '../domain/agreements';
 import {getCachedData} from './dataCache';
 import {errorMessage} from '../utils/errorMessage';
 import {getTouchEntries, isAppWideTouchLog} from '../utils/touchDiagStore';
@@ -121,6 +122,7 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
   lines.push(await marksLine());
   lines.push(counterpartsLine());
   lines.push(loopsLine());
+  lines.push(agreementsSummary(getCachedData()?.items ?? null));
   lines.push(`log file: ${isFileLoggingOn() ? `ON (${LOG_FILE_NAME})` : 'OFF'}`);
   lines.push(`touch test: log touches everywhere ${isAppWideTouchLog() ? 'ON' : 'OFF'} · records ${getTouchEntries().length}`);
   const errors = getRecentErrors(10);
@@ -155,6 +157,15 @@ function loopsLine(): string {
   if (!items) return 'loops: lines not available (no cache)';
   const count = (status: string) => items.reduce((sum, item) => sum + item.loops.filter(l => l.status === status).length, 0);
   return `loops: active ${count('active')} · done ${count('done')} · dropped ${count('dropped')}`;
+}
+
+/** "agreements: active=5 ended=2 files=2" (docs/dev/history/technical-design-meetings-0.21.md §2.3) - counts only, never texts or tags. */
+export function agreementsSummary(items: ReadonlyArray<{agreements: readonly Agreement[]}> | null): string {
+  if (!items) return 'agreements: not available (no cache)';
+  const all = items.flatMap(item => item.agreements);
+  const active = all.filter(isActiveAgreement).length;
+  const files = items.filter(item => item.agreements.length > 0).length;
+  return `agreements: active=${active} ended=${all.length - active} files=${files}`;
 }
 
 /** "marks: open 3 (inbox 1 · items 2) · data 3 · pending icons 0" (lasso 0.8 §3.10) - counts only. */
