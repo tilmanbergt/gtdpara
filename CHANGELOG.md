@@ -10,6 +10,8 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-10-24
+
 ### New
 - **Reflection page for meetings**: once a meeting is over, **Reflect** adds one page to its note
   for reflecting in your own handwriting - after the meeting's page and the pages you added to
