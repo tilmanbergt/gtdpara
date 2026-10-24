@@ -108,14 +108,14 @@ export async function ensurePluginPermission(
 export function ensureFileReadPermission(): Promise<boolean> {
   return ensurePluginPermission(
     FILE_READ_PERMISSION,
-    'Allow GtdPara to read your Project and Area folders.',
+    'Allow Kept GTD to read your Project and Area folders.',
   );
 }
 
 export function ensureFileWritePermission(): Promise<boolean> {
   return ensurePluginPermission(
     FILE_WRITE_PERMISSION,
-    'Allow GtdPara to create and update project and area files.',
+    'Allow Kept GTD to create and update project and area files.',
   );
 }
 
@@ -137,7 +137,7 @@ export function ensureFileDeletePermission(description: string): Promise<boolean
  * Both integrations are opt-in (Settings -> Advanced, off by default).
  */
 export function ensureInternetPermission(
-  description = 'Allow GtdPara to connect to Google Calendar or Gmail - only when you tap Load or Refresh.',
+  description = 'Allow Kept GTD to connect to Google Calendar or Gmail - only when you tap Load or Refresh.',
 ): Promise<boolean> {
   return ensurePluginPermission(INTERNET_PERMISSION, description);
 }

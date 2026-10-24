@@ -82,13 +82,13 @@ scenario('When gtdpara and another app changed the same list, the user decides w
     await tap('+ Add');
   });
   then('gtdpara asks which version wins and has written nothing yet', () => {
-    expectShows('"Website" was also changed outside gtdpara (Todos). Which version wins?');
+    expectShows('"Website" was also changed outside Kept GTD (Todos). Which version wins?');
     expect(sectionLines(projectFile('Website'), 'Tasks')).toEqual(['- [ ] Write copy, edited in Obsidian']);
   });
   and('"Use the file" keeps the Obsidian version, says nothing was saved and keeps what I typed', async () => {
     await tap('Use the file');
     expect(sectionLines(projectFile('Website'), 'Tasks')).toEqual(['- [ ] Write copy, edited in Obsidian']);
-    expectShows(/Not saved: "Website" keeps the version changed outside gtdpara\./);
+    expectShows(/Not saved: "Website" keeps the version changed outside Kept GTD\./);
     expect(fieldValue('New task')).toBe('Call the designer');
   });
   and('after another change in Obsidian, + Add asks again, and "Use mine" saves the list as gtdpara shows it, with the new todo', async () => {
@@ -109,7 +109,7 @@ scenario('Unreadable settings are never replaced by the defaults unasked', {feat
   });
   when('I open gtdpara', () => openApp());
   then('the status line says the settings could not be read', () => {
-    expectShows('Settings could not be read - gtdpara uses defaults and saves no settings.');
+    expectShows('Settings could not be read - Kept GTD uses defaults and saves no settings.');
   });
   and('a setting changed on the way (Inbox: Hide done tasks) leaves the stored settings as they were', async () => {
     await tapTab('Inbox');
@@ -119,7 +119,7 @@ scenario('Unreadable settings are never replaced by the defaults unasked', {feat
   and('"Start over" stores the defaults and the message goes away', async () => {
     await tap('Start over');
     expect(JSON.parse((await AsyncStorage.getItem('gtdpara:settings:v1'))!)).toEqual(DEFAULT_SETTINGS);
-    expect(shows('Settings could not be read - gtdpara uses defaults and saves no settings.')).toBe(false);
+    expect(shows('Settings could not be read - Kept GTD uses defaults and saves no settings.')).toBe(false);
     expect(fileText(INBOX_FILE)).toContain('- [x] Old todo');
   });
 });

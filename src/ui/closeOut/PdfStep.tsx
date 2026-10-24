@@ -58,7 +58,7 @@ export default function PdfStep({ctx, busy, run, onCreate, onCancel, onOpen, onT
         <View style={[co.boxLight, {borderColor}, co.mt16]}>
           <Text style={[co.small, co.muted, {color: textColor}]}>Written to (moves into the archive in step 5)</Text>
           <Text style={[co.path, {color: textColor}]}>{ctx.display(ctx.workingPdfPath)}</Text>
-          <Text style={[co.small, co.muted, {color: textColor}]}>Built in gtdpara's private folder and copied here only when finished - a cancelled run writes nothing. Keep gtdpara open until it's done.</Text>
+          <Text style={[co.small, co.muted, {color: textColor}]}>Built in Kept GTD's private folder and copied here only when finished - a cancelled run writes nothing. Leave Kept GTD open until it's done.</Text>
         </View>
         <View style={co.row}>
           <PillButton label="Cancel" size="large" onPress={onCancel} textColor={textColor} borderColor={borderColor} />
@@ -101,7 +101,7 @@ export default function PdfStep({ctx, busy, run, onCreate, onCancel, onOpen, onT
       </View>
       {pdf && (
         <>
-          <Text style={[co.small, co.muted, {color: textColor}, co.mt4]}>The PDF opens in Supernote's reader. Come back with the gtdpara button and you land here again.</Text>
+          <Text style={[co.small, co.muted, {color: textColor}, co.mt4]}>The PDF opens in Supernote's reader. Come back with the Kept GTD button and you land here again.</Text>
           <Pressable style={[co.box, co.row, {borderColor: textColor}, co.mt12]} disabled={busy} onPress={onToggleChecked}>
             <View style={[co.checkbox, {borderColor: textColor}, pdf.checked && {backgroundColor: COLORS.accent, borderColor: COLORS.accent}]}>
               {pdf.checked && <Text style={[{color: COLORS.accentText}, co.bold]}>✓</Text>}

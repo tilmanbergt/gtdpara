@@ -215,7 +215,7 @@ Change value changes with it.
 | Other UI, status and error texts naming the plugin: "Marked with an older gtdpara", "Open gtdpara" / "Open gtdpara." (Engage), "Updated to gtdpara …", "You opened gtdpara from …", "outside gtdpara" (file-change, integrity, settings-unreadable texts), "gtdpara will not show it here again", PdfStep hints, profile errors ("not a gtdpara profile", "made by a newer gtdpara version", "so gtdpara runs on defaults") | screens/CaptureScreen.tsx, domain/engageText.ts, ui/useWhatsNewNotice.ts, domain/closeOut/readiness.ts, domain/fileChangeText.ts, domain/integrityCheck.ts, storage/integrityCheck.ts, ui/useSettingsUnreadableNotice.ts, screens/review/steps/ItemListStep.tsx, ui/closeOut/PdfStep.tsx, domain/profiles.ts, storage/profiles.ts |
 | Tests asserting any of the above (paths, texts) | __tests__/, test-helpers/scenario/ |
 | Scenario titles and steps that name the plugin ("When I open gtdpara", "… when gtdpara saves") - they become `docs/dev/test-scenarios.md` | __tests__/scenarios/ |
-| `ui/KeptTab.tsx` → `ui/KeepAliveTab.tsx` (+ imports and the names in comments) | App.tsx, screens/settings/Settings.tsx, ui/keepAliveStore.ts, ui/screenActivity.ts, design-overview |
+| `ui/KeptTab.tsx` → `ui/KeepAliveTab.tsx` (component, import, file references; `dropKeptTabs`/`getKeptTabsGeneration` name the setting and stay) | App.tsx, ui/screenActivity.ts, design-overview |
 | Release artefact `gtdpara-<version>.snplg`, release title and tag message `gtdpara <version>`, console lines | scripts/release.ps1, buildPlugin.ps1, scripts/gen-bundled-content.mjs, scripts/test-versioning.mjs (artefact-name case) |
 | Help pages (the 18 pages with a hit) | docs/user/ |
 | README, PRIVACY, CONTRIBUTING, CHANGELOG header line, CLAUDE.md | root |
@@ -249,3 +249,8 @@ Change value changes with it.
   not the other way. Proposal: About's `PROJECT_URL` changes as §3.2 says; all other links
   keep `gtdpara` until the repository is renamed (R10), so 0.20.0's release step and links
   work on release day.
+
+Decided (Tilman): U1, U2, U4, U5 and U6 as proposed. U3: the build artefacts are always named
+`kept-gtd` - `build/outputs/kept-gtd.snplg` and the labelled copy `kept-gtd-<label>.snplg`.
+The npm package name stays `gtdpara`: `buildPlugin.ps1` also takes the bundle name inside the
+package from it, and it is the `pluginKey` fallback when PluginConfig.json is generated.

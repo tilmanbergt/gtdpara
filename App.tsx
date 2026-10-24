@@ -9,7 +9,7 @@ import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import {PluginManager} from 'sn-plugin-lib';
 import TabBar, {AppTab} from './src/ui/TabBar';
 import {getKeptTabsGeneration, setKeepTabsAlive, useKeepTabsAlive} from './src/ui/keepAliveStore';
-import KeptTab from './src/ui/KeptTab';
+import KeepAliveTab from './src/ui/KeepAliveTab';
 import ItemsList from './src/screens/ItemsList';
 import Settings, {SettingsTab} from './src/screens/settings/Settings';
 import ItemDetail from './src/screens/ItemDetail';
@@ -88,7 +88,7 @@ perfBegin('cold', 'app');
 // file sink itself is only switched on by settings.debugLogging (reorient()).
 configureLogFileSink(
   appendDebugLogFile,
-  `=== gtdpara ${BUILD_INFO.label} build ${BUILD_INFO.versionCode} - session ${new Date().toISOString()} ===`,
+  `=== Kept GTD ${BUILD_INFO.label} build ${BUILD_INFO.versionCode} - session ${new Date().toISOString()} ===`,
 );
 
 // Tabs whose screens stay mounted (hidden) after their first visit while
@@ -302,7 +302,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
     let cancelled = false;
     // Which build is running - first thing to look for in a log
     // (docs/dev/history/technical-design-versioning-release.md 3.4).
-    log('App: gtdpara', BUILD_INFO.label, 'build', BUILD_INFO.versionCode, 'built', BUILD_INFO.builtAt);
+    log('App: Kept GTD', BUILD_INFO.label, 'build', BUILD_INFO.versionCode, 'built', BUILD_INFO.builtAt);
 
     // Every file the plugin opens itself goes through fileSystem.ts's
     // openPath, which tells this observer right before the host call
@@ -869,9 +869,9 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
             <>
               {KEPT_TABS.map(tab =>
                 visitedRef.current.has(tab) ? (
-                  <KeptTab key={tab} tab={tab} active={activeTab === tab}>
+                  <KeepAliveTab key={tab} tab={tab} active={activeTab === tab}>
                     {keptScreens[tab as keyof typeof keptScreens]}
-                  </KeptTab>
+                  </KeepAliveTab>
                 ) : null,
               )}
               {nonKeptBody}

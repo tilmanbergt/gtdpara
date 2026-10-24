@@ -22,9 +22,9 @@ export function useSettingsUnreadableNotice(onReset: (settings: GtdParaSettings)
       : {
           kind: 'error',
           scope: 'global',
-          text: 'Settings could not be read - gtdpara uses defaults and saves no settings.',
+          text: 'Settings could not be read - Kept GTD uses defaults and saves no settings.',
           detail:
-            `Your stored settings could not be read (${reason}). They stay as they are: gtdpara runs on default ` +
+            `Your stored settings could not be read (${reason}). They stay as they are: Kept GTD runs on default ` +
             'settings and saves none, so nothing replaces them. Export a debug bundle (Settings → Advanced) and ' +
             'report it. "Start over" replaces the stored settings with the defaults for good.',
           actions: [

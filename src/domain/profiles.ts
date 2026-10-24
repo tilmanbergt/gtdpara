@@ -157,10 +157,10 @@ export function parseProfile(text: string, fallbackName: string): ParsedProfile 
   }
   const obj = raw as Record<string, unknown>;
   if (obj.format !== PROFILE_FILE_FORMAT) {
-    throw new Error('not a gtdpara profile ("format" is missing or different)');
+    throw new Error('not a Kept GTD profile ("format" is missing or different)');
   }
   if (typeof obj.formatVersion === 'number' && obj.formatVersion > PROFILE_FILE_VERSION) {
-    throw new Error('made by a newer gtdpara version - please update');
+    throw new Error('made by a newer Kept GTD version - please update');
   }
   return {
     name: typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : fallbackName,

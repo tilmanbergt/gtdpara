@@ -32,5 +32,5 @@ it('names where a note of the same name is', async () => {
 
 it('says it may have been deleted when no note of that name is anywhere', async () => {
   const [finding] = await checkNoteMissing(input(['Todos/Gone.note'], new Map()), io);
-  expect(finding.message).toContain('may have been deleted or moved outside gtdpara');
+  expect(finding.message).toContain('may have been deleted or moved outside Kept GTD');
 });

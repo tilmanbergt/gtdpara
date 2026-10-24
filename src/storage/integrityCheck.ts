@@ -141,7 +141,7 @@ function fileNameFindings(
       entityKind: 'item' as const,
       entityLabel: folder.name,
       notePath: '',
-      message: `The folder name "${folder.name}" has ${chars(folder.chars)} in it, which breaks links in Obsidian. gtdpara doesn't rename project or area folders (their name is how other items refer to them) - rename it by hand if needed.`,
+      message: `The folder name "${folder.name}" has ${chars(folder.chars)} in it, which breaks links in Obsidian. Kept GTD doesn't rename project or area folders (their name is how other items refer to them) - rename it by hand if needed.`,
     })),
   ];
 }

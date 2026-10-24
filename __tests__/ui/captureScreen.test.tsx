@@ -223,7 +223,7 @@ it('marks: an old mark is not recognized; the status slot says to type the text'
   await flush();
   await flush();
   expect(mockState.recognized).toEqual([]);
-  expect(mockStatusTexts).toContain('Marked with an older gtdpara - type the text from the picture.');
+  expect(mockStatusTexts).toContain('Marked with an older Kept GTD - type the text from the picture.');
   expect(texts(r).join(' ')).not.toContain('recognizing…');
 });
 

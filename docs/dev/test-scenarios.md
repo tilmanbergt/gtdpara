@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-39 scenarios.
+42 scenarios.
 
 ## Close-out
 
@@ -21,6 +21,14 @@
 - **And** its project.txt says archived, and the screen says so
 
 Test: `__tests__/scenarios/closeOut.test.tsx` · design: `docs/dev/history/technical-design-project-close-out.md`
+
+### A close-out PDF says it was created by Kept GTD
+
+- **Given** project "Website" has only done todos
+- **When** I close it out up to the PDF and tap "Create PDF"
+- **Then** the PDF's footer line says "Created by Kept GTD"
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
 
 ## Daily
 
@@ -336,6 +344,22 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 - **And** "Start over" stores the defaults and the message goes away
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+### Settings → About shows the name Kept GTD, its slogan and where it came from
+
+- **Given** an empty PARA folder
+- **When** I open Settings → About
+- **Then** it shows "Kept GTD" with the version, the slogan, "Formerly gtdpara" and the project link
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### Export debug bundle writes a file named after Kept GTD
+
+- **Given** an empty PARA folder
+- **When** I tap Export debug bundle on Settings → About
+- **Then** one kept-gtd-debug file is in the debug folder, it says Kept GTD, and the status line names it
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
 
 ### Record taps in the touch test without changing anything
 

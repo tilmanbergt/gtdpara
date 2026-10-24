@@ -8,7 +8,7 @@
  * needed - a cache subscription pausing, a status message withdrawn, a
  * quiet reload on show.
  *
- * Default = always active: every screen NOT inside a ui/KeptTab.tsx (Inbox,
+ * Default = always active: every screen NOT inside a ui/KeepAliveTab.tsx (Inbox,
  * Review, Settings, capture/focus mode, and every screen while "Keep tabs in
  * memory" is off) behaves exactly as before.
  */
@@ -27,7 +27,7 @@ const ALWAYS_ACTIVE: ScreenActivity = {
 
 export const ScreenActivityContext = createContext<ScreenActivity>(ALWAYS_ACTIVE);
 
-/** A settable activity store - one per ui/KeptTab.tsx. */
+/** A settable activity store - one per ui/KeepAliveTab.tsx. */
 export function createScreenActivity(initial: boolean): ScreenActivity & {set(active: boolean): void} {
   let active = initial;
   const listeners = new Set<(active: boolean) => void>();

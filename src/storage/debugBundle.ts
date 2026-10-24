@@ -95,7 +95,7 @@ export async function buildDebugInfo(settings: GtdParaSettings, now: Date = new 
   const launch = getRememberedLaunchNotePath();
   const lines: string[] = [];
   lines.push(
-    `gtdpara ${b.label} (build ${b.versionCode || 'dev'}) commit ${b.commit}${b.dirty ? ' (uncommitted changes)' : ''}` +
+    `Kept GTD ${b.label} (build ${b.versionCode || 'dev'}) commit ${b.commit}${b.dirty ? ' (uncommitted changes)' : ''}` +
       `  built ${b.builtAt}  ${b.release ? 'release' : 'development build'}`,
   );
   lines.push(
@@ -176,7 +176,7 @@ export async function exportDebugBundle(settings: GtdParaSettings): Promise<stri
   const info = await buildDebugInfo(settings, now);
   const log = getRecentLogLines();
   const text = [
-    '=== gtdpara debug bundle ===',
+    '=== Kept GTD debug bundle ===',
     'Please look through this file before sharing it. File paths are included.',
     '',
     ...info,
@@ -190,5 +190,5 @@ export async function exportDebugBundle(settings: GtdParaSettings): Promise<stri
     gmailAppPassword: settings.gmailAppPassword,
     googleCalendarIcsUrl: settings.googleCalendarIcsUrl,
   });
-  return writeDebugBundleFile(`gtdpara-debug-${fileStamp(now)}.txt`, redacted);
+  return writeDebugBundleFile(`kept-gtd-debug-${fileStamp(now)}.txt`, redacted);
 }

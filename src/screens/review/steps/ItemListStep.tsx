@@ -144,7 +144,7 @@ export default function ItemListStep({
       detail:
         `This moves the folder ${displayPath(itemRef.path)} into ${displayPath(target.folder)}.` +
         (leavesEmpty ? emptyFolderConfirmNote(displayPath(itemRef.path), displayPath(target.folder)) : '') +
-        ' gtdpara will not show it here again.',
+        ' Kept GTD will not show it here again.',
       actionLabel: 'Move to Archive',
     });
     if (!confirmed) return;

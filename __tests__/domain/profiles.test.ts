@@ -46,7 +46,7 @@ describe('profile files', () => {
   });
   it('rejects non-profiles and newer formats', () => {
     expect(() => parseProfile('nope', 'x')).toThrow('JSON');
-    expect(() => parseProfile('{"a":1}', 'x')).toThrow('not a gtdpara profile');
+    expect(() => parseProfile('{"a":1}', 'x')).toThrow('not a Kept GTD profile');
     expect(() => parseProfile('{"format":"gtdpara-profile","formatVersion":99}', 'x')).toThrow('newer');
   });
   it('ignores unknown keys, wrong types and smuggled device-wide/secret keys', () => {

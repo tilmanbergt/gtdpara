@@ -257,7 +257,7 @@ describe('tap routing in a row', () => {
     await pressText(r, 'Engage ›');
     await settle();
     expect(texts(r)).toContain('Thread');
-    expect(texts(r)).toContain('Open gtdpara');
+    expect(texts(r)).toContain('Open Kept GTD');
     act(() => r.unmount());
   });
 });

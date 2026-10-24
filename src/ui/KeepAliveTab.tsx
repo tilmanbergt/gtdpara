@@ -20,7 +20,7 @@ interface Props {
   children: React.ReactNode;
 }
 
-function KeptTab({tab, active, children}: Props): React.JSX.Element {
+function KeepAliveTab({tab, active, children}: Props): React.JSX.Element {
   // One activity store per kept tab, stable for its lifetime - a change is
   // pushed to subscribers, the screen itself does not re-render for it.
   const activityRef = useRef<ReturnType<typeof createScreenActivity> | null>(null);
@@ -46,4 +46,4 @@ const styles = StyleSheet.create({
   hidden: {display: 'none'},
 });
 
-export default React.memo(KeptTab);
+export default React.memo(KeepAliveTab);

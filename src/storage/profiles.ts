@@ -102,7 +102,7 @@ export async function writeProfile(id: string, settings: GtdParaSettings, name?:
     throw new Error(`invalid profile id "${id}"`);
   }
   if (getSettingsUnreadable() !== null) {
-    throw new Error('Not saved: your stored settings could not be read, so gtdpara runs on defaults and saves no profile from them.');
+    throw new Error('Not saved: your stored settings could not be read, so Kept GTD runs on defaults and saves no profile from them.');
   }
   await ensureFolderExists(PROFILES_FOLDER_PATH);
   const finalName = name ?? (await readProfileName(id)) ?? (id === DEFAULT_PROFILE_ID ? DEFAULT_PROFILE_NAME : id);

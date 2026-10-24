@@ -129,7 +129,7 @@ the thread overview otherwise.
 
 **Kept tabs.** With "Keep tabs in memory" on (`settings.keepTabsAlive`, default on), Daily,
 Week, Month, Current, Projects and Areas stay mounted after their first visit, hidden with
-`display: 'none'` (`ui/KeptTab.tsx`); Inbox, Review and Settings mount only while visible.
+`display: 'none'` (`ui/KeepAliveTab.tsx`); Inbox, Review and Settings mount only while visible.
 `ui/screenActivity.ts` tells a kept screen whether it is showing (`useScreenActivity`,
 `useOnScreenShow`, `useOnScreenHide`). Leaving a kept tab saves and closes an open Quick Add edit,
 dismisses the keyboard and withdraws its screen-scoped status messages; drafts and view state

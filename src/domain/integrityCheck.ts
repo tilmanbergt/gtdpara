@@ -352,7 +352,7 @@ export async function checkNoteMissing(input: IntegrityCheckInput, io: Integrity
         elsewhere.length > 0
           ? `The note "${shown(target)}" was not found, but a note with this name is in ${elsewhere.map(p => `"${shown(p)}"`).join(', ')} ` +
             '- a move may have stopped halfway. Link that note to this entry again, or remove the entry if it is a duplicate.'
-          : `The note "${shown(target)}" was not found - it may have been deleted or moved outside gtdpara. Link the note again, or clear the link by hand.`,
+          : `The note "${shown(target)}" was not found - it may have been deleted or moved outside Kept GTD. Link the note again, or clear the link by hand.`,
     });
   };
   for (const t of input.tasks) await inspect('task', t.notePath, t.text);
@@ -381,7 +381,7 @@ export async function checkCloseOutInterrupted(input: IntegrityCheckInput): Prom
       notePath: '',
       message: input.inArchive
         ? `The close-out of "${name}" was interrupted after its folder moved: it is fully archived, only "status:" in its ` +
-          'project.txt still says active. Change it to "status: archived" by hand, or leave it - gtdpara does not read the archive.'
+          'project.txt still says active. Change it to "status: archived" by hand, or leave it - Kept GTD does not read the archive.'
         : `The close-out of "${name}" was interrupted - open the project, tap "Close out…" and then "Archive now" to finish it.`,
     },
   ];
@@ -605,7 +605,7 @@ export function checkLegacyInboxLeftovers(rootEntries: ListedEntry[], base: stri
       entityLabel: leftovers.join(', '),
       notePath: '',
       message:
-        `Left in the base folder from where the Inbox lived up to gtdpara 0.1.0: ${leftovers.join(', ')}. ` +
+        `Left in the base folder from where the Inbox lived up to version 0.1.0: ${leftovers.join(', ')}. ` +
         `Move Inbox.txt and the Todos and Meetings folders into "${inboxFolder}" by hand (merge with what is ` +
         'already there), or delete them in the file manager if they are empty.',
     },
@@ -631,7 +631,7 @@ export function checkWriteLeftovers(
     notePath: '',
     message:
       `An unfinished save left the hidden file "${l.tempPath}". The data file next to it holds the last ` +
-      'complete save, and the next save in gtdpara replaces the leftover; you can also delete it in a file manager.',
+      'complete save, and the next save in Kept GTD replaces the leftover; you can also delete it in a file manager.',
   }));
 }
 

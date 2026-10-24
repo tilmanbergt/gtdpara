@@ -477,7 +477,7 @@ private class PdfWriter(
 
         begin(infoId)
         val date = SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date())
-        w("<< /Title ${utf16Hex(spec.optString("title", ""))} /Producer (gtdpara) /CreationDate (D:$date) >>\n")
+        w("<< /Title ${utf16Hex(spec.optString("title", ""))} /Producer (Kept GTD) /CreationDate (D:$date) >>\n")
         end()
 
         val imageMs = ArrayList<Long>()
