@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-37 scenarios.
+39 scenarios.
 
 ## Close-out
 
@@ -336,6 +336,31 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 - **And** "Start over" stores the defaults and the message goes away
 
 Test: `__tests__/scenarios/fileSafety.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+### Record taps in the touch test without changing anything
+
+- **Given** the Inbox has the todo "Call Anna"
+- **When** I open Settings → Advanced → Touch test
+- **Then** sample rows show, numbered, and none of my todos
+- **When** I tap the title of row 1, then a spot where nothing reacts
+- **Then** the first tap counts as handled on the title, the second as no target
+- **When** I tap the checkbox of row 1 and then Save log
+- **Then** a CSV with the three touches is in EXPORT/gtdpara/debug, and the status line says so
+- **And** the Inbox is untouched: the tapped checkbox ticked nothing
+- **When** I tap Close
+- **Then** Settings → Advanced shows again
+
+Test: `__tests__/scenarios/touchTest.test.tsx` · design: `docs/dev/history/technical-design-touch-test.md`
+
+### Log touches on every screen while "Log touches everywhere" is on
+
+- **Given** an empty PARA folder
+- **When** I switch on "Log touches everywhere" in the touch test, close it and tap twice on Daily
+- **Then** the log has one line per tap, with numbers only
+- **When** I switch it off again
+- **Then** no touch handler is attached to the app any more
+
+Test: `__tests__/scenarios/touchTest.test.tsx` · design: `docs/dev/history/technical-design-touch-test.md`
 
 ## Threads
 

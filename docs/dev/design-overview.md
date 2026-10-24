@@ -990,8 +990,8 @@ one draft (`useSettingsDraft.ts`) that only Save writes; every Save clears the c
 screen builds it again) and the Gmail list, and a changed Inbox folder name moves the folder first (`storage/inboxFolder.ts`, refused
 when the target exists, not moved when Base or Areas change in the same save). Note setups save
 per setup (and the Default on its own), and its Heading style (`noteHeadingStyle`) at once; the switches on Advanced and About write immediately. Advanced holds Profiles, the
-experimental switches, "Reload all files", "Run Integrity Check", "Keep tabs in memory" and
-"Performance tracing". About shows version and build, the changelog ("What's new", also offered
+experimental switches, "Reload all files", "Run Integrity Check", "Touch test", "Keep tabs in
+memory" and "Performance tracing". About shows version and build, the changelog ("What's new", also offered
 once after an update), Debug logging and "Export debug bundle".
 
 **Persistence.** `GtdParaSettings` (`domain/settings.ts`, defaults in `DEFAULT_SETTINGS`) is one
@@ -1031,6 +1031,14 @@ when asked for:
   navigation, reopen and cold start, ending after 1.5 s of quiet (15 s at most), written as JSONL
   to `EXPORT/gtdpara/debug/perf/` with data-volume stats (`storage/perfStats.ts`). Off costs one
   check per call. Analysis: `node scripts/perf-report.js`.
+- **Touch test** (`screens/settings/TouchTestScreen.tsx`, classification in
+  `domain/touchDiag.ts`): real `TaskRow`s and `MeetingRow`s with sample entries down to the
+  bottom edge; an observe-only root view (`ui/touchDiag/TouchObserver.tsx`, never the
+  responder) records every touch, the rows report press events through a context only the test
+  provides (`ui/touchDiag/touchProbe.ts`), and each touch is classified handled, cancelled,
+  noTarget or swallowed. One numbers-only log line per touch; "Save log" writes CSV to
+  `EXPORT/gtdpara/debug/`. "Log touches everywhere" (`ui/touchDiag/AppTouchObserver.tsx`, not
+  persisted) logs raw touches app-wide. Detail: `docs/dev/history/technical-design-touch-test.md`.
 - **Stale build**: `supernote/pluginRuntime.ts` checks whether an older gtdpara build is still
   loaded in the host process. The required plugin firmware unloads it on install, so there is no
   warning: the count goes into the debug bundle and one `pluginRuntime: stale builds` log line per

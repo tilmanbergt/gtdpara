@@ -34,13 +34,17 @@ or your project/area files are stored.
   and **Now**, all acting at once, its note, where it lives (open, move), its linked file or
   linking one, and delete. **Edit** or a second tap opens the edit form. See the help page
   "Quick Add and capture".
+- **Touch test** in Settings → Advanced, to diagnose taps that don't register: tap sample rows
+  with finger or pen and see where each tap landed and whether it worked. **Save log** writes the
+  result to `EXPORT/gtdpara/debug` for a bug report.
 
 ### Changed
 - **Quick Add keeps one height**: the box has four rows and stays the same height whatever it
   shows, so the lists below it no longer move. **+ Add** and, while editing, **Cancel** and
   **Save** moved to the top row; recently used tags fill the third and fourth row, with **‹ ›**
-  at the end of the fourth; the grey "↳ from …" line takes the fourth row. The edit form holds the fields only: delete,
-  **Refile**, unlinking a file and **New from this** are on the item's card. See the help page "Quick Add and capture".
+  at the end of the fourth; the grey "↳ from …" line takes the fourth row. The edit form holds
+  the fields only: delete, **Refile**, unlinking a file and **New from this** are on the item's
+  card. See the help page "Quick Add and capture".
 - **Save to <Name>**: with a project's or area's abbreviation tag in the text, **Save** saves
   the edit and moves the item there in one step (it replaces **File: <Name>**).
 - **Hide the editing strips**: the All/Copy/Cut/Paste and date strips that hover over Quick Add's

@@ -28,6 +28,7 @@ import MarkOutcomeScreen from './src/ui/MarkOutcomeScreen';
 import {logStaleBuilds} from './src/supernote/pluginRuntime';
 import {getMarkOutcome, holdStartForMark, isMarkInFlight, outcomeNeedsScreen, subscribeMarkOutcome} from './src/storage/marks';
 import {useAppOverlays} from './src/screens/useAppOverlays';
+import AppTouchObserver from './src/ui/touchDiag/AppTouchObserver';
 import {useReviewStepNav} from './src/screens/useReviewStepNav';
 import {useEngageExit} from './src/screens/useEngageExit';
 import {useLoopEvents} from './src/ui/useLoopEvents';
@@ -140,18 +141,21 @@ export default function App(): React.JSX.Element {
 // index.js without this view; when it needs to say something it stores an
 // outcome and opens the view - drawn here on top of whatever the shell shows,
 // so the shell (and its kept tabs) stays as it was.
+//
+// AppTouchObserver is the touch test's "Log touches everywhere" observer:
+// observe-only, without handlers while switched off.
 function AppRoot(): React.JSX.Element {
   const [epoch, setEpoch] = useState(0);
   const markOutcome = useSyncExternalStore(subscribeMarkOutcome, getMarkOutcome);
   return (
-    <>
+    <AppTouchObserver>
       <AppShell key={epoch} onProfileSwitched={() => setEpoch(e => e + 1)} />
       {markOutcome && outcomeNeedsScreen(markOutcome) ? (
         <View style={StyleSheet.absoluteFill}>
           <MarkOutcomeScreen outcome={markOutcome} />
         </View>
       ) : null}
-    </>
+    </AppTouchObserver>
   );
 }
 

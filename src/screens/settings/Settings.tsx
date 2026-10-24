@@ -32,10 +32,12 @@ import {errorMessage} from '../../utils/errorMessage';
 import {log, logError} from '../../utils/log';
 import {setFileLogging} from '../../utils/logSink';
 import {perfEnable} from '../../utils/perf';
+import {requestEinkRefresh} from '../../utils/screenRefresh';
 import AboutTab from './AboutTab';
 import AdvancedTab from './AdvancedTab';
 import {CalendarTab, FocusTab, FoldersTab, GmailTab} from './DraftTabs';
 import {styles} from './settingsStyles';
+import TouchTestScreen from './TouchTestScreen';
 import NoteSetupsTab from './noteSetups/NoteSetupsTab';
 import {useMyStylePngs} from './noteSetups/useMyStylePngs';
 import {useNoteSetupDraft} from './noteSetups/useNoteSetupDraft';
@@ -85,6 +87,8 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
   const [integrityResult, setIntegrityResult] = useState<Result | null>(null);
   const [fileNameFixes, setFileNameFixes] = useState<FileFix[]>([]);
   const confirmFileNameFix = useStatusConfirm('Settings.fileNameFix');
+  // Advanced → Touch test, drawn in place of the settings while open.
+  const [touchTestOpen, setTouchTestOpen] = useState(false);
   // "Reload all files" (Advanced).
   const [reloading, setReloading] = useState(false);
   const [reloadResult, setReloadResult] = useState<{kind: 'success' | 'error'; text: string} | null>(null);
@@ -201,6 +205,17 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
     );
   }
 
+  if (touchTestOpen) {
+    return (
+      <TouchTestScreen
+        onClose={() => {
+          setTouchTestOpen(false);
+          requestEinkRefresh();
+        }}
+      />
+    );
+  }
+
   const tabProps = {textColor, borderColor, placeholderColor};
   return (
     <View style={[styles.container, styles.background]}>
@@ -233,6 +248,7 @@ export default function Settings({initialTab, onSwitchProfile}: Props): React.JS
               notebookContentsEnabled={values.notebookContentsEnabled}
               onToggleNotebookContents={() => toggleNow('notebookContentsEnabled')}
               onRunIntegrityCheck={handleRunIntegrityCheck}
+              onOpenTouchTest={() => setTouchTestOpen(true)}
               textColor={textColor}
               borderColor={borderColor}
             />

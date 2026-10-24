@@ -25,6 +25,8 @@
  * - twoLine: line 2 shows the source; without a source a long title wraps
  *   onto line 2 instead. The M (highlight) only shows in twoLine rows, at the
  *   end with the other icons.
+ * - In the touch test (ui/touchDiag/touchProbe.ts) the row, source, note
+ *   and clip targets also report their press events; nowhere else.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -40,6 +42,7 @@ import {ClipIcon, TrackingBoxIcon} from './icons';
 import {renderTaggableText} from './TaggableText';
 import {FONT} from './theme';
 import {perfCount} from '../utils/perf';
+import {probePressable, probeSpan, useTouchProbe} from './touchDiag/touchProbe';
 
 /**
  * What a screen supplies to switch a meeting list's prep/review icons on: the
@@ -118,6 +121,8 @@ function MeetingRowV2({
   borderColor,
 }: MeetingRowProps): React.JSX.Element {
   const twoLine = layout === 'twoLine';
+  const probe = useTouchProbe();
+  const sourceProbe = source?.onPress ? probeSpan(probe, 'source') : {};
   const cell = meetingTimeCell(meeting, span, time);
   const continuesBefore = span?.part === 'middle' || span?.part === 'last';
   const continuesAfter = span?.part === 'first' || span?.part === 'middle';
@@ -132,7 +137,7 @@ function MeetingRowV2({
     <Text style={[v2.title, titleWraps && v2.titleWrapped, {color: textColor}]} numberOfLines={titleWraps ? 2 : 1}>
       {done ? '✓ ' : ''}
       {continuesBefore ? '◂ ' : ''}
-      {renderTaggableText(meetingDisplayTitle(meeting), {contextTag, onToggleContext, ownerPath})}
+      {renderTaggableText(meetingDisplayTitle(meeting), {contextTag, onToggleContext, ownerPath, probe})}
       {continuesAfter ? ' ▸' : ''}
     </Text>
   );
@@ -148,7 +153,7 @@ function MeetingRowV2({
         state === 'selected' && v2.rowSelected,
         done && v2.rowDone,
       ]}>
-      <Pressable onPress={onPress} disabled={!onPress} style={v2.main}>
+      <Pressable onPress={onPress} disabled={!onPress} style={v2.main} {...(onPress ? probePressable(probe, 'row') : {})}>
         <View style={[v2.timeCol, {width: TIME_COLUMN_DP[time][layout]}]}>
           <Text style={[v2.time, {color: textColor}]} numberOfLines={1}>
             {twoLine ? cell.line1 : cell.oneLine}
@@ -164,7 +169,7 @@ function MeetingRowV2({
             <>
               {title}
               {source && (
-                <Text onPress={source.onPress} style={[v2.sub, {color: textColor}]} numberOfLines={1}>
+                <Text onPress={source.onPress} style={[v2.sub, {color: textColor}]} numberOfLines={1} {...sourceProbe}>
                   {source.name}
                 </Text>
               )}
@@ -173,7 +178,7 @@ function MeetingRowV2({
             <View style={v2.oneLineBody}>
               <View style={v2.flex}>{title}</View>
               {source && (
-                <Text onPress={source.onPress} style={[v2.abbrev, {color: textColor}]} numberOfLines={1}>
+                <Text onPress={source.onPress} style={[v2.abbrev, {color: textColor}]} numberOfLines={1} {...sourceProbe}>
                   #{source.abbrev}
                 </Text>
               )}
@@ -194,14 +199,14 @@ function MeetingRowV2({
         )}
       </Pressable>
       {note && (
-        <Pressable onPress={meeting.notePath ? note.onOpen : note.onCreate} hitSlop={8} style={v2.target}>
+        <Pressable onPress={meeting.notePath ? note.onOpen : note.onCreate} hitSlop={8} style={v2.target} {...probePressable(probe, 'note')}>
           <View style={[v2.action, twoLine && v2.actionTwo]}>
             <Text style={[v2.noteText, {color: textColor}]}>{meeting.notePath ? '📓' : '+📓'}</Text>
           </View>
         </Pressable>
       )}
       {file && file.linkedFile ? (
-        <Pressable onPress={() => file.onOpen?.(file.linkedFile)} hitSlop={8} style={v2.target}>
+        <Pressable onPress={() => file.onOpen?.(file.linkedFile)} hitSlop={8} style={v2.target} {...probePressable(probe, 'clip')}>
           <View style={[v2.action, twoLine && v2.actionTwo]}>
             <ClipIcon color={textColor} />
           </View>

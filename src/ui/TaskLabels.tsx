@@ -15,12 +15,17 @@
  * (docs/dev/history/technical-design-tending-threads.md §3.7). Taps on other
  * labels go to the row (start editing), since they have no onPress of their
  * own.
+ *
+ * In the touch test (ui/touchDiag/touchProbe.ts) the tappable labels report
+ * their press events; every tap on `#next`/`#now` reports a press on `next`,
+ * whether or not it completes a double tap.
  */
 import React, {useRef} from 'react';
 import {StyleSheet, Text} from 'react-native';
 import {TaskLabel} from '../domain/taskLabels';
 import {LABEL_GAP} from './taskRowLayout';
 import {FONT} from './theme';
+import {probeSpan, useTouchProbe} from './touchDiag/touchProbe';
 
 const DOUBLE_TAP_MS = 350;
 
@@ -32,9 +37,11 @@ interface Props {
 
 export default function TaskLabels({labels, onToggleNow, onOpenWaitingFor}: Props): React.JSX.Element | null {
   const lastTapRef = useRef<number>(0);
+  const probe = useTouchProbe();
   if (labels.length === 0) return null;
 
   const handleNowPress = () => {
+    probe?.('press', 'next');
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_MS) {
       lastTapRef.current = 0;
@@ -52,7 +59,11 @@ export default function TaskLabels({labels, onToggleNow, onOpenWaitingFor}: Prop
         return (
           <React.Fragment key={`${label.kind}-${index}`}>
             {LABEL_GAP}
-            <Text style={[styles.label, opens && styles.link]} onPress={toggles ? handleNowPress : opens} suppressHighlighting>
+            <Text
+              style={[styles.label, opens && styles.link]}
+              onPress={toggles ? handleNowPress : opens}
+              suppressHighlighting
+              {...(toggles ? probeSpan(probe, 'next') : opens ? probeSpan(probe, 'label') : {})}>
               {label.text}
             </Text>
           </React.Fragment>
