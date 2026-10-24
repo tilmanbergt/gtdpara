@@ -5,7 +5,7 @@ import {expectShows, openApp, shows, tap, tapTab} from '../../test-helpers/scena
 import {dataFile, INBOX_FILE, putFile, fileText} from '../../test-helpers/scenario/files';
 import {and, given, scenario, then, when} from '../../test-helpers/scenario/scenario';
 
-const DEBUG_FOLDER = '/storage/emulated/0/EXPORT/gtdpara/debug';
+const DEBUG_FOLDER = '/storage/emulated/0/EXPORT/kept-gtd/debug';
 
 /** The touch test's observer: the view that watches touches without handling them. */
 function observer() {
@@ -53,7 +53,7 @@ scenario('Record taps in the touch test without changing anything', {feature: 'S
     await touch(30, 300, () => fireEvent.press(screen.getAllByText('☐')[0]));
     await tap('Save log');
   });
-  then('a CSV with the three touches is in EXPORT/gtdpara/debug, and the status line says so', () => {
+  then('a CSV with the three touches is in EXPORT/kept-gtd/debug, and the status line says so', () => {
     const csv = device()
       .fs.paths(DEBUG_FOLDER)
       .filter(p => /touch-.*\.csv$/.test(p));
@@ -64,7 +64,7 @@ scenario('Record taps in the touch test without changing anything', {feature: 'S
       expect.stringMatching(/^\d+,finger,\w+,20,600,20,600,0,\d+,noTarget,,1$/),
       expect.stringMatching(/^\d+,finger,\w+,30,300,30,300,0,\d+,handled,checkbox,1$/),
     ]);
-    expectShows(/^Saved 3 touches as touch-.*\.csv in EXPORT\/gtdpara\/debug\.$/);
+    expectShows(/^Saved 3 touches as touch-.*\.csv in EXPORT\/kept-gtd\/debug\.$/);
   });
   and('the Inbox is untouched: the tapped checkbox ticked nothing', () => {
     expect(fileText(INBOX_FILE)).toContain('- [ ] Call Anna');

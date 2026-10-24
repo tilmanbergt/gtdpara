@@ -113,7 +113,7 @@ export default function AdvancedTab(p: Props): React.JSX.Element {
           </Pressable>
           {p.integrityCheckRunning && <ActivityIndicator style={styles.spinner} />}
           <Text style={[styles.hint, {color: textColor}]}>
-            Scans every Project/Area/Archive/Inbox for broken note links and note names that break Obsidian links, and writes a report to EXPORT/gtdpara/debug.
+            Scans every Project/Area/Archive/Inbox for broken note links and note names that break Obsidian links, and writes a report to EXPORT/kept-gtd/debug.
           </Text>
         </View>
         <View style={styles.field}>
@@ -135,7 +135,7 @@ export default function AdvancedTab(p: Props): React.JSX.Element {
           label="Performance tracing"
           on={p.perfTracing}
           onPress={p.onTogglePerfTracing}
-          hint="Records how long each tab switch, reopen and cold start takes and writes one small file per event to EXPORT/gtdpara/debug/perf."
+          hint="Records how long each tab switch, reopen and cold start takes and writes one small file per event to EXPORT/kept-gtd/debug/perf."
           textColor={textColor}
         />
       </View>

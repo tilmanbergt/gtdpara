@@ -195,7 +195,7 @@ export interface GtdParaSettings {
   lastSeenVersion: string;
   /**
    * Which profile is active (docs/dev/history/technical-design-profiles-demo-space.md) -
-   * the file name of its JSON in EXPORT/gtdpara/profiles, without ".json".
+   * the file name of its JSON in EXPORT/kept-gtd/profiles, without ".json".
    * Device-wide; 'production' is the default profile.
    */
   activeProfileId: string;

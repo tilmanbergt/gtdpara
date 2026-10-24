@@ -1,6 +1,6 @@
 /**
  * Settings → Advanced → Profiles (docs/dev/history/technical-design-profiles-demo-space.md §3.6):
- * the profile files in EXPORT/gtdpara/profiles, Save for the active one,
+ * the profile files in EXPORT/kept-gtd/profiles, Save for the active one,
  * Switch (after a confirm in the status slot) for the others, and
  * Restore for the active one while the stored settings are unreadable
  * (storage/settingsUnreadable.ts), and
@@ -75,7 +75,7 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
   const handleDemo = () =>
     run(async () => {
       const r = await createDemoSpace();
-      const files = r.written > 0 ? `${r.written} demo files written to Note/gtdpara-demo` : 'demo files already in Note/gtdpara-demo';
+      const files = r.written > 0 ? `${r.written} demo files written to Note/kept-gtd-demo` : 'demo files already in Note/kept-gtd-demo';
       return `${files}${r.skipped > 0 && r.written > 0 ? `, ${r.skipped} kept` : ''}${r.profileCreated ? ', profile "Demo" added' : ''}.`;
     });
 
@@ -167,7 +167,7 @@ export default function ProfilesSection({activeProfileId, onSwitchProfile, textC
       </View>
       <Text style={[styles.hint, {color: textColor}]}>
         Profile files: {displayPath(PROFILES_FOLDER_PATH)} - copy .json files there to import them. Passwords and calendar
-        links are never written into these files. The demo space lives in Note/gtdpara-demo.
+        links are never written into these files. The demo space lives in Note/kept-gtd-demo.
       </Text>
     </View>
   );

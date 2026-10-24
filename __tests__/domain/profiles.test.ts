@@ -60,9 +60,9 @@ describe('profile files', () => {
 
 describe('buildActiveSettings', () => {
   it('takes profile fields and secrets, keeps device-wide fields', () => {
-    const demo = {...profileSettingsOf(DEFAULT_SETTINGS), baseRoot: '/storage/emulated/0/Note/gtdpara-demo'};
+    const demo = {...profileSettingsOf(DEFAULT_SETTINGS), baseRoot: '/storage/emulated/0/Note/kept-gtd-demo'};
     const next = buildActiveSettings('demo', demo, {}, real);
-    expect(next.baseRoot).toBe('/storage/emulated/0/Note/gtdpara-demo');
+    expect(next.baseRoot).toBe('/storage/emulated/0/Note/kept-gtd-demo');
     expect(next.projectsFolder).toBe(DEFAULT_SETTINGS.projectsFolder);
     expect(next.gmailAppPassword).toBe('');
     expect(next.googleCalendarIcsUrl).toBe('');

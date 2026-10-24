@@ -1,6 +1,6 @@
 /**
  * Profile files on the device (docs/dev/history/technical-design-profiles-demo-space.md
- * §3.1-3.2): EXPORT/gtdpara/profiles/<id>.json. The active settings stay in
+ * §3.1-3.2): EXPORT/kept-gtd/profiles/<id>.json. The active settings stay in
  * AsyncStorage as before; the files are snapshots that a switch writes (the
  * profile being left) and reads (the profile being entered). Secrets are
  * kept per profile in AsyncStorage, never in a file.
@@ -17,15 +17,22 @@ import {
   serializeProfile,
 } from '../domain/profiles';
 import {GtdParaSettings} from '../domain/settings';
+import {DEMO_PROFILE_ID} from '../domain/demoSpace';
+import {profilesToCopy} from '../domain/profileCopy';
 import {buildVersionText} from '../domain/buildVersionText';
 import {BUILD_INFO} from '../generated/buildInfo';
-import {ensureFolderExists, listFolderEntries, PROFILES_FOLDER_PATH, readTextFile, writeTextFile} from '../supernote/fileSystem';
-import {log, logWarn} from '../utils/log';
+import {displayPath, ensureFolderExists, listFolderEntries, PROFILES_FOLDER_PATH, readTextFile, writeTextFile} from '../supernote/fileSystem';
+import {log, logError, logWarn} from '../utils/log';
 import {loadSettings, replaceUnreadableSettings, saveSettings} from './settingsStorage';
 import {getSettingsUnreadable} from './settingsUnreadable';
 import {errorMessage} from '../utils/errorMessage';
+import {profilesCopiedText} from '../domain/fileChangeText';
 
 const SECRETS_KEY = 'gtdpara:profileSecrets:v1';
+
+/** The export folder of gtdpara 0.19 and older; read only by copyLegacyProfiles (docs/dev/history/technical-design-kept-gtd.md §3.3). */
+export const LEGACY_EXPORT_ROOT = '/storage/emulated/0/EXPORT/gtdpara';
+const LEGACY_PROFILES_FOLDER_PATH = `${LEGACY_EXPORT_ROOT}/profiles`;
 
 export interface ProfileInfo {
   id: string;
@@ -161,4 +168,36 @@ export async function switchProfile(targetId: string): Promise<GtdParaSettings> 
   log('profiles: switched', current.activeProfileId, '->', targetId);
   // Re-read so the normal load migrations run on the new settings.
   return loadSettings();
+}
+
+/**
+ * Copies the saved profiles from the old export folder while the new one holds none
+ * (domain/profileCopy.ts). Never changes or deletes the old folder; a file that fails is
+ * logged and the others are still tried. Resolves to the status text when something was
+ * copied, else null.
+ */
+export async function copyLegacyProfiles(): Promise<string | null> {
+  let names: string[];
+  try {
+    const fileNames = async (folder: string) => (await listFolderEntries(folder)).filter(e => !e.isFolder).map(e => e.name);
+    names = profilesToCopy(await fileNames(PROFILES_FOLDER_PATH), await fileNames(LEGACY_PROFILES_FOLDER_PATH), DEMO_PROFILE_ID);
+  } catch (e) {
+    logError('profiles: listing for the copy from the old export folder failed', errorMessage(e));
+    return null;
+  }
+  if (names.length === 0) return null;
+  let copied = 0;
+  for (const name of names) {
+    try {
+      const text = await readTextFile(`${LEGACY_PROFILES_FOLDER_PATH}/${name}`);
+      if (text == null) continue;
+      await ensureFolderExists(PROFILES_FOLDER_PATH);
+      await writeTextFile(`${PROFILES_FOLDER_PATH}/${name}`, text);
+      copied++;
+    } catch (e) {
+      logError('profiles: copy from the old export folder failed', name, errorMessage(e));
+    }
+  }
+  log('profiles: copied from old export folder', 'count=' + copied);
+  return copied > 0 ? profilesCopiedText(copied, displayPath(LEGACY_EXPORT_ROOT)) : null;
 }

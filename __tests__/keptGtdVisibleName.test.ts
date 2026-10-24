@@ -16,9 +16,7 @@ const ALLOWED: RegExp[] = [
   /\[GtdPara\]/g, // log line prefix (§8 U2)
   /\bopenGtdpara\b/g, // ENGAGE_TEXT key
   /Formerly gtdpara/g, // About (R9)
-  /\/storage\/emulated\/0\/EXPORT\/gtdpara/g, // the export folder of 0.19 and older
-  /EXPORT\/gtdpara(\/(debug|profiles)(\/perf)?)?/g, // the folder renamed in step S3
-  /Note\/gtdpara-demo/g, // the demo folder renamed in step S3
+  /^\/storage\/emulated\/0\/EXPORT\/gtdpara$/, // LEGACY_EXPORT_ROOT, the export folder of 0.19 and older (the whole literal)
 ];
 
 const LITERAL_KINDS = new Set([

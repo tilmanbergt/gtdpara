@@ -43,6 +43,7 @@ import {useWriteConflicts} from './src/ui/useWriteConflicts';
 import {useWhatsNewNotice} from './src/ui/useWhatsNewNotice';
 import {useSettingsUnreadableNotice} from './src/ui/useSettingsUnreadableNotice';
 import {useNoteSetupsNotice} from './src/ui/useNoteSetupsNotice';
+import {useProfileCopyNotice} from './src/ui/useProfileCopyNotice';
 import {configureLogFileSink, setFileLogging} from './src/utils/logSink';
 import {GtdParaSettings, resolvePaths} from './src/domain/settings';
 import {decideLanding} from './src/domain/returnContext';
@@ -630,6 +631,7 @@ function AppShell({onProfileSwitched}: {onProfileSwitched: () => void}): React.J
   });
   useWhatsNewNotice(settings, setSettings, openSettingsAbout);
   useSettingsUnreadableNotice(setSettings);
+  useProfileCopyNotice(settings);
 
   if (mode === 'loading') {
     return (

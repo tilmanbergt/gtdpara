@@ -187,13 +187,13 @@ export function firstCheckboxOf(rowText: string): number {
   return all.slice(0, at).filter(t => t === '☐').length - 1;
 }
 
-/** Runs Settings → Advanced → Run Integrity Check and returns its report (EXPORT/gtdpara/debug). */
+/** Runs Settings → Advanced → Run Integrity Check and returns its report (EXPORT/kept-gtd/debug). */
 export async function runIntegrityCheck(): Promise<string> {
   await tapTab('Settings');
   await tap('Advanced');
   await tap('Run Integrity Check');
   const reports = device()
-    .fs.paths('/storage/emulated/0/EXPORT/gtdpara/debug')
+    .fs.paths('/storage/emulated/0/EXPORT/kept-gtd/debug')
     .filter(p => /integrity-check-.*\.txt$/.test(p))
     .sort();
   const last = reports.at(-1);

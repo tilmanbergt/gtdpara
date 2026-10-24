@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-42 scenarios.
+46 scenarios.
 
 ## Close-out
 
@@ -189,6 +189,41 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 
 ## Profiles and demo space
 
+### Saved profiles are copied once into the new export folder
+
+- **Given** EXPORT/gtdpara/profiles holds work.json, home.json and the demo profile, and EXPORT/kept-gtd/profiles does not exist
+- **When** Kept GTD starts
+- **Then** work.json and home.json are in EXPORT/kept-gtd/profiles with the same content, the demo profile is not
+- **And** the old folder is unchanged, and the status line says what was copied
+- **When** Kept GTD starts again
+- **Then** no file is written to the profiles folder and no copy message appears
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### Profiles are not copied when the new export folder is already in use
+
+- **Given** EXPORT/kept-gtd/profiles holds work.json and the old folder holds home.json
+- **When** Kept GTD starts
+- **Then** nothing is copied and no copy message appears
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### A fresh install copies no profiles
+
+- **Given** neither export folder exists
+- **When** Kept GTD starts
+- **Then** nothing is copied, no copy message appears and nothing is written under EXPORT/gtdpara
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
+### The demo space lives in Note/kept-gtd-demo
+
+- **Given** an empty PARA folder
+- **When** I create the demo space in Settings → Advanced and switch to it
+- **Then** its folders are under Note/kept-gtd-demo and nothing is written under Note/gtdpara-demo
+
+Test: `__tests__/scenarios/keptGtd.test.tsx`
+
 ### Try things in the demo space without touching the real files, then switch back
 
 - **Given** my real PARA folder has project "Website" and an empty Inbox
@@ -198,7 +233,7 @@ Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/hist
 - **Then** it is in the demo space's Inbox.txt, and my real Inbox.txt is untouched
 - **When** I tap DEMO in the tab bar and switch back to Production
 - **Then** "Website" is back, and the demo todo is not in my Inbox
-- **And** both profiles are saved as files in EXPORT/gtdpara/profiles
+- **And** both profiles are saved as files in EXPORT/kept-gtd/profiles
 
 Test: `__tests__/scenarios/profiles.test.tsx` · design: `docs/dev/history/technical-design-profiles-demo-space.md`
 
@@ -357,7 +392,7 @@ Test: `__tests__/scenarios/keptGtd.test.tsx`
 
 - **Given** an empty PARA folder
 - **When** I tap Export debug bundle on Settings → About
-- **Then** one kept-gtd-debug file is in the debug folder, it says Kept GTD, and the status line names it
+- **Then** one kept-gtd-debug file is in EXPORT/kept-gtd/debug, it says Kept GTD, and the status line names it
 
 Test: `__tests__/scenarios/keptGtd.test.tsx`
 
@@ -369,7 +404,7 @@ Test: `__tests__/scenarios/keptGtd.test.tsx`
 - **When** I tap the title of row 1, then a spot where nothing reacts
 - **Then** the first tap counts as handled on the title, the second as no target
 - **When** I tap the checkbox of row 1 and then Save log
-- **Then** a CSV with the three touches is in EXPORT/gtdpara/debug, and the status line says so
+- **Then** a CSV with the three touches is in EXPORT/kept-gtd/debug, and the status line says so
 - **And** the Inbox is untouched: the tapped checkbox ticked nothing
 - **When** I tap Close
 - **Then** Settings → Advanced shows again

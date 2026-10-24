@@ -6,7 +6,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('../../src/utils/log', () => ({log: jest.fn(), logWarn: jest.fn(), logError: jest.fn()}));
 const mockFiles = new Map<string, string>();
 jest.mock('../../src/supernote/fileSystem', () => ({
-  PROFILES_FOLDER_PATH: '/EXPORT/gtdpara/profiles',
+  PROFILES_FOLDER_PATH: '/EXPORT/kept-gtd/profiles',
   ensureFolderExists: async () => undefined,
   listFolderEntries: async () => [],
   readTextFile: async (path: string) => mockFiles.get(path) ?? null,
@@ -22,7 +22,7 @@ import {ensureDefaultProfileFile, saveActiveProfile, switchProfile} from '../../
 import {loadSettings} from '../../src/storage/settingsStorage';
 import {getSettingsUnreadable} from '../../src/storage/settingsUnreadable';
 
-const PROFILE = `/EXPORT/gtdpara/profiles/${DEFAULT_PROFILE_ID}.json`;
+const PROFILE = `/EXPORT/kept-gtd/profiles/${DEFAULT_PROFILE_ID}.json`;
 const SAVED = serializeProfile('Production', {...DEFAULT_SETTINGS, hideDoneInboxTasks: true}, new Date(0), 'test');
 
 beforeEach(async () => {

@@ -5,7 +5,7 @@
  *    the debug bundle (storage/debugBundle.ts). Cheap: one formatted string
  *    per log call.
  * 2. Only while "Debug logging" is on: the same lines are queued and
- *    appended to `EXPORT/gtdpara/debug/kept-gtd-log.txt` every few seconds
+ *    appended to `EXPORT/kept-gtd/debug/kept-gtd-log.txt` every few seconds
  *    (rotated natively at LOG_FILE_MAX_BYTES), so they survive a crash.
  *
  * No imports from storage/ or supernote/ (utils/log.ts imports this module,

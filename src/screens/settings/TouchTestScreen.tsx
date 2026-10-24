@@ -13,7 +13,7 @@
  * (ui/touchDiag/touchProbe.ts), and OUTCOME_GRACE_MS after the touch ends
  * domain/touchDiag.ts classifies it. Then: a marker at its start point, one
  * log line (numbers only), one e-ink refresh. "Save log" writes the
- * session's records as CSV to EXPORT/gtdpara/debug.
+ * session's records as CSV to EXPORT/kept-gtd/debug.
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {Dimensions, LayoutChangeEvent, StyleSheet, Text, View} from 'react-native';
@@ -102,7 +102,7 @@ export default function TouchTestScreen({onClose}: {onClose: () => void}): React
     try {
       const fileName = await saveTouchLog(touchCsv(current));
       log('TouchTest: log saved', current.length);
-      setSaved({kind: 'success', text: `Saved ${current.length} touches as ${fileName} in EXPORT/gtdpara/debug.`});
+      setSaved({kind: 'success', text: `Saved ${current.length} touches as ${fileName} in EXPORT/kept-gtd/debug.`});
     } catch (e) {
       const message = errorMessage(e);
       logError('TouchTest: saving the log failed', message);
