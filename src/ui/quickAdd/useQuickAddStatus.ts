@@ -7,6 +7,7 @@
  */
 import {useRef} from 'react';
 import {useStatus} from '../status/StatusProvider';
+import {AgreementDraftState} from './useAgreementDraft';
 import {MeetingDraftState} from './useMeetingDraft';
 import {NoteDraftState} from './useNoteDraft';
 import {QuickAddCore} from './useQuickAddCore';
@@ -15,9 +16,22 @@ import {TaskDraftState} from './useTaskDraft';
 /** Per-instance suffix for the status-slot ids (several widgets can be mounted at once). */
 let nextQuickAddInstance = 0;
 
-export function useQuickAddStatus(core: QuickAddCore, task: TaskDraftState, meeting: MeetingDraftState, note: NoteDraftState | null) {
+export function useQuickAddStatus(
+  core: QuickAddCore,
+  task: TaskDraftState,
+  meeting: MeetingDraftState,
+  note: NoteDraftState | null,
+  agreement: AgreementDraftState | null = null,
+) {
   const {displayType, isEditing, errorState, savedNote} = core;
-  const justAdded = displayType === 'task' ? task.justAdded : displayType === 'meeting' ? meeting.justAdded : note?.justAdded ?? null;
+  const justAdded =
+    displayType === 'task'
+      ? task.justAdded
+      : displayType === 'meeting'
+        ? meeting.justAdded
+        : displayType === 'agreement'
+          ? agreement?.justAdded ?? null
+          : note?.justAdded ?? null;
   const successText = isEditing
     ? null
     : displayType === 'meeting' && meeting.copyNote
@@ -33,6 +47,7 @@ export function useQuickAddStatus(core: QuickAddCore, task: TaskDraftState, meet
     meeting.setJustAdded(null);
     meeting.setAddedWhen(null);
     note?.setJustAdded(null);
+    agreement?.setJustAdded(null);
     core.setSavedNote(null);
   };
   const loopMode = task.loopMode;

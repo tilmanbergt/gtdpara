@@ -55,9 +55,9 @@ import {log, logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
 
 
-/** The row open in Quick Add's edit mode: `<item path>#<index>`. */
+/** The row open in Quick Add's edit mode: `<item path>#<index>` (an agreement's change: the agreement it replaces, ui/useAgreementActions.ts). */
 export interface EntryEditKey {
-  type: 'task' | 'meeting';
+  type: 'task' | 'meeting' | 'agreement' | 'agreementChange';
   key: string;
 }
 

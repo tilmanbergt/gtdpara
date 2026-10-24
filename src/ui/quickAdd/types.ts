@@ -5,6 +5,7 @@
  * hands the screen, the edit target, and the capture seed.
  */
 import {AbbrevFileMatch} from '../../domain/abbrev';
+import {AgreementRef} from '../../domain/agreementOwner';
 import {Destination} from '../../domain/destination';
 import {MeetingField, todayIso} from '../../domain/meetingTime';
 import {FlowState, Meeting, Task} from '../../domain/types';
@@ -46,12 +47,17 @@ export type QuickFilePayload =
  * previous row's fields. `loop`: the todo stands for a loop
  * (screens/loop/LoopOverview.tsx) - no flow chips, no Delete, "Save loop".
  * `mode`: 'card' shows the item card in the box (where the screen passes
- * one), 'edit' the edit form (ui/useEditTarget.ts).
+ * one), 'edit' the edit form (ui/useEditTarget.ts). `agreement`: an
+ * agreement's edit (Save keeps it the same agreement); `agreementChange`:
+ * the form prefilled from `replaces`, whose + Add ends it and adds the new
+ * one (docs/dev/history/technical-design-meetings-0.21.md §5).
  */
 export type QuickAddEditTarget =
   | {kind: 'task'; mode: EditMode; key: string | null; task: Task}
   | {kind: 'loop'; mode: EditMode; key: string | null; task: Task}
-  | {kind: 'meeting'; mode: EditMode; key: string | null; meeting: Meeting};
+  | {kind: 'meeting'; mode: EditMode; key: string | null; meeting: Meeting}
+  | {kind: 'agreement'; mode: EditMode; key: string | null; agreement: AgreementRef}
+  | {kind: 'agreementChange'; mode: EditMode; key: string | null; replaces: AgreementRef};
 
 export type EditMode = 'card' | 'edit';
 
@@ -70,7 +76,16 @@ export function editTargetFor(
 export function sameEditTarget(a: QuickAddEditTarget | null | undefined, b: QuickAddEditTarget | null | undefined): boolean {
   if (!a || !b) return !a === !b;
   if (a.kind !== b.kind || a.mode !== b.mode || a.key !== b.key) return false;
-  return a.kind === 'meeting' ? a.meeting === (b as typeof a).meeting : a.task === (b as typeof a).task;
+  switch (a.kind) {
+    case 'meeting':
+      return a.meeting === (b as typeof a).meeting;
+    case 'agreement':
+      return a.agreement.agreement === (b as typeof a).agreement.agreement;
+    case 'agreementChange':
+      return a.replaces.agreement === (b as typeof a).replaces.agreement;
+    default:
+      return a.task === (b as typeof a).task;
+  }
 }
 
 /** Which Save button of the capture variant was pressed (docs/dev/history/technical-design-lasso-0.8.md §3.9). */
@@ -111,6 +126,12 @@ export interface MeetingDraft {
   monthly: boolean;
 }
 
+/** An agreement being added: its words (tags inline) and its valid-till date. */
+export interface AgreementDraft {
+  text: string;
+  valid: string | null;
+}
+
 /** Note has no edit mode and no metadata beyond its (taggable) title - one field is all this needs. */
 export interface NoteDraft {
   titleRaw: string;
@@ -134,7 +155,7 @@ export function makeNoteDraft(): NoteDraft {
 export type QuickAddField = 'text' | MeetingField;
 
 /** The tab showing: the edit target's own kind while one is open, the freely toggled tab otherwise. */
-export type QuickAddType = 'task' | 'meeting' | 'note';
+export type QuickAddType = 'task' | 'meeting' | 'note' | 'agreement';
 
 /**
  * Keeps Row 4's "+ Add to <Name>"/"File: <Name>" buttons and the status

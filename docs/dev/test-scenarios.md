@@ -5,7 +5,69 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-46 scenarios.
+52 scenarios.
+
+## Agreements
+
+### An agreement in the thread overview: it shows in the block "Agreements", another thread's does not
+
+- **Given** area "Coaching" has an agreement tagged #mieke and one tagged #sparring/sven
+- **When** I open Mieke's thread overview
+- **Then** Ahead lists the block "Agreements" with the first one only
+- **When** I switch to All mieke
+- **Then** the agreement shows there too
+
+Test: `__tests__/scenarios/agreements.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### Add an agreement from the thread overview with valid till end of year
+
+- **Given** area "Coaching" has a past sparring session with Mieke and no agreements
+- **When** I open Mieke's thread overview, choose the Agreement tab and type "No calls after six"
+- **And** I tap "valid till" and choose "end of year", then + Add
+- **Then** the area file has the agreement with the thread tag, the meeting it was made in, today and the valid-till date
+- **And** the status slot says where it went, and the overview lists it
+
+Test: `__tests__/scenarios/agreements.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### Change an agreement: the old one is ended, the new one added; Cancel changes nothing
+
+- **Given** area "Coaching" has the agreement "Feedback only in our 1:1s" with Mieke
+- **When** I open Mieke's thread overview, tap the agreement and Change on its card, then Cancel
+- **Then** the file is unchanged
+- **When** I tap Change again, edit the words to "Feedback only in our 1:1s, except urgent" and tap + Add
+- **Then** the old line is ended today and the new one is added after it, made in the meeting the overview shows
+- **And** the overview lists only the new one, and Looking back counts the ended one
+
+Test: `__tests__/scenarios/agreements.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### End an agreement: asked once, then ended today
+
+- **Given** area "Coaching" has the agreement "Feedback only in our 1:1s" with Mieke
+- **When** I tap it in Mieke's thread overview, tap End on its card and confirm
+- **Then** the line gets [ended:: today]
+- **And** the overview shows "1 agreement ended ›" in Looking back
+
+Test: `__tests__/scenarios/agreements.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### A hand-edited Agreements section keeps every other line byte for byte when one agreement is ended
+
+- **Given** area "Coaching" has two agreements, one with the unknown field [who:: both], a comment line and a blank line between them
+- **When** I end the first one in Mieke's thread overview
+- **Then** only that line changed; everything else is byte-identical
+
+Test: `__tests__/scenarios/agreements.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
+
+### A Project page lists its own agreements; a thread's agreement shows in the thread overview instead
+
+- **Given** project "Leadership program" has one untagged agreement and one tagged #sparring/mieke
+- **When** I open the project
+- **Then** its todo list ends with "◇ Agreements 1 ›"
+- **When** I tap it
+- **Then** the column lists the untagged agreement, with "‹ Todos" back
+- **When** I open Mieke's thread overview from the meeting
+- **Then** the tagged one shows there
+
+Test: `__tests__/scenarios/agreements.test.tsx` · design: `docs/dev/history/technical-design-meetings-0.21.md`
 
 ## Close-out
 

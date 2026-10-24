@@ -48,6 +48,17 @@ From the Supernote to Obsidian: sync the Supernote, then the plugin.
 - Leave `→ [[…]]` (the item's note) and `+[[…]]` (a linked file) as they are.
 - A meeting line is the date, then the time (`10:00`, `10:00-11:00`) or the length (`1d`, `2d`), then the title. See [Your files and folders](files-and-folders.md) for the whole format.
 
+## Agreements
+
+Agreements are plain bullets in a section `## Agreements`, without a checkbox, so the Tasks plugin does not list them:
+
+```
+## Agreements
+- Feedback only in our 1:1s #sparring/mieke [created:: 2026-10-14] [valid:: 2026-12-31]
+```
+
+Kept writes `meeting`, `created`, `valid` and `ended` in that order; other fields and lines stay as you wrote them. See [Agreements](agreements.md).
+
 ## Two example queries
 
 An example for the Tasks plugin - open todos in your projects due within a week:

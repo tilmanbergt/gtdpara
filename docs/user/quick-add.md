@@ -4,7 +4,7 @@ Quick Add is the small form you find on Daily, Week, Month, Inbox, Current and i
 
 The box has four rows and always keeps the same height, so the lists below it never move:
 
-- Row 1: the tabs **Todo**, **Meeting** (and **Note**) on the left, the main button on the right - **+ Add**, or **Cancel** and **Save** while you edit.
+- Row 1: the tabs **Todo**, **Meeting** (and **Agreement**, **Note**) on the left, the main button on the right - **+ Add**, or **Cancel** and **Save** while you edit.
 - Row 2: the text or title, and the date.
 - Row 3: flow chips or the meeting's time, then tags.
 - Row 4: more tags - or the grey line (see below).
@@ -31,6 +31,10 @@ Choose the **Meeting** tab, write the title, set the date and the time. For the 
 ## The grey line: where a todo comes from
 
 Where a todo is agreed in a meeting - in a thread overview, in the Review step **Meetings to close out**, or when you capture from a meeting's note page - Quick Add shows one grey line in its fourth row, for example `↳ from Retro alpha · Wed 30.9.`. The new todo then records that meeting at the end of its line; its tags stay as you type them. In a thread overview the line also names the thread's tag, which new todos get (for example `#retro/alpha ✕`). Each part has its own ✕: tap it to add this one todo without it. See [Threads](threads.md).
+
+## Adding an agreement
+
+Where Quick Add knows who an agreement is with - a thread or loop overview, a project's or area's page - it has the tab **Agreement**: the words with their tags, and **valid till**, which offers **none**, **+1 m**, **+3 m**, **end of year** and **…** for another day. See [Agreements](agreements.md).
 
 ## Adding a note
 

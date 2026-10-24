@@ -9,6 +9,7 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text} from 'react-native';
 import {todayIso} from '../../domain/meetingTime';
+import {agreementsEndedText} from '../../domain/agreementText';
 import {pastMeetingSummary, sinceRowLabel} from '../../domain/threadText';
 import {PastMeeting, ThreadOverview} from '../../storage/threadAggregate';
 import MeetingRow, {MEETING_ROW_HEIGHT} from '../../ui/MeetingRow';
@@ -18,11 +19,13 @@ import {meetingEntryKey} from '../../ui/useEntryActions';
 
 /** The selection key of the "Since" row; meeting rows use `meetingEntryKey`. */
 export const SINCE_KEY = 'since';
+/** The selection key of the "n agreements ended" row. */
+export const ENDED_KEY = 'ended-agreements';
 
-type BackRow = {kind: 'since'; from: string; count: number} | {kind: 'meeting'; past: PastMeeting};
+type BackRow = {kind: 'since'; from: string; count: number} | {kind: 'ended'; count: number} | {kind: 'meeting'; past: PastMeeting};
 
 interface Props {
-  overview: Pick<ThreadOverview, 'past' | 'since'>;
+  overview: Pick<ThreadOverview, 'past' | 'since' | 'endedAgreements'>;
   selectedKey: string | null;
   onSelect: (key: string) => void;
   resetKey: string;
@@ -30,8 +33,9 @@ interface Props {
   borderColor: string;
 }
 
-function rowsOf({past, since}: Props['overview']): BackRow[] {
+function rowsOf({past, since, endedAgreements}: Props['overview']): BackRow[] {
   const rows: BackRow[] = past.map(p => ({kind: 'meeting', past: p}));
+  if (endedAgreements.length > 0) rows.unshift({kind: 'ended', count: endedAgreements.length});
   return since.from ? [{kind: 'since', from: since.from, count: since.done.length}, ...rows] : rows;
 }
 
@@ -44,15 +48,13 @@ export default function LookingBackSection({overview, selectedKey, onSelect, res
       rowHeight={() => MEETING_ROW_HEIGHT.twoLine}
       emptyHint="No past meetings in this thread yet."
       renderRow={row => {
-        if (row.kind === 'since') {
-          const selected = selectedKey === SINCE_KEY;
+        if (row.kind === 'since' || row.kind === 'ended') {
+          const key = row.kind === 'since' ? SINCE_KEY : ENDED_KEY;
+          const selected = selectedKey === key;
           return (
-            <Pressable
-              key={SINCE_KEY}
-              onPress={() => onSelect(SINCE_KEY)}
-              style={[styles.since, {borderBottomColor: borderColor}, selected && styles.selected]}>
+            <Pressable key={key} onPress={() => onSelect(key)} style={[styles.since, {borderBottomColor: borderColor}, selected && styles.selected]}>
               <Text style={[styles.sinceText, {color: textColor}]} numberOfLines={1}>
-                {sinceRowLabel(row.from, row.count, todayIso())}
+                {row.kind === 'since' ? sinceRowLabel(row.from, row.count, todayIso()) : agreementsEndedText(row.count)}
               </Text>
             </Pressable>
           );

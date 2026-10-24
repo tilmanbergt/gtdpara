@@ -11,6 +11,8 @@
  *   the rest.
  * - Looking back: its meetings that are over, each with the todos agreed in
  *   it; "Since" the todos done since the latest of them.
+ * - Agreements: the owner's agreements tagged with the loop
+ *   (docs/dev/history/technical-design-meetings-0.21.md R19).
  */
 import {belongsToLoop, closeBlockers, isLoopMember, LoopRef, loopOf} from '../domain/loops';
 import {findLoopLine, LoopLine} from '../domain/loopsSection';
@@ -63,7 +65,9 @@ export function buildLoopOverview(
       waiting: all.ahead.waiting.filter(keep),
       relevant: all.ahead.relevant.filter(keep),
       someday: all.ahead.someday.filter(keep),
+      agreements: all.ahead.agreements.filter(r => ofLoop(r.agreement.tags)),
     },
+    endedAgreements: all.endedAgreements.filter(r => ofLoop(r.agreement.tags)),
     since: {from, done: since},
     past,
   };

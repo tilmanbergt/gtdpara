@@ -8,6 +8,7 @@ Kept GTD is a calm GTD and PARA workspace for the Supernote. Your projects, area
 - [Why Kept GTD works this way](philosophy.md): the ideas behind the design
 - [Threads](threads.md): keeping your word with the people and meeting series you work with
 - [Loops](loops.md): small projects inside an Area, from first todo to done
+- [Agreements](agreements.md): what you settled with someone, kept where it belongs
 
 ## Daily use
 

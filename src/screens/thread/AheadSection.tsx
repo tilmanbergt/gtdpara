@@ -5,15 +5,21 @@
  * §1.2.1) - so it never clips; when everything fits, no pager shows. An
  * empty sub-list shows no head. Someday/Maybe is only counted, in a quiet
  * last row "n someday ›" (docs/dev/history/technical-design-engage-in-context.md
- * E10). The header offers "+ Next <type>" for each type with a
+ * E10). The active agreements follow "Waiting for" as their own block
+ * (docs/dev/history/technical-design-meetings-0.21.md R24); a tap shows the
+ * agreement's card. The header offers "+ Next <type>" for each type with a
  * meeting to copy (one in the thread lens, one per type in the counterpart
  * lens).
  */
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {AgreementRef} from '../../domain/agreementOwner';
+import {todayIso} from '../../domain/meetingTime';
 import {somedayLinkText} from '../../domain/threadText';
 import {ThreadMeetingEntry, ThreadOverview, ThreadTaskEntry} from '../../storage/threadAggregate';
+import AgreementRow, {AGREEMENT_ROW_HEIGHT} from '../../ui/AgreementRow';
 import MeetingRow, {MEETING_ROW_HEIGHT} from '../../ui/MeetingRow';
+import {AgreementActions, agreementRefKey} from '../../ui/useAgreementActions';
 import PagedSection from '../../ui/PagedSection';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../ui/TaskRow';
 import {TASK_COLUMN_WIDTH_PX} from '../../ui/taskRowLayout';
@@ -26,6 +32,7 @@ type AheadRow =
   | {kind: 'head'; key: string; label: string}
   | {kind: 'meeting'; key: string; entry: ThreadMeetingEntry}
   | {kind: 'task'; key: string; entry: ThreadTaskEntry}
+  | {kind: 'agreement'; key: string; ref: AgreementRef}
   | {kind: 'someday'; key: string; entries: ThreadTaskEntry[]};
 
 export interface NextOffer {
@@ -40,6 +47,8 @@ interface Props {
   viewportHeight: number;
   /** The quiet "n someday ›" row: Review's Someday / Maybe step for these todos. */
   onOpenSomeday?: (entries: ThreadTaskEntry[]) => void;
+  /** The agreements' selection and card; without it the block is not shown. */
+  agreements?: AgreementActions;
   /** Other sub-head labels (the loop overview's); the thread's by default. */
   sectionLabels?: Partial<Record<TaskSectionKey, string>>;
   textColor: string;
@@ -54,7 +63,7 @@ const TASK_SECTIONS: Array<{key: TaskSectionKey; label: string}> = [
   {key: 'relevant', label: 'Relevant'},
 ];
 
-function rowsOf(overview: ThreadOverview, labels: Partial<Record<TaskSectionKey, string>>): AheadRow[] {
+function rowsOf(overview: ThreadOverview, labels: Partial<Record<TaskSectionKey, string>>, withAgreements: boolean): AheadRow[] {
   const rows: AheadRow[] = [];
   const {meetings} = overview.ahead;
   if (meetings.length > 0) {
@@ -66,16 +75,29 @@ function rowsOf(overview: ThreadOverview, labels: Partial<Record<TaskSectionKey,
     if (entries.length === 0) continue;
     rows.push({kind: 'head', key: `h-${section.key}`, label: labels[section.key] ?? section.label});
     entries.forEach(entry => rows.push({kind: 'task', key: `t-${taskEntryKey(entry)}`, entry}));
+    if (section.key === 'waiting') agreementRows(overview, withAgreements).forEach(row => rows.push(row));
+  }
+  if (overview.ahead.waiting.length === 0) {
+    // No "Waiting for" block: the agreements go where it would be, before Relevant.
+    const at = rows.findIndex(row => row.key === 'h-relevant');
+    rows.splice(at < 0 ? rows.length : at, 0, ...agreementRows(overview, withAgreements));
   }
   // Someday/Maybe is counted, not listed (E10): one quiet row after the last section.
   if (overview.ahead.someday.length > 0) rows.push({kind: 'someday', key: 'someday', entries: overview.ahead.someday});
   return rows;
 }
 
+function agreementRows(overview: ThreadOverview, withAgreements: boolean): AheadRow[] {
+  const refs = overview.ahead.agreements;
+  if (!withAgreements || refs.length === 0) return [];
+  return [{kind: 'head', key: 'h-agreements', label: 'Agreements'}, ...refs.map(ref => ({kind: 'agreement' as const, key: `a-${agreementRefKey(ref)}`, ref}))];
+}
+
 export default function AheadSection(props: Props): React.JSX.Element {
-  const {overview, actions, nextOffers, viewportHeight, onOpenSomeday, sectionLabels = {}, textColor, borderColor} = props;
+  const {overview, actions, nextOffers, viewportHeight, onOpenSomeday, sectionLabels = {}, agreements, textColor, borderColor} = props;
   const {edit} = actions;
-  const rows = rowsOf(overview, sectionLabels);
+  const rows = rowsOf(overview, sectionLabels, !!agreements);
+  const today = todayIso();
   const header = (
     <>
       Ahead
@@ -96,6 +118,7 @@ export default function AheadSection(props: Props): React.JSX.Element {
       rowHeight={row => {
         if (row.kind === 'head' || row.kind === 'someday') return SUB_HEAD_HEIGHT;
         if (row.kind === 'meeting') return MEETING_ROW_HEIGHT.oneLine;
+        if (row.kind === 'agreement') return AGREEMENT_ROW_HEIGHT;
         return taskRowHeight(row.entry.task, TASK_COLUMN_WIDTH_PX, 'flat');
       }}
       emptyHint="Nothing ahead: no meeting planned, nothing open."
@@ -118,6 +141,20 @@ export default function AheadSection(props: Props): React.JSX.Element {
                 {somedayLinkText(entries.length)}
               </Text>
             </View>
+          );
+        }
+        if (row.kind === 'agreement') {
+          const ref = row.ref;
+          return (
+            <AgreementRow
+              key={row.key}
+              agreement={ref}
+              today={today}
+              onPress={() => agreements?.select(ref)}
+              state={agreements?.rowState(ref)}
+              textColor={textColor}
+              borderColor={borderColor}
+            />
           );
         }
         if (row.kind === 'meeting') {

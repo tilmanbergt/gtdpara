@@ -15,8 +15,9 @@ import {useEffect, useRef, useState} from 'react';
 import {Keyboard} from 'react-native';
 import {useOnScreenHide} from '../screenActivity';
 import {useStableCallback} from '../useStableCallback';
-import {loadEditFields} from './editFields';
+import {EditFields, loadAgreementEditFields, loadEditFields} from './editFields';
 import {QuickAddEditTarget} from './types';
+import {AgreementDraftState} from './useAgreementDraft';
 import {MeetingDraftState} from './useMeetingDraft';
 import {QuickAddCore} from './useQuickAddCore';
 import {TaskDraftState} from './useTaskDraft';
@@ -26,10 +27,25 @@ interface Input {
   /** Receives the flush (see QuickAddWidget's `flushEditRef` prop). */
   flushEditRef?: React.MutableRefObject<(() => Promise<boolean>) | null>;
   onCancelEdit?: () => void;
+  /** The Agreement tab, where the widget has one. */
+  agreement?: AgreementDraftState;
+}
+
+function fieldsOf(target: QuickAddEditTarget): EditFields | null {
+  switch (target.kind) {
+    case 'meeting':
+      return loadEditFields(undefined, target.meeting);
+    case 'agreement':
+      return loadAgreementEditFields(target.agreement.agreement, false);
+    case 'agreementChange':
+      return loadAgreementEditFields(target.replaces.agreement, true);
+    default:
+      return loadEditFields(target.task, undefined);
+  }
 }
 
 export function useEditSession(core: QuickAddCore, task: TaskDraftState, meeting: MeetingDraftState, input: Input) {
-  const {editTarget, flushEditRef, onCancelEdit} = input;
+  const {editTarget, flushEditRef, onCancelEdit, agreement} = input;
   const {editFields, setEditFields, setError, setSavedNote} = core;
   const {lastSelectionRef: taskSelectionRef, setTagPage: setTaskTagPage, inputRef: taskInputRef} = task;
   const {lastSelectionRef: meetingSelectionRef, setTagPage: setMeetingTagPage, inputRef: meetingInputRef} = meeting;
@@ -49,13 +65,11 @@ export function useEditSession(core: QuickAddCore, task: TaskDraftState, meeting
       // A fresh target: the previous field's cursor position means nothing for it.
       taskSelectionRef.current = null;
       meetingSelectionRef.current = null;
-      const loaded = loadEditFields(
-        editTarget.kind === 'meeting' ? undefined : editTarget.task,
-        editTarget.kind === 'meeting' ? editTarget.meeting : undefined,
-      );
+      const loaded = fieldsOf(editTarget);
       setEditFields(loaded);
       loadedFieldsRef.current = loaded ? JSON.stringify(loaded.fields) : null;
-      if (loaded && !wasEditingRef.current) setFocusRequest(loaded.kind);
+      // The agreement field (ClipboardTextInput) is not focused from outside.
+      if (loaded && loaded.kind !== 'agreement' && !wasEditingRef.current) setFocusRequest(loaded.kind);
       setError(null);
       setSavedNote(null);
       setTaskTagPage(0);
@@ -100,6 +114,10 @@ export function useEditSession(core: QuickAddCore, task: TaskDraftState, meeting
   const flush = useStableCallback((): Promise<boolean> => {
     if (!editFields) return Promise.resolve(true);
     if (JSON.stringify(editFields.fields) === loadedFieldsRef.current) return Promise.resolve(true);
+    if (editFields.kind === 'agreement') {
+      // A Change adds a new agreement: like a new item's draft, never saved implicitly.
+      return editFields.fields.change || !agreement ? Promise.resolve(true) : agreement.submitEdit();
+    }
     return editFields.kind === 'task' ? task.submitEdit() : meeting.submitEdit();
   });
   useEffect(() => {

@@ -17,6 +17,11 @@
  * Add's meeting draft from the thread's latest meeting, to that meeting's
  * item. New todos get the thread tag (the counterpart's leaf in the
  * counterpart lens), shown in Quick Add's grey line with its own ✕.
+ *
+ * Agreements (docs/dev/history/technical-design-meetings-0.21.md R20, R24):
+ * Ahead's block, Looking back's ended row, a past meeting's "Agreements
+ * made"; Quick Add's Agreement tab adds one to the scope owner's file with
+ * the same tag and meeting a new todo gets (ui/useAgreementActions.ts).
  */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -43,7 +48,8 @@ import {log} from '../../utils/log';
 import AheadSection, {NextOffer} from './AheadSection';
 import {useMeetingCard} from '../../ui/itemCard/useMeetingCard';
 import {useTodoCard} from '../../ui/itemCard/useTodoCard';
-import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
+import LookingBackSection, {ENDED_KEY, SINCE_KEY} from './LookingBackSection';
+import {entryAgreementEdit, useAgreementActions} from '../../ui/useAgreementActions';
 import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
 import {meetingEntryKey, taskEntryKey, useEntryActions} from '../../ui/useEntryActions';
 
@@ -96,15 +102,17 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const sinceSelected = selectedKey === SINCE_KEY && !!overview?.since.from;
-  const selected: PastMeeting | null = sinceSelected
-    ? null
-    : overview?.past.find(p => meetingEntryKey(p.entry) === selectedKey) ?? overview?.past[0] ?? null;
+  const endedSelected = selectedKey === ENDED_KEY && !!overview && overview.endedAgreements.length > 0;
+  const selected: PastMeeting | null =
+    sinceSelected || endedSelected ? null : overview?.past.find(p => meetingEntryKey(p.entry) === selectedKey) ?? overview?.past[0] ?? null;
   const panel: PanelSelection | null =
     sinceSelected && overview?.since.from
       ? {kind: 'since', from: overview.since.from, done: overview.since.done}
-      : selected
-        ? {kind: 'meeting', past: selected}
-        : null;
+      : endedSelected && overview
+        ? {kind: 'ended', refs: overview.endedAgreements}
+        : selected
+          ? {kind: 'meeting', past: selected}
+          : null;
   const origin = useProvenance(selected?.entry.meeting ?? null);
   // New todos get the thread tag; in the counterpart lens (and for wf/owe) the counterpart's leaf (E13).
   const presetTag = overview ? (lens === 'thread' && !isCounterpartType(overview.thread.type) ? overview.thread.tag : overview.thread.counterpart) : null;
@@ -124,6 +132,20 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
     editingTask?.task.linkedFile ?? editingMeeting?.meeting.linkedFile,
     getCachedData()?.paths ?? null,
   );
+
+  const agreementOwner = overview?.owner && overview.owner.kind !== 'inbox' ? scopeOwnerOf(overview.owner.path, items) : null;
+  const agreements = useAgreementActions({
+    name: 'ThreadOverview',
+    edit: entryAgreementEdit(edit),
+    refs: overview ? [...overview.ahead.agreements, ...overview.endedAgreements, ...overview.past.flatMap(p => p.agreements)] : [],
+    targetPath: agreementOwner?.path ?? null,
+    meetingKey: origin.key,
+    applyTags: preset.apply,
+    onAdded: () => {
+      origin.added();
+      preset.added();
+    },
+  });
 
   // The selected Ahead meeting's card in Quick Add's place (docs/dev/history/technical-design-item-card.md §6).
   const meetingCard = useMeetingCard(actions.cardOptions(editingMeeting));
@@ -197,6 +219,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
           <AheadSection
             overview={overview}
             actions={actions}
+            agreements={agreements}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
             onOpenSomeday={entries => requestReviewStep('somedayMaybe', somedayFilterOf(lens === 'thread' && !counterpartOnly ? `#${overview.thread.tag}` : labels.counterpart, entries))}
@@ -226,9 +249,14 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
               })
             }
             onAddMeeting={(fields, dest) => actions.addMeeting(fields, dest).then(() => setSeedItem(null))}
-            editTarget={editTargetFor(target ? `${target.type}:${target.key}` : null, {task: editingTask?.task, meeting: editingMeeting?.meeting}, edit.mode)}
+            editTarget={
+              agreements.editTarget ??
+              editTargetFor(target ? `${target.type}:${target.key}` : null, {task: editingTask?.task, meeting: editingMeeting?.meeting}, edit.mode)
+            }
             meetingCard={meetingCard}
             todoCard={todoCard}
+            agreementCard={agreements.card}
+            {...agreements.handlers}
             flushEditRef={edit.flushEditRef}
             editingItemPath={editedItem ? (editedItem.kind === 'inbox' ? null : editedItem.path) : undefined}
             linkedFileMissing={linkedFileMissing}
@@ -243,7 +271,7 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
             borderColor={borderColor}
             placeholderColor={placeholderColor}
           />
-          <PastMeetingPanel selection={panel} actions={actions} textColor={textColor} borderColor={borderColor} />
+          <PastMeetingPanel selection={panel} actions={actions} agreements={agreements} textColor={textColor} borderColor={borderColor} />
         </View>
       </View>
     </View>

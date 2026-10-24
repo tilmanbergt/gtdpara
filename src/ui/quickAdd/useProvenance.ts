@@ -21,6 +21,8 @@ export interface ProvenanceState {
   provenance: QuickAddAdds | null;
   /** True while the line is shown (not dropped, a meeting is known). */
   active: boolean;
+  /** The `[meeting::]` key while active (an agreement records it, ui/useAgreementActions.ts); else null. */
+  key: string | null;
   apply: (composedLine: string) => string;
   /** Call after a todo was added: the next one gets the provenance again. */
   added: () => void;
@@ -33,6 +35,7 @@ export function useProvenance(meeting: ProvenanceMeeting | null): ProvenanceStat
   return {
     provenance: active && meeting ? [{key: 'provenance', label: provenanceLabel(meeting, todayIso()), onClear: () => setDroppedKey(key)}] : null,
     active,
+    key: active ? key : null,
     apply: line => (active && key ? applyProvenance(line, key) : line),
     added: () => setDroppedKey(null),
   };

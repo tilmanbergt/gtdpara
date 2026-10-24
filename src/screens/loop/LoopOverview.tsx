@@ -13,6 +13,9 @@
  * tag and goes to the owner; Edit loads the loop itself (its tag, main date
  * and file) and saves through storage/loops.ts's `updateLoop`, which asks
  * about renames in the status slot. Below it the selected Looking back row.
+ * Quick Add's Agreement tab adds an agreement with the loop's tag to the
+ * owner's file; Ahead lists the loop's agreements
+ * (docs/dev/history/technical-design-meetings-0.21.md R18, R24).
  */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -41,7 +44,8 @@ import {useLinkedFileMissing} from '../usePlanningScreen';
 import AheadSection, {NextOffer} from '../thread/AheadSection';
 import {useMeetingCard} from '../../ui/itemCard/useMeetingCard';
 import {useTodoCard} from '../../ui/itemCard/useTodoCard';
-import LookingBackSection, {SINCE_KEY} from '../thread/LookingBackSection';
+import LookingBackSection, {ENDED_KEY, SINCE_KEY} from '../thread/LookingBackSection';
+import {entryAgreementEdit, useAgreementActions} from '../../ui/useAgreementActions';
 import PastMeetingPanel, {PanelSelection} from '../thread/PastMeetingPanel';
 import EngageButton from '../../ui/EngageButton';
 import {requestReviewStep, somedayFilterOf} from '../review/reviewNav';
@@ -107,6 +111,14 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
     getCachedData()?.paths ?? null,
   );
 
+  const agreements = useAgreementActions({
+    name: 'LoopOverview',
+    edit: entryAgreementEdit(edit),
+    refs: lists ? [...lists.ahead.agreements, ...lists.endedAgreements, ...lists.past.flatMap(p => p.agreements)] : [],
+    targetPath: overview?.owner.path ?? null,
+    applyTags: text => withLoopTag(text, request.tag),
+  });
+
   // The selected Ahead meeting's card in Quick Add's place (docs/dev/history/technical-design-item-card.md §6).
   const meetingCard = useMeetingCard(actions.cardOptions(loopEditing ? null : editingMeeting));
   const todoCard = useTodoCard(actions.todoCardOptions(loopEditing ? null : editingTask));
@@ -125,15 +137,17 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
   const {loop, line, owner} = overview;
   const today = todayIso();
   const sinceSelected = selectedKey === SINCE_KEY && !!lists.since.from;
-  const selected: PastMeeting | null = sinceSelected
-    ? null
-    : lists.past.find(p => meetingEntryKey(p.entry) === selectedKey) ?? lists.past[0] ?? null;
+  const endedSelected = selectedKey === ENDED_KEY && lists.endedAgreements.length > 0;
+  const selected: PastMeeting | null =
+    sinceSelected || endedSelected ? null : lists.past.find(p => meetingEntryKey(p.entry) === selectedKey) ?? lists.past[0] ?? null;
   const panel: PanelSelection | null =
     sinceSelected && lists.since.from
       ? {kind: 'since', from: lists.since.from, done: lists.since.done}
-      : selected
-        ? {kind: 'meeting', past: selected}
-        : null;
+      : endedSelected
+        ? {kind: 'ended', refs: lists.endedAgreements}
+        : selected
+          ? {kind: 'meeting', past: selected}
+          : null;
   const offers: NextOffer[] = nextMeetingOffers(lists, today).map(({type, seed: fields}) => ({
     type,
     onPress: () =>
@@ -213,6 +227,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
           <AheadSection
             overview={lists}
             actions={actions}
+            agreements={agreements}
             nextOffers={offers}
             viewportHeight={AHEAD_VIEWPORT_DP}
             sectionLabels={{owe: 'Agreed in its meetings', relevant: 'Todos'}}
@@ -223,7 +238,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
           <View style={styles.gap} />
           <LookingBackSection
             overview={lists}
-            selectedKey={sinceSelected ? SINCE_KEY : selected ? meetingEntryKey(selected.entry) : null}
+            selectedKey={sinceSelected ? SINCE_KEY : endedSelected ? ENDED_KEY : selected ? meetingEntryKey(selected.entry) : null}
             onSelect={setSelectedKey}
             resetKey={loop.tag}
             textColor={textColor}
@@ -237,13 +252,18 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
             meetingSeed={seed}
             onAddTask={(text, dest) => actions.addTask(withLoopTag(text, loop.tag), dest)}
             onAddMeeting={(fields, dest) => actions.addMeeting({...fields, title: titleWithLoopTag(fields.title, loop.tag)}, dest)}
-            editTarget={editTargetFor(loopEditing ? LOOP_EDIT_KEY : target ? `${target.type}:${target.key}` : null, {
-              task: loopEditing && line ? loopAsTodo(line) : editingTask?.task,
-              loop: loopEditing,
-              meeting: loopEditing ? undefined : editingMeeting?.meeting,
-            }, loopEditing ? 'edit' : edit.mode)}
+            editTarget={
+              (loopEditing ? null : agreements.editTarget) ??
+              editTargetFor(loopEditing ? LOOP_EDIT_KEY : target ? `${target.type}:${target.key}` : null, {
+                task: loopEditing && line ? loopAsTodo(line) : editingTask?.task,
+                loop: loopEditing,
+                meeting: loopEditing ? undefined : editingMeeting?.meeting,
+              }, loopEditing ? 'edit' : edit.mode)
+            }
             meetingCard={meetingCard}
             todoCard={todoCard}
+            agreementCard={loopEditing ? null : agreements.card}
+            {...agreements.handlers}
             flushEditRef={edit.flushEditRef}
             editingItemPath={owner.path}
             linkedFileMissing={loopEditing ? false : linkedFileMissing}
@@ -259,7 +279,7 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
             borderColor={borderColor}
             placeholderColor={placeholderColor}
           />
-          <PastMeetingPanel selection={panel} actions={actions} textColor={textColor} borderColor={borderColor} />
+          <PastMeetingPanel selection={panel} actions={actions} agreements={agreements} textColor={textColor} borderColor={borderColor} />
         </View>
       </View>
     </View>

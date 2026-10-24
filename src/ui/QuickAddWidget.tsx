@@ -4,7 +4,7 @@
  * one add/edit surface: a box of four rows, 170 dp in every state
  * (ui/quickAdd/QuickAddFrame.tsx, docs/dev/history/technical-design-item-card.md),
  * whose contents follow the tab and whether an item is being edited:
- *   R1 Tabs + main button - Todo/Meeting(/Note) on the left; create: [M] + Add
+ *   R1 Tabs + main button - Todo/Meeting(/Agreement/Note) on the left; create: [M] + Add
  *                  ("+ Add to <Name>" when a recognized abbreviation #tag
  *                  files it elsewhere, technical-design-abbrev-quick-file.md);
  *                  edit: Cancel · Save ("Save to <Name>" with such a tag:
@@ -21,6 +21,11 @@
  * screen passes no card - and for a loop's own edit - the edit form keeps
  * the commands that act at once in R4 (delete, New from this, Refile, the
  * linked file's ✕, M - ui/quickAdd/ActionRow.tsx).
+ *
+ * The Agreement tab (docs/dev/history/technical-design-meetings-0.21.md §5)
+ * shows where a screen passes `onAddAgreement`; its draft, edit and change
+ * live in ui/quickAdd/useAgreementDraft.ts and AgreementRows.tsx, its card
+ * in ui/itemCard/AgreementCard.tsx - the widget only routes.
  *
  * The parts: one hook per draft (ui/quickAdd/useTaskDraft.ts,
  * useMeetingDraft.ts, useNoteDraft.ts) over the shared state of
@@ -52,17 +57,22 @@ import React from 'react';
 import {Keyboard} from 'react-native';
 import {AbbrevFileMatch, resolveAbbrevFileTarget} from '../domain/abbrev';
 import {insertTagAtPosition, stripSpaceAfterHash} from '../domain/markdown';
-import {formatMeetingWhen} from '../domain/meetingTime';
+import {replacesLabel} from '../domain/agreementText';
+import {formatMeetingWhen, todayIso} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {Destination} from '../domain/destination';
 import {usePerfRender} from '../utils/perf';
 import MeetingCard from './itemCard/MeetingCard';
 import {MeetingCardData} from './itemCard/useMeetingCard';
+import AgreementCard from './itemCard/AgreementCard';
+import {AgreementCardData} from './itemCard/useAgreementCard';
 import TodoCard from './itemCard/TodoCard';
 import {TodoCardData} from './itemCard/useTodoCard';
 import {errorMessage} from '../utils/errorMessage';
 import HighlightMark from './HighlightMark';
 import {CreateActions, EditActions, EditCommands} from './quickAdd/ActionRow';
+import {AgreementInputRow, AgreementTagRows} from './quickAdd/AgreementRows';
+import {AgreementHandlers, useAgreementDraft} from './quickAdd/useAgreementDraft';
 import {MeetingInputRow, MeetingMetaRows} from './quickAdd/MeetingRows';
 import {NoteInputRow, NoteTagRows} from './quickAdd/NoteRows';
 import ProvenanceLine, {QuickAddAdds} from './quickAdd/ProvenanceLine';
@@ -81,7 +91,7 @@ import {useTaskDraft} from './quickAdd/useTaskDraft';
 export type {CaptureSaveMode, CaptureSeed, MeetingQuickAddFields, QuickAddEditTarget, QuickFilePayload} from './quickAdd/types';
 export {editTargetFor} from './quickAdd/types';
 
-interface Props {
+interface Props extends AgreementHandlers {
   /**
    * Optional id of the screen slot this widget sits in (e.g. 'daily',
    * 'current') - its tag-row widths are remembered under it, so a revisit
@@ -123,6 +133,8 @@ interface Props {
   meetingCard?: MeetingCardData | null;
   /** The selected todo's card (ui/itemCard/useTodoCard.ts), the same way: shown while `editTarget` is a todo in 'card' mode. */
   todoCard?: TodoCardData | null;
+  /** The selected agreement's card (ui/itemCard/useAgreementCard.ts): shown while `editTarget` is an agreement in 'card' mode. */
+  agreementCard?: AgreementCardData | null;
   /** Resolve `false` when the save failed (the screen showed its own error) - the widget then keeps the edit open. */
   onSaveEditTask?: (nextText: string, nextLinkedFile: string) => Promise<void | boolean>;
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
@@ -201,7 +213,7 @@ interface Props {
   prefill?: DraftPrefill | null;
   /** "+ Next <type>": replaces the Meeting draft and shows the Meeting tab, once per nonce (ui/quickAdd/useDraftRequests.ts). */
   meetingSeed?: MeetingSeed | null;
-  /** Create mode, Todo tab: one grey line saying what the screen adds to the new todo, a ✕ per part (ui/quickAdd/ProvenanceLine.tsx). */
+  /** Create mode, Todo and Agreement tabs: one grey line saying what the screen adds to the new entry, a ✕ per part (ui/quickAdd/ProvenanceLine.tsx). */
   provenance?: QuickAddAdds | null;
 
   /** Task input only; defaults to "New task" everywhere. */
@@ -237,7 +249,12 @@ function QuickAddWidget(props: Props): React.JSX.Element {
     onSaveEditMeeting: props.onSaveEditMeeting,
   });
   const note = useNoteDraft(core, {onAddNote, noteFolderPath});
-  useEditSession(core, task, meeting, {editTarget, flushEditRef: props.flushEditRef, onCancelEdit});
+  const agreement = useAgreementDraft(core, {
+    onAddAgreement: props.onAddAgreement,
+    onSaveEditAgreement: props.onSaveEditAgreement,
+    onChangeAgreement: props.onChangeAgreement,
+  });
+  useEditSession(core, task, meeting, {editTarget, flushEditRef: props.flushEditRef, onCancelEdit, agreement});
 
   useDraftRequests(props.prefill, props.meetingSeed, isEditing, {
     text: (kind, addition) => {
@@ -320,7 +337,7 @@ function QuickAddWidget(props: Props): React.JSX.Element {
     onCancelEdit();
   };
 
-  const buttonMark = useQuickAddStatus(core, task, meeting, note);
+  const buttonMark = useQuickAddStatus(core, task, meeting, note, agreement);
 
   // The "M" box left of + Add (meeting tab only) - see ui/HighlightMark.tsx.
   const monthlyToggle =
@@ -336,16 +353,34 @@ function QuickAddWidget(props: Props): React.JSX.Element {
       pending={pending}
       onCancel={onCancelEdit}
       saveLabel={
-        loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : saveTo ? `Save to ${truncateItemName(saveTo.name)}` : 'Save'
+        agreement.changing
+          ? '+ Add'
+          : loopMode.kind === 'make'
+            ? 'Make loop'
+            : loopMode.kind === 'loop'
+              ? 'Save loop'
+              : saveTo
+                ? `Save to ${truncateItemName(saveTo.name)}`
+                : 'Save'
       }
-      onSave={saveTo ? handleQuickFile : editFields?.kind === 'meeting' ? meeting.submitEdit : task.submitEdit}
+      onSave={
+        editFields?.kind === 'agreement' ? agreement.submitEdit : saveTo ? handleQuickFile : editFields?.kind === 'meeting' ? meeting.submitEdit : task.submitEdit
+      }
       errorOnSave={!!core.errorState && core.errorState.field === null}
       textColor={textColor}
     />
   ) : (
     <CreateActions
       label={loopMode.kind === 'add' ? '+ Add loop' : abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
-      onPress={displayType === 'meeting' ? meeting.submitCreate : displayType === 'note' ? note.submitCreate : task.submitCreate}
+      onPress={
+        displayType === 'meeting'
+          ? meeting.submitCreate
+          : displayType === 'note'
+            ? note.submitCreate
+            : displayType === 'agreement'
+              ? agreement.submitCreate
+              : task.submitCreate
+      }
       disabled={pending || loopMode.kind === 'exists'}
       mark={buttonMark}
       monthlyToggle={monthlyToggle}
@@ -356,10 +391,11 @@ function QuickAddWidget(props: Props): React.JSX.Element {
   const editKind = editFields?.kind ?? null;
   // The item card in the box's place: a meeting selected once, where the screen passes its card.
   const cardShown =
-    editTarget?.mode === 'card' && ((editTarget.kind === 'meeting' && !!meetingCard) || (editTarget.kind === 'task' && !!todoCard));
+    editTarget?.mode === 'card' &&
+    ((editTarget.kind === 'meeting' && !!meetingCard) || (editTarget.kind === 'task' && !!todoCard) || (editTarget.kind === 'agreement' && !!props.agreementCard));
   // A loop's own edit (the loop overview) has no card: it keeps the commands.
   const taskCommands = editKind === 'task' && (!todoCard || editTarget?.kind === 'loop');
-  const editCommands = editKind ? (
+  const editCommands = editKind && editKind !== 'agreement' ? (
     <EditCommands
       pending={pending}
       onDelete={
@@ -399,17 +435,35 @@ function QuickAddWidget(props: Props): React.JSX.Element {
     : editKind === 'task'
       ? undefined
       : provenance && provenance.length > 0 && !isEditing ? <ProvenanceLine parts={provenance} textColor={textColor} /> : undefined;
+  // R4 of the Agreement tab: "↳ replaces …" while changing one (its ✕ cancels), the screen's line while creating.
+  const replaces = editTarget?.kind === 'agreementChange' ? editTarget.replaces.agreement : null;
+  const agreementRow4 =
+    replaces && agreement.changing ? (
+      <ProvenanceLine parts={[{key: 'replaces', label: replacesLabel(replaces), onClear: () => onCancelEdit?.()}]} textColor={textColor} />
+    ) : provenance && provenance.length > 0 && !isEditing ? (
+      <ProvenanceLine parts={provenance} textColor={textColor} />
+    ) : undefined;
+  const today = todayIso();
 
   return (
     <QuickAddFrame
       row1={
-        <TabsRow core={core} taskOnly={taskOnly} hasNoteTab={!!onAddNote} noteFolderPath={noteFolderPath} actions={actions} textColor={textColor} />
+        <TabsRow
+          core={core}
+          taskOnly={taskOnly}
+          hasNoteTab={!!onAddNote}
+          hasAgreementTab={!!props.onAddAgreement || editKind === 'agreement'}
+          noteFolderPath={noteFolderPath}
+          actions={actions}
+          textColor={textColor}
+        />
       }
       row2={
         <>
           <TaskInputRow core={core} task={task} placeholder={props.placeholder ?? 'New task'} {...colors} />
           <MeetingInputRow core={core} meeting={meeting} {...colors} />
           <NoteInputRow core={core} note={note} {...colors} />
+          <AgreementInputRow core={core} agreement={agreement} today={today} {...colors} />
         </>
       }
       rows34={
@@ -423,10 +477,13 @@ function QuickAddWidget(props: Props): React.JSX.Element {
             {...colors}
           />
           <NoteTagRows core={core} note={note} layoutKey={layoutKey} textColor={textColor} borderColor={borderColor} />
+          <AgreementTagRows core={core} agreement={agreement} layoutKey={layoutKey} row4={agreementRow4} textColor={textColor} borderColor={borderColor} />
         </>
       }
       card={
-        !cardShown ? null : editTarget?.kind === 'task' && todoCard ? (
+        !cardShown ? null : editTarget?.kind === 'agreement' && props.agreementCard ? (
+          <AgreementCard card={props.agreementCard} textColor={textColor} borderColor={borderColor} />
+        ) : editTarget?.kind === 'task' && todoCard ? (
           <TodoCard card={todoCard} textColor={textColor} borderColor={borderColor} />
         ) : meetingCard ? (
           <MeetingCard

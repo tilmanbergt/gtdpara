@@ -10,6 +10,15 @@ or your project/area files are stored.
 
 ## [Unreleased]
 
+### New
+- **Agreements**: keep what you settled with someone - "Feedback only in our 1:1s" - next to the
+  thread, loop, project or area it belongs to. Add one on Quick Add's new **Agreement** tab in a
+  thread or loop overview or on a project's or area's page, optionally **valid till** a date
+  (+1 m, +3 m, end of year). Its card offers **Edit**, **Change** (the old one is ended, the new
+  one added) and **End**; nothing is ever deleted. Overviews list them in **Ahead**, count the
+  ended ones in **Looking back** and show the **Agreements made** in a past meeting; a page lists
+  its own under **◇ Agreements n ›**. See the help page "Agreements".
+
 ### Changed
 - The project now lives at github.com/tilmanbergt/kept-gtd. Old gtdpara links lead there too.
 

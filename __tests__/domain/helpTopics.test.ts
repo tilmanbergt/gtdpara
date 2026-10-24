@@ -26,9 +26,11 @@ describe('bundled user docs', () => {
     }
     expect(USER_DOCS.pages.index).toBeDefined();
   });
+  // ui/HelpOverlay.tsx on the A5 X: header ~51 dp, Overview and each page 40 dp, each group title
+  // ~32 dp. 27 rows (4 groups) take ~1100 dp of the ~1243 dp below the tab bar and status slot.
   it('the left list fits one screen', () => {
     const rows = 1 + USER_DOCS.groups.reduce((n, g) => n + 1 + g.pageIds.length, 0);
-    expect(rows).toBeLessThanOrEqual(26);
+    expect(rows).toBeLessThanOrEqual(27);
   });
 });
 

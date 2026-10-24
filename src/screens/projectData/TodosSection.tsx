@@ -3,8 +3,9 @@
  * the todos of each active loop first, under the loop's name and main date
  * (docs/dev/history/technical-design-loops.md §4.7), then the rest grouped
  * by flow state, flattened into one PagedSection, with its own row
- * actions (done toggle, note) and the "Hide done tasks" switch. Add, edit and
- * delete live in ProjectDataPanel's single Quick Add above both lists.
+ * actions (done toggle, note) and the "Hide done tasks" switch, and below it
+ * the `footer` (the agreements line). Add, edit and delete live in
+ * ProjectDataPanel's single Quick Add above both lists.
  */
 import React, {useEffect, useState} from 'react';
 import {Keyboard, Pressable, Text, View} from 'react-native';
@@ -44,9 +45,12 @@ export default function TodosSection({
   onOpenLinkedFile,
   filter,
   loops = [],
+  footer,
   textColor,
   borderColor,
 }: Pick<PaneColors, 'textColor' | 'borderColor'> & {
+  /** Below the list: the "◇ Agreements n ›" line (screens/projectData/AgreementsList.tsx). */
+  footer?: React.ReactNode;
   itemPath: string;
   tasks: Task[];
   /** The item's `## Loops` lines: the todos of each active loop are listed first, under the loop. */
@@ -232,6 +236,7 @@ export default function TodosSection({
         textColor={textColor}
         borderColor={borderColor}
       />
+      {footer}
     </View>
   );
 }

@@ -109,6 +109,8 @@ import {errorMessage} from '../utils/errorMessage';
 import {MeetingSeed} from '../ui/quickAdd/useDraftRequests';
 import {CounterpartFilter, CounterpartFilterPill, useCounterpartPredicates} from './projectData/counterpartFilter';
 import TodosSection from './projectData/TodosSection';
+import AgreementsList, {AgreementsLink} from './projectData/AgreementsList';
+import {PanelEditTarget, useProjectAgreements} from './projectData/useProjectAgreements';
 import MeetingsSection from './projectData/MeetingsSection';
 
 // Flex weights (docs/dev/history/technical-design-flex-weight-stacking.md §3.3) -
@@ -120,7 +122,7 @@ const TODOS_WEIGHT = 4;
 const MEETINGS_WEIGHT = 3;
 
 /** Which row (task or meeting, by index into ProjectDataPanel's own `state.tasks`/`state.meetings`) is being edited or armed - technical-design-linked-files.md §8's cross-cutting "one edit target" lift. Owned here rather than independently by TodosSection/MeetingsSection, so starting an edit/arm on either row type always cancels whichever of the other three states (the other type's edit, either type's arm) was active - there is exactly one edit *or* arm going on at a time, screen-wide. */
-type EditTarget = {type: 'task' | 'meeting'; index: number};
+type EditTarget = PanelEditTarget;
 
 /** The one arm target for this whole screen - extends EditTarget with which action armed it, mirroring screens/InboxScreen.tsx's own ArmTarget (docs/dev/history/technical-design-filing-unification.md §3.2). 'link' picks an existing file to attach; 'refile' (storage/inboxFiling.ts's module doc comment) picks a different Project/Area to move the item into - the Current tab's own entry point for filing. */
 type ArmTarget = {type: 'task' | 'meeting'; index: number; intent: 'link' | 'refile'};
@@ -214,6 +216,7 @@ export default function ProjectDataPanel({
     mode: editMode,
     arm: armTarget,
     select: selectEdit,
+    start: startEdit,
     edit: editSelected,
     saved: savedEditTarget,
     cancel: cancelEditTarget,
@@ -529,7 +532,7 @@ export default function ProjectDataPanel({
 
   /** Soft-delete for both row types, triggered by QuickAddWidget's single "Delete" button in edit mode. */
   const handleDeleteEditForWidget = () => {
-    if (!editTarget) return;
+    if (editTarget?.type !== 'task' && editTarget?.type !== 'meeting') return;
     Keyboard.dismiss();
     const target = editTarget;
     runWidgetAction(async () => {
@@ -602,7 +605,7 @@ export default function ProjectDataPanel({
   const stableDeleteEdit = useStableCallback(handleDeleteEditForWidget);
   const stableQuickFileEdit = useStableCallback(handleQuickFileEdit);
   const stableRefile = useStableCallback(() => {
-    if (editTarget) armRefileTarget(editTarget.type, editTarget.index);
+    if (editTarget?.type === 'task' || editTarget?.type === 'meeting') armRefileTarget(editTarget.type, editTarget.index);
   });
 
   // The selected todo's card: writes go through withTasks on the todo's current stored copy.
@@ -665,6 +668,20 @@ export default function ProjectDataPanel({
     onClose: cancelEditTarget,
   });
 
+  // The item owner's agreements (R24): "◇ Agreements n ›" under the todos opens them in the Todos column.
+  const [showAgreements, setShowAgreements] = useState(false);
+  const agreements = useProjectAgreements({
+    path,
+    settings,
+    target: editTarget,
+    mode: editMode,
+    select: selectEdit,
+    start: startEdit,
+    edit: editSelected,
+    saved: savedEditTarget,
+    cancel: cancelEditTarget,
+  });
+
   if (loading) {
     return (
       <View style={styles.root}>
@@ -703,19 +720,20 @@ export default function ProjectDataPanel({
         meetingSeed={meetingSeed}
         onAddTask={stableAddTask}
         onAddMeeting={stableAddMeeting}
-        editTarget={editTargetFor(
-          editTarget ? `${editTarget.type}:${editTarget.index}` : null,
-          {task: editingTaskForWidget, meeting: editingMeetingForWidget},
-          editMode,
-        )}
+        editTarget={
+          agreements.actions.editTarget ??
+          editTargetFor(editTarget ? `${editTarget.type}:${editTarget.index}` : null, {task: editingTaskForWidget, meeting: editingMeetingForWidget}, editMode)
+        }
         meetingCard={meetingCard}
         todoCard={todoCard}
+        agreementCard={agreements.actions.card}
+        {...agreements.actions.handlers}
         onSaveEditTask={stableCommitTaskEdit}
         onSaveEditMeeting={stableCommitMeetingEdit}
         flushEditRef={flushEditRef}
         onCancelEdit={stableCancelEdit}
         onDeleteEdit={stableDeleteEdit}
-        onRefile={editTarget ? stableRefile : undefined}
+        onRefile={editTarget?.type === 'task' || editTarget?.type === 'meeting' ? stableRefile : undefined}
         onQuickFile={editTarget ? stableQuickFileEdit : undefined}
         linkedFileMissing={linkedFileMissing}
         onAddNote={stableAddNote}
@@ -735,6 +753,9 @@ export default function ProjectDataPanel({
           TodosSection's/MeetingsSection's own PagedSection calls. */}
       <View style={styles.stackedColumn}>
         <View style={{flex: TODOS_WEIGHT}}>
+          {showAgreements && agreements.refs.length > 0 ? (
+            <AgreementsList refs={agreements.refs} agreements={agreements.actions} onBack={() => setShowAgreements(false)} textColor={textColor} borderColor={borderColor} />
+          ) : (
           <TodosSection
             itemPath={path}
             tasks={state.tasks}
@@ -748,7 +769,9 @@ export default function ProjectDataPanel({
             loops={item?.loops}
             textColor={textColor}
             borderColor={borderColor}
+            footer={<AgreementsLink count={agreements.refs.length} onOpen={() => setShowAgreements(true)} textColor={textColor} />}
           />
+          )}
         </View>
         <View style={[styles.divider, {backgroundColor: borderColor}]} />
         <View style={{flex: MEETINGS_WEIGHT}}>

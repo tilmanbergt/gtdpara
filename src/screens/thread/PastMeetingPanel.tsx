@@ -9,11 +9,16 @@
  *   ones grouped by the day they were done.
  * - The "Since" row: the todos done since the latest past meeting, grouped
  *   by the day they were done; no note button.
+ * - The "n agreements ended" row: those agreements, each with its ended date
+ *   (docs/dev/history/technical-design-meetings-0.21.md R24).
  *
- * Rows are the normal TaskRow with its actions.
+ * A past meeting's list ends with the block "Agreements made" when
+ * agreements were made in it. Rows are the normal TaskRow with its actions,
+ * and ui/AgreementRow.tsx (a tap shows the agreement's card).
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {AgreementRef} from '../../domain/agreementOwner';
 import {formatDateTime, formatDayHeader} from '../../domain/dateFormat';
 import {meetingDisplayTitle} from '../../domain/meetingTracking';
 import {todayIso} from '../../domain/meetingTime';
@@ -21,17 +26,27 @@ import {doneGroupLabel, pastMeetingSummary} from '../../domain/threadText';
 import {reflectionOffered, reflectionPillText} from '../../domain/reflection';
 import {useReflectionLookup} from '../../ui/useReflectionLookup';
 import {PastMeeting, ThreadTaskEntry} from '../../storage/threadAggregate';
+import AgreementRow, {AGREEMENT_ROW_HEIGHT} from '../../ui/AgreementRow';
 import PagedSection from '../../ui/PagedSection';
+import {AgreementActions, agreementRefKey} from '../../ui/useAgreementActions';
 import TaskRow, {taskRowHeight, taskRowLines} from '../../ui/TaskRow';
 import {TASK_COLUMN_WIDTH_PX} from '../../ui/taskRowLayout';
 import {FONT, SPACING} from '../../ui/theme';
 import {SUB_HEAD_HEIGHT} from './AheadSection';
 import {EntryActions, taskEntryKey} from '../../ui/useEntryActions';
 
-type PanelRow = {kind: 'head'; key: string; label: string} | {kind: 'task'; key: string; entry: ThreadTaskEntry};
+type PanelRow =
+  | {kind: 'head'; key: string; label: string}
+  | {kind: 'task'; key: string; entry: ThreadTaskEntry}
+  | {kind: 'agreement'; key: string; ref: AgreementRef};
 
 /** The selected Looking back row. */
-export type PanelSelection = {kind: 'meeting'; past: PastMeeting} | {kind: 'since'; from: string; done: ThreadTaskEntry[]};
+export type PanelSelection =
+  | {kind: 'meeting'; past: PastMeeting}
+  | {kind: 'since'; from: string; done: ThreadTaskEntry[]}
+  | {kind: 'ended'; refs: AgreementRef[]};
+
+const agreementRowsOf = (refs: readonly AgreementRef[]): PanelRow[] => refs.map(ref => ({kind: 'agreement', key: `a-${agreementRefKey(ref)}`, ref}));
 
 /** Done todos under one head per day they were done, latest first. */
 function doneRows(done: readonly ThreadTaskEntry[], today: string): PanelRow[] {
@@ -55,17 +70,19 @@ function meetingRows(past: PastMeeting, today: string): PanelRow[] {
     rows.push({kind: 'head', key: 'h-open', label: 'Open'});
     open.forEach(entry => rows.push({kind: 'task', key: taskEntryKey(entry), entry}));
   }
-  return [...rows, ...doneRows(past.agreed.filter(a => a.task.done), today)];
+  const made: PanelRow[] = past.agreements.length > 0 ? [{kind: 'head', key: 'h-agreements', label: 'Agreements made'}, ...agreementRowsOf(past.agreements)] : [];
+  return [...rows, ...doneRows(past.agreed.filter(a => a.task.done), today), ...made];
 }
 
 interface Props {
   selection: PanelSelection | null;
   actions: EntryActions;
+  agreements?: AgreementActions;
   textColor: string;
   borderColor: string;
 }
 
-export default function PastMeetingPanel({selection, actions, textColor, borderColor}: Props): React.JSX.Element {
+export default function PastMeetingPanel({selection, actions, agreements, textColor, borderColor}: Props): React.JSX.Element {
   const {edit} = actions;
   const pastEntry = selection?.kind === 'meeting' ? selection.past.entry : null;
   const reflection = useReflectionLookup(pastEntry?.meeting ?? null, pastEntry?.item.path ?? null, 'PastMeetingPanel');
@@ -85,11 +102,13 @@ export default function PastMeetingPanel({selection, actions, textColor, borderC
           sub: `${formatDateTime(selection.past.entry.meeting.date, selection.past.entry.meeting.time, today)} · ${pastMeetingSummary(selection.past.counts)}`,
           rows: meetingRows(selection.past, today),
         }
-      : {
-          title: `Since ${formatDayHeader(selection.from, today)}`,
-          sub: `${selection.done.length} done since the latest meeting`,
-          rows: doneRows(selection.done, today),
-        };
+      : selection.kind === 'since'
+        ? {
+            title: `Since ${formatDayHeader(selection.from, today)}`,
+            sub: `${selection.done.length} done since the latest meeting`,
+            rows: doneRows(selection.done, today),
+          }
+        : {title: 'Ended agreements', sub: `${selection.refs.length} ended`, rows: agreementRowsOf(selection.refs)};
   return (
     <View style={styles.flex}>
       <View style={styles.headerRow}>
@@ -117,13 +136,29 @@ export default function PastMeetingPanel({selection, actions, textColor, borderC
         )}
       </View>
       <PagedSection<PanelRow>
-        header={past ? 'Agreed' : 'Done'}
+        header={past ? 'Agreed' : selection.kind === 'ended' ? 'Agreements' : 'Done'}
         rows={rows}
-        resetKey={past ? past.key : 'since'}
+        resetKey={past ? past.key : selection.kind}
         isCountableRow={row => row.kind !== 'head'}
-        rowHeight={row => (row.kind === 'head' ? SUB_HEAD_HEIGHT : taskRowHeight(row.entry.task, TASK_COLUMN_WIDTH_PX, 'flat'))}
+        rowHeight={row =>
+          row.kind === 'head' ? SUB_HEAD_HEIGHT : row.kind === 'agreement' ? AGREEMENT_ROW_HEIGHT : taskRowHeight(row.entry.task, TASK_COLUMN_WIDTH_PX, 'flat')
+        }
         emptyHint={past ? 'Nothing agreed in this meeting yet - add it above.' : 'Nothing done since then.'}
         renderRow={row => {
+          if (row.kind === 'agreement') {
+            const ref = row.ref;
+            return (
+              <AgreementRow
+                key={row.key}
+                agreement={ref}
+                today={today}
+                onPress={agreements ? () => agreements.select(ref) : undefined}
+                state={agreements?.rowState(ref)}
+                textColor={textColor}
+                borderColor={borderColor}
+              />
+            );
+          }
           if (row.kind === 'head') {
             return (
               <View key={row.key} style={styles.head}>

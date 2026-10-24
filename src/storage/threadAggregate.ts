@@ -20,7 +20,11 @@
  *   recorded never appear.
  * - **Looking back.** Meetings that are over, newest first, each with the
  *   todos agreed in it (domain/provenance.ts) and their counts; a todo's age
- *   is today minus its created date (or the meeting's date).
+ *   is today minus its created date (or the meeting's date) - and the
+ *   agreements made in it.
+ * - **Agreements** (docs/dev/history/technical-design-meetings-0.21.md R24):
+ *   the lens's agreements in the scope's files (domain/agreementOwner.ts),
+ *   active ones in Ahead, ended ones counted in Looking back.
  *
  * Todos count where they are filed (decision D15): an agreed todo in the
  * Inbox shows in its meeting's thread only once it is filed into the scope.
@@ -29,6 +33,7 @@
  * can be changed through storage/itemMutations.ts's mutateEntryTasks/
  * mutateEntryMeetings (the index-safety rule).
  */
+import {AgreementRef, lensAgreements} from '../domain/agreementOwner';
 import {isSomedayMaybe} from '../domain/flowState';
 import {meetingEndMs, todayIso} from '../domain/meetingTime';
 import {daysBetween, MeetingSeedFields, nextMeetingSeed} from '../domain/nextMeeting';
@@ -67,6 +72,8 @@ export interface PastMeeting {
   key: string;
   /** Todos agreed in it (not cancelled): open first, then done. */
   agreed: ThreadTaskEntry[];
+  /** Agreements made in it (active and ended), file order. */
+  agreements: AgreementRef[];
   counts: {agreed: number; done: number; open: number; oldestOpenDays: number | null};
 }
 
@@ -85,7 +92,11 @@ export interface ThreadOverview {
     relevant: ThreadTaskEntry[];
     /** Open Someday/Maybe todos of the lens: counted only, never in owe/relevant (E10). */
     someday: ThreadTaskEntry[];
+    /** The lens's active agreements, item and file order. */
+    agreements: AgreementRef[];
   };
+  /** The lens's ended agreements (Looking back's "n agreements ended ›"). */
+  endedAgreements: AgreementRef[];
   /** `from`: the latest past meeting's date (null without one); `done`: latest completion first. */
   since: {from: string | null; done: ThreadTaskEntry[]};
   /** Newest first. */
@@ -181,6 +192,18 @@ export function buildThreadOverview(
   aheadMeetings.sort((a, b) => startKey(a.meeting).localeCompare(startKey(b.meeting)));
   pastEntries.sort((a, b) => startKey(b.meeting).localeCompare(startKey(a.meeting)));
 
+  const loaded = items.filter(item => !item.loadError);
+  const agreements = lensAgreements(ctx, loaded);
+  const madeIn = new Map<string, AgreementRef[]>();
+  for (const item of loaded.filter(i => scope.includes(i.path))) {
+    item.agreements.forEach((agreement, index) => {
+      const match = provenanceOf(agreement);
+      if (!match) return;
+      const key = `${match.path}#${match.meetingIndex}`;
+      madeIn.set(key, [...(madeIn.get(key) ?? []), {itemPath: item.path, index, agreement}]);
+    });
+  }
+
   const past: PastMeeting[] = pastEntries.map(entry => {
     const agreed = agreedByMeeting.get(`${entry.item.path}#${entry.meetingIndex}`) ?? [];
     const open = agreed.filter(a => !a.task.done);
@@ -190,6 +213,7 @@ export function buildThreadOverview(
       entry,
       key: meetingKey(entry.meeting),
       agreed: [...open, ...done],
+      agreements: madeIn.get(`${entry.item.path}#${entry.meetingIndex}`) ?? [],
       counts: {
         agreed: agreed.length,
         done: done.length,
@@ -212,7 +236,8 @@ export function buildThreadOverview(
     owner: ctx.owner,
     scope,
     types,
-    ahead: {meetings: aheadMeetings, ...lists},
+    ahead: {meetings: aheadMeetings, ...lists, agreements: agreements.active},
+    endedAgreements: agreements.ended,
     since: {from, done: sinceDone},
     past,
   };

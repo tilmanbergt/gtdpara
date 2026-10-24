@@ -68,8 +68,8 @@ export interface ThreadLensContext {
   types: string[];
   /** Whether tags carry the lens's tags (thread tag or plain leaf; counterpart lens: any thread of it). */
   inLens: (tags: readonly string[]) => boolean;
-  /** The meeting a todo was agreed in, when its provenance resolves. */
-  provenanceOf: (task: Task) => ProvenanceMatch | null;
+  /** The meeting a todo (or an agreement) was agreed in, when its provenance resolves. */
+  provenanceOf: (task: {fields: {meeting: string | null}}) => ProvenanceMatch | null;
   /** How a todo (filed inside the scope) relates to the lens, or null. */
   relationOf: (task: Task, match?: ProvenanceMatch | null) => ThreadRelation | null;
 }
@@ -126,7 +126,7 @@ export function threadLensContext(
     lens === 'thread' ? inThreadLens(tags, thread) : belongsToCounterpart(tags, cp, threadTypes);
 
   const provenanceSources: ProvenanceSource[] = sources.map(s => ({path: s.ref.path, meetings: s.meetings}));
-  const provenanceOf = (task: Task): ProvenanceMatch | null =>
+  const provenanceOf = (task: {fields: {meeting: string | null}}): ProvenanceMatch | null =>
     task.fields.meeting ? resolveProvenance(task, provenanceSources, scope) : null;
   const agreedInLens = (match: ProvenanceMatch | null) =>
     match !== null && scope.includes(match.path) && inLens(match.meeting.tags);

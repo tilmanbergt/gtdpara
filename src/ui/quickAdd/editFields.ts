@@ -4,6 +4,7 @@
  * stored item. Kept apart from the widget so the widget stays within its
  * size budget (DEVELOPMENT-POLICY §3).
  */
+import {Agreement} from '../../domain/agreements';
 import {formatMeetingWhen} from '../../domain/meetingTime';
 import {isHighlight, setHighlight} from '../../domain/monthHighlight';
 import {stripTrackingTags} from '../../domain/meetingTracking';
@@ -26,7 +27,22 @@ export interface MeetingEditFields {
   linkedFile: string;
 }
 
-export type EditFields = {kind: 'task'; fields: TaskEditFields} | {kind: 'meeting'; fields: MeetingEditFields};
+/** An agreement's edit, or the form of a Change (`change`: + Add ends the old one and adds this). */
+export interface AgreementEditFields {
+  text: string;
+  valid: string | null;
+  change: boolean;
+}
+
+export type EditFields =
+  | {kind: 'task'; fields: TaskEditFields}
+  | {kind: 'meeting'; fields: MeetingEditFields}
+  | {kind: 'agreement'; fields: AgreementEditFields};
+
+/** The edit fields of an agreement's Edit or Change (docs/dev/history/technical-design-meetings-0.21.md §5). */
+export function loadAgreementEditFields(agreement: Agreement, change: boolean): EditFields {
+  return {kind: 'agreement', fields: {text: agreement.text, valid: agreement.fields.valid, change}};
+}
 
 /** The edit fields for the item being edited (a todo wins when both are set), or null when nothing is edited. */
 export function loadEditFields(editingTask: Task | undefined, editingMeeting: Meeting | undefined): EditFields | null {
