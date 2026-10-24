@@ -6,6 +6,7 @@
  */
 import {formatMeetingWhen} from '../../domain/meetingTime';
 import {isHighlight, setHighlight} from '../../domain/monthHighlight';
+import {stripTrackingTags} from '../../domain/meetingTracking';
 import {FlowState, Meeting, Task} from '../../domain/types';
 
 export interface TaskEditFields {
@@ -46,8 +47,9 @@ export function loadEditFields(editingTask: Task | undefined, editingMeeting: Me
     return {
       kind: 'meeting',
       fields: {
-        // `#monthly` is edited through the M toggle, not as title text.
-        title: setHighlight(editingMeeting.title, false),
+        // `#monthly` is edited through the M toggle, not as title text; `#prepped`/`#reviewed`
+        // in the list toolbar (docs/dev/history/technical-design-meeting-reflection.md §2.5).
+        title: stripTrackingTags(setHighlight(editingMeeting.title, false)),
         date: editingMeeting.date,
         time: formatMeetingWhen(editingMeeting),
         monthly: isHighlight(editingMeeting),

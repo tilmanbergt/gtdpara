@@ -69,19 +69,24 @@ afterwards:
 
 - `test-helpers/fakeDevice/`: `FakeFs` stands in for the native `GtdParaFile` module (same rules:
   sorted listings without dot and `.mark` files, moves that refuse an existing target, empty-folder
-  deletes only), `FakeSdk` for `sn-plugin-lib` (notes are JSON files with pages and keywords; the
-  open note, buttons), `FakePdf` for `GtdParaPdf` (the PDF file holds its spec). `setup.ts`
+  deletes only), `FakeSdk` for `sn-plugin-lib` (notes are JSON files with pages, keywords and the
+  elements the plugin wrote - textboxes, links, title elements; the open note and page, buttons; a
+  simple fake text measurement for `TextboxMetrics`), `FakePdf` for `GtdParaPdf` (the PDF file holds its spec). `setup.ts`
   installs them; `device()` is the current one. Faults: `fs.failNext`, `fs.crashAfter(n)` with
   `fs.restart()`, `fs.editExternally`.
 - `test-helpers/scenario/scenario.ts`: `scenario(title, {feature, design}, () => {...})` with
   `given`/`when`/`then`/`and` steps. Each scenario starts on an empty device. The step texts are
   what the catalog shows, so write them for a reader and keep them single-quoted literals.
-- `test-helpers/scenario/app.tsx`: `openApp()`, `tapTab`, `tap(text | /pattern/, nth)`,
+- `test-helpers/scenario/app.tsx`: `openApp()`, `openEngage({fromNote, page})` (the Engage
+  button over a note page), `tapTab`, `tap(text | /pattern/, nth)`,
   `type(placeholder, text)`, `fieldValue`, `shows`/`expectShows`, `describeScreen()` (print it
   while writing a scenario to see the labels). Queries see only visible elements (kept tabs are
   hidden); every view that asks for its size gets a tall page, so paged lists show their rows.
 - `test-helpers/scenario/files.ts`: `PATHS`, `projectFile`, `dataFile(kind, sections)`,
-  `putFile`, `fileText`, `sectionLines`, `loggedErrors()`.
+  `putFile`, `fileText`, `sectionLines`, `loggedErrors()`; for note pages `pageKeywords`,
+  `pageTexts` (what gtdpara wrote on a page) and `pageHeadings`.
+- `test-helpers/scenario/setups.ts`: ready-made Note setups for `openApp({settings})`, e.g.
+  `sparringSettings()`.
 
 What the fake device cannot show - layout and row heights, e-ink refreshes, lasso, recognition,
 PNG rendering, real SDK behavior - stays on the device checklist. A call the fake SDK doesn't

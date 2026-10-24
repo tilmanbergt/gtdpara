@@ -73,6 +73,18 @@ export function noteCreationConfirmText(plan: NoteCreationPlan, fullDisplay: str
         detail: `This item's page is no longer in ${fullDisplay}. Adds a fresh page.${RECREATE_DETAIL}`,
         actionLabel: 'Add page',
       };
+    case 'new-reflection':
+      return plan.withMeetingPage
+        ? {
+          text: `${rule}pages for the meeting and its reflection in ${plan.file}`,
+          detail: `Adds a page for the meeting to ${fullDisplay}, and its Reflection page right after it.`,
+          actionLabel: 'Add pages',
+        }
+        : {
+          text: `${rule}reflection page in ${plan.file}, after the meeting's page`,
+          detail: `Adds a Reflection page to ${fullDisplay}, after the meeting's page and the pages you added to it.`,
+          actionLabel: 'Add page',
+        };
     case 'recreate-shared-file':
     case 'recreate-own-file':
       return {

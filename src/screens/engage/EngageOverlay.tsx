@@ -41,6 +41,7 @@ import NowBox from './NowBox';
 import OptionTabs from './OptionTabs';
 import OwnerEmpty from './OwnerEmpty';
 import OwnerList from './OwnerList';
+import ReflectLine from './ReflectLine';
 import {useEngageFlow} from './useEngageFlow';
 import {useEngageGoTo} from './useEngageGoTo';
 import {useEngageExits} from './useEngageExits';
@@ -143,6 +144,24 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
     });
   };
 
+  /** The meeting whose page this is (R10), for "Reflect on this meeting ›". */
+  const pageMeetingItem = state.pageMeeting && source ? source.items.find(i => i.path === state.pageMeeting?.itemPath) : undefined;
+  const pageMeeting = state.pageMeeting && pageMeetingItem ? pageMeetingItem.meetings[state.pageMeeting.meetingIndex] : undefined;
+  const reflectLine =
+    pageMeeting && pageMeetingItem && state.pageMeeting ? (
+      <ReflectLine
+        meeting={pageMeeting}
+        itemPath={pageMeetingItem.path}
+        onPress={() => reflect({item: pageMeetingItem, meetingIndex: state.pageMeeting?.meetingIndex ?? 0, meeting: pageMeeting})}
+        textColor={textColor}
+      />
+    ) : null;
+  /** The reflection comes to the front and the panel goes, like a todo's note. */
+  const reflect = async (entry: Parameters<typeof actions.reflection>[0]) => {
+    log(`${NAME}: action`, 'reflection');
+    if (await actions.reflection(entry)) onClose();
+  };
+
   const homeName = (o: EngageOwner) => source?.items.find(i => i.path === ownerHomePath(o))?.name ?? '';
 
   // The stored current todo stays: it is the way back from the owner chosen here.
@@ -183,6 +202,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
               borderColor={borderColor}
             />
             {owner ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
+            {reflectLine}
           </>
         );
       case 'quickAdd':
@@ -239,6 +259,7 @@ export default function EngageOverlay({request, onClose, onOpenGtdpara, onExit}:
               />
             ) : null}
             {screen.kind === 'options' && tab === 'plan' ? <MarksLine owner={owner} itemName={homeName(owner)} textColor={textColor} /> : null}
+            {screen.kind === 'options' ? reflectLine : null}
             {goTo && screen.kind === 'options' ? <GoToLine fileName={goTo.fileName} onPress={() => openGoTo(goTo.path)} textColor={textColor} /> : null}
             {destination ? (
               <CollapsedQuickAdd

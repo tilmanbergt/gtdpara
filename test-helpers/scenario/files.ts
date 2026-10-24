@@ -54,3 +54,31 @@ export function loggedErrors(): string[] {
     .logs.filter(l => l.level === 'error')
     .map(l => l.text);
 }
+
+/** The keywords on `page` (0-based) of the note at `notePath`, in the order they were added. */
+export function pageKeywords(notePath: string, page: number): string[] {
+  const note = device().sdk.note(notePath);
+  if (!note) throw new Error(`no note ${notePath}; files: ${device().fs.paths().join(', ')}`);
+  if (!note.pages[page]) throw new Error(`${notePath} has no page ${page} (it has ${note.pages.length})`);
+  return note.pages[page].keywords;
+}
+
+/** The texts gtdpara wrote on `page` (0-based) of the note at `notePath`: its textboxes and links, top to bottom as inserted. */
+export function pageTexts(notePath: string, page: number): string[] {
+  const note = device().sdk.note(notePath);
+  if (!note) throw new Error(`no note ${notePath}; files: ${device().fs.paths().join(', ')}`);
+  const elements = note.pages[page]?.elements ?? [];
+  return elements.flatMap(el => {
+    const text = el.textBox?.textContentFull ?? el.link?.fullText;
+    return text ? [text] : [];
+  });
+}
+
+/** The texts the headings (title elements) on `page` cover. */
+export function pageHeadings(notePath: string, page: number): string[] {
+  const elements = device().sdk.note(notePath)?.pages[page]?.elements ?? [];
+  return elements.flatMap(el => (el.title ? el.title.controlTrailNums : [])).flatMap(num => {
+    const text = elements.find(el => el.numInPage === num)?.textBox?.textContentFull;
+    return text ? [text] : [];
+  });
+}

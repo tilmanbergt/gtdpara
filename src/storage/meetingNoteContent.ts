@@ -128,7 +128,7 @@ function fileNameOf(absolutePath: string): string {
  * skipped then). One folder listing (storage/linkedFiles.ts's
  * linkedFileStatus), only for items that actually carry a link.
  */
-async function existingLinkedFile(
+export async function existingLinkedFile(
   paths: ResolvedParaPaths,
   linkedFile: string | undefined,
 ): Promise<{absolutePath: string; fileName: string} | null> {
@@ -598,27 +598,20 @@ export interface OpenOrCreateNoteOptions {
 }
 
 /**
- * Open-or-create entry point for a Meeting's linked note - the one function
- * DailyView/ProjectDataPanel/WeekView-Month (usePlanningScreen)/InboxScreen/
- * ReviewScreen's note-icon tap handlers call. Plans what the tap will do
+ * The first half of `openOrCreateMeetingNote`: plans what the tap will do
  * (storage/itemNotePlan.ts - open, create, add page, link, recreate), asks
- * `options.confirmCreate` for everything except a plain open, then carries
- * it out, refreshes the page's content and opens it.
- *
- * Does NOT persist a changed `notePath` itself, and does NOT mutate
- * `meeting` - storage/ functions don't reach into screen state, and the
- * screens persist a Meeting through different mechanisms. Instead this
- * returns the possibly-updated `Meeting` (a new object only when something
- * changed) alongside `changed`; the caller persists when `changed`.
- * `cancelled` is true (and `changed` false) when the user tapped ✕.
+ * `options.confirmCreate` for everything except a plain open, carries it out
+ * and refreshes the page's content - without opening it. A meeting's
+ * reflection page (storage/reflectionPage.ts) uses it to make the meeting's
+ * page first. `null` when the user cancelled.
  */
-export async function openOrCreateMeetingNote(
+export async function ensureMeetingNote(
   meeting: Meeting,
   itemPath: string,
   settings: GtdParaSettings,
   inbox: MeetingNoteInboxInput | null,
   options: OpenOrCreateNoteOptions = {},
-): Promise<{meeting: Meeting; changed: boolean; cancelled: boolean; outcome: OpenOrCreateNoteOutcome | null}> {
+): Promise<{meeting: Meeting; anchor: ItemNoteAnchorResolution} | null> {
   const currentKeyword = meetingPageKeyword(meeting);
   const anchor = await resolveItemNote(
     {
@@ -638,7 +631,7 @@ export async function openOrCreateMeetingNote(
     options.confirmCreate,
     'openOrCreateMeetingNote',
   );
-  if (!anchor) return {meeting, changed: false, cancelled: true, outcome: null};
+  if (!anchor) return null;
 
   const updatedMeeting = anchor.changed ? {...meeting, notePath: anchor.notePath} : meeting;
   await fillLoopPage(anchor, settings);
@@ -649,10 +642,36 @@ export async function openOrCreateMeetingNote(
       page: anchor.page,
     });
   }
+  return {meeting: updatedMeeting, anchor};
+}
+
+/**
+ * Open-or-create entry point for a Meeting's linked note - the one function
+ * DailyView/ProjectDataPanel/WeekView-Month (usePlanningScreen)/InboxScreen/
+ * ReviewScreen's note-icon tap handlers call: `ensureMeetingNote`, then opens
+ * the page.
+ *
+ * Does NOT persist a changed `notePath` itself, and does NOT mutate
+ * `meeting` - storage/ functions don't reach into screen state, and the
+ * screens persist a Meeting through different mechanisms. Instead this
+ * returns the possibly-updated `Meeting` (a new object only when something
+ * changed) alongside `changed`; the caller persists when `changed`.
+ * `cancelled` is true (and `changed` false) when the user tapped ✕.
+ */
+export async function openOrCreateMeetingNote(
+  meeting: Meeting,
+  itemPath: string,
+  settings: GtdParaSettings,
+  inbox: MeetingNoteInboxInput | null,
+  options: OpenOrCreateNoteOptions = {},
+): Promise<{meeting: Meeting; changed: boolean; cancelled: boolean; outcome: OpenOrCreateNoteOutcome | null}> {
+  const ensured = await ensureMeetingNote(meeting, itemPath, settings, inbox, options);
+  if (!ensured) return {meeting, changed: false, cancelled: true, outcome: null};
+  const {anchor} = ensured;
   await openPath(anchor.absolutePath, anchor.page);
 
   return {
-    meeting: updatedMeeting,
+    meeting: ensured.meeting,
     changed: anchor.changed,
     cancelled: false,
     outcome: {absolutePath: anchor.absolutePath, page: anchor.page},

@@ -34,6 +34,8 @@ interface Props {
   textColor: string;
   borderColor: string;
   disabled?: boolean;
+  /** Less vertical padding (Quick Add's fixed-height rows). */
+  compact?: boolean;
 }
 
 const OPTIONS: Array<{value: Exclude<FlowState, null>; label: string}> = [
@@ -43,7 +45,7 @@ const OPTIONS: Array<{value: Exclude<FlowState, null>; label: string}> = [
   {value: 'next', label: 'Next'},
 ];
 
-export default function FlowStateChips({value, onChange, textColor, borderColor, disabled}: Props): React.JSX.Element {
+export default function FlowStateChips({value, onChange, textColor, borderColor, disabled, compact = false}: Props): React.JSX.Element {
   return (
     <View style={styles.row}>
       {OPTIONS.map(option => {
@@ -51,7 +53,7 @@ export default function FlowStateChips({value, onChange, textColor, borderColor,
         return (
           <Pressable
             key={option.value}
-            style={[styles.chip, {borderColor: selected ? COLORS.accent : borderColor}, selected && styles.chipSelected]}
+            style={[styles.chip, compact && styles.chipCompact, {borderColor: selected ? COLORS.accent : borderColor}, selected && styles.chipSelected]}
             disabled={disabled}
             onPress={() => onChange(selected ? null : option.value)}
             hitSlop={8}>
@@ -74,6 +76,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     marginRight: 4,
+  },
+  chipCompact: {
+    paddingVertical: 4,
   },
   chipSelected: {
     backgroundColor: COLORS.accent,

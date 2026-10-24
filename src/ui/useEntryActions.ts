@@ -17,7 +17,6 @@ import {Destination, destinationLabel} from '../domain/destination';
 import {EngageFlowChoice, engageFlowText} from '../domain/engageOptions';
 import {UndoRecord} from '../domain/engageFlow';
 import {ENGAGE_NOTICE} from '../domain/engageText';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../domain/meetingTracking';
 import {todayIso} from '../domain/meetingTime';
 import {GtdParaSettings} from '../domain/settings';
 import {withTaskCancelled, withTaskDone, withTaskText} from '../domain/taskEdit';
@@ -28,6 +27,8 @@ import {
   addMeetingToDestination,
   addTaskToDestination,
   applyMeetingEdit,
+  currentEntryMeeting,
+  MeetingEntryRef,
   applyTaskEdit,
   buildMeeting,
   buildTask,
@@ -46,6 +47,9 @@ import {useEditTarget} from './useEditTarget';
 import {useEngagePrompt} from './useEngagePrompt';
 import {useEntryMoveUi} from './useEntryMoveUi';
 import {useNoteCreateConfirm} from './useNoteCreateConfirm';
+import {MeetingCardOptions} from './itemCard/useMeetingCard';
+import {TodoCardOptions} from './itemCard/useTodoCard';
+import {openOrCreateReflectionPage} from '../storage/reflectionPage';
 import {errorMessage} from '../utils/errorMessage';
 import {log, logError} from '../utils/log';
 import {requestEinkRefresh} from '../utils/screenRefresh';
@@ -84,7 +88,7 @@ export function useEntryActions(name = 'ThreadOverview') {
     const {nextInbox} = await mutateEntryTasks(entry, mutate, ctx);
     if (nextInbox) setCachedInbox(nextInbox);
   };
-  const saveMeetings = async (entry: ThreadMeetingEntry, mutate: (meetings: Meeting[]) => Meeting[]) => {
+  const saveMeetings = async (entry: MeetingEntryRef, mutate: (meetings: Meeting[]) => Meeting[]) => {
     const {nextInbox} = await mutateEntryMeetings(entry, mutate, ctx);
     if (nextInbox) setCachedInbox(nextInbox);
   };
@@ -160,7 +164,7 @@ export function useEntryActions(name = 'ThreadOverview') {
         tasks[entry.taskIndex] = applyTaskEdit(tasks[entry.taskIndex], text, linkedFile);
         return tasks;
       });
-      edit.cancel();
+      edit.saved(); // back to the todo's card
     });
   };
   const commitMeetingEdit = (entry: ThreadMeetingEntry, fields: MeetingQuickAddFields, linkedFile: string): Promise<boolean> =>
@@ -169,7 +173,7 @@ export function useEntryActions(name = 'ThreadOverview') {
         meetings[entry.meetingIndex] = applyMeetingEdit(meetings[entry.meetingIndex], fields, linkedFile);
         return meetings;
       });
-      edit.cancel();
+      edit.saved(); // back to the meeting's card
     });
 
   /** Quick Add's Delete in edit mode: cancels (soft-deletes) the edited row. */
@@ -205,7 +209,7 @@ export function useEntryActions(name = 'ThreadOverview') {
       moved = await moveTask(e.item, e.taskIndex, applyTaskEdit(e.task, payload.text, payload.linkedFile), itemTarget(target), moveUi);
     } else if ('meeting' in entry && payload.kind === 'meeting') {
       const e = entry.meeting;
-      moved = await moveMeeting(e.item, e.meetingIndex, applyMeetingEdit(e.meeting, payload.fields, payload.linkedFile), itemTarget(target), moveUi);
+      moved = await moveMeeting(e.item, e.meetingIndex, applyMeetingEdit(currentEntryMeeting(e, ctx), payload.fields, payload.linkedFile), itemTarget(target), moveUi);
     }
     if (moved) edit.cancel();
   };
@@ -255,13 +259,58 @@ export function useEntryActions(name = 'ThreadOverview') {
     return ok && opened;
   };
 
-  const tracking = (entry: ThreadMeetingEntry): MeetingTrackingConfig => ({
-    setups: trackingSetups(settings),
-    onToggle: (kind: MeetingTrackingKind) =>
-      rowAction.run(async () => {
-        await saveMeetings(entry, meetings => toggleMeetingTrackingAt(meetings, entry.meetingIndex, kind));
-        requestEinkRefresh();
-      }),
+  /**
+   * Opens (or creates, after the confirm) the meeting's Reflection page
+   * (docs/dev/history/technical-design-meeting-reflection.md §2.8); resolves true only when it opened.
+   */
+  const reflection = async (entry: MeetingEntryRef & {meeting: Meeting}): Promise<boolean> => {
+    let opened = false;
+    const ok = await rowAction.runSave(async () => {
+      const result = await openOrCreateReflectionPage(entry.meeting, entry.item.path, await currentSettings(), inbox ? {tasks: inbox.tasks} : null, {
+        confirmCreate: confirmNoteCreate,
+        forceOwnTarget: entry.item.kind === 'inbox',
+      });
+      if (result.changed) await saveMeetings(entry, meetings => meetings.map((m, i) => (i === entry.meetingIndex ? result.meeting : m)));
+      opened = !result.cancelled;
+    });
+    return ok && opened;
+  };
+
+  const tracking = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
+
+  /** The selected todo's card (ui/itemCard/useTodoCard.ts); done goes through the row's own toggleDone. */
+  const todoCardOptions = (entry: ThreadTaskEntry | null): TodoCardOptions => ({
+    name: LOG,
+    selection: entry && {task: entry.task, itemPath: entry.item.path, ownerName: entry.item.name, inbox: entry.item.kind === 'inbox'},
+    updateTask: async change => {
+      if (entry) await saveTasks(entry, tasks => tasks.map((t, i) => (i === entry.taskIndex ? change(t) : t)));
+    },
+    onToggleDone: () => {
+      if (entry) toggleDone(entry);
+    },
+    onNote: () => {
+      if (entry) taskNote(entry);
+    },
+    onOpenFile: linkedFile => openFile(linkedFile),
+    onEdit: edit.edit,
+    onClose: edit.cancel,
+  });
+
+  /** The selected meeting's card (ui/itemCard/useMeetingCard.ts); no Files pane here: no +clip, refile only by abbreviation tag. */
+  const cardOptions = (entry: ThreadMeetingEntry | null): MeetingCardOptions => ({
+    name: LOG,
+    selection: entry && {meeting: entry.meeting, itemPath: entry.item.path, ownerName: entry.item.name, inbox: entry.item.kind === 'inbox'},
+    settings,
+    inbox: inbox ? {tasks: inbox.tasks} : null,
+    updateMeeting: async change => {
+      if (entry) await saveMeetings(entry, meetings => meetings.map((m, i) => (i === entry.meetingIndex ? change(m) : m)));
+    },
+    onNote: () => {
+      if (entry) meetingNote(entry);
+    },
+    onOpenFile: linkedFile => openFile(linkedFile),
+    onEdit: edit.edit,
+    onClose: edit.cancel,
   });
 
   const openFile = (linkedFile: string) => {
@@ -286,6 +335,9 @@ export function useEntryActions(name = 'ThreadOverview') {
     taskNote,
     meetingNote,
     tracking,
+    reflection,
+    cardOptions,
+    todoCardOptions,
     openFile,
     openTaskFile,
   };

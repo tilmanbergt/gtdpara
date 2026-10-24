@@ -1,30 +1,49 @@
 /**
- * Styles the Quick Add rows share (ui/quickAdd/*Rows.tsx, QuickAddFrame,
- * CaptureQuickAdd). Row heights live in QuickAddFrame's `QUICK_ADD_ROWS`.
+ * Styles the Quick Add rows share (ui/quickAdd/*Rows.tsx, CaptureQuickAdd).
+ * Row heights live in QuickAddFrame's `QUICK_ADD_ROWS`; every row sets its
+ * own height, so no content can make the box grow.
  */
 import {StyleSheet} from 'react-native';
 import {COLORS, FONT} from '../theme';
-import {QUICK_ADD_ROWS} from './QuickAddFrame';
+import {QUICK_ADD_CHIP_PADDING, QUICK_ADD_ROWS} from './QuickAddFrame';
 
 export const rowStyles = StyleSheet.create({
   row2: {
-    minHeight: QUICK_ADD_ROWS.input,
+    height: QUICK_ADD_ROWS.input,
+    justifyContent: 'center',
     marginBottom: QUICK_ADD_ROWS.gap,
-    // Positioning context for the clipboard strip (common.floatingStrip) -
-    // absolutely positioned against *this* row, so it hovers right above
-    // the input whichever row 2 (task/meeting) is showing.
+    // Positioning context for the floating strips (common.floatingStrip) -
+    // absolutely positioned against *this* row, so they hover over the tabs
+    // whichever row 2 (task/meeting) is showing. No zIndex anywhere in the
+    // box: on Android a zIndex sibling can stop other rows being drawn.
     position: 'relative',
+  },
+  /** The capture panel's R2: grows with its multi-line field and the Split lines rows. */
+  row2Free: {
+    height: undefined,
+    minHeight: QUICK_ADD_ROWS.input,
   },
   row2Wrap: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   row3: {
-    minHeight: QUICK_ADD_ROWS.meta,
+    height: QUICK_ADD_ROWS.meta,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: QUICK_ADD_ROWS.gap,
+  },
+  /** R4, the last row: no gap below. */
+  row4: {
+    height: QUICK_ADD_ROWS.extra,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  /** The capture panel's R3. */
+  row3Free: {
+    height: undefined,
+    minHeight: QUICK_ADD_ROWS.meta,
   },
   /**
    * Keeps an inactive tab's rows mounted instead of unmounting them - Yoga
@@ -50,14 +69,11 @@ export const rowStyles = StyleSheet.create({
   tabTextDisabled: {
     opacity: 0.35,
   },
-  /** Groups the lead control (flow chips / time field) with the tag chips on the row's left, leaving space-between to place the attachment cluster on the right. */
+  /** Groups the lead control (flow chips / time field) with the tag chips on the row's left. Never clips: only the tag chips' own row does (ui/TagChips.tsx). */
   row3ChipsGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 1,
-    // Safety net: tags can never paint past this group into the attachment
-    // cluster.
-    overflow: 'hidden',
   },
   /** Wraps the flow chips / the meeting time field so its width can be measured for the tag budget; never shrinks. */
   row3Lead: {
@@ -66,7 +82,7 @@ export const rowStyles = StyleSheet.create({
   chip: {
     borderWidth: 1,
     borderRadius: 6,
-    paddingVertical: 6,
+    paddingVertical: QUICK_ADD_CHIP_PADDING,
     paddingHorizontal: 8,
     marginRight: 6,
     borderColor: COLORS.accent,

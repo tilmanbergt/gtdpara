@@ -1,5 +1,6 @@
 /**
- * Quick Add's R1: the Todo / Meeting (/ Note) mini-tabs. A tab never
+ * Quick Add's R1: the Todo / Meeting (/ Note) mini-tabs on the left, the
+ * main button cluster (`actions`) on the right. A tab never
  * disappears; a locked one greys out - Meeting while `taskOnly`, the other
  * kind while an edit is open, Note while the Files pane has no folder to
  * create in. Note is rendered only where a screen passes `onAddNote`.
@@ -17,10 +18,12 @@ interface Props {
   /** Whether the Note tab is rendered at all. */
   hasNoteTab: boolean;
   noteFolderPath: string | null;
+  /** The main button cluster at the right end (ui/quickAdd/ActionRow.tsx). */
+  actions?: React.ReactNode;
   textColor: string;
 }
 
-export default function TabsRow({core, taskOnly, hasNoteTab, noteFolderPath, textColor}: Props): React.JSX.Element {
+export default function TabsRow({core, taskOnly, hasNoteTab, noteFolderPath, actions, textColor}: Props): React.JSX.Element {
   const {displayType, isEditing, editFields} = core;
   const disabled: Record<QuickAddType, boolean> = {
     task: editFields?.kind === 'meeting',
@@ -48,15 +51,24 @@ export default function TabsRow({core, taskOnly, hasNoteTab, noteFolderPath, tex
     </Pressable>
   );
   return (
-    <View style={styles.tabs}>
-      {tab('task', 'Todo')}
-      {tab('meeting', 'Meeting')}
-      {hasNoteTab && tab('note', 'Note')}
+    <View style={styles.row}>
+      <View style={styles.tabs}>
+        {tab('task', 'Todo')}
+        {tab('meeting', 'Meeting')}
+        {hasNoteTab && tab('note', 'Note')}
+      </View>
+      {actions}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   tabs: {
     flexDirection: 'row',
   },

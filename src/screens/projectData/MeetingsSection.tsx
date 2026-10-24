@@ -1,14 +1,14 @@
 /**
  * The Meetings list of the Current page's right pane (screens/ProjectDataPanel.tsx):
  * Upcoming above Past in one MeetingList, with its own row actions (note,
- * prep/review tracking), behind a Meetings | Google mini-tab. Add, edit and
- * delete live in ProjectDataPanel's single Quick Add above both lists.
+ * clip) and the toolbar for the edited meeting (prep/review tick, reflection,
+ * Link file), behind a Meetings | Google mini-tab. Add, edit and delete live
+ * in ProjectDataPanel's single Quick Add above both lists.
  */
 import React, {useEffect, useState} from 'react';
 import {Keyboard, View} from 'react-native';
 import {Meeting} from '../../domain/types';
 import {splitAndSortMeetings} from '../../domain/meetingTime';
-import {MeetingTrackingKind, toggleMeetingTrackingAt} from '../../domain/meetingTracking';
 import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../../domain/noteSetups';
 import {CachedItem, getCachedData} from '../../storage/dataCache';
 import {openOrCreateMeetingNote} from '../../storage/meetingNoteContent';
@@ -21,7 +21,6 @@ import MiniTabs, {MiniTabDef} from '../../ui/MiniTabs';
 import {useFeatures, visibleTabs} from '../../ui/featureStore';
 import {useErrorStatus} from '../../ui/status/StatusProvider';
 import {log, logError} from '../../utils/log';
-import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {errorMessage} from '../../utils/errorMessage';
 import {PaneColors, sectionStyles as styles} from './panelLayout';
 
@@ -39,9 +38,9 @@ export default function MeetingsSection({
   onSave,
   onOpenCalendarSettings,
   editingIndex,
+  editMode,
   armingIndex,
-  onStartEdit,
-  onArmLink,
+  onSelect,
   onOpenLinkedFile,
   filter,
   textColor,
@@ -56,9 +55,11 @@ export default function MeetingsSection({
   onOpenCalendarSettings?: () => void;
   /** Lifted up into ProjectDataPanel (technical-design-linked-files.md §8) - see that component's EditTarget doc comment and TodosSection's identical props. Add/edit/delete itself lives in the single QuickAddWidget above both sections (docs/dev/history/technical-design-unified-quickadd.md §8) - see TodosSection's identical note. */
   editingIndex: number | null;
+  /** Whether the selected meeting shows as card or edit form (ui/useEditTarget.ts). */
+  editMode: 'card' | 'edit';
   armingIndex: number | null;
-  onStartEdit: (index: number) => void;
-  onArmLink: (index: number) => void;
+  /** Row tap: the meeting's card in Quick Add's place, a second tap edits. */
+  onSelect: (index: number) => void;
   onOpenLinkedFile: (linkedFile: string) => void;
   /** The counterpart filter (counterpartFilter.tsx): only meetings it accepts show. */
   filter?: ((meeting: Meeting) => boolean) | null;
@@ -128,17 +129,8 @@ export default function MeetingsSection({
     });
   };
 
-  /** The row's prep/review checkpoint icon (docs/dev/history/technical-design-meeting-tracking.md) - flips the tag through the same onSave path as every other meeting write here, then an explicit e-ink flush for the direct tap. */
-  const handleToggleTracking = (index: number, trackingKind: MeetingTrackingKind) => {
-    runAction(async () => {
-      await onSave(toggleMeetingTrackingAt(meetings, index, trackingKind));
-      requestEinkRefresh();
-    });
-  };
-  const trackingFor = (index: number): MeetingTrackingConfig => ({
-    setups: noteSetups,
-    onToggle: trackingKind => handleToggleTracking(index, trackingKind),
-  });
+  // The row's read-only prep/review mark; the tick is on the meeting's card.
+  const trackingFor = (): MeetingTrackingConfig => ({setups: noteSetups});
 
   // Flattened into one paginated sequence (docs/dev/technical-design-pagination-
   // edit-reuse.md §2/§4) - "Upcoming"/"Past" become header rows counted as
@@ -183,11 +175,13 @@ export default function MeetingsSection({
                 layout={layout}
                 time="dateTime"
                 highlight="mark"
-                tracking={trackingFor(row.index)}
+                tracking={trackingFor()}
                 note={{onOpen: () => handleNote(row.index), onCreate: () => handleNote(row.index)}}
-                file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile, onArm: () => onArmLink(row.index)}}
-                onPress={() => onStartEdit(row.index)}
-                state={editingIndex === row.index ? 'editing' : armingIndex === row.index ? 'arming' : undefined}
+                file={{linkedFile: row.meeting.linkedFile, onOpen: onOpenLinkedFile}}
+                onPress={() => onSelect(row.index)}
+                state={
+                  armingIndex === row.index ? 'arming' : editingIndex === row.index ? (editMode === 'card' ? 'selected' : 'editing') : undefined
+                }
                 ownerPath={itemPath}
                 textColor={textColor}
                 borderColor={borderColor}

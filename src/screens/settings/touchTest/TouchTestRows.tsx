@@ -78,7 +78,7 @@ export default function TouchTestRows({samples, armLink, textColor, borderColor}
             source={{abbrev: 'TT', name: 'Touch test', onPress: press('source')}}
             highlight="mark"
             note={{onOpen: press('note'), onCreate: press('note')}}
-            file={{linkedFile: sample.meeting.linkedFile, onOpen: press('clip'), onArm: armLink ? press('clip') : undefined}}
+            file={{linkedFile: sample.meeting.linkedFile, onOpen: press('clip')}}
             onPress={press('row')}
             contextTag={null}
             onToggleContext={press('tag')}

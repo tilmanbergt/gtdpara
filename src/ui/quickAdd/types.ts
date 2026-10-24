@@ -45,20 +45,24 @@ export type QuickFilePayload =
  * new target, so switching directly from one row to another never keeps the
  * previous row's fields. `loop`: the todo stands for a loop
  * (screens/loop/LoopOverview.tsx) - no flow chips, no Delete, "Save loop".
- * `mode` is always 'edit' here; the item card adds its own mode later.
+ * `mode`: 'card' shows the item card in the box (where the screen passes
+ * one), 'edit' the edit form (ui/useEditTarget.ts).
  */
 export type QuickAddEditTarget =
-  | {kind: 'task'; mode: 'edit'; key: string | null; task: Task}
-  | {kind: 'loop'; mode: 'edit'; key: string | null; task: Task}
-  | {kind: 'meeting'; mode: 'edit'; key: string | null; meeting: Meeting};
+  | {kind: 'task'; mode: EditMode; key: string | null; task: Task}
+  | {kind: 'loop'; mode: EditMode; key: string | null; task: Task}
+  | {kind: 'meeting'; mode: EditMode; key: string | null; meeting: Meeting};
+
+export type EditMode = 'card' | 'edit';
 
 /** The edit target for a screen's edited todo or meeting (a todo wins), or null when nothing is edited. */
 export function editTargetFor(
   key: string | null,
   item: {task?: Task | null; meeting?: Meeting | null; loop?: boolean},
+  mode: EditMode = 'edit',
 ): QuickAddEditTarget | null {
-  if (item.task) return {kind: item.loop ? 'loop' : 'task', mode: 'edit', key, task: item.task};
-  if (item.meeting) return {kind: 'meeting', mode: 'edit', key, meeting: item.meeting};
+  if (item.task) return {kind: item.loop ? 'loop' : 'task', mode, key, task: item.task};
+  if (item.meeting) return {kind: 'meeting', mode, key, meeting: item.meeting};
   return null;
 }
 

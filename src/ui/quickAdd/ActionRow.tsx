@@ -1,9 +1,10 @@
 /**
- * Row 4 of Quick Add (ui/QuickAddWidget.tsx): the action buttons of the
- * create and the edit form, and the button styles the capture variant's own
- * row shares. Row 4 carries no status text - messages go to the central
- * status slot (docs/dev/history/technical-design-status-slot.md §7.3); only a
- * ⚠/✓ mark stays on the primary button.
+ * Quick Add's buttons (ui/QuickAddWidget.tsx): the main button cluster at
+ * the right of R1 (create: [M] + Add; edit: Cancel · Save), the edit form's
+ * commands in R4, and the button styles the capture panel's own row shares.
+ * No status text here - messages go to the central status slot
+ * (docs/dev/history/technical-design-status-slot.md §7.3); only a ⚠/✓ mark
+ * stays on the primary button.
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -25,31 +26,56 @@ interface CreateProps {
   textColor: string;
 }
 
-/** Create form: the primary button on the right. */
-export function CreateActionRow({label, onPress, disabled, mark, monthlyToggle, textColor}: CreateProps): React.JSX.Element {
+/** R1, create: [M] + Add. */
+export function CreateActions({label, onPress, disabled, mark, monthlyToggle, textColor}: CreateProps): React.JSX.Element {
   return (
-    <View style={quickAddButtons.row4}>
-      <View style={quickAddButtons.actionsLeft} />
-      <View style={quickAddButtons.centerSpacer} />
-      <View style={quickAddButtons.actionsRight}>
-        {monthlyToggle}
-        <MarkWrap mark={mark} textColor={textColor}>
-          <Pressable
-            style={[quickAddButtons.primaryButton, disabled && quickAddButtons.primaryDisabled]}
-            onPress={onPress}
-            disabled={disabled}
-            hitSlop={8}>
-            <Text style={quickAddButtons.primaryButtonText} numberOfLines={1}>
-              {label}
-            </Text>
-          </Pressable>
-        </MarkWrap>
-      </View>
+    <View style={quickAddButtons.actionsRight}>
+      {monthlyToggle}
+      <MarkWrap mark={mark} textColor={textColor}>
+        <Pressable
+          style={[quickAddButtons.primaryButton, disabled && quickAddButtons.primaryDisabled]}
+          onPress={onPress}
+          disabled={disabled}
+          hitSlop={8}>
+          <Text style={quickAddButtons.primaryButtonText} numberOfLines={1}>
+            {label}
+          </Text>
+        </Pressable>
+      </MarkWrap>
     </View>
   );
 }
 
 interface EditProps {
+  pending: boolean;
+  onCancel?: () => void;
+  /** "Save", "Save loop", "Make loop" or "Save to <Name>". */
+  saveLabel: string;
+  onSave: () => void;
+  /** An error that belongs to no field: the ⚠ goes on Save. */
+  errorOnSave: boolean;
+  textColor: string;
+}
+
+/** R1, edit: Cancel · Save. */
+export function EditActions({pending, onCancel, saveLabel, onSave, errorOnSave, textColor}: EditProps): React.JSX.Element {
+  return (
+    <View style={quickAddButtons.actionsRight}>
+      <Pressable onPress={onCancel} hitSlop={8}>
+        <Text style={[quickAddButtons.textButton, {color: textColor}]}>Cancel</Text>
+      </Pressable>
+      <MarkWrap mark={errorOnSave ? 'warning' : null} textColor={textColor}>
+        <Pressable style={quickAddButtons.primaryButton} onPress={onSave} disabled={pending} hitSlop={8}>
+          <Text style={quickAddButtons.primaryButtonText} numberOfLines={1}>
+            {saveLabel}
+          </Text>
+        </Pressable>
+      </MarkWrap>
+    </View>
+  );
+}
+
+interface CommandProps {
   pending: boolean;
   /** Omitted: no delete button. */
   onDelete?: () => void;
@@ -57,42 +83,35 @@ interface EditProps {
   onNewFromThis?: () => void;
   /** Omitted: no Refile button. */
   onRefile?: () => void;
-  /** "File: <name>" in Refile's place when a recognized abbreviation tag names another Project/Area. */
-  quickFile?: {name: string; onPress: () => void} | null;
-  onCancel?: () => void;
-  saveLabel: string;
-  onSave: () => void;
-  saveDisabled?: boolean;
-  /** An error that belongs to no field: the ⚠ goes on Save. */
-  errorOnSave: boolean;
+  /** The linked file's mark with its ✕ (unlink). */
+  attachment?: React.ReactNode;
   monthlyToggle?: React.ReactNode;
   textColor: string;
   borderColor: string;
 }
 
-/** Edit form: delete, "New from this", Refile or "File: <name>" on the left; Cancel and Save on the right. */
-export function EditActionRow({
+/**
+ * R4 of the edit form: the commands that act at once - delete, "New from
+ * this", Refile, unlink, M. The item card (technical-design-item-card.md K7,
+ * K8, K9) is their place; this row holds them for the kinds the card does
+ * not cover yet.
+ */
+export function EditCommands({
   pending,
   onDelete,
   onNewFromThis,
   onRefile,
-  quickFile,
-  onCancel,
-  saveLabel,
-  onSave,
-  saveDisabled = false,
-  errorOnSave,
+  attachment,
   monthlyToggle,
   textColor,
   borderColor,
-}: EditProps): React.JSX.Element {
+}: CommandProps): React.JSX.Element {
   return (
-    <View style={quickAddButtons.row4}>
+    <>
       <View style={quickAddButtons.actionsLeft}>
-        {/* An icon rather than the word "Delete" - frees ~40px in this crowded
-            row. Leftmost on purpose and hitSlop 4 (not the 8 the text buttons
-            use): delete is one tap with no confirmation, so its touch area
-            must not spill into "New from this" next to it. */}
+        {/* An icon rather than the word "Delete". Leftmost on purpose and
+            hitSlop 4 (not 8): delete is one tap with no confirmation, so its
+            touch area must not spill into "New from this" next to it. */}
         {onDelete && (
           <Pressable
             style={[quickAddButtons.ghostButton, quickAddButtons.trashButton, {borderColor}]}
@@ -111,44 +130,22 @@ export function EditActionRow({
             </Text>
           </Pressable>
         )}
-        {onRefile && !quickFile && (
+        {onRefile && (
           <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={onRefile} disabled={pending} hitSlop={8}>
             <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]}>Refile</Text>
           </Pressable>
         )}
-        {quickFile && (
-          <Pressable style={[quickAddButtons.ghostButton, {borderColor}]} onPress={quickFile.onPress} disabled={pending} hitSlop={8}>
-            <Text style={[quickAddButtons.ghostButtonText, {color: textColor}]} numberOfLines={1}>
-              File: {quickFile.name}
-            </Text>
-          </Pressable>
-        )}
+        {attachment}
       </View>
       <View style={quickAddButtons.centerSpacer} />
-      <View style={quickAddButtons.actionsRight}>
-        <Pressable onPress={onCancel} hitSlop={8}>
-          <Text style={[quickAddButtons.textButton, {color: textColor}]}>Cancel</Text>
-        </Pressable>
-        {monthlyToggle}
-        <MarkWrap mark={errorOnSave ? 'warning' : null} textColor={textColor}>
-          <Pressable
-            style={[quickAddButtons.primaryButton, saveDisabled && quickAddButtons.primaryDisabled]}
-            onPress={onSave}
-            disabled={pending || saveDisabled}
-            hitSlop={8}>
-            <Text style={quickAddButtons.primaryButtonText} numberOfLines={1}>
-              {saveLabel}
-            </Text>
-          </Pressable>
-        </MarkWrap>
-      </View>
-    </View>
+      {monthlyToggle}
+    </>
   );
 }
 
 export const quickAddButtons = StyleSheet.create({
   row4: {
-    minHeight: QUICK_ADD_ROWS.actions,
+    minHeight: QUICK_ADD_ROWS.extra,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -169,7 +166,7 @@ export const quickAddButtons = StyleSheet.create({
     backgroundColor: COLORS.accent,
     borderRadius: 4,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   /** A primary button that can't be pressed right now (grayscale: lighter, not a colour). */
   primaryDisabled: {

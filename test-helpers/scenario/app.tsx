@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {act, configure, fireEvent, render, screen} from '@testing-library/react-native';
 import App from '../../App';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
+import {ENGAGE_BUTTON_ID} from '../../src/domain/buttonIds';
 import {BUILD_INFO} from '../../src/generated/buildInfo';
 import {device} from '../fakeDevice/device';
 
@@ -62,6 +63,21 @@ export async function openApp(options: {fromNote?: string; settings?: Partial<Gt
   await settle();
 }
 
+/**
+ * Opens the Engage panel over page `page` (0-based) of the note `fromNote`, as
+ * the host does when the Engage sidebar button is pressed (index.js registers
+ * it, App.tsx routes it). A gtdpara that is open is closed first.
+ */
+export async function openEngage(options: {fromNote: string; page?: number; settings?: Partial<GtdParaSettings>}): Promise<void> {
+  await closeApp();
+  if (!(await AsyncStorage.getItem(SETTINGS_KEY)) || options.settings) await storeSettings(options.settings);
+  device().sdk.currentFile = options.fromNote;
+  device().sdk.currentPage = options.page ?? 0;
+  mounted = render(<App />);
+  act(() => device().sdk.pressButton(ENGAGE_BUTTON_ID));
+  await settle();
+}
+
 /** Closes gtdpara (unmount); the files stay. */
 export async function closeApp(): Promise<void> {
   if (!mounted) return;
@@ -107,12 +123,39 @@ export async function tapTab(label: string): Promise<void> {
   await tap(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`));
 }
 
-/** Types into the field showing `placeholder` (replaces its text, like handwriting into it). */
-export async function type(placeholder: string, text: string): Promise<void> {
-  const field = screen.queryAllByPlaceholderText(placeholder)[0];
+/**
+ * Types into the `nth` field showing `placeholder` (replaces its text, like handwriting into it).
+ * An overlay (thread overview) draws over the screen below it, so its fields come after that screen's.
+ */
+export async function type(placeholder: string, text: string, nth = 0): Promise<void> {
+  const field = screen.queryAllByPlaceholderText(placeholder)[nth];
   if (!field) throw new Error(`no field "${placeholder}"; the screen shows: ${describeScreen()}`);
   fireEvent.changeText(field, text);
   await settle(2);
+}
+
+/** Puts the cursor into (`true`) or takes it out of (`false`) the `nth` field showing `placeholder`. */
+export async function focus(placeholder: string, focused = true, nth = 0): Promise<void> {
+  const field = screen.queryAllByPlaceholderText(placeholder)[nth];
+  if (!field) throw new Error(`no field "${placeholder}"; the screen shows: ${describeScreen()}`);
+  fireEvent(field, focused ? 'focus' : 'blur');
+  await settle(2);
+}
+
+/** Taps the `nth` icon-only button announcing `label` to screen readers (the item card's P, Reflect, Refile, ...). */
+export async function tapLabel(label: string, nth = 0): Promise<void> {
+  const found = screen.queryAllByLabelText(label);
+  if (found.length <= nth) throw new Error(`no button labelled "${label}"; the screen shows: ${describeScreen()}`);
+  fireEvent.press(found[nth]);
+  await settle();
+}
+
+/** Whether a button labelled `label` is on screen, and whether it is on (filled) - null when there is none. */
+export function labelled(label: string): {on: boolean; disabled: boolean} | null {
+  const found = screen.queryAllByLabelText(label)[0];
+  if (!found) return null;
+  const state = (found.props.accessibilityState ?? {}) as {selected?: boolean; disabled?: boolean};
+  return {on: !!state.selected, disabled: !!state.disabled};
 }
 
 /** Whether `text` is on screen (exact text, or a pattern). */

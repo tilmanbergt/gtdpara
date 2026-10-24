@@ -5,9 +5,11 @@
  */
 import {NativeModules} from 'react-native';
 import {forwarding} from './device';
+import {fakeTextboxMetrics} from './fakeSdk';
 
 NativeModules.GtdParaFile = forwarding(d => d.fs.module);
 NativeModules.GtdParaPdf = forwarding(d => d.pdf.module);
+NativeModules.TextboxMetrics = fakeTextboxMetrics;
 NativeModules.GtdParaRuntime = {
   getRuntimeDiagnostics: async () => ({
     buildId: 'scenario',

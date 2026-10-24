@@ -41,6 +41,8 @@ import {useLinkedFileMissing} from '../usePlanningScreen';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {log} from '../../utils/log';
 import AheadSection, {NextOffer} from './AheadSection';
+import {useMeetingCard} from '../../ui/itemCard/useMeetingCard';
+import {useTodoCard} from '../../ui/itemCard/useTodoCard';
 import LookingBackSection, {SINCE_KEY} from './LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from './PastMeetingPanel';
 import {meetingEntryKey, taskEntryKey, useEntryActions} from '../../ui/useEntryActions';
@@ -122,6 +124,10 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
     editingTask?.task.linkedFile ?? editingMeeting?.meeting.linkedFile,
     getCachedData()?.paths ?? null,
   );
+
+  // The selected Ahead meeting's card in Quick Add's place (docs/dev/history/technical-design-item-card.md §6).
+  const meetingCard = useMeetingCard(actions.cardOptions(editingMeeting));
+  const todoCard = useTodoCard(actions.todoCardOptions(editingTask));
 
   if (!overview) {
     return (
@@ -220,10 +226,9 @@ function ThreadOverviewBody({request, backLabel, onClose}: Props): React.JSX.Ele
               })
             }
             onAddMeeting={(fields, dest) => actions.addMeeting(fields, dest).then(() => setSeedItem(null))}
-            editTarget={editTargetFor(target ? `${target.type}:${target.key}` : null, {
-              task: editingTask?.task,
-              meeting: editingMeeting?.meeting,
-            })}
+            editTarget={editTargetFor(target ? `${target.type}:${target.key}` : null, {task: editingTask?.task, meeting: editingMeeting?.meeting}, edit.mode)}
+            meetingCard={meetingCard}
+            todoCard={todoCard}
             flushEditRef={edit.flushEditRef}
             editingItemPath={editedItem ? (editedItem.kind === 'inbox' ? null : editedItem.path) : undefined}
             linkedFileMissing={linkedFileMissing}

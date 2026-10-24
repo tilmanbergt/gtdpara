@@ -136,3 +136,26 @@ export function meetingDisplayTitle(meeting: Pick<Meeting, 'title'>): string {
   // row's small "M" mark instead of as text.
   return stripBareTags(meeting.title, [TRACKING_TAG.prep, TRACKING_TAG.review, 'monthly']);
 }
+
+/**
+ * `title` without `#prepped`/`#reviewed` - what Quick Add's edit form shows
+ * (docs/dev/history/technical-design-meeting-reflection.md §2.5, M7): the
+ * checkpoints are ticked in the list toolbar, not typed.
+ */
+export function stripTrackingTags(title: string): string {
+  return stripBareTags(title, [TRACKING_TAG.prep, TRACKING_TAG.review]);
+}
+
+/**
+ * `title` (an edited title, typed without state tags) with `#prepped`/
+ * `#reviewed` exactly as the `stored` meeting has them: Save keeps the
+ * meeting's current state, so a tick made while the edit was open is never
+ * undone. `stored` must be the current copy, read inside the save's mutator.
+ */
+export function withTrackingTagsOf(title: string, stored: Pick<Meeting, 'tags'>): string {
+  let out = stripTrackingTags(title);
+  for (const kind of ['prep', 'review'] as const) {
+    if (hasBareTag(stored.tags, TRACKING_TAG[kind])) out = setBareTag(out, TRACKING_TAG[kind], true);
+  }
+  return out;
+}

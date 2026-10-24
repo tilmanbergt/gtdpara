@@ -15,10 +15,10 @@ Tap a step to open it. Inside a step:
 ## The steps
 
 - **Week ahead**: this week's meetings and focus; from Friday to Sunday the coming week
-- **Meetings to close out**: past meetings (last 7 days) whose review is still open. A todo you add there records the meeting it came from, so it shows under **I owe** in that meeting's thread (the grey line in Quick Add, see [Threads](threads.md))
+- **Meetings to close out**: past meetings (last 7 days) whose review is still open. A todo you add there records the meeting it came from, so it shows under **I owe** in that meeting's thread (the grey line in Quick Add, see [Threads](threads.md)). Next to **Mark reviewed** and **Open note**, **Reflect ›** opens the meeting's Reflection page (creating it after one question, see [Meetings](meetings.md)); reflecting does not mark the meeting reviewed
 - **Tending threads**: the people, teams and series you work with (counterparts, see [Threads](threads.md)), per area or project. See below.
 - **Gmail inbox**: only with the experimental Gmail integration, see [integrations](integrations.md)
-- **Inbox to zero**: file or finish everything in the Inbox. Open lasso marks count too; the card **n marks to process** opens them, see [Lasso](lasso.md)
+- **Inbox to zero**: file or finish everything in the Inbox - tap an item for its card, where the arrow next to **Inbox** moves it (see [Quick Add](quick-add.md)). Open lasso marks count too; the card **n marks to process** opens them, see [Lasso](lasso.md)
 - **Stalled projects**: active projects without a next action: no open `#next` todo and nothing you wait for. Planned todos (no flow state), Someday and Maybe don't count. The step lists them - the plan first - and **→ Next** makes one the next action with one tap.
 - **Open loops**: your loops (see [Loops](loops.md)), per area or project. See below.
 - **Done awaiting review**: projects marked Done - close them out or archive them

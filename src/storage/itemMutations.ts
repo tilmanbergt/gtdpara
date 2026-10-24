@@ -23,6 +23,7 @@
 import {Destination} from '../domain/destination';
 import {deriveMeetingFields} from '../domain/markdown';
 import {todayIso} from '../domain/meetingTime';
+import {withTrackingTagsOf} from '../domain/meetingTracking';
 import {applyTaskInput, newTask, parseTaskInput} from '../domain/taskEdit';
 import {Meeting, Task} from '../domain/types';
 import {ensureItemCached, findCachedItem, updateItemMeetings, updateItemTasks} from './dataCache';
@@ -96,18 +97,22 @@ export function buildMeeting(fields: MeetingInput, opts?: {notePath?: string; li
  * Quick Add's edited fields onto a stored Meeting (docs/dev/technical-design-
  * monthly-view.md §3.3), shared by every screen's "save meeting edit" and
  * "quick-file meeting edit", so a new meeting field needs exactly one change,
- * here. Everything not edited (cancelled/notePath) is carried over from
- * `meeting`.
+ * here. Everything not edited (cancelled/notePath, the #prepped/#reviewed
+ * state) is carried over from `meeting`, which must be the current stored copy.
  */
 export function applyMeetingEdit(meeting: Meeting, fields: MeetingInput, linkedFile: string): Meeting {
+  // The edit form shows no #prepped/#reviewed (ui/quickAdd/editFields.ts); `meeting`'s own state
+  // wins, so a tick made in the toolbar while the edit was open survives Save
+  // (docs/dev/history/technical-design-meeting-reflection.md §2.5, M7).
+  const title = withTrackingTagsOf(fields.title, meeting);
   return {
     ...meeting,
-    title: fields.title,
+    title,
     date: fields.date,
     time: fields.time,
     endTime: fields.time ? fields.endTime ?? '' : '',
     days: fields.time ? 1 : Math.max(1, fields.days ?? 1),
-    ...deriveMeetingFields(fields.title),
+    ...deriveMeetingFields(title),
     linkedFile,
   };
 }
@@ -210,6 +215,16 @@ export async function mutateEntryTasks(
 }
 
 /** Meeting counterpart of mutateEntryTasks. */
+/**
+ * The stored copy of `entry`'s meeting as the file holds it now (the Inbox or
+ * the cache) - a screen's entry may be a render behind, e.g. after a toolbar
+ * tick. Falls back to `entry.meeting` when the meeting is gone.
+ */
+export function currentEntryMeeting<M extends Meeting>(entry: MeetingEntryRef & {meeting: M}, ctx: InboxContext): Meeting {
+  const meetings = entry.item.kind === 'inbox' ? ctx.inbox?.meetings : findCachedItem(entry.item.path)?.meetings;
+  return meetings?.[entry.meetingIndex] ?? entry.meeting;
+}
+
 export async function mutateEntryMeetings(
   entry: MeetingEntryRef,
   mutate: (meetings: Meeting[]) => Meeting[],

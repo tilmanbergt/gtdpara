@@ -73,9 +73,10 @@ export function noteSetupConfig(settings: {noteSetups: readonly NoteSetup[]; not
 export const EMPTY_NOTE_SETUP_CONFIG: NoteSetupConfig = {setups: [], defaults: {pages: {}, tracking: {trackPrep: false, trackReview: false}, notebook: null}};
 
 /** The page rows a setup of `kind` has, in the order the setup page lists them. */
-// The Home page is the Default's only (docs/dev/history/technical-design-home-notebooks.md §3.2).
+// The Home page is the Default's only (docs/dev/history/technical-design-home-notebooks.md §3.2);
+// the Reflection page follows a meeting's page (docs/dev/history/technical-design-meeting-reflection.md §2.1).
 export function pageKindsOf(kind: SetupKind): PageKind[] {
-  return kind === 'loop' ? ['meeting', 'todo', 'first'] : ['meeting', 'todo'];
+  return kind === 'loop' ? ['meeting', 'todo', 'first', 'review'] : ['meeting', 'todo', 'review'];
 }
 
 // ---- Tags -------------------------------------------------------------------
@@ -320,6 +321,11 @@ export function createDefaultMeetingPage(): PageLayout {
   return addPiece(withDefaultPieces(emptyPageLayout(), 'meeting'), 'related');
 }
 
+/** The standard Reflection page (docs/dev/history/technical-design-meeting-reflection.md §2.1): Date & title, a heading. */
+export function createDefaultReviewPage(): PageLayout {
+  return withDefaultPieces(emptyPageLayout(), 'review');
+}
+
 /** The standard Home page (docs/dev/history/technical-design-home-notebooks.md §3.2): Title (a heading), Scope, Goals. */
 export function createDefaultHomePage(): PageLayout {
   return withDefaultPieces(emptyPageLayout(), 'home');
@@ -332,12 +338,13 @@ export function createDefaultHomePage(): PageLayout {
  */
 export const DEFAULT_HOME_NOTEBOOK: Notebook = {name: '{name} {year}', folder: ''};
 
-/** The Default a fresh install starts with: the standard Meeting, First and Home pages; no Todo page (blank); no tracking; every note in the home notebook. */
+/** The Default a fresh install starts with: the standard Meeting, First, Reflection and Home pages; no Todo page (blank); no tracking; every note in the home notebook. */
 export function seedNoteSetupDefaults(): NoteSetupDefaults {
   return {
     pages: {
       meeting: createDefaultMeetingPage(),
       first: withDefaultPieces(emptyPageLayout(), 'first'),
+      review: createDefaultReviewPage(),
       home: createDefaultHomePage(),
     },
     tracking: {...NO_TRACKING},

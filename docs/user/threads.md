@@ -55,9 +55,9 @@ The upper list on the left:
 - **Relevant**: open todos with the thread's tag or `#alpha` that are neither of the above
 - a last, quiet row such as **1 someday ›**: the thread's Someday and Maybe todos are not listed, only counted. Tap it to open the Weekly Review's step **Someday / Maybe** with just these todos, see [Weekly Review](review.md).
 
-A list with nothing in it is left out. [Engage](engage.md) for the thread holds the same todos.
+A list with nothing in it is left out. [Engage](engage.md) for the thread holds the same todos. Tapping one of its meetings shows the meeting's card in Quick Add's place: its prep or review tick and **Reflect** (see [Meetings](meetings.md)).
 
-Tap a row to edit it in Quick Add; tick, note and file icons work as on every list.
+Tap a todo or meeting row to see its card in Quick Add's place, a second time to edit it (see [Quick Add](quick-add.md)); tick, note and file icons work as on every list.
 
 ## Looking back
 
@@ -65,7 +65,7 @@ The lower list on the left starts with a row such as `Since Wed 30.9. · 4 done`
 
 Below it is one row per past meeting, newest first. Its second line says what came out of it, for example `3 agreed · 1 done · 2 open, oldest 12 d`: how many todos were agreed in the meeting, how many are done, how many are still open, and how many days the oldest open one has waited.
 
-Tap a meeting to look at it on the right; at first the latest one is selected. The right side shows its title and date, **Open note** (or **+ Note** to create one), and the todos agreed in it: the open ones first, then the done ones by the day they were done.
+Tap a meeting to look at it on the right; at first the latest one is selected. The right side shows its title and date, **Open note** (or **+ Note** to create one), **Reflect ›** (or **Reflection ›** once it exists) for its [Reflection page](meetings.md), and the todos agreed in it: the open ones first, then the done ones by the day they were done.
 
 ## Adding from the overview
 

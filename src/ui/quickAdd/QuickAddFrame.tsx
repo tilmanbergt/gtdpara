@@ -1,56 +1,90 @@
 /**
- * The Quick Add box: a bordered card with four row slots in a fixed order
- * (docs/dev/history/technical-design-unified-quickadd.md §3) -
- *   R1 tabs · R2 input · R3 metadata · R4 actions -
- * plus an optional line between R3 and R4 (the provenance line) and, for
- * the capture panel, a block below the box's rows. Each slot holds every
- * tab's version of its row at once; the inactive ones are hidden with
- * `display: none`, never unmounted (ui/quickAdd/styles.ts `hidden`).
+ * The Quick Add box (docs/dev/history/technical-design-item-card.md §4): a
+ * bordered card of four rows at fixed heights -
+ *   R1 tabs and the main button · R2 input · R3 metadata · R4 more tags,
+ *   the provenance line, or the edit form's commands -
+ * the same 174 dp whatever it shows, so the lists below it never move when
+ * the user switches tabs, starts an edit or pages the tags. Every row sets
+ * its own height (ui/quickAdd/styles.ts); each slot holds every tab's
+ * version of its rows at once, the inactive ones hidden with
+ * `display: none`, never unmounted.
  *
- * The row heights are the box's contract with the screens around it: the
- * lists below it must not move while the user switches tabs or edits.
+ * `free`: the lasso capture panel's taller layout (multi-line text, Split
+ * lines, chips below) - rows grow with their content, no fixed height.
  */
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 
-/** Row heights and the gap below each row, in dp. */
-export const QUICK_ADD_ROWS = {tabs: 22, input: 36, meta: 32, actions: 32, gap: 6} as const;
+/**
+ * Row heights and the gap below each row (none below R4), in dp. R3 and R4
+ * hold chips: on the device a chip label is about 20 dp high, so a chip with
+ * QUICK_ADD_CHIP_PADDING above and below and its border is about 30 dp.
+ */
+export const QUICK_ADD_ROWS = {tabs: 30, input: 36, meta: 34, extra: 34, gap: 6} as const;
+
+/** Vertical padding of the chips in the box (flow chips, tag chips). */
+export const QUICK_ADD_CHIP_PADDING = 4;
+
+const PADDING = 10;
+const BORDER = 1;
+
+/** The box's height in every state. */
+export const QUICK_ADD_HEIGHT =
+  2 * (BORDER + PADDING) + QUICK_ADD_ROWS.tabs + QUICK_ADD_ROWS.input + QUICK_ADD_ROWS.meta + QUICK_ADD_ROWS.extra + 3 * QUICK_ADD_ROWS.gap;
+
+/** R1 in the capture panel's free layout (tabs only). */
+const FREE_TABS_HEIGHT = 22;
 
 interface Props {
+  /** R1: tabs, and the main button on the right. */
   row1: React.ReactNode;
+  /** R2: every tab's input row. */
   row2: React.ReactNode;
-  row3: React.ReactNode;
-  /** Between R3 and R4 (the provenance line). */
-  beforeActions?: React.ReactNode;
-  row4: React.ReactNode;
+  /** R3 and R4: every tab's metadata row and fourth row. */
+  rows34: React.ReactNode;
   /** The capture panel's tags, "File to" and extras. */
   below?: React.ReactNode;
+  /** The item card (ui/itemCard/): shown in place of the rows, which stay mounted, hidden. */
+  card?: React.ReactNode;
+  free?: boolean;
   borderColor: string;
 }
 
-export default function QuickAddFrame({row1, row2, row3, beforeActions, row4, below, borderColor}: Props): React.JSX.Element {
+export default function QuickAddFrame({row1, row2, rows34, below, card, free = false, borderColor}: Props): React.JSX.Element {
   return (
-    <View style={[styles.card, {borderColor}]}>
-      <View style={styles.row1}>{row1}</View>
-      {row2}
-      {row3}
-      {beforeActions}
-      {row4}
-      {below}
+    <View style={[styles.card, !free && styles.fixed, {borderColor}]} testID="quick-add-frame">
+      <View style={card ? styles.hidden : undefined} testID="quick-add-rows">
+        <View style={[styles.row1, free ? styles.row1Free : styles.row1Fixed]}>{row1}</View>
+        {row2}
+        {rows34}
+        {below}
+      </View>
+      {card}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
+    borderWidth: BORDER,
     borderRadius: 6,
-    padding: 10,
+    padding: PADDING,
+  },
+  fixed: {
+    height: QUICK_ADD_HEIGHT,
   },
   row1: {
-    minHeight: QUICK_ADD_ROWS.tabs,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: QUICK_ADD_ROWS.gap,
+  },
+  row1Fixed: {
+    height: QUICK_ADD_ROWS.tabs,
+  },
+  row1Free: {
+    minHeight: FREE_TABS_HEIGHT,
+  },
+  hidden: {
+    display: 'none',
   },
 });

@@ -10,6 +10,7 @@
  * module says what the files alone tell. Pure.
  */
 import {joinNotePath, meetingPageKeyword, parsePageAnchor, parseSharedNoteAnchor, todoPageKeyword} from './sharedNotePages';
+import {reflectionKeyword, reflectionKeywordOfPageKeyword} from './reflection';
 import {Meeting, Task} from './types';
 
 export type PageEntryKind = 'task' | 'meeting';
@@ -80,9 +81,16 @@ export function notePageCandidates<R extends {path: string}>(
   return {direct: pageLink, shared};
 }
 
-/** The first shared candidate whose keyword (as stored, or as it would be written now) is on the page. */
+/**
+ * The first shared candidate whose keyword (as stored, or as it would be written now) is on the page.
+ * A meeting also owns its Reflection page (docs/dev/history/technical-design-meeting-reflection.md
+ * §2.4, R10): the page carries the meeting's reflection keyword, current or from its stored page keyword.
+ */
 export function sharedPageHit<R>(shared: NotePageCandidates<R>['shared'], keywordsOnPage: readonly string[]): PageEntry<R> | null {
-  const hit = shared.find(c => keywordsOnPage.includes(c.keyword) || keywordsOnPage.includes(pageEntryKeyword(c)));
+  const has = (keyword: string) => keywordsOnPage.includes(keyword);
+  const hit =
+    shared.find(c => has(c.keyword) || has(pageEntryKeyword(c))) ??
+    shared.find(c => c.kind === 'meeting' && (has(reflectionKeyword(c.meeting)) || has(reflectionKeywordOfPageKeyword(c.keyword))));
   if (!hit) return null;
   return hit.kind === 'task'
     ? {kind: 'task', item: hit.item, taskIndex: hit.taskIndex, task: hit.task}

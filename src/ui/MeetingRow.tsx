@@ -11,6 +11,15 @@
  * - Every action is optional (source, highlight, tracking, note, file, tap),
  *   so a list switches features on/off by the props it passes instead of by
  *   having its own row.
+ * - Quiet by design (docs/dev/history/technical-design-meeting-reflection.md
+ *   §2.7, M1-M2): besides the title's tags only the notebook and a linked
+ *   file's clip are their own targets. The prep/review icon is read-only and
+ *   sits inside the row's main tap target, so tapping it selects the meeting
+ *   like the title does; ticking it, Reflect, Link file and the M toggle live
+ *   on the meeting card (ui/itemCard/MeetingCard.tsx).
+ * - Tap targets span the row's full height: the vertical padding sits inside
+ *   the main target and the icon targets, not on the row, so a tap above or
+ *   below the text line still lands on something.
  * - `state`: editing/arming/selected rows get a clear black 4 dp bar on the
  *   left, the same everywhere.
  * - twoLine: line 2 shows the source; without a source a long title wraps
@@ -24,7 +33,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {MeetingTimeMode, meetingTimeCell} from '../domain/meetingDisplay';
 import {isHighlight} from '../domain/monthHighlight';
 import {MeetingSpanDay} from '../domain/meetingSpan';
-import {meetingDisplayTitle, MeetingTrackingKind, resolveMeetingTracking} from '../domain/meetingTracking';
+import {meetingDisplayTitle, resolveMeetingTracking} from '../domain/meetingTracking';
 import HighlightMark from './HighlightMark';
 import {EMPTY_NOTE_SETUP_CONFIG, noteSetupConfig, NoteSetupConfig} from '../domain/noteSetups';
 import {GtdParaSettings} from '../domain/settings';
@@ -37,16 +46,11 @@ import {probePressable, probeSpan, useTouchProbe} from './touchDiag/touchProbe';
 
 /**
  * What a screen supplies to switch a meeting list's prep/review icons on: the
- * Note setups (`trackingSetups(settings)`) and its own persist step.
- * `onToggle(kind)` must flip the checkpoint on the CURRENT copy of the
- * meeting inside the screen's usual meetings mutator (domain/
- * meetingTracking.ts's `toggleMeetingTrackingAt`), not on the `meeting` the
- * row was rendered with, which may be a render behind. Pass the same object
- * to `MeetingRow`'s `tracking` prop.
+ * Note setups (`trackingSetups(settings)`). The icon only shows the state;
+ * the tick is set on the meeting card.
  */
 export interface MeetingTrackingConfig {
   setups: NoteSetupConfig;
-  onToggle: (kind: MeetingTrackingKind) => void;
 }
 
 /** The Note setups a row's tracking icon reads, from the screen's settings (none while they load). */
@@ -61,6 +65,8 @@ export const MEETING_ROW_HEIGHT: Record<MeetingRowLayout, number> = {oneLine: 37
 
 const TITLE_LINE_DP = 22;
 const SUB_LINE_DP = 18;
+/** Space above and below the content: (37 - 1 border - 22) / 2 = (57 - 1 - 42) / 2. */
+export const ROW_PAD_DP = 7;
 /** Time-column widths (dp) so times line up down a list; see design §2.3. */
 /** The time column's width - exported so ui/GoogleCalendarPanel.tsx's event rows line up with meeting rows. */
 export const TIME_COLUMN_DP: Record<MeetingTimeMode, Record<MeetingRowLayout, number>> = {
@@ -78,14 +84,13 @@ export interface MeetingRowProps {
   time: MeetingTimeMode;
   /** oneLine: bold "#abbrev" at the end of the line; twoLine: the full name on line 2. Both tap through to the item. Omit in single-item lists. */
   source?: {abbrev: string; name: string; onPress?: () => void};
-  /** twoLine only (M is not essential in 1-line rows): 'mark' = read-only M, 'toggle' = tappable box. */
-  highlight?: 'mark' | 'toggle';
-  onToggleHighlight?: () => void;
+  /** twoLine only (M is not essential in 1-line rows): 'mark' = read-only M. */
+  highlight?: 'mark';
   tracking?: MeetingTrackingConfig;
   note?: {onOpen: () => void; onCreate: () => void};
-  /** `onArm` only where a Files pane exists to pick from (Project, Inbox, Review-inbox). */
-  file?: {linkedFile: string; onOpen?: (linkedFile: string) => void; onArm?: () => void};
-  /** Tap on the title: edit (most lists) or select (Review close-out). */
+  /** The clip, shown only when a file is linked; tapping it opens the file. */
+  file?: {linkedFile: string; onOpen?: (linkedFile: string) => void};
+  /** Tap on the title or the status icon: select for editing (most lists) or select (Review close-out). */
   onPress?: () => void;
   state?: 'editing' | 'arming' | 'selected' | 'done';
   /** Daily's context filter - see ui/TaskRow.tsx's identical props. */
@@ -104,7 +109,6 @@ function MeetingRowV2({
   time,
   source,
   highlight,
-  onToggleHighlight,
   tracking,
   note,
   file,
@@ -145,7 +149,6 @@ function MeetingRowV2({
         // Bottom border only: a whole-row `borderColor` could win over the
         // marked row's black left bar and grey it out.
         {borderBottomColor: borderColor, height: MEETING_ROW_HEIGHT[layout]},
-        twoLine ? v2.rowTwo : v2.rowOne,
         (state === 'editing' || state === 'arming' || state === 'selected') && v2.rowMarked,
         state === 'selected' && v2.rowSelected,
         done && v2.rowDone,
@@ -182,40 +185,31 @@ function MeetingRowV2({
             </View>
           )}
         </View>
+        {/* M sits with the other icons at the end of the row, 2-line rows only. */}
+        {twoLine && highlight === 'mark' && highlighted && (
+          <View style={[v2.action, v2.actionTwo]}>
+            <HighlightMark on variant="row" textColor={textColor} />
+          </View>
+        )}
+        {/* Read-only status; inside the main target, so a tap on it selects the meeting. */}
+        {trackingState && (
+          <View style={[v2.action, twoLine && v2.actionTwo]}>
+            <TrackingBoxIcon kind={trackingState.kind} done={trackingState.done} color={textColor} />
+          </View>
+        )}
       </Pressable>
-      {/* M sits with the other icons at the end of the row, 2-line rows only. */}
-      {twoLine && highlight === 'toggle' && (
-        <View style={[v2.action, v2.actionTwo]}>
-          <HighlightMark on={highlighted} variant="toggle" onPress={onToggleHighlight} textColor={textColor} />
-        </View>
-      )}
-      {twoLine && highlight === 'mark' && highlighted && (
-        <View style={[v2.action, v2.actionTwo]}>
-          <HighlightMark on variant="row" textColor={textColor} />
-        </View>
-      )}
-      {tracking && trackingState && (
-        <Pressable onPress={() => tracking.onToggle(trackingState.kind)} hitSlop={8} style={[v2.action, twoLine && v2.actionTwo]}>
-          <TrackingBoxIcon kind={trackingState.kind} done={trackingState.done} color={textColor} />
-        </Pressable>
-      )}
       {note && (
-        <Pressable
-          onPress={meeting.notePath ? note.onOpen : note.onCreate}
-          hitSlop={8}
-          style={[v2.action, twoLine && v2.actionTwo]}
-          {...probePressable(probe, 'note')}>
-          <Text style={[v2.noteText, {color: textColor}]}>{meeting.notePath ? '📓' : '+📓'}</Text>
+        <Pressable onPress={meeting.notePath ? note.onOpen : note.onCreate} hitSlop={8} style={v2.target} {...probePressable(probe, 'note')}>
+          <View style={[v2.action, twoLine && v2.actionTwo]}>
+            <Text style={[v2.noteText, {color: textColor}]}>{meeting.notePath ? '📓' : '+📓'}</Text>
+          </View>
         </Pressable>
       )}
       {file && file.linkedFile ? (
-        <Pressable onPress={() => file.onOpen?.(file.linkedFile)} hitSlop={8} style={[v2.action, twoLine && v2.actionTwo]} {...probePressable(probe, 'clip')}>
-          <ClipIcon color={textColor} />
-        </Pressable>
-      ) : file?.onArm ? (
-        <Pressable onPress={file.onArm} hitSlop={8} style={[v2.action, twoLine && v2.actionTwo]} {...probePressable(probe, 'clip')}>
-          <Text style={[v2.plus, {color: textColor}]}>+</Text>
-          <ClipIcon color={textColor} />
+        <Pressable onPress={() => file.onOpen?.(file.linkedFile)} hitSlop={8} style={v2.target} {...probePressable(probe, 'clip')}>
+          <View style={[v2.action, twoLine && v2.actionTwo]}>
+            <ClipIcon color={textColor} />
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -223,13 +217,12 @@ function MeetingRowV2({
 }
 
 const v2 = StyleSheet.create({
+  // Children stretch to the full height; each tap target carries ROW_PAD_DP itself.
   row: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     borderBottomWidth: 1,
-    paddingVertical: 7,
   },
-  rowOne: {alignItems: 'center'},
-  rowTwo: {alignItems: 'flex-start'},
   // Editing/arming/selected: a clear black 4 dp bar on the left.
   rowMarked: {
     borderLeftWidth: 4,
@@ -242,7 +235,9 @@ const v2 = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
+    paddingVertical: ROW_PAD_DP,
   },
+  target: {paddingVertical: ROW_PAD_DP},
   timeCol: {marginRight: 8},
   time: {
     fontSize: FONT.medium,
@@ -283,7 +278,6 @@ const v2 = StyleSheet.create({
   // 2-line rows: icons centred over both lines.
   actionTwo: {height: TITLE_LINE_DP + 2 + SUB_LINE_DP},
   noteText: {fontSize: FONT.small, includeFontPadding: false},
-  plus: {fontSize: FONT.small, fontWeight: '700', marginRight: 1},
 });
 
 /** The standard meeting row - see the module doc comment. */

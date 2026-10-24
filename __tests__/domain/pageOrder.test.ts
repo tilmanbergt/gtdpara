@@ -1,5 +1,5 @@
 /** Page order in a notebook: Timeline (docs/dev/history/technical-design-note-setups.md §13). */
-import {pageMarks, timelineInsertIndex} from '../../src/domain/pageOrder';
+import {afterItemIndex, pageMarks, timelineInsertIndex} from '../../src/domain/pageOrder';
 
 type Page = string[];
 
@@ -85,5 +85,44 @@ describe('pageMarks', () => {
       {startDate: '2026-10-02', pinned: false},
       {startDate: null, pinned: false},
     ]);
+  });
+});
+
+describe('afterItemIndex (meeting reflection, R3)', () => {
+  const marksOf = (pages: Page[]) =>
+    pageMarks(
+      pages.flatMap((keywords, page) => keywords.map(keyword => ({page, keyword}))),
+      pages.length,
+    );
+  const after = (pages: Page[], itemPage: number) => afterItemIndex(marksOf(pages), itemPage);
+  const loopPage: Page = ['loop workshop/offsite'];
+  const reflection: Page = ['reflection 2026-10-14 Sparring Mieke'];
+
+  it('goes right after a one-page item', () => {
+    expect(after([meeting('2026-10-14', 'Sparring'), meeting('2026-10-20', 'Check-in')], 0)).toBe(1);
+  });
+
+  it('goes after the pages added by hand before the next meeting page', () => {
+    expect(after([meeting('2026-10-14', 'Sparring'), handAdded, handAdded, meeting('2026-10-20', 'Check-in')], 0)).toBe(3);
+  });
+
+  it('goes after the pages added by hand before the next todo page', () => {
+    expect(after([meeting('2026-10-14', 'Sparring'), handAdded, todo('2026-10-15', 'Prepare the workshop')], 0)).toBe(2);
+  });
+
+  it('goes at the end when no item follows', () => {
+    expect(after([meeting('2026-10-01', 'Retro'), meeting('2026-10-14', 'Sparring'), handAdded], 1)).toBe(3);
+  });
+
+  it('stops before a pinned page and ignores pinned pages before the item', () => {
+    expect(after([loopPage, meeting('2026-10-14', 'Sparring'), handAdded], 1)).toBe(3);
+    expect(afterItemIndex([{startDate: '2026-10-14', pinned: false}, {startDate: null, pinned: true}], 0)).toBe(1);
+  });
+
+  it('keeps a reflection page a continuation page, so a later meeting goes after it', () => {
+    const pages = [meeting('2026-10-14', 'Sparring'), reflection, meeting('2026-10-20', 'Check-in')];
+    expect(marksOf(pages)[1]).toEqual({startDate: null, pinned: false});
+    expect(after(pages, 0)).toBe(2);
+    expect(insertAt([meeting('2026-10-14', 'Sparring'), reflection], '2026-10-16')).toBe(2);
   });
 });

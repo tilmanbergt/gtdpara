@@ -1,5 +1,5 @@
 import {device} from '../../test-helpers/fakeDevice/device';
-import {expectShows, openApp, tap, tapTab} from '../../test-helpers/scenario/app';
+import {expectShows, openApp, tap, tapLabel, tapTab} from '../../test-helpers/scenario/app';
 import {dataFile, INBOX_FILE, PATHS, projectDir, projectFile, putFile, sectionLines} from '../../test-helpers/scenario/files';
 import {given, scenario, then, when} from '../../test-helpers/scenario/scenario';
 
@@ -11,11 +11,11 @@ scenario('Refile a todo with its note from the Inbox to a project', {feature: 'I
     device().sdk.putNote(NOTE_IN_INBOX, [{keywords: ['call']}]);
     putFile(projectFile('Website'), dataFile('project', {Scope: [], Tasks: ['- [ ] Write copy'], Meetings: []}));
   });
-  when('I open the Inbox, tap "Call Anna", tap Refile, open Projects, tap "Website" and confirm Move', async () => {
+  when('I open the Inbox, tap "Call Anna", tap the refile arrow on its card, open Projects, tap "Website" and confirm Move', async () => {
     await openApp();
     await tapTab('Inbox');
     await tap('Call Anna');
-    await tap('Refile');
+    await tapLabel('Refile');
     await tap('📁 Projects ›');
     await tap(/Website/);
     expectShows(/^Move "Call Anna #next" to Website\? Its note Call Anna.note moves along\./);

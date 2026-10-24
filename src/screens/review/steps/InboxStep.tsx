@@ -11,7 +11,6 @@ import {AbbrevFileMatch} from '../../../domain/abbrev';
 import {Destination, destinationLabel} from '../../../domain/destination';
 import {withTaskCancelled, withTaskDone} from '../../../domain/taskEdit';
 import {isTodayOrFuture, todayIso} from '../../../domain/meetingTime';
-import {toggleMeetingTrackingAt} from '../../../domain/meetingTracking';
 import {Meeting, Task} from '../../../domain/types';
 import {findCachedItem, setCachedInbox} from '../../../storage/dataCache';
 import {InboxFilingTarget, resolveFilingPick} from '../../../storage/inboxFiling';
@@ -20,11 +19,12 @@ import {useEntryMoveUi} from '../../../ui/useEntryMoveUi';
 import {linkedFileStatus, locateLinkedFile, openLinkedFile, toLinkedFile} from '../../../storage/linkedFiles';
 import {openOrCreateMeetingNote, openOrCreateTodoNote} from '../../../storage/meetingNoteContent';
 import {useNoteCreateConfirm} from '../../../ui/useNoteCreateConfirm';
+import {useMeetingCard} from '../../../ui/itemCard/useMeetingCard';
+import {useTodoCard} from '../../../ui/itemCard/useTodoCard';
 import {addMeetingToDestination, applyMeetingEdit, applyTaskEdit, buildMeeting, mutateEntryMeetings, mutateEntryTasks} from '../../../storage/itemMutations';
 import {loadSettings} from '../../../storage/settingsStorage';
 import {FolderEntry} from '../../../supernote/fileSystem';
 import {log, logError} from '../../../utils/log';
-import {requestEinkRefresh} from '../../../utils/screenRefresh';
 import FileBrowserPane, {ARMING_TEXT, FileBrowserRoot, LinkTarget} from '../../../ui/FileBrowserPane';
 import {COLUMN_WIDTH_PX} from '../../../ui/itemEntryRow';
 import MeetingRow, {MeetingTrackingConfig, trackingSetups} from '../../../ui/MeetingRow';
@@ -84,8 +84,11 @@ export default function InboxStep({
   const moveUi = useEntryMoveUi('ReviewScreen');
   const {
     target: editTarget,
+    mode: editMode,
     arm: inboxZeroArmTarget,
-    start: startEditTarget,
+    select: selectEditTarget,
+    edit: editSelected,
+    saved: savedEditTarget,
     cancel: cancelEditTarget,
     armFor,
     cancelArm: cancelInboxArming,
@@ -179,8 +182,9 @@ export default function InboxStep({
 
   const armInboxLinkTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'link'});
   const armInboxFileTarget = (type: 'task' | 'meeting', index: number) => armFor({type, index, intent: 'file'});
-  const startEditingInboxTask = (taskIndex: number) => startEditTarget({type: 'task', index: taskIndex});
-  const startEditingInboxMeeting = (meetingIndex: number) => startEditTarget({type: 'meeting', index: meetingIndex});
+  const selectInboxTask = (taskIndex: number) => selectEditTarget({type: 'task', index: taskIndex});
+  /** First tap: the meeting's card; a second tap edits (ui/useEditTarget.ts). */
+  const selectInboxMeeting = (meetingIndex: number) => selectEditTarget({type: 'meeting', index: meetingIndex});
 
   const rootPathFor = (root: string): string | null =>
     root === 'resources' ? paths?.resources ?? null : root === 'browse' ? paths?.base ?? null : null;
@@ -212,14 +216,14 @@ export default function InboxStep({
   const handleInboxTaskSave = (taskIndex: number, nextText: string, nextLinkedFile: string): Promise<boolean> =>
     action.runSave(async () => {
       await changeTask(taskIndex, t => applyTaskEdit(t, nextText, nextLinkedFile));
-      cancelEditTarget();
+      savedEditTarget(); // back to the todo's card
       log('ReviewScreen: inbox task edited', taskIndex);
     });
 
   const handleInboxMeetingCommitEdit = (meetingIndex: number, fields: MeetingQuickAddFields, nextLinkedFile: string): Promise<boolean> =>
     action.runSave(async () => {
       await changeMeeting(meetingIndex, m => applyMeetingEdit(m, fields, nextLinkedFile));
-      cancelEditTarget();
+      savedEditTarget(); // back to the meeting's card
       log('ReviewScreen: inbox meeting edited', meetingIndex);
     });
 
@@ -256,14 +260,7 @@ export default function InboxStep({
     log('ReviewScreen: added meeting', destinationLabel(destination));
   };
 
-  const inboxMeetingTrackingFor = (meetingIndex: number): MeetingTrackingConfig => ({
-    setups: trackingSetups(settings),
-    onToggle: kind =>
-      action.run(async () => {
-        await writeMeetings(meetingIndex, meetings => toggleMeetingTrackingAt(meetings, meetingIndex, kind));
-        requestEinkRefresh();
-      }),
-  });
+  const inboxMeetingTrackingFor = (): MeetingTrackingConfig => ({setups: trackingSetups(settings)});
 
   const editingInboxTaskIndex = editTarget?.type === 'task' ? editTarget.index : null;
   const editingInboxMeetingIndex = editTarget?.type === 'meeting' ? editTarget.index : null;
@@ -271,6 +268,41 @@ export default function InboxStep({
   const editingInboxMeeting = editingInboxMeetingIndex !== null ? inbox?.meetings[editingInboxMeetingIndex] ?? null : null;
   const armingInboxTaskIndex = inboxZeroArmTarget?.type === 'task' ? inboxZeroArmTarget.index : null;
   const armingInboxMeetingIndex = inboxZeroArmTarget?.type === 'meeting' ? inboxZeroArmTarget.index : null;
+
+  // The selected Inbox todo's card.
+  const todoIndex = editingInboxTaskIndex;
+  const todoCard = useTodoCard({
+    name: 'ReviewInboxStep',
+    selection: editingInboxTask && inboxPath ? {task: editingInboxTask, itemPath: inboxPath, ownerName: 'Inbox', inbox: true} : null,
+    updateTask: async change => {
+      if (todoIndex !== null) await changeTask(todoIndex, change);
+    },
+    onToggleDone: () => todoIndex !== null && handleInboxTaskDone(todoIndex),
+    onNote: () => todoIndex !== null && handleInboxTaskNote(todoIndex),
+    onOpenFile: linkedFile => onOpenInboxLinkedFile(linkedFile),
+    onArmLink: () => todoIndex !== null && armInboxLinkTarget('task', todoIndex),
+    onArmRefile: () => todoIndex !== null && armInboxFileTarget('task', todoIndex),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
+  });
+
+  // The selected Inbox meeting's card; Inbox meetings always get their own note.
+  const cardIndex = editingInboxMeetingIndex;
+  const meetingCard = useMeetingCard({
+    name: 'ReviewInboxStep',
+    selection: editingInboxMeeting && inboxPath ? {meeting: editingInboxMeeting, itemPath: inboxPath, ownerName: 'Inbox', inbox: true} : null,
+    settings,
+    inbox: inbox ? {tasks: inbox.tasks} : null,
+    updateMeeting: async change => {
+      if (cardIndex !== null) await changeMeeting(cardIndex, change);
+    },
+    onNote: () => cardIndex !== null && handleInboxMeetingNote(cardIndex),
+    onOpenFile: linkedFile => onOpenInboxLinkedFile(linkedFile),
+    onArmLink: () => cardIndex !== null && armInboxLinkTarget('meeting', cardIndex),
+    onArmRefile: () => cardIndex !== null && armInboxFileTarget('meeting', cardIndex),
+    onEdit: editSelected,
+    onClose: cancelEditTarget,
+  });
 
   // Whether the edited row's linked file still exists - resolved here so Quick Add stays free of I/O.
   const editingInboxItem: Task | Meeting | null = editingInboxTask ?? editingInboxMeeting ?? null;
@@ -361,7 +393,9 @@ return (
         editTarget={editTargetFor(editTarget ? `${editTarget.type}:${editTarget.index}` : null, {
           task: editingInboxTask ? {...editingInboxTask, text: displayTaskText(editingInboxTask, 'flat')} : null,
           meeting: editingInboxMeeting,
-        })}
+        }, editMode)}
+        meetingCard={meetingCard}
+        todoCard={todoCard}
         onSaveEditTask={
           editingInboxTaskIndex !== null
             ? (nextText, nextLinkedFile) => handleInboxTaskSave(editingInboxTaskIndex, nextText, nextLinkedFile)
@@ -407,7 +441,7 @@ return (
             task={task}
             isEditing={editingInboxTaskIndex === taskIndex}
             isArming={armingInboxTaskIndex === taskIndex}
-            onStartEdit={() => startEditingInboxTask(taskIndex)}
+            onStartEdit={() => selectInboxTask(taskIndex)}
             ownerPath={inboxPath}
             onToggleDone={() => handleInboxTaskDone(taskIndex)}
             onCreateNote={() => handleInboxTaskNote(taskIndex)}
@@ -447,20 +481,18 @@ return (
             layout={layout}
             time="dateTime"
             highlight="mark"
-            tracking={inboxMeetingTrackingFor(meetingIndex)}
+            tracking={inboxMeetingTrackingFor()}
             note={{onOpen: () => handleInboxMeetingNote(meetingIndex), onCreate: () => handleInboxMeetingNote(meetingIndex)}}
-            file={{
-              linkedFile: meeting.linkedFile,
-              onOpen: onOpenInboxLinkedFile,
-              onArm: () => armInboxLinkTarget('meeting', meetingIndex),
-            }}
-            onPress={() => startEditingInboxMeeting(meetingIndex)}
+            file={{linkedFile: meeting.linkedFile, onOpen: onOpenInboxLinkedFile}}
+            onPress={() => selectInboxMeeting(meetingIndex)}
             state={
-              editingInboxMeetingIndex === meetingIndex
-                ? 'editing'
-                : armingInboxMeetingIndex === meetingIndex
+              armingInboxMeetingIndex === meetingIndex
                 ? 'arming'
-                : undefined
+                : editingInboxMeetingIndex === meetingIndex
+                  ? editMode === 'card'
+                    ? 'selected'
+                    : 'editing'
+                  : undefined
             }
             textColor={textColor}
             borderColor={borderColor}

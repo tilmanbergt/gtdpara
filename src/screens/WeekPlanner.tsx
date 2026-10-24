@@ -23,6 +23,7 @@ import {meetingsOnDay} from '../storage/monthlyAggregate';
 import {buildWeeklyAggregate, WeeklyMeetingEntry} from '../storage/weeklyAggregate';
 import {FolderEntry} from '../supernote/fileSystem';
 import DayMeetingsPanel from '../ui/DayMeetingsPanel';
+import {useMeetingCard} from '../ui/itemCard/useMeetingCard';
 import GoogleCalendarPanel from '../ui/GoogleCalendarPanel';
 import {useFeatures, visibleTabs} from '../ui/featureStore';
 import MeetingRow from '../ui/MeetingRow';
@@ -120,6 +121,7 @@ export default function WeekPlanner({
       ? dayRows.find(e => meetingKey(e) === editingKey) ?? aggregate.meetings.find(e => meetingKey(e) === editingKey) ?? null
       : null;
   const linkedFileMissing = useLinkedFileMissing(editingMeetingEntry?.meeting.linkedFile, paths);
+  const meetingCard = useMeetingCard(planning.cardOptions(editingMeetingEntry, {onOpenSource: item => openSource(item)}));
 
   const openSource = (item: WeeklyMeetingEntry['item']) => {
     if (item.kind === 'inbox') {
@@ -203,7 +205,8 @@ export default function WeekPlanner({
             onAddMeeting={planning.handleAddMeeting}
             initialDate={selectedDate ?? (isCurrentWeek ? todayIso() : weekStart)}
             isMeetingDateVisible={stableIsMeetingDateVisible}
-            editTarget={editTargetFor(editingKey, {meeting: editingMeetingEntry?.meeting})}
+            editTarget={editTargetFor(editingKey, {meeting: editingMeetingEntry?.meeting}, planning.editMode)}
+            meetingCard={meetingCard}
             onSaveEditMeeting={editingMeetingEntry ? stableSaveEditMeeting : undefined}
             flushEditRef={planning.flushEditRef}
             onCancelEdit={planning.cancelEditTarget}

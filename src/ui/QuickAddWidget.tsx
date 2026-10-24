@@ -1,17 +1,26 @@
 /**
  * The unified Todo/Meeting/Note add-and-edit widget
  * (docs/dev/history/technical-design-unified-quickadd.md). Every screen has exactly
- * one add/edit surface: a box of four fixed rows (ui/quickAdd/QuickAddFrame.tsx)
+ * one add/edit surface: a box of four rows, 170 dp in every state
+ * (ui/quickAdd/QuickAddFrame.tsx, docs/dev/history/technical-design-item-card.md),
  * whose contents follow the tab and whether an item is being edited:
- *   R1 Tabs      - Todo/Meeting(/Note) (ui/quickAdd/TabsRow.tsx).
+ *   R1 Tabs + main button - Todo/Meeting(/Note) on the left; create: [M] + Add
+ *                  ("+ Add to <Name>" when a recognized abbreviation #tag
+ *                  files it elsewhere, technical-design-abbrev-quick-file.md);
+ *                  edit: Cancel · Save ("Save to <Name>" with such a tag:
+ *                  saved and moved in one step).
  *   R2 Input     - todo text + due date, or meeting title + date, or note title.
  *   R3 Metadata  - flow chips + tag chips (or "Waiting on"), or meeting time +
- *                  tag chips, or note tag chips; the linked file while editing.
- *   R4 Actions   - create: "+ Add" (relabelled "+ Add to <Name>" when a
- *                  recognized abbreviation #tag files it elsewhere,
- *                  docs/dev/history/technical-design-abbrev-quick-file.md);
- *                  edit: delete, Refile or "File: <Name>", New from this,
- *                  Cancel, Save (ui/quickAdd/ActionRow.tsx).
+ *                  tag chips, or note tag chips.
+ *   R4           - more tag chips (one page spans R3 and R4); the provenance
+ *                  line while a screen adds one.
+ *
+ * A meeting or todo selected once shows its item card in the box instead
+ * (`editTarget.mode === 'card'`, ui/itemCard/, where the screen passes
+ * `meetingCard` / `todoCard`); its edit form then holds fields only. Where a
+ * screen passes no card - and for a loop's own edit - the edit form keeps
+ * the commands that act at once in R4 (delete, New from this, Refile, the
+ * linked file's ✕, M - ui/quickAdd/ActionRow.tsx).
  *
  * The parts: one hook per draft (ui/quickAdd/useTaskDraft.ts,
  * useMeetingDraft.ts, useNoteDraft.ts) over the shared state of
@@ -47,15 +56,19 @@ import {formatMeetingWhen} from '../domain/meetingTime';
 import {meetingDisplayTitle} from '../domain/meetingTracking';
 import {Destination} from '../domain/destination';
 import {usePerfRender} from '../utils/perf';
+import MeetingCard from './itemCard/MeetingCard';
+import {MeetingCardData} from './itemCard/useMeetingCard';
+import TodoCard from './itemCard/TodoCard';
+import {TodoCardData} from './itemCard/useTodoCard';
 import {errorMessage} from '../utils/errorMessage';
 import HighlightMark from './HighlightMark';
-import {CreateActionRow, EditActionRow} from './quickAdd/ActionRow';
-import {MeetingInputRow, MeetingMetaRow} from './quickAdd/MeetingRows';
-import {NoteInputRow, NoteTagRow} from './quickAdd/NoteRows';
+import {CreateActions, EditActions, EditCommands} from './quickAdd/ActionRow';
+import {MeetingInputRow, MeetingMetaRows} from './quickAdd/MeetingRows';
+import {NoteInputRow, NoteTagRows} from './quickAdd/NoteRows';
 import ProvenanceLine, {QuickAddAdds} from './quickAdd/ProvenanceLine';
 import QuickAddFrame from './quickAdd/QuickAddFrame';
 import TabsRow from './quickAdd/TabsRow';
-import {TaskInputRow, TaskMetaRow} from './quickAdd/TaskRows';
+import {AttachmentCluster, TaskInputRow, TaskMetaRows} from './quickAdd/TaskRows';
 import {MeetingQuickAddFields, QuickAddEditTarget, QuickFilePayload, sameEditTarget, truncateItemName} from './quickAdd/types';
 import {DraftPrefill, MeetingSeed, useDraftRequests} from './quickAdd/useDraftRequests';
 import {useEditSession} from './quickAdd/useEditSession';
@@ -102,6 +115,14 @@ interface Props {
 
   /** The item being edited, or null/absent (create mode). Build it with `editTargetFor`. */
   editTarget?: QuickAddEditTarget | null;
+  /**
+   * The selected meeting's card (ui/itemCard/useMeetingCard.ts), shown in the
+   * box while `editTarget` is a meeting in 'card' mode. Where a screen passes
+   * it, the meeting's edit form holds fields only: the commands are on the card.
+   */
+  meetingCard?: MeetingCardData | null;
+  /** The selected todo's card (ui/itemCard/useTodoCard.ts), the same way: shown while `editTarget` is a todo in 'card' mode. */
+  todoCard?: TodoCardData | null;
   /** Resolve `false` when the save failed (the screen showed its own error) - the widget then keeps the edit open. */
   onSaveEditTask?: (nextText: string, nextLinkedFile: string) => Promise<void | boolean>;
   onSaveEditMeeting?: (fields: MeetingQuickAddFields, nextLinkedFile: string) => Promise<void | boolean>;
@@ -193,7 +214,7 @@ interface Props {
 function QuickAddWidget(props: Props): React.JSX.Element {
   usePerfRender('QuickAddWidget');
   const {fixedDestination, editTarget, editingItemPath, taskOnly = false, onAddNote, noteFolderPath = null} = props;
-  const {onCancelEdit, onQuickFile, onRefile, onDeleteEdit, provenance, layoutKey, linkedFileMissing} = props;
+  const {onCancelEdit, onQuickFile, onRefile, onDeleteEdit, provenance, layoutKey, linkedFileMissing, meetingCard, todoCard} = props;
   const {textColor, borderColor, placeholderColor} = props;
   const colors = {textColor, borderColor, placeholderColor};
 
@@ -277,10 +298,9 @@ function QuickAddWidget(props: Props): React.JSX.Element {
    * All state changes happen in one event handler (one batched render), and
    * the draft is set BEFORE the edit ends, so no frame shows an empty draft.
    */
-  const handleNewFromThis = () => {
-    if (editFields?.kind !== 'meeting' || !onCancelEdit) return;
+  const newFromThis = (fields: {title: string; date: string; time: string}) => {
+    if (!onCancelEdit) return;
     Keyboard.dismiss();
-    const fields = editFields.fields;
     const displayTitle = meetingDisplayTitle({title: fields.title});
     let draftTitle = displayTitle;
     const {fixedExcludePath, abbrevItems} = core;
@@ -302,43 +322,28 @@ function QuickAddWidget(props: Props): React.JSX.Element {
 
   const buttonMark = useQuickAddStatus(core, task, meeting, note);
 
-  // The "M" box left of + Add / Save (meeting tab only) - see ui/HighlightMark.tsx.
+  // The "M" box left of + Add (meeting tab only) - see ui/HighlightMark.tsx.
   const monthlyToggle =
     displayType === 'meeting' ? (
       <HighlightMark on={meeting.fields.monthly} variant="toggle" onPress={meeting.toggleMonthly} disabled={pending} textColor={textColor} />
     ) : null;
   const loopMode = task.loopMode;
-  const row4 = isEditing ? (
-    <EditActionRow
+  // A recognized abbreviation tag while editing: Save files the item there
+  // in the same step (technical-design-item-card.md K3).
+  const saveTo = onQuickFile && abbrevTarget && loopMode.kind !== 'make' && loopMode.kind !== 'loop' ? abbrevTarget : null;
+  const actions = isEditing ? (
+    <EditActions
       pending={pending}
-      onDelete={
-        loopMode.kind === 'loop'
-          ? undefined
-          : () => {
-              Keyboard.dismiss();
-              onDeleteEdit?.();
-            }
-      }
-      onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? handleNewFromThis : undefined}
-      onRefile={
-        onRefile
-          ? () => {
-              Keyboard.dismiss();
-              onRefile();
-            }
-          : undefined
-      }
-      quickFile={onQuickFile && abbrevTarget ? {name: truncateItemName(abbrevTarget.name), onPress: handleQuickFile} : null}
       onCancel={onCancelEdit}
-      saveLabel={loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : 'Save'}
-      onSave={editFields?.kind === 'meeting' ? meeting.submitEdit : task.submitEdit}
+      saveLabel={
+        loopMode.kind === 'make' ? 'Make loop' : loopMode.kind === 'loop' ? 'Save loop' : saveTo ? `Save to ${truncateItemName(saveTo.name)}` : 'Save'
+      }
+      onSave={saveTo ? handleQuickFile : editFields?.kind === 'meeting' ? meeting.submitEdit : task.submitEdit}
       errorOnSave={!!core.errorState && core.errorState.field === null}
-      monthlyToggle={monthlyToggle}
       textColor={textColor}
-      borderColor={borderColor}
     />
   ) : (
-    <CreateActionRow
+    <CreateActions
       label={loopMode.kind === 'add' ? '+ Add loop' : abbrevTarget ? `+ Add to ${truncateItemName(abbrevTarget.name)}` : '+ Add'}
       onPress={displayType === 'meeting' ? meeting.submitCreate : displayType === 'note' ? note.submitCreate : task.submitCreate}
       disabled={pending || loopMode.kind === 'exists'}
@@ -348,9 +353,58 @@ function QuickAddWidget(props: Props): React.JSX.Element {
     />
   );
 
+  const editKind = editFields?.kind ?? null;
+  // The item card in the box's place: a meeting selected once, where the screen passes its card.
+  const cardShown =
+    editTarget?.mode === 'card' && ((editTarget.kind === 'meeting' && !!meetingCard) || (editTarget.kind === 'task' && !!todoCard));
+  // A loop's own edit (the loop overview) has no card: it keeps the commands.
+  const taskCommands = editKind === 'task' && (!todoCard || editTarget?.kind === 'loop');
+  const editCommands = editKind ? (
+    <EditCommands
+      pending={pending}
+      onDelete={
+        loopMode.kind === 'loop'
+          ? undefined
+          : () => {
+              Keyboard.dismiss();
+              onDeleteEdit?.();
+            }
+      }
+      onNewFromThis={editFields?.kind === 'meeting' && onCancelEdit ? () => newFromThis(editFields.fields) : undefined}
+      onRefile={
+        onRefile && !saveTo
+          ? () => {
+              Keyboard.dismiss();
+              onRefile();
+            }
+          : undefined
+      }
+      attachment={
+        <AttachmentCluster
+          linkedFile={editKind === 'task' ? task.linkedFile : meeting.linkedFile}
+          missing={linkedFileMissing}
+          onClear={editKind === 'task' ? task.clearLinkedFile : meeting.clearLinkedFile}
+          textColor={textColor}
+        />
+      }
+      monthlyToggle={editKind === 'meeting' ? monthlyToggle : null}
+      textColor={textColor}
+      borderColor={borderColor}
+    />
+  ) : null;
+  // R4 of the Todo tab: the provenance line while creating (K6), the
+  // commands while editing without a card, else the second tag row.
+  const taskRow4 = taskCommands
+    ? editCommands
+    : editKind === 'task'
+      ? undefined
+      : provenance && provenance.length > 0 && !isEditing ? <ProvenanceLine parts={provenance} textColor={textColor} /> : undefined;
+
   return (
     <QuickAddFrame
-      row1={<TabsRow core={core} taskOnly={taskOnly} hasNoteTab={!!onAddNote} noteFolderPath={noteFolderPath} textColor={textColor} />}
+      row1={
+        <TabsRow core={core} taskOnly={taskOnly} hasNoteTab={!!onAddNote} noteFolderPath={noteFolderPath} actions={actions} textColor={textColor} />
+      }
       row2={
         <>
           <TaskInputRow core={core} task={task} placeholder={props.placeholder ?? 'New task'} {...colors} />
@@ -358,19 +412,33 @@ function QuickAddWidget(props: Props): React.JSX.Element {
           <NoteInputRow core={core} note={note} {...colors} />
         </>
       }
-      row3={
+      rows34={
         <>
-          <TaskMetaRow core={core} task={task} layoutKey={layoutKey} showTags linkedFileMissing={linkedFileMissing} {...colors} />
-          <MeetingMetaRow core={core} meeting={meeting} layoutKey={layoutKey} showTags linkedFileMissing={linkedFileMissing} {...colors} />
-          <NoteTagRow core={core} note={note} layoutKey={layoutKey} textColor={textColor} borderColor={borderColor} />
+          <TaskMetaRows core={core} task={task} layoutKey={layoutKey} row4={taskRow4} {...colors} />
+          <MeetingMetaRows
+            core={core}
+            meeting={meeting}
+            layoutKey={layoutKey}
+            row4={editKind === 'meeting' && !meetingCard ? editCommands : undefined}
+            {...colors}
+          />
+          <NoteTagRows core={core} note={note} layoutKey={layoutKey} textColor={textColor} borderColor={borderColor} />
         </>
       }
-      beforeActions={
-        provenance && provenance.length > 0 && displayType === 'task' && !isEditing ? (
-          <ProvenanceLine parts={provenance} textColor={textColor} />
+      card={
+        !cardShown ? null : editTarget?.kind === 'task' && todoCard ? (
+          <TodoCard card={todoCard} textColor={textColor} borderColor={borderColor} />
+        ) : meetingCard ? (
+          <MeetingCard
+            card={meetingCard}
+            onNewFromThis={() =>
+              newFromThis({title: meetingCard.meeting.title, date: meetingCard.meeting.date, time: formatMeetingWhen(meetingCard.meeting)})
+            }
+            textColor={textColor}
+            borderColor={borderColor}
+          />
         ) : null
       }
-      row4={row4}
       borderColor={borderColor}
     />
   );

@@ -129,11 +129,17 @@ export default function AheadSection(props: Props): React.JSX.Element {
               layout="oneLine"
               time="dateTime"
               source={overview.scope.length > 1 ? {abbrev: entry.item.abbrev ?? entry.item.name, name: entry.item.name} : undefined}
-              tracking={actions.tracking(entry)}
+              tracking={actions.tracking()}
               note={{onOpen: () => actions.meetingNote(entry), onCreate: () => actions.meetingNote(entry)}}
               file={{linkedFile: entry.meeting.linkedFile, onOpen: actions.openFile}}
-              onPress={() => edit.start({type: 'meeting', key: meetingEntryKey(entry)})}
-              state={edit.target?.type === 'meeting' && edit.target.key === meetingEntryKey(entry) ? 'editing' : undefined}
+              onPress={() => edit.select({type: 'meeting', key: meetingEntryKey(entry)})}
+              state={
+                edit.target?.type === 'meeting' && edit.target.key === meetingEntryKey(entry)
+                  ? edit.mode === 'card'
+                    ? 'selected'
+                    : 'editing'
+                  : undefined
+              }
               ownerPath={entry.item.path}
               textColor={textColor}
               borderColor={borderColor}
@@ -146,7 +152,7 @@ export default function AheadSection(props: Props): React.JSX.Element {
             key={row.key}
             task={entry.task}
             isEditing={edit.target?.type === 'task' && edit.target.key === taskEntryKey(entry)}
-            onStartEdit={() => edit.start({type: 'task', key: taskEntryKey(entry)})}
+            onStartEdit={() => edit.select({type: 'task', key: taskEntryKey(entry)})}
             onToggleDone={() => actions.toggleDone(entry)}
             onCreateNote={() => actions.taskNote(entry)}
             onOpenNote={() => actions.taskNote(entry)}

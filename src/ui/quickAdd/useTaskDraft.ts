@@ -64,6 +64,8 @@ export function useTaskDraft(core: QuickAddCore, input: Input) {
   // 📅 tap has to wait for that render to commit.
   const dueInputRef = useRef<DateInputHandle>(null);
   const [dueFocusRequested, setDueFocusRequested] = useState(false);
+  // Whether the due field has focus - shows its -1/Today/+1/+7 strip, drawn by the row.
+  const [dueFocused, setDueFocused] = useState(false);
   useEffect(() => {
     if (!dueFocusRequested) return;
     dueInputRef.current?.focus();
@@ -148,13 +150,17 @@ export function useTaskDraft(core: QuickAddCore, input: Input) {
   const submitCreate = () => {
     Keyboard.dismiss();
     const trimmed = draft.text.trim();
-    if (!trimmed) return;
+    // The words without the abbreviation tag: a draft that is only the
+    // prefilled tag is not a todo yet.
+    const words = abbrevTarget ? removeTagFromText(trimmed, abbrevTarget.tag).trim() : trimmed;
+    if (!words) return;
     // Flow-state, due and - for abbreviation quick-file - removing the
     // matched #tag, which did its job picking the destination.
     const finalText = composeTaskText(draft, abbrevTarget ? abbrevTarget.tag : null);
     if (loopMode.kind === 'exists') return;
     const startsLoop = loopMode.kind === 'add';
     const destination = abbrevTarget ? abbrevDestination(abbrevTarget) : input.fixedDestination;
+    const prefill = core.abbrevPrefill(abbrevTarget);
     setError(null);
     setPending(true);
     input
@@ -162,7 +168,13 @@ export function useTaskDraft(core: QuickAddCore, input: Input) {
       .then(() => {
         resetAfterAdd();
         if (startsLoop) return;
-        setJustAdded(`Added todo "${truncateItemName(trimmed, 40)}" to ${destinationLabel(destination)}`);
+        if (prefill) {
+          setDraft(d => ({...d, text: prefill}));
+          const end = {start: prefill.length, end: prefill.length};
+          lastSelectionRef.current = end;
+          setSelectionOverride(end);
+        }
+        setJustAdded(`Added todo "${truncateItemName(words, 40)}" to ${destinationLabel(destination)}`);
         setTagPage(0);
         core.recordTags(extractContextTags(finalText));
       })
@@ -220,6 +232,8 @@ export function useTaskDraft(core: QuickAddCore, input: Input) {
     inputRef,
     lastSelectionRef,
     dueInputRef,
+    dueFocused,
+    setDueFocused,
     clearJustAdded,
     setText,
     setDueDate,

@@ -39,6 +39,8 @@ import {log} from '../../utils/log';
 import {requestEinkRefresh} from '../../utils/screenRefresh';
 import {useLinkedFileMissing} from '../usePlanningScreen';
 import AheadSection, {NextOffer} from '../thread/AheadSection';
+import {useMeetingCard} from '../../ui/itemCard/useMeetingCard';
+import {useTodoCard} from '../../ui/itemCard/useTodoCard';
 import LookingBackSection, {SINCE_KEY} from '../thread/LookingBackSection';
 import PastMeetingPanel, {PanelSelection} from '../thread/PastMeetingPanel';
 import EngageButton from '../../ui/EngageButton';
@@ -104,6 +106,10 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
     editingTask?.task.linkedFile ?? editingMeeting?.meeting.linkedFile,
     getCachedData()?.paths ?? null,
   );
+
+  // The selected Ahead meeting's card in Quick Add's place (docs/dev/history/technical-design-item-card.md §6).
+  const meetingCard = useMeetingCard(actions.cardOptions(loopEditing ? null : editingMeeting));
+  const todoCard = useTodoCard(actions.todoCardOptions(loopEditing ? null : editingTask));
 
   if (!overview || !lists) {
     return (
@@ -235,7 +241,9 @@ function LoopOverviewBody({request, backLabel, onClose}: Props): React.JSX.Eleme
               task: loopEditing && line ? loopAsTodo(line) : editingTask?.task,
               loop: loopEditing,
               meeting: loopEditing ? undefined : editingMeeting?.meeting,
-            })}
+            }, loopEditing ? 'edit' : edit.mode)}
+            meetingCard={meetingCard}
+            todoCard={todoCard}
             flushEditRef={edit.flushEditRef}
             editingItemPath={owner.path}
             linkedFileMissing={loopEditing ? false : linkedFileMissing}

@@ -15,6 +15,10 @@ import {Meeting} from '../../../domain/types';
 import {CachedItem, findCachedItem, updateItemMeetings} from '../../../storage/dataCache';
 import {MeetingRelevantTodo, relatedItemsFor} from '../../../storage/meetingNoteAggregate';
 import {refreshMeetingNoteBlock} from '../../../storage/meetingNoteContent';
+import {openOrCreateReflectionPage} from '../../../storage/reflectionPage';
+import {reflectionPillText} from '../../../domain/reflection';
+import {useReflectionLookup} from '../../../ui/useReflectionLookup';
+import {useNoteCreateConfirm} from '../../../ui/useNoteCreateConfirm';
 import {resolveNotePath} from '../../../storage/noteLinks';
 import {saveMeetings} from '../../../storage/projectFile';
 import {ReviewItemRef, ReviewMeetingEntry} from '../../../storage/reviewAggregate';
@@ -103,6 +107,7 @@ function MeetingCloseOutDetail({
   onOpenItem,
   onToggleReviewed,
   onOpenNote,
+  onReflect,
   onAddTask,
   textColor,
   borderColor,
@@ -115,6 +120,8 @@ function MeetingCloseOutDetail({
   onOpenItem: (item: ReviewItemRef) => void;
   onToggleReviewed: (entry: ReviewMeetingEntry) => Promise<void>;
   onOpenNote: (entry: ReviewMeetingEntry) => Promise<void>;
+  /** Opens or creates the Reflection page; resolves true when it opened. */
+  onReflect: (entry: ReviewMeetingEntry) => Promise<boolean>;
   onAddTask: (text: string, destination: Destination) => Promise<void>;
   textColor: string;
   borderColor: string;
@@ -123,6 +130,7 @@ function MeetingCloseOutDetail({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useErrorStatus('ReviewScreen.error', error, () => setError(null));
+  const reflection = useReflectionLookup(meeting, entry.item.path, 'MeetingsCloseOutStep');
 
   const runAction = (fn: () => Promise<void>) => {
     setError(null);
@@ -164,6 +172,17 @@ function MeetingCloseOutDetail({
             <Text style={[styles.pillText, {color: textColor}]}>Open note</Text>
           </Pressable>
         )}
+        <Pressable
+          style={[styles.pill, {borderColor}, reflection.state === 'unknown' && styles.pillDisabled]}
+          disabled={pending || reflection.state === 'unknown'}
+          onPress={() =>
+            runAction(async () => {
+              if (await onReflect(entry)) reflection.markExists();
+            })
+          }
+          hitSlop={8}>
+          <Text style={[styles.pillText, {color: textColor}]}>{reflectionPillText(reflection.state)}</Text>
+        </Pressable>
       </View>
       <View style={[common.divider, {backgroundColor: borderColor}]} />
       <QuickAddWidget
@@ -208,6 +227,7 @@ export default function MeetingsCloseOutStep({
   const frozen = useFrozenStepList(aggregate?.meetingsToClose, stepEntryToken);
   // 1-line/2-line switch like every meeting list (session-only, ui/listLayout.ts).
   const [closeOutLayout, setCloseOutLayout] = useListLayout('reviewCloseOut', 'twoLine');
+  const confirmNoteCreate = useNoteCreateConfirm('MeetingsCloseOutStep.reflectionConfirm');
 
   /**
    * Meetings-to-close-out step: ticks (or un-ticks) `#reviewed` on the
@@ -233,6 +253,29 @@ export default function MeetingsCloseOutStep({
     bump('meetingsClosedOut', wasReviewed ? -1 : 1);
     frozen.markActed(closeOutKey(entry), !wasReviewed);
     requestEinkRefresh();
+  };
+
+  /**
+   * The third pill: the meeting's Reflection page (docs/dev/history/technical-design-meeting-reflection.md
+   * §2.8), created after the confirm - with the meeting's page first when it
+   * has none, persisted like the review tick. Never ticks `#reviewed` (R7).
+   */
+  const handleReflect = async (entry: ReviewMeetingEntry): Promise<boolean> => {
+    const current = findCachedItem(entry.item.path)?.meetings[entry.meetingIndex] ?? entry.meeting;
+    const currentSettings = settings ?? (await loadSettings());
+    const result = await openOrCreateReflectionPage(current, entry.item.path, currentSettings, inbox ? {tasks: inbox.tasks} : null, {
+      confirmCreate: confirmNoteCreate,
+    });
+    if (result.changed) {
+      const cachedItem = findCachedItem(entry.item.path);
+      if (!cachedItem) throw new Error(`"${meetingDisplayTitle(entry.meeting)}" changed on disk - Settings → Advanced → Reload all files.`);
+      const nextMeetings = cachedItem.meetings.map((m, i) => (i === entry.meetingIndex ? result.meeting : m));
+      const nextRaw = await saveMeetings(entry.item.kind, entry.item.path, cachedItem.rawContent, nextMeetings, cachedItem.meetingExtraLines);
+      updateItemMeetings(entry.item.path, nextRaw, nextMeetings, cachedItem.meetingExtraLines);
+      refreshFromCache();
+    }
+    log('ReviewScreen: reflection', result.cancelled ? 'cancelled' : 'opened');
+    return !result.cancelled;
   };
 
   /**
@@ -279,6 +322,7 @@ export default function MeetingsCloseOutStep({
         onOpenItem={onOpenItem}
         onToggleReviewed={handleToggleCloseOutReviewed}
         onOpenNote={handleOpenCloseOutNote}
+        onReflect={handleReflect}
         onAddTask={onAddTask}
         textColor={textColor}
         borderColor={borderColor}

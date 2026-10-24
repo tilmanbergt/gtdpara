@@ -5,7 +5,7 @@
 > `npm run check`; a change to this file shows which tested behavior a change adds or alters.
 > What the fake device cannot show is tested on the device instead (`RELEASING.md`).
 
-18 scenarios.
+39 scenarios.
 
 ## Close-out
 
@@ -33,17 +33,48 @@ Test: `__tests__/scenarios/closeOut.test.tsx` · design: `docs/dev/history/techn
 
 Test: `__tests__/scenarios/daily.test.tsx` · design: `docs/dev/history/technical-design-cache-subscription-and-shared-add-path.md`
 
+### Daily: tomorrow's tracked meeting offers Prepped, and Daily has no Link file
+
+- **Given** area "Coaching" has a sparring session tomorrow
+- **When** I open Daily, switch to Tomorrow and tap the session
+- **Then** its card offers P, no +clip and no Reflect
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+## Engage
+
+### Engage on the meeting's page offers the reflection; on the reflection page it opens on what was agreed
+
+- **Given** the todo "Send Mieke the role canvas" was agreed in the sparring session three days ago; in the notebook the session's page is followed by a page added by hand, then the page of the todo "Prepare the workshop"
+- **When** I open Engage on the meeting's page
+- **Then** it offers "Reflect on this meeting ›"
+- **When** I tap it and confirm
+- **Then** the reflection page comes after the hand-added page and before the todo's page, and opens
+- **When** I open Engage on the reflection page
+- **Then** it opens on "Agreed 1" from the sparring session, with the agreed todo
+- **And** it doesn't offer to reflect again
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
 ## Inbox
 
 ### Refile a todo with its note from the Inbox to a project
 
 - **Given** Inbox.txt has the todo "Call Anna" with its note "Call Anna.note", and project "Website" exists
-- **When** I open the Inbox, tap "Call Anna", tap Refile, open Projects, tap "Website" and confirm Move
+- **When** I open the Inbox, tap "Call Anna", tap the refile arrow on its card, open Projects, tap "Website" and confirm Move
 - **Then** Website's project.txt has the todo with its note link, after "Write copy"
 - **Then** Inbox.txt no longer has it
 - **Then** the note moved into the project's folder, keywords and all
 
 Test: `__tests__/scenarios/inbox.test.tsx` · design: `docs/dev/history/technical-design-filing-unification.md`
+
+### Refile a meeting from the card's area chip
+
+- **Given** the Inbox meeting "Kick-off" next week and project "Website"
+- **When** I tap the meeting, tap the refile arrow and pick Website in the Files pane
+- **Then** the meeting is in Website and no longer in the Inbox
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
 ## Interruptions
 
@@ -58,6 +89,95 @@ Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/
 - **Then** for every point where gtdpara can be stopped: reopening the close-out and tapping "Archive now" finishes it, or the project is archived and the Integrity Check says what is left
 
 Test: `__tests__/scenarios/interruptions.test.tsx` · design: `docs/dev/history/technical-design-quality-hardening.md`
+
+## Meetings
+
+### Tick R and M on the card: only the tags change
+
+- **Given** area "Coaching" has a sparring session last week, tracked for review
+- **When** I tap the session on Coaching and tap R and M on its card
+- **Then** the line gains #reviewed and #monthly and nothing else
+- **And** both show filled on the card
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### New from this and Cancel meeting from the card
+
+- **Given** the Inbox meeting "Retro" next week
+- **When** I tap the meeting and New from this on its card
+- **Then** Create · Meeting holds the title, date and time; the card is closed
+- **When** I tap the meeting again, Cancel meeting, and confirm
+- **Then** the meeting is marked cancelled in Inbox.txt, and the card says so
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Link a file from the card on an Area page, and unlink it
+
+- **Given** area "Coaching" has the meeting "Sparring" next week and the file "brief.pdf" in its folder
+- **When** I tap the meeting, tap +clip on its card and pick the file in the Files pane
+- **Then** the meeting links the file, and the card shows its name
+- **When** I tap ✕ next to the file on the card
+- **Then** the line has no link any more, and the card offers +clip again
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Reflect on a sparring session: the page comes after the meeting's page and the pages added to it by hand
+
+- **Given** area "Coaching" has a sparring session three days ago and a check-in since; in "sparring mieke <year>.note" the session's page is followed by two pages added by hand, then the check-in's page
+- **When** I open Coaching and tap the sparring session
+- **Then** its card offers Reflect and R (not reviewed yet)
+- **When** I tap Reflect and confirm the new page
+- **Then** the reflection page comes after both hand-added pages, not straight after the session's page, and before the check-in's page
+- **And** the reflection page has no date keyword of its own, so it stays part of the meeting
+- **And** it carries the setup's heading and guiding question
+- **And** it was opened, and the card's Reflect is filled now
+- **And** the meeting is not ticked reviewed and its line is unchanged
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+### Reflect on a meeting that has no page yet: one question, then meeting page and reflection in order
+
+- **Given** area "Coaching" has a sparring session three days ago without a note, and no sparring notebook exists
+- **When** I tap the session, tap Reflect on its card and confirm
+- **Then** the notebook exists with the meeting's page first and the reflection second
+- **And** the meeting links its page, and the reflection is what opened
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+### A renamed meeting finds its reflection again
+
+- **Given** the sparring session has a reflection page, and its title was changed to "Sparring Mieke roles" since
+- **When** I tap the session
+- **Then** the card's Reflect is filled: the page exists
+- **When** I tap it
+- **Then** the same page opens, now with the keyword of the new title
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
+
+### The card follows the selected meeting
+
+- **Given** area "Coaching" has a sparring session three days ago and one in two days, both tracked by the Sparring setup
+- **When** I open Coaching without tapping a meeting
+- **Then** Quick Add shows, no card
+- **When** I tap the session in two days
+- **Then** its card offers P and +clip, but no reflection yet
+- **When** I tap the session three days ago
+- **Then** the card switches to it: R, Reflect and +clip
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Edit and save from the card, then tick reviewed on it: the title changes and both ticks stay
+
+- **Given** the sparring session three days ago was ticked prepped before it took place
+- **When** I tap the session and then Edit on its card
+- **Then** the title field shows the title without #prepped
+- **When** I change the title and tap Save
+- **Then** the card shows the meeting again
+- **When** I tick R on the card
+- **Then** R is filled
+- **And** the meeting has the new title and keeps both #prepped and #reviewed
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
 ## Profiles and demo space
 
@@ -76,6 +196,83 @@ Test: `__tests__/scenarios/profiles.test.tsx` · design: `docs/dev/history/techn
 
 ## Quick Add
 
+### Save to <Name>: an abbreviation tag typed while editing saves the meeting and moves it there
+
+- **Given** project "Garden renovation" (#GR) and the Inbox meeting "Site visit" today
+- **When** I open Daily, tap the meeting twice (card, then edit), add "#GR" to its title
+- **Then** the main button offers "Save to Garden renovat…" instead of Save
+- **When** I tap it
+- **Then** the meeting, renamed and without the tag, is in the project and no longer in the Inbox
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### After + Add with an abbreviation tag, the next todo starts with that tag
+
+- **Given** project "Website" (#WEB) and an empty Inbox
+- **When** I add "Call the designer #web" from the Inbox
+- **Then** the field starts the next todo with "#WEB ", and the button still files to Website
+- **When** I tap + Add with nothing but the tag
+- **Then** nothing is added
+- **When** I write the next todo after the tag and add it
+- **Then** both todos are in Website without the tag, none in the Inbox
+- **When** I delete the tag from the field and add a todo
+- **Then** it goes to the Inbox, and the next draft starts empty
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### In a thread overview, Quick Add adds the thread tag it shows in Row 4
+
+- **Given** area "Coaching" has the todo "Draft agenda #retro/alpha"
+- **When** I open the thread overview from the tag and add the todo "Book room"
+- **When** I add the todo "Book room" there
+- **Then** the area has the new todo with the thread tag
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Tap a meeting shows its card; ✕ brings back the half-typed todo
+
+- **Given** the Inbox meeting "Team sync" next week
+- **When** I start the todo "Call Anna" in the Inbox and tap the meeting
+- **Then** the card names the meeting in Quick Add's place
+- **When** I tap ✕ on the card
+- **Then** Quick Add is back with "Call Anna" still in the field
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### A second tap edits; Save writes it and shows the card again
+
+- **Given** the Inbox meeting "Team sync" next week
+- **When** I tap the meeting, tap Edit, rename it and Save
+- **Then** Inbox.txt has the new title
+- **And** the card shows the meeting again, not the edit form
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Switching to another meeting while editing saves first and shows the other's card
+
+- **Given** the Inbox meetings "Team sync" and "Retro" next week
+- **When** I edit "Team sync", rename it, and tap "Retro"
+- **Then** the rename is saved
+- **And** "Retro" shows as card
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
+### Todo card: Now, a flow chip, done and delete act at once
+
+- **Given** project "Garden renovation" has the todos "Order soil #next" and "Fix the fence"
+- **When** I tap "Order soil" on the project page
+- **Then** its card shows it as Next, with Now offered
+- **When** I tap Now
+- **Then** the todo gets #now
+- **When** I tap Someday on the card
+- **Then** it is Someday, and Now went with Next
+- **When** I tick it done on the card
+- **Then** it is done with today's completion date
+- **When** I tap the row "Fix the fence", Delete on its card, and confirm
+- **Then** it is marked cancelled, and Quick Add is back
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
 ### Quick Add a todo in a project
 
 - **Given** project "Website" has the todo "Write copy" and a hand-written Scope
@@ -89,16 +286,16 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 ### Edit a todo, then tap another one: the first edit is saved
 
 - **Given** project "Website" has the todos "Write copy" and "Fix footer"
-- **When** I open "Website", tap "Write copy", change it to "Write landing page copy" and tap "Fix footer"
+- **When** I open "Website", tap "Write copy" and Edit on its card, change it to "Write landing page copy" and tap "Fix footer"
 - **Then** project.txt has the changed todo, still #next, and "Fix footer" unchanged
-- **Then** "Fix footer" is now the one being edited
+- **Then** "Fix footer" is now the selected one, shown as its card (technical-design-item-card.md §3)
 
 Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-meeting-lists.md`
 
 ### An abbreviation tag files a todo into its project while editing
 
 - **Given** project "Website" (#WEB) and the Inbox todo "Ask about hosting"
-- **When** I edit the Inbox todo, add "#WEB" and tap "File: Website"
+- **When** I edit the Inbox todo, add "#WEB" and tap "Save to Website"
 - **Then** the todo is in Website's project.txt, without the #WEB tag
 - **Then** Inbox.txt no longer has it
 
@@ -111,6 +308,22 @@ Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/techn
 - **Then** project.txt has it done, with today's date as completion field
 
 Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-tags.md`
+
+### The ✕ puts a hovering strip away until the field gains focus again
+
+- **Given** project "Website"
+- **When** I open "Website" and put the cursor into the todo field
+- **Then** All/Copy/Cut/Paste hovers over the tabs
+- **When** I tap its ✕
+- **Then** it is gone while the field still has the cursor
+- **When** the field loses the cursor and gets it back
+- **Then** the strip is back
+- **When** I hide it again and tap the Meeting tab
+- **Then** the meeting form shows
+- **When** I open the due date and put the cursor into it
+- **Then** the date strip hovers there with its own ✕, which puts it away
+
+Test: `__tests__/scenarios/quickAdd.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
 
 ## Settings
 
@@ -149,7 +362,28 @@ Test: `__tests__/scenarios/touchTest.test.tsx` · design: `docs/dev/history/tech
 
 Test: `__tests__/scenarios/touchTest.test.tsx` · design: `docs/dev/history/technical-design-touch-test.md`
 
+## Threads
+
+### Todo card: the meeting a todo was agreed in opens its thread
+
+- **Given** area "Coaching" has a sparring session last week and a todo agreed in it
+- **When** I tap the todo on Coaching
+- **Then** its card names the meeting
+- **When** I tap it
+- **Then** the thread overview opens
+
+Test: `__tests__/scenarios/itemCard.test.tsx` · design: `docs/dev/history/technical-design-item-card.md`
+
 ## Weekly Review
+
+### Reflect from Review's "Meetings to close out" without ticking it reviewed
+
+- **Given** the sparring session three days ago is tracked for review and not reviewed yet; its page is followed by two pages added by hand, then the check-in's page
+- **When** I open Review, the step "Meetings to close out", tap the session and "Reflect ›", and confirm
+- **Then** the reflection page comes after the two hand-added pages and before the check-in's page
+- **And** the meeting is still not reviewed
+
+Test: `__tests__/scenarios/meetingReflection.test.tsx` · design: `docs/dev/history/technical-design-meeting-reflection.md`
 
 ### Weekly Review: get the Inbox to zero by filing one todo and finishing the other
 

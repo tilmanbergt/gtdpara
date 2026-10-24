@@ -85,8 +85,8 @@ top-aligned, so if a prediction is too large the spare space sits at the bottom 
 
 | Row | File | Height (dp) | How it is computed |
 |---|---|---|---|
-| Task row | `ui/TaskRow.tsx` → `taskRowHeight()` | **42** (1 line) / **64** (2 lines) | `TASK_ROW_CHROME_PX 20` (`paddingVertical 7 × 2` + border + rounding, device-measured) + lines × 22. Lines (1–2) come from `ui/taskRowLayout.ts`, which estimates title + labels together; a long title is shortened with "…" so labels always show. Text width = column width − 28 (checkbox) − 90 (note/clip icons). The style's `minHeight: 64` is only a fallback for callers that pass no `height`. |
-| Meeting row, 1-line | `ui/MeetingRow.tsx` | **37 (fixed)** | `MEETING_ROW_HEIGHT.oneLine`: `paddingVertical 7 × 2` + one 22 dp line + border. Time column 58 dp (`time`) or 118 dp (`dateTime`, e.g. "28.12. 23:59"). |
+| Task row | `ui/TaskRow.tsx` → `taskRowHeight()` | **42** (1 line) / **64** (2 lines) | `TASK_ROW_CHROME_PX 20` (`paddingVertical 7 × 2` on each tap target, not the row, so they span its height; + border + rounding, device-measured) + lines × 22. Lines (1–2) come from `ui/taskRowLayout.ts`, which estimates title + labels together; a long title is shortened with "…" so labels always show. Text width = column width − 28 (checkbox) − 90 (note/clip icons). The style's `minHeight: 64` is only a fallback for callers that pass no `height`. |
+| Meeting row, 1-line | `ui/MeetingRow.tsx` | **37 (fixed)** | `MEETING_ROW_HEIGHT.oneLine`: `ROW_PAD_DP 7 × 2` + one 22 dp line + border. The padding sits on the tap targets (main, note, clip), not the row, so a tap anywhere in the row's height lands. Time column 58 dp (`time`) or 118 dp (`dateTime`, e.g. "28.12. 23:59"). |
 | Meeting row, 2-line | `ui/MeetingRow.tsx` | **57 (fixed)** | `MEETING_ROW_HEIGHT.twoLine`: 22 dp title + 2 + 18 dp source line (or the title wrapping onto line 2 at 2 × 21 dp when there is no source). Time column 58 dp or 96 dp. Every meeting list has a 1-line/2-line switch. |
 | Meeting group header (Upcoming/Past) | `ui/MeetingList.tsx` | **30 (fixed)** | `MEETING_LIST_HEADER_ROW_HEIGHT`. |
 | Google Calendar event | `ui/GoogleCalendarPanel.tsx` | **37 (fixed)** | `GOOGLE_EVENT_ROW_PX = MEETING_ROW_HEIGHT.oneLine`, same time column as a meeting row. |
@@ -182,18 +182,21 @@ See §3. Other single-line rows:
 
 ### 5.4 The QuickAdd card
 
-`ui/QuickAddWidget.tsx`'s card (Project panel, Inbox, Week, Review) is the largest recurring
-block outside lists. Budget it as one block:
+`ui/QuickAddWidget.tsx`'s box (Project panel, Inbox, Daily, Week, Month, Review, thread and
+loop overviews) is the largest recurring block outside lists. It has one fixed height in every
+state (`ui/quickAdd/QuickAddFrame.tsx`, `QUICK_ADD_HEIGHT`); budget it as one block:
 
-| Internal row | minHeight (dp) | Purpose |
+| Row | height (dp) | Holds |
 |---|---|---|
-| Row 1 | 22 | Todo / Meeting / Note tabs |
-| Row 2 | 36 | Main text input |
-| Row 3 | 32 | Flow-state and tag chips |
-| Row 4 | 32 | Attach cluster, date, Add button |
+| Row 1 | 30 | Todo / Meeting / Note tabs; + Add, Cancel · Save, or the card's heading with ✕ · Edit |
+| Row 2 | 36 | Main text input and date |
+| Row 3 | 34 | Flow chips or time, tag chips |
+| Row 4 | 34 | More tag chips, the provenance line, or (a loop's own edit only) the edit commands |
 
-Card total ≈ `padding 10 + 22 + 6 + 36 + 6 + 32 + 6 + 32 + padding 10 + border 2` ≈ **162 dp**
-(minimum; the capture screen's variant adds more rows).
+Box total = `border 1 + padding 10 + 30 + 6 + 36 + 6 + 34 + 6 + 34 + padding 10 + border 1` =
+**174 dp**, whatever it shows - create, edit, or an item card (`ui/itemCard/`) in the same rows. Chips in rows 3 and 4 use 4 dp vertical padding: their label draws
+about 21 dp high on the device, so a chip is about 31 dp. The capture screen's panel (`ui/quickAdd/CaptureQuickAdd.tsx`) is
+the exception: it grows with its multi-line text and adds rows below.
 
 ### 5.5 Section headings and labels
 

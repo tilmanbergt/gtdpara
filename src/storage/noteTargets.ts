@@ -13,6 +13,7 @@ import {
   distinctCandidates,
   layoutFor,
   NoteCandidate,
+  NoteSetup,
   noteCandidates,
   noteSetupConfig,
   setupSubtag,
@@ -132,7 +133,12 @@ export function placeNoteCandidates(input: NoteTargetInput): PlacedCandidate[] {
  * setup is gone falls back to the Default.
  */
 export function layoutForLink(input: NoteTargetInput & {linkedFile: string | null}): PageLayout | null {
+  return layoutFor(setupForLink(input), input.pageKind, input.settings.noteSetupDefaults);
+}
+
+/** The Note setup of the page an existing note link points to (see `layoutForLink`); null = the Default. */
+export function setupForLink(input: NoteTargetInput & {linkedFile: string | null}): NoteSetup | null {
   const placed = placeNoteCandidates(input);
   const match = candidateForLink(placed, input.linkedFile ?? OWN_NOTE_KEY, noteFileKey);
-  return layoutFor(match?.candidate.setup ?? null, input.pageKind, input.settings.noteSetupDefaults);
+  return match?.candidate.setup ?? null;
 }

@@ -6,6 +6,7 @@
  */
 import {
   createDefaultHomePage,
+  createDefaultReviewPage,
   createNoteSetup,
   LOOP_NOTE_NAME_DEFAULT,
   MeetingTracking,
@@ -334,12 +335,12 @@ export function migrateTagRules(rules: readonly LegacyTagRule[], nextId: number)
  */
 export function migrateNoteSetupSettings(settings: GtdParaSettings): GtdParaSettings {
   const rules = Array.isArray(settings.tagRules) ? settings.tagRules : [];
-  if (settings.noteSetupsMigrated) return completeHomePage(completeMigratedSettings(settings, rules));
+  if (settings.noteSetupsMigrated) return completeDefaultPages(completeMigratedSettings(settings, rules));
   if (rules.length === 0) {
     return {...settings, noteSetups: [], noteSetupDefaults: seedNoteSetupDefaults(), noteSetupsNotice: null, noteSetupsMigrated: true};
   }
   const result = migrateTagRules(rules, settings.nextNoteSetupId);
-  return completeHomePage({
+  return completeDefaultPages({
     ...settings,
     noteSetups: result.setups,
     noteSetupDefaults: result.defaults,
@@ -352,13 +353,20 @@ export function migrateNoteSetupSettings(settings: GtdParaSettings): GtdParaSett
 /**
  * A Default without a Home page gets the standard one
  * (docs/dev/history/technical-design-home-notebooks.md §3.2), so the first
- * home notebook already has it. Runs once: an emptied Home page is still a
- * page. Returns the same object when there is nothing to do.
+ * home notebook already has it; one without a Reflection page gets the
+ * standard one (docs/dev/history/technical-design-meeting-reflection.md §2.1),
+ * so the first reflection has its heading. Runs once per page: an emptied
+ * page is still a page. Returns the same object when there is nothing to do.
  */
-function completeHomePage(settings: GtdParaSettings): GtdParaSettings {
+function completeDefaultPages(settings: GtdParaSettings): GtdParaSettings {
   const defaults = settings.noteSetupDefaults;
-  if (!defaults || defaults.pages.home) return settings;
-  return {...settings, noteSetupDefaults: {...defaults, pages: {...defaults.pages, home: createDefaultHomePage()}}};
+  if (!defaults || (defaults.pages.home && defaults.pages.review)) return settings;
+  const pages = {
+    ...defaults.pages,
+    home: defaults.pages.home ?? createDefaultHomePage(),
+    review: defaults.pages.review ?? createDefaultReviewPage(),
+  };
+  return {...settings, noteSetupDefaults: {...defaults, pages}};
 }
 
 /**

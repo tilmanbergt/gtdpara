@@ -4,7 +4,7 @@ import {
   migrateTagRules,
   migrationCounts,
 } from '../../src/domain/noteSetupMigration';
-import {createDefaultHomePage, createDefaultMeetingPage, seedNoteSetupDefaults} from '../../src/domain/noteSetups';
+import {createDefaultHomePage, createDefaultMeetingPage, createDefaultReviewPage, seedNoteSetupDefaults} from '../../src/domain/noteSetups';
 import {addPiece, NotePiece} from '../../src/domain/pageLayout';
 import {DEFAULT_SETTINGS, GtdParaSettings} from '../../src/domain/settings';
 import {sanitizeProfileSettings, buildActiveSettings, PROFILE_KEYS} from '../../src/domain/profiles';
@@ -326,6 +326,20 @@ describe('migrateNoteSetupSettings', () => {
     expect(completed.noteSetupDefaults.pages.meeting).toBe(pages.meeting);
     expect(migrateNoteSetupSettings(completed)).toBe(completed);
     const emptied = {...completed, noteSetupDefaults: {...completed.noteSetupDefaults, pages: {...completed.noteSetupDefaults.pages, home: {template: '', pieces: []}}}};
+    expect(migrateNoteSetupSettings(emptied)).toBe(emptied);
+  });
+
+  it('completes a Default without a Reflection page with the standard one, once (docs/dev/history/technical-design-meeting-reflection.md §2.1)', () => {
+    const migrated = migrateNoteSetupSettings(DEFAULT_SETTINGS);
+    expect(migrated.noteSetupDefaults.pages.review).toEqual(createDefaultReviewPage());
+    const pages = {...migrated.noteSetupDefaults.pages};
+    delete pages.review;
+    const earlier = {...migrated, noteSetupDefaults: {...migrated.noteSetupDefaults, pages}};
+    const completed = migrateNoteSetupSettings(earlier);
+    expect(completed.noteSetupDefaults.pages.review).toEqual(createDefaultReviewPage());
+    expect(completed.noteSetupDefaults.pages.home).toBe(pages.home);
+    expect(migrateNoteSetupSettings(completed)).toBe(completed);
+    const emptied = {...completed, noteSetupDefaults: {...completed.noteSetupDefaults, pages: {...completed.noteSetupDefaults.pages, review: {template: '', pieces: []}}}};
     expect(migrateNoteSetupSettings(emptied)).toBe(emptied);
   });
 

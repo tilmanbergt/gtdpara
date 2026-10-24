@@ -12,8 +12,9 @@ scenario('Weekly Review: get the Inbox to zero by filing one todo and finishing 
     await tapTab('Review');
     await tap('Inbox to zero');
     await tap('Ask about hosting');
+    await tap('Edit');
     await type('New task', 'Ask about hosting #WEB');
-    await tap(/^File: Website/);
+    await tap(/^Save to Website/);
     await tap('☐', firstCheckboxOf('Buy milk'));
   });
   then('"Ask about hosting" is in Website\'s project.txt', () => {

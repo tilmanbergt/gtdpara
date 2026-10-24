@@ -15,7 +15,7 @@ You find them in **Settings → Note setups**.
   - **One notebook**: every meeting and todo of the setup gets a page in one note, in date order (see below).
   - A Loop setup always has its **loop note**: one note per loop in the loop's Area or Project folder.
 - **Tracking**: **Prepare before** and **Review after** for the setup's meetings, see [Meetings](meetings.md).
-- **Pages**: a **Meeting page** and a **Todo page**, and for a Loop setup a **First page** (the loop's own page at the start of its loop note).
+- **Pages**: a **Meeting page**, a **Todo page** and a **Reflection page** (the page you write your reflection on after a meeting, see [Meetings](meetings.md)), and for a Loop setup a **First page** (the loop's own page at the start of its loop note).
 
 Items no setup covers use the **Default**, pinned at the top of the list: its pages, its tracking and where its notes go. Inbox items always get a note of their own.
 
@@ -57,19 +57,19 @@ Left, the page as it will look, with its background; tap a piece to select it. R
 - **Pieces**: the pieces on the page (**✕** removes one). For the selected piece, the arrows move it (step 5 or 25), and you change its font size and maximum width. **Heading** writes the piece as a Supernote heading too, so it shows in the note's table of contents - on a note of its own and on each page of a notebook. Date & title has it on from the start, and so has the Title of a Todo page; Linked file can't be a heading. In the picture a heading has a grey backing.
 - **Add**: tap a piece to put it on the page (✓); tap it again to take it off. Each piece is on a page once.
   - **Title** of the item; tags are written as words without `#` (`Retro demand retro/demand`), the tags gtdpara uses itself (`#next`, `#wf/anna` …) are left out
-  - **Date & title** (Meeting and First page): the date with the year and the title, `30.9.2026 · Retro demand retro/demand`; for a loop its main date and name
-  - **Date** and **Time** (Meeting page)
+  - **Date & title** (Meeting, First and Reflection page): the date with the year and the title, `30.9.2026 · Retro demand retro/demand`; for a loop its main date and name
+  - **Date** and **Time** (Meeting and Reflection page)
   - **Related items**: open todos and meetings that share a tag with the item - a tag about what it is about, like `#garden` or `#retro/alpha`; `#next`, `#now`, `#someday`, `#maybe` and Waiting For don't count
   - **Linked file**: a link to the file linked to the item
   - **Since last time** (Meeting page), see below
   - your own **texts**: **+ New text** writes one, for example "Agenda" or "Decisions"; **Edit** changes it. Deleting a text that is on the page asks first.
 - **Background**: your templates from the MyStyle folder; the picture shows the choice at once.
 
-**Done** goes back to the setup's page; **Save** there stores everything. A new Meeting page starts with Date & title, Time and Linked file; a Todo page with Title and Linked file; a First page with Date & title and Linked file.
+**Done** goes back to the setup's page; **Save** there stores everything. A new Meeting page starts with Date & title, Time and Linked file; a Todo page with Title and Linked file; a First page with Date & title and Linked file; a Reflection page with Date & title only - add your guiding questions as your own texts, for example "What did I notice?" or "What do I try next time?".
 
 ## The Default
 
-Tap **Default** at the top of the list. It has **Notes** (own note per item, or one notebook for everything no setup covers), **Tracking** and its pages, each with **Edit ›**. Its pages are the Default layout of every setup that uses it, Loop setups' First pages included.
+Tap **Default** at the top of the list. It has **Notes** (own note per item, or one notebook for everything no setup covers), **Tracking** and its pages, each with **Edit ›**. Its pages are the Default layout of every setup that uses it, Loop setups' First pages included. Its **Reflection page** starts with Date & title as a heading; the guiding questions are yours to add.
 
 A new install starts with **One notebook** named `{name} {year}` in each project's or area's own folder: every note of a project or area goes into one file per year. This notebook is each project's and area's home notebook ([Projects and Areas](projects-and-areas.md)); the Default then also has a **Home page**, the first page of every new home notebook (Title, Scope and Latest goals). A setup whose notebook has the same name and folder shares this file.
 

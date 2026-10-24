@@ -11,9 +11,63 @@ or your project/area files are stored.
 ## [Unreleased]
 
 ### New
+- **Reflection page for meetings**: once a meeting is over, **Reflect** adds one page to its note
+  for reflecting in your own handwriting - after the meeting's page and the pages you added to
+  it, filled from the setup's Reflection page. It asks once; afterwards it opens the page.
+  It never ticks the meeting reviewed. Reach it from the meeting's card, the Review step
+  **Meetings to close out**, a past meeting in a thread or loop overview, and Engage on the
+  meeting's page ("Reflect on this meeting ›"). On the reflection page, Engage and lasso capture
+  treat it as the meeting's page. See the help page "Meetings".
+- **Reflection page in Note setups**: Thread and Loop setups and the Default have a new page row,
+  **Reflection page**. It starts with Date & title; add your guiding questions as your own texts.
+  See the help page "Note setups".
+- **Meeting card**: tapping a meeting in a list with Quick Add (Daily, Week and Month day
+  panels, a project's or area's Meetings, the Inbox, the Review's Inbox step, a thread or loop
+  overview's Ahead) shows its card in Quick Add's place: the prep or review tick, **M**, its
+  note, **Reflect** once it is over, its linked file (open, unlink) or linking one, where it
+  lives (open, move), **New from this** and **Cancel meeting**. **Edit** - or a second tap on
+  the row - opens the edit form; **Save** returns to the card, ✕ brings back Quick Add with your
+  draft. See the help page "Meetings".
+- **Todo card**: tapping a todo (Daily, a project's or area's Todos, the Inbox, the Review's
+  Inbox step, the thread and loop overviews) shows its card the same way: its state (due,
+  waiting, someday, done), the meeting it was agreed in (opens that thread), done, the flow chips
+  and **Now**, all acting at once, its note, where it lives (open, move), its linked file or
+  linking one, and delete. **Edit** or a second tap opens the edit form. See the help page
+  "Quick Add and capture".
 - **Touch test** in Settings → Advanced, to diagnose taps that don't register: tap sample rows
   with finger or pen and see where each tap landed and whether it worked. **Save log** writes the
   result to `EXPORT/gtdpara/debug` for a bug report.
+
+### Changed
+- **Quick Add keeps one height**: the box has four rows and stays the same height whatever it
+  shows, so the lists below it no longer move. **+ Add** and, while editing, **Cancel** and
+  **Save** moved to the top row; recently used tags fill the third and fourth row, with **‹ ›**
+  at the end of the fourth; the grey "↳ from …" line takes the fourth row. The edit form holds
+  the fields only: delete, **Refile**, unlinking a file and **New from this** are on the item's
+  card. See the help page "Quick Add and capture".
+- **Save to <Name>**: with a project's or area's abbreviation tag in the text, **Save** saves
+  the edit and moves the item there in one step (it replaces **File: <Name>**).
+- **Hide the editing strips**: the All/Copy/Cut/Paste and date strips that hover over Quick Add's
+  tabs while you write end in a **✕** that puts them away until you tap into a field again, so
+  **Todo** and **Meeting** stay reachable. See the help page "Quick Add and capture".
+- **Meeting and todo rows are easier to tap**: a tap anywhere in a row's height selects it, not
+  only on the text line - one-line meeting rows (Daily, the Inbox) ignored most taps before.
+- **The next item keeps the abbreviation tag**: after **+ Add to <Name>**, the field starts with
+  that tag again, so a run of items for one project needs it once.
+- **A quieter meeting row**: the prep/review mark on a row only shows the state - tapping it
+  selects the meeting, the tick is on its card. The **+clip** moved to the card; the clip shows
+  only when a file is linked. The **M** box left the Week and Month day panels: switch a monthly
+  highlight on the card (2-line rows still show the M).
+
+### Fixed
+- **A meeting's prep or review tick is no longer lost when you save an edit**: Quick Add's edit
+  form shows the title without `#prepped` and `#reviewed`, and **Save** keeps the tick the
+  meeting has, also one you set while the edit was open.
+
+### Upgrade notes
+- **Note setups**: the Default gets a **Reflection page** (Date & title as a heading) the first
+  time this version starts. Your setups keep their pages; the ones without an own Reflection page
+  use the Default's.
 
 ## [0.18.3] — 2026-10-21
 

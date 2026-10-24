@@ -85,6 +85,11 @@ export const common = StyleSheet.create({
     zIndex: 20,
     elevation: 4,
   },
+  /** floatingStrip variant: left-aligned above the field (Quick Add keeps its R1 buttons on the right free). */
+  floatingStripLeft: {
+    right: undefined,
+    left: 0,
+  },
   floatingStripButton: {
     borderWidth: 1,
     borderRadius: 3,
