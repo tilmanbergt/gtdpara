@@ -26,7 +26,7 @@ import {meetingPageKeyword, parseKeywordLeadingDate} from './sharedNotePages';
 import {appendTaskFields} from './taskLine';
 import {parseTaskInput} from './taskEdit';
 import {threadOf, threadsOfTags} from './threads';
-import {Meeting, Task} from './types';
+import {Meeting} from './types';
 
 /** `text` as a provenance key: without `#`, `[` and `]`, whitespace collapsed. */
 export function normalizeMeetingKey(text: string): string {
@@ -86,12 +86,12 @@ function findIn(
 }
 
 /**
- * The meeting `task` was agreed in, or null - see the module doc comment.
+ * The meeting `task` (a todo or an agreement) was agreed in, or null - see the module doc comment.
  * `scopePaths` is the scope of the todo's own item (domain/threads.ts's
  * `scopeOf`), searched first.
  */
 export function resolveProvenance(
-  task: Pick<Task, 'fields'>,
+  task: {fields: {meeting: string | null}},
   sources: readonly ProvenanceSource[],
   scopePaths: readonly string[],
 ): ProvenanceMatch | null {

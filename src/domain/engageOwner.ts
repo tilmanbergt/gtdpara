@@ -14,6 +14,7 @@
  * full tasks array, the same shape as the thread overview's entries, so the
  * one action hook (ui/useEntryActions.ts) takes them unchanged.
  */
+import {Agreement} from './agreements';
 import {scopeOwnerOf} from './counterparts';
 import {belongsToLoop, isLoopMember, loopAgreedIn} from './loops';
 import {LoopLine} from './loopsSection';
@@ -65,6 +66,8 @@ export interface EngageItem {
   meetings: readonly Meeting[];
   loops: readonly LoopLine[];
   threads: readonly CounterpartLine[];
+  /** The `## Agreements` section, in file order (domain/agreementOwner.ts reads membership). */
+  agreements: readonly Agreement[];
 }
 
 /** The Inbox's lists: the lens's provenance sources and today's meetings (E9). */
@@ -139,7 +142,8 @@ export function isOpenTask(task: Task): boolean {
   return !task.done && !task.cancelled;
 }
 
-function itemAt(source: EngageSource, path: string): EngageItem | null {
+/** The Project or Area at `path`, or null. */
+export function itemAt(source: EngageSource, path: string): EngageItem | null {
   return source.items.find(item => item.path === path) ?? null;
 }
 
@@ -157,7 +161,7 @@ export function threadOfTags(tags: readonly string[], source: EngageSource): Thr
 }
 
 /** The Projects/Areas, then the Inbox, as the lens reads them. */
-function lensSourcesOf(source: EngageSource): LensSource[] {
+export function lensSourcesOf(source: EngageSource): LensSource[] {
   const sources: LensSource[] = source.items.map(item => ({ref: itemRefOf(item), tasks: item.tasks, meetings: item.meetings}));
   if (source.inbox) sources.push({ref: {kind: 'inbox', name: 'Inbox', path: source.inbox.path, abbrev: null}, tasks: source.inbox.tasks, meetings: source.inbox.meetings});
   return sources;

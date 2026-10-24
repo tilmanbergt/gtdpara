@@ -51,6 +51,8 @@ export function item(
     threadsExtraLines: [],
     loops: [],
     loopsExtraLines: [],
+    agreements: [],
+    agreementsExtraLines: [],
     status: 'active',
     dailyFocus: false,
     weeklyFocus: false,

@@ -100,6 +100,8 @@ function reviewFallbackItem(ref: ReviewItemRef): CachedItem {
     threadsExtraLines: [],
     loops: [],
     loopsExtraLines: [],
+    agreements: [],
+    agreementsExtraLines: [],
     status: 'active',
     dailyFocus: false,
     weeklyFocus: false,
